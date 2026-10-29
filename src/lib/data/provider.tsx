@@ -35,7 +35,14 @@ interface Ctx {
   reinit: () => Promise<void>;
   /** Optimistic local change applied immediately, before the server round trip. */
   mutate: (fn: (d: Dataset) => Dataset) => void;
+  /**
+   * Vista da giocatore: l'amministratore usa l'app come la vedono gli altri
+   * (senza i suoi strumenti). Vale finché non la spegne o chiude l'app.
+   */
+  playerView: { on: boolean; available: boolean; set: (on: boolean) => void };
 }
+
+const VIEW_KEY = "campetto:vista-giocatore";
 
 const DataContext = createContext<Ctx | null>(null);
 
@@ -171,15 +178,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const engine = useMemo(() => buildEngine(data), [data]);
-  const me = useMemo(
+  const realMe = useMemo(
     () => (auth.status === "ready" ? (data.players.find((p) => p.id === auth.meId) ?? null) : null),
     [auth, data.players],
   );
+  const [viewOn, setViewOn] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setViewOn(sessionStorage.getItem(VIEW_KEY) === "1");
+    } catch {
+      /* niente memoria di sessione: si parte da amministratore */
+    }
+  }, []);
+  const setView = useCallback((on: boolean) => {
+    try {
+      if (on) sessionStorage.setItem(VIEW_KEY, "1");
+      else sessionStorage.removeItem(VIEW_KEY);
+    } catch {
+      /* vale solo per ora */
+    }
+    setViewOn(on);
+  }, []);
+  const available = Boolean(realMe?.isAdmin);
+  const me = useMemo(() => (realMe && available && viewOn ? { ...realMe, isAdmin: false } : realMe), [realMe, available, viewOn]);
+  const playerView = useMemo(() => ({ on: available && viewOn, available, set: setView }), [available, viewOn, setView]);
   const mutate = useCallback((fn: (d: Dataset) => Dataset) => setData((d) => fn(d)), []);
 
   const value = useMemo<Ctx>(
-    () => ({ backend, auth, data, me, engine, loading, online, lastError, refresh, reinit, mutate }),
-    [backend, auth, data, me, engine, loading, online, lastError, refresh, reinit, mutate],
+    () => ({ backend, auth, data, me, engine, loading, online, lastError, refresh, reinit, mutate, playerView }),
+    [backend, auth, data, me, engine, loading, online, lastError, refresh, reinit, mutate, playerView],
   );
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { StatsDashboard } from "@/components/profile/stats-dashboard";
 import { Form, KeyRings } from "@/components/profile/key-stats";
@@ -17,13 +17,16 @@ export default function PlayerPage() {
   const { id } = useParams<{ id: string }>();
   const { data, me } = useData();
   const router = useRouter();
+  // "Come ti vedono gli altri": il proprio profilo nella versione pubblica.
+  const preview = useSearchParams().get("anteprima") === "1";
+  const self = me?.id === id;
   const player = data.players.find((p) => p.id === id);
   const [tab, setTab] = useState<"panoramica" | "numeri">("panoramica");
   const h = useMemo(() => (me ? headToHead(me.id, id, data.matches) : null), [me, id, data.matches]);
 
   useEffect(() => {
-    if (me?.id === id) router.replace("/profilo");
-  }, [me, id, router]);
+    if (self && !preview) router.replace("/profilo");
+  }, [self, preview, router]);
 
   if (!player) {
     return (
@@ -38,7 +41,7 @@ export default function PlayerPage() {
 
   return (
     <>
-      <ScreenHeader title={name} back={() => router.back()} />
+      <ScreenHeader title={self ? "Come ti vedono" : name} subtitle={self ? "Il tuo profilo, visto dagli altri" : undefined} back={() => router.back()} />
       <div className="shrink-0 px-5">
         <ProfileHeader player={player} />
         <Segmented
@@ -55,7 +58,7 @@ export default function PlayerPage() {
         <PullToRefresh scroll={false} className="px-5 pb-2 pt-3">
           <div className="flex h-full flex-col gap-3 short:gap-2">
             <KeyRings playerId={player.id} />
-            {me && h && (
+            {me && h && !self && (
               <div className="card flex items-center gap-3 px-4 py-3 short:py-1.5">
                 <Character id={characterOf(me)} number={me.jerseyNumber} height={64} className="short:h-10 short:w-auto" />
                 <div className="min-w-0 flex-1 text-center">

@@ -13,7 +13,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
-import { WifiOff } from "lucide-react";
+import { Eye, WifiOff } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { BadgeCelebration } from "@/components/badge-celebration";
 import { Mascot } from "@/components/mascot";
@@ -105,7 +105,7 @@ function Message({
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { auth, online, me, backend, reinit } = useData();
+  const { auth, online, me, backend, reinit, playerView } = useData();
   const router = useRouter();
   const path = usePathname();
   const flushed = useRef(false);
@@ -255,6 +255,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <TutorialProvider me={me}>
       <div className="mx-auto flex h-dvh max-w-lg flex-col">
+        {playerView.on && (
+          <div className="safe-top flex items-center justify-center gap-2 bg-court px-3 py-1.5 text-[12.5px] font-semibold text-court-ink" role="status">
+            <Eye size={14} aria-hidden /> Stai vedendo l&apos;app come gli altri
+            <button onClick={() => playerView.set(false)} className="press rounded-full bg-white/20 px-2.5 py-0.5 text-[12.5px] font-bold">
+              Esci
+            </button>
+          </div>
+        )}
         {!online && (
           <div className="safe-top flex items-center justify-center gap-2 bg-ball px-4 py-1.5 text-[12.5px] font-semibold text-ball-ink">
             <WifiOff size={14} /> Sei offline: ti mostro gli ultimi dati che ho salvato
@@ -287,7 +295,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {children}
           </div>
         )}
-        <BottomNav current={navHint ?? activeTab ?? path} onTab={tapTab} />
+        {/* Il proprio profilo visto dagli altri resta sotto "Profilo". */}
+        <BottomNav current={navHint ?? activeTab ?? (path === `/giocatore/${me.id}` ? "/profilo" : path)} onTab={tapTab} />
         <BadgeCelebration />
       </div>
     </TutorialProvider>

@@ -237,8 +237,9 @@ test("amministrazione: link d'invito", async ({ page }) => {
 
 test("squadre equilibrate per chi viene oggi", async ({ page }) => {
   await openApp(page, "demo");
+  // Più tardi oggi, a qualunque ora parta il test (prima "fra due ore" sforava a mezzanotte).
   const at = new Date();
-  at.setHours(at.getHours() + 2, 0, 0, 0);
+  at.setHours(23, 59, 0, 0);
   await page.evaluate((iso) => {
     const st = JSON.parse(localStorage.getItem("campetto:mock:v1")!);
     st.proposals[0].startsAt = iso;
@@ -548,4 +549,34 @@ test("dal profilo, il personaggio apre la collezione", async ({ page }) => {
   // Chiusa la collezione si resta nelle impostazioni.
   await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "Impostazioni" })).toBeVisible();
+});
+
+test("vista da giocatore: l'amministratore vede l'app come gli altri", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo/impostazioni");
+  await page.getByRole("switch", { name: "Usa l'app come un giocatore" }).click();
+  const bar = page.getByRole("status").filter({ hasText: "Stai vedendo l'app come gli altri" });
+  await expect(bar).toBeVisible();
+  await expect(page.getByRole("link", { name: /Gestione del gruppo/ })).toHaveCount(0);
+  await page.getByRole("navigation", { name: "Navigazione principale" }).getByRole("link", { name: "Partite", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Aggiungi partita" })).toHaveCount(0);
+  await page.getByTestId("match-row").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Modifica" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  // Si torna amministratori con un tocco.
+  await bar.getByRole("button", { name: "Esci" }).click();
+  await expect(bar).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Aggiungi partita" })).toBeVisible();
+});
+
+test("come ti vedono gli altri: il proprio profilo nella versione pubblica", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo/impostazioni");
+  await page.getByRole("link", { name: /Come ti vedono gli altri/ }).click();
+  await expect(page).toHaveURL(/\/giocatore\/p1\?anteprima=1/);
+  await expect(page.getByRole("heading", { name: "Come ti vedono" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Numeri" })).toBeVisible();
+  await expect(page.getByText("Testa a testa")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Il tuo personaggio/ })).toHaveCount(0);
 });

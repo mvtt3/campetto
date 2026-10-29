@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Compass, Download, LogOut, MessageSquareWarning, Palette, Shield, Check, Volume2, VolumeX } from "lucide-react";
+import { Bell, Camera, ChevronRight, Compass, Download, Eye, LogOut, MessageSquareWarning, Palette, Shield, Check, Users, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { AVATAR_PRESETS, type AvatarPresetId } from "@/components/avatar-presets";
@@ -40,7 +40,7 @@ function Row({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
 }
 
 export default function SettingsPage() {
-  const { me, data, backend, mutate, reinit } = useData();
+  const { me, data, backend, mutate, reinit, playerView } = useData();
   const router = useRouter();
   const toast = useToast();
   const [theme, setTheme] = useState<ThemePref>("light");
@@ -196,6 +196,15 @@ export default function SettingsPage() {
               className="tnum h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:text-faint"
             />
           </Row>
+          <Row icon={<Eye size={18} />}>
+            <Link href={`/giocatore/${me.id}?anteprima=1`} className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold">Come ti vedono gli altri</span>
+                <span className="block text-[12.5px] text-muted">Il tuo profilo, nella versione per il gruppo</span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-faint" />
+            </Link>
+          </Row>
         </Group>
 
         <Group>
@@ -271,6 +280,22 @@ export default function SettingsPage() {
         </Group>
 
         <Group>
+          {playerView.available && (
+            <Row icon={<Users size={18} />}>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold">Usa l&apos;app come un giocatore</span>
+                <span className="block text-[12.5px] text-muted">Vedi quello che vedono gli altri, senza i tuoi strumenti</span>
+              </span>
+              <Toggle
+                label="Usa l'app come un giocatore"
+                checked={playerView.on}
+                onChange={(on) => {
+                  playerView.set(on);
+                  toast(on ? "Ora vedi l'app come gli altri: per tornare tocca Esci in alto" : "Bentornato, hai di nuovo i tuoi strumenti");
+                }}
+              />
+            </Row>
+          )}
           {me.isAdmin && (
             <Row icon={<Shield size={18} />}>
               <Link href="/admin" className="flex flex-1 items-center text-[15px] font-semibold">
