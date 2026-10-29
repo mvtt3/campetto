@@ -157,3 +157,55 @@ export function teamBoxPoints(m: Pick<Match, "players">, team: "A" | "B"): numbe
   if (!lines.length || lines.some((l) => !l.hasStats)) return null;
   return lines.reduce((s, l) => s + normalizeBox(l.box).pts, 0);
 }
+
+/** Box score for each player, rebuilt from the actions tagged on the video. */
+export function boxesFromEvents(
+  events: { playerId: string; kind: import("../types").EventKind }[],
+  playerIds: string[],
+): Record<string, Box> {
+  const out: Record<string, Box> = Object.fromEntries(playerIds.map((id) => [id, emptyBox()]));
+  for (const e of events) {
+    const b = out[e.playerId];
+    if (!b) continue;
+    switch (e.kind) {
+      case "2pt":
+        b.fg2m++;
+        b.fg2a++;
+        b.pts += 2;
+        break;
+      case "3pt":
+        b.fg3m++;
+        b.fg3a++;
+        b.pts += 3;
+        break;
+      case "miss2":
+        b.fg2a++;
+        break;
+      case "miss3":
+        b.fg3a++;
+        break;
+      case "oreb":
+        b.oreb++;
+        break;
+      case "dreb":
+        b.dreb++;
+        break;
+      case "ast":
+        b.ast++;
+        break;
+      case "stl":
+        b.stl++;
+        break;
+      case "blk":
+        b.blk++;
+        break;
+      case "tov":
+        b.tov++;
+        break;
+      case "foul":
+        b.fouls++;
+        break;
+    }
+  }
+  return out;
+}

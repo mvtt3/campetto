@@ -239,7 +239,7 @@ export function computeBadges(
       def,
       value,
       tier,
-      next: tier < 5 ? def.thresholds[tier] : null,
+      next: tier < 5 ? (def.thresholds as readonly number[])[tier] : null,
       prev: tier > 0 ? def.thresholds[tier - 1] : 0,
       unlockedAt: last?.date ?? null,
     };

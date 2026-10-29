@@ -127,3 +127,23 @@ describe("relations", () => {
     expect(form("a", ms)).toEqual(["V", "S", "V", "V"]);
   });
 });
+
+import { boxesFromEvents } from "@/lib/stats/player";
+describe("video events", () => {
+  it("rebuilds the box score", () => {
+    const b = boxesFromEvents(
+      [
+        { playerId: "a", kind: "2pt" },
+        { playerId: "a", kind: "3pt" },
+        { playerId: "a", kind: "miss3" },
+        { playerId: "b", kind: "ast" },
+        { playerId: "b", kind: "dreb" },
+        { playerId: "x", kind: "2pt" },
+      ],
+      ["a", "b"],
+    );
+    expect(b.a).toMatchObject({ pts: 5, fg2m: 1, fg2a: 1, fg3m: 1, fg3a: 2 });
+    expect(b.b).toMatchObject({ ast: 1, dreb: 1, pts: 0 });
+    expect(b.x).toBeUndefined();
+  });
+});
