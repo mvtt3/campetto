@@ -34,14 +34,14 @@ export function TrendChart({ playerId }: { playerId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="text-[13px] font-semibold text-muted">Andamento</h2>
+        <h2 className="shrink-0 text-[13px] font-semibold text-muted">Mese per mese</h2>
         <Segmented
           size="sm"
-          className="w-[210px]"
+          className="min-w-0 max-w-[240px] flex-1"
           value={metric}
           onChange={setMetric}
           options={[
-            { value: "eff", label: "Valutaz." },
+            { value: "eff", label: "Valut." },
             { value: "pts", label: "Punti" },
             { value: "elo", label: "ELO" },
           ]}

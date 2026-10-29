@@ -78,10 +78,10 @@ export default function HomePage() {
       </header>
 
       <PullToRefresh scroll={false} className="px-4 pb-3">
-        <div className="grid h-full grid-cols-2 grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-3">
+        <div className="grid h-full grid-cols-2 grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-3 [@media(max-height:700px)]:gap-2">
           {/* Prossima partita */}
-          <Card className="col-span-2 p-4">
-            <div className="mb-3 flex items-center justify-between">
+          <Card className="col-span-2 p-4 [@media(max-height:700px)]:p-3.5">
+            <div className="mb-3 flex items-center justify-between [@media(max-height:700px)]:mb-2">
               <h2 className="text-[13px] font-semibold text-muted">Prossima partita</h2>
               <Link href="/organizza" className="-my-2 flex items-center gap-1.5 py-2 text-[13px] font-semibold text-ball">
                 <CalendarDays size={15} /> Calendario
@@ -103,13 +103,18 @@ export default function HomePage() {
           </Card>
 
           {/* MVP in carica */}
-          <Link href="/classifiche" className="relative min-h-0 overflow-hidden rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset">
+          <Link href="/classifiche" className="relative min-h-0 overflow-hidden rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset [@media(max-height:700px)]:p-3.5">
             <CourtArc className="pointer-events-none absolute -bottom-3 left-1/2 w-[150%] -translate-x-1/2 text-court" />
             <div className="relative flex h-full flex-col">
               <h2 className="text-[13px] font-semibold text-muted">MVP in carica</h2>
               {mvp && mvpPlayer ? (
-                <div className="flex min-h-0 flex-1 flex-col items-start justify-end gap-2">
-                  <Avatar player={mvpPlayer} size={56} href={false} />
+                <div className="flex min-h-0 flex-1 flex-col items-start justify-end gap-2 [@media(max-height:700px)]:gap-1">
+                  <span className="[@media(max-height:700px)]:hidden">
+                    <Avatar player={mvpPlayer} size={56} href={false} />
+                  </span>
+                  <span className="hidden [@media(max-height:700px)]:inline">
+                    <Avatar player={mvpPlayer} size={38} href={false} />
+                  </span>
                   <div className="min-w-0">
                     <p className="title truncate text-[19px]">{shortName(mvpPlayer, data.players)}</p>
                     <p className="text-[12.5px] text-gold">
@@ -127,10 +132,10 @@ export default function HomePage() {
           </Link>
 
           {/* Il tuo mese */}
-          <Link href="/profilo" className="flex min-h-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset">
+          <Link href="/profilo" className="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset [@media(max-height:700px)]:p-3.5">
             <h2 className="text-[13px] font-semibold text-muted">Il tuo {MONTHS_IT[now.getMonth()].toLowerCase()}</h2>
             <div className="flex flex-1 flex-col justify-end">
-              <p className="num text-[44px]" aria-label={`${myMonth?.wins ?? 0} vittorie e ${myMonth?.losses ?? 0} sconfitte`}>
+              <p className="num text-[44px] [@media(max-height:700px)]:text-[34px]" aria-label={`${myMonth?.wins ?? 0} vittorie e ${myMonth?.losses ?? 0} sconfitte`}>
                 {myMonth?.wins ?? 0}
                 <span className="text-faint">–</span>
                 {myMonth?.losses ?? 0}
@@ -148,12 +153,12 @@ export default function HomePage() {
           {/* Ultima partita */}
           <Link
             href={last ? `/partite?m=${last.id}` : "/nuova"}
-            className="flex min-h-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset"
+            className="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset [@media(max-height:700px)]:p-3.5"
           >
             <h2 className="text-[13px] font-semibold text-muted">Ultima partita</h2>
             {last ? (
               <div className="flex flex-1 flex-col justify-end">
-                <p className="num text-[38px]">
+                <p className="num text-[38px] [@media(max-height:700px)]:text-[30px]">
                   {last.scoreA}
                   <span className="text-faint">–</span>
                   {last.scoreB}
@@ -176,19 +181,26 @@ export default function HomePage() {
           </Link>
 
           {/* Badge */}
-          <Link href="/profilo/badge" className="flex min-h-0 flex-col rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset">
+          <Link href="/profilo/badge" className="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line ring-inset [@media(max-height:700px)]:p-3.5">
             <h2 className="text-[13px] font-semibold text-muted">{recentUnlock ? "Ultimo badge" : "Prossimo badge"}</h2>
             {recentUnlock ? (
-              <div className="flex flex-1 flex-col items-start justify-end gap-2">
-                <BadgeMedal icon={BADGE_BY_KEY.get(recentUnlock.key)!.icon} tier={recentUnlock.tier} size={44} />
+              <div className="flex min-h-0 flex-1 flex-col items-start justify-end gap-2 [@media(max-height:700px)]:gap-1">
+                <span className="[@media(max-height:700px)]:hidden">
+                  <BadgeMedal icon={BADGE_BY_KEY.get(recentUnlock.key)!.icon} tier={recentUnlock.tier} size={44} />
+                </span>
+                <span className="hidden [@media(max-height:700px)]:inline">
+                  <BadgeMedal icon={BADGE_BY_KEY.get(recentUnlock.key)!.icon} tier={recentUnlock.tier} size={30} />
+                </span>
                 <div className="min-w-0">
                   <p className="title truncate text-[16px]">{BADGE_BY_KEY.get(recentUnlock.key)!.name}</p>
                   <p className="text-[12.5px] text-muted">{TIER_STYLE[recentUnlock.tier].label}</p>
                 </div>
               </div>
             ) : closest ? (
-              <div className="flex flex-1 flex-col items-start justify-end gap-2">
-                <BadgeMedal icon={closest.s.def.icon} tier={0} size={40} />
+              <div className="flex min-h-0 flex-1 flex-col items-start justify-end gap-2 [@media(max-height:700px)]:gap-1">
+                <span className="[@media(max-height:700px)]:hidden">
+                  <BadgeMedal icon={closest.s.def.icon} tier={0} size={40} />
+                </span>
                 <div className="min-w-0">
                   <p className="title truncate text-[16px]">{closest.s.def.name}</p>
                   <p className="text-[12.5px] text-muted">

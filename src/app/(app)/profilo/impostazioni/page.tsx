@@ -146,7 +146,7 @@ export default function SettingsPage() {
             </Button>
           </Row>
           <Row>
-            <label htmlFor="nick" className="w-28 shrink-0 text-[15px]">
+            <label htmlFor="nick" className="shrink-0 whitespace-nowrap text-[15px]">
               Soprannome
             </label>
             <input
@@ -160,7 +160,7 @@ export default function SettingsPage() {
             />
           </Row>
           <Row>
-            <label htmlFor="jersey" className="w-28 shrink-0 text-[15px]">
+            <label htmlFor="jersey" className="shrink-0 whitespace-nowrap text-[15px]">
               Numero di maglia
             </label>
             <input
@@ -176,9 +176,9 @@ export default function SettingsPage() {
               className="num-wide h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] outline-none placeholder:text-faint"
             />
           </Row>
-          <Row>
-            <span className="w-28 shrink-0 text-[15px]">Colore card</span>
-            <div className="scroll-x flex flex-1 justify-end gap-2" role="radiogroup" aria-label="Colore della card">
+          <div className="border-t border-line px-4 py-3">
+            <span className="text-[15px]">Colore card</span>
+            <div className="mt-2.5 flex flex-wrap gap-2.5" role="radiogroup" aria-label="Colore della card">
               {COLORS.map((c) => (
                 <button
                   key={c}
@@ -191,7 +191,7 @@ export default function SettingsPage() {
                 />
               ))}
             </div>
-          </Row>
+          </div>
           <Row>
             <Link href="/profilo/badge" className="flex flex-1 items-center justify-between text-[15px]">
               Badge in vetrina <ChevronRight size={18} className="text-faint" />
@@ -209,7 +209,7 @@ export default function SettingsPage() {
                 setThemePref(t);
               }}
               options={[
-                { value: "system", label: "Automatico" },
+                { value: "system", label: "Auto" },
                 { value: "dark", label: "Scuro" },
                 { value: "light", label: "Chiaro" },
               ]}

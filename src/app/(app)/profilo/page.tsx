@@ -20,25 +20,30 @@ type Tab = "panoramica" | "statistiche" | "compagni";
 export default function MyProfilePage() {
   const { me, data, engine } = useData();
   const [tab, setTab] = useState<Tab>("panoramica");
-  const s = useMemo(() => (me ? computePlayerStats(me.id, data.matches) : null), [me, data.matches]);
+  const s = useMemo(
+    () => (me ? computePlayerStats(me.id, data.matches) : null),
+    [me, data.matches],
+  );
   if (!me || !s) return null;
   const recent = form(me.id, data.matches, 6);
   const trophies = trophiesOf(me.id, engine.seasons);
 
   return (
     <>
-      <div className="safe-top shrink-0 px-4 pt-3">
-        <ProfileHeader player={me} self />
-        <Segmented
-          className="mt-3"
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: "panoramica", label: "Panoramica" },
-            { value: "statistiche", label: "Statistiche" },
-            { value: "compagni", label: "Compagni" },
-          ]}
-        />
+      <div className="safe-top shrink-0">
+        <div className="px-4 pt-4">
+          <ProfileHeader player={me} self />
+          <Segmented
+            className="mt-3"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "panoramica", label: "Panoramica" },
+              { value: "statistiche", label: "Statistiche" },
+              { value: "compagni", label: "Compagni" },
+            ]}
+          />
+        </div>
       </div>
 
       {tab === "panoramica" ? (
@@ -46,31 +51,51 @@ export default function MyProfilePage() {
           <div className="flex h-full flex-col gap-3">
             <Card className="grid shrink-0 grid-cols-4 gap-2 px-4 py-3">
               <StatBlock value={s.games} label="Partite" />
-              <StatBlock value={s.games ? pct(s.winPct) : "—"} label="Vittorie" />
-              <StatBlock value={s.statGames ? fmt(s.avg.pts) : "—"} label="Punti" />
+              <StatBlock
+                value={s.games ? pct(s.winPct) : "—"}
+                label="Vittorie"
+              />
+              <StatBlock
+                value={s.statGames ? fmt(s.avg.pts) : "—"}
+                label="Punti"
+              />
               <StatBlock value={fmt(s.effAvg)} label="Valutaz." />
             </Card>
             <div className="flex shrink-0 items-center gap-3 px-1">
-              <span className="text-[13px] font-semibold text-muted">Forma</span>
-              <div className="flex gap-1.5" aria-label={`Ultime partite: ${recent.join(" ") || "nessuna"}`}>
+              <span className="text-[13px] font-semibold text-muted">
+                Forma
+              </span>
+              <div
+                className="flex gap-1.5"
+                aria-label={`Ultime partite: ${recent.join(" ") || "nessuna"}`}
+              >
                 {recent.length ? (
                   recent.map((r, i) => (
                     <span
                       key={i}
                       className={clsx(
                         "grid h-7 w-7 place-items-center rounded-full text-[11.5px] font-bold",
-                        r === "V" ? "bg-text text-bg" : "text-faint ring-1 ring-line-strong ring-inset",
+                        r === "V"
+                          ? "bg-text text-bg"
+                          : "text-faint ring-1 ring-line-strong ring-inset",
                       )}
                     >
                       {r}
                     </span>
                   ))
                 ) : (
-                  <span className="text-[13px] text-muted">nessuna partita ancora</span>
+                  <span className="text-[13px] text-muted">
+                    nessuna partita ancora
+                  </span>
                 )}
               </div>
               {trophies.length > 0 && (
-                <span className="ml-auto flex items-center gap-1 text-[13px] font-semibold text-gold" title={trophies.map((t) => seasonLabel(t.year, t.quarter)).join(", ")}>
+                <span
+                  className="ml-auto flex items-center gap-1 text-[13px] font-semibold text-gold"
+                  title={trophies
+                    .map((t) => seasonLabel(t.year, t.quarter))
+                    .join(", ")}
+                >
                   <Trophy size={16} /> {trophies.length}
                 </span>
               )}
@@ -82,7 +107,11 @@ export default function MyProfilePage() {
         </PullToRefresh>
       ) : (
         <PullToRefresh className="px-4 pb-4 pt-3">
-          {tab === "statistiche" ? <FullStats playerId={me.id} /> : <RelationsList playerId={me.id} />}
+          {tab === "statistiche" ? (
+            <FullStats playerId={me.id} />
+          ) : (
+            <RelationsList playerId={me.id} />
+          )}
         </PullToRefresh>
       )}
     </>

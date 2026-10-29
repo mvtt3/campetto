@@ -75,9 +75,9 @@ export default function RankingsPage() {
           size="sm"
           options={[
             { value: "mvp", label: "MVP" },
-            { value: "stat", label: "Statistiche" },
+            { value: "stat", label: "Numeri" },
             { value: "record", label: "Record" },
-            { value: "albo", label: "Albo d'oro" },
+            { value: "albo", label: "Albo" },
           ]}
         />
         {showFilters && (

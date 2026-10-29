@@ -70,7 +70,7 @@ export function matchRecap(m: Match, players: Player[]): string {
   }
 
   const withStats = m.players.filter((p) => p.hasStats);
-  if (!withStats.length) return first;
+  if (!withStats.length) return first.replace(/\.\./g, ".");
 
   const best = [...withStats].sort((a, b) => efficiency(normalizeBox(b.box)) - efficiency(normalizeBox(a.box)))[0];
   const b = normalizeBox(best.box);
@@ -82,11 +82,11 @@ export function matchRecap(m: Match, players: Player[]): string {
   if (reb >= 3) parts.push(`${reb} rimbalzi`);
   if (b.fg3m >= 2) parts.push(`${b.fg3m} triple`);
   if (b.stl + b.blk >= 3) parts.push(`${b.stl + b.blk} tra rubate e stoppate`);
-  if (!parts.length) return first;
+  if (!parts.length) return first.replace(/\.\./g, ".");
   const line = joinNames(parts.slice(0, 3));
   const isWinner = best.team === w;
   const second = isWinner
     ? pick([`Trascina la squadra ${n} con ${line}.`, `Il migliore è ${n}: ${line}.`, `${n} firma ${line}.`], seed >> 3)
     : pick([`A ${n} non bastano ${line}.`, `${n} ci prova con ${line}, ma non basta.`], seed >> 3);
-  return `${first} ${second}`;
+  return `${first} ${second}`.replace(/\.\./g, ".");
 }

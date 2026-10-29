@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { useId } from "react";
 import {
   CalendarCheck,
   Crown,
@@ -80,7 +81,8 @@ export function BadgeMedal({
 }) {
   const s = TIER_STYLE[tier];
   const Icon = tier === 0 ? Lock : ICONS[icon];
-  const id = `g-${icon}-${tier}`;
+  // Unique per instance: a hidden copy of the same medal must not own the gradient.
+  const id = `g-${useId().replace(/:/g, "")}`;
   return (
     <span
       className={clsx("relative inline-grid shrink-0 place-items-center overflow-hidden", className)}

@@ -108,6 +108,30 @@ export function demoMatches(players: Player[], now = new Date()): Match[] {
   return out;
 }
 
+function demoProposals() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(18, 0, 0, 0);
+  const at = new Date().toISOString();
+  return [
+    {
+      id: "demo-prop",
+      startsAt: d.toISOString(),
+      format: "3v3" as Format,
+      note: "Porto io il pallone nuovo",
+      createdBy: "p2",
+      status: "aperta" as const,
+      createdAt: at,
+      responses: [
+        { playerId: "p2", response: "si" as const, updatedAt: at },
+        { playerId: "p4", response: "si" as const, updatedAt: at },
+        { playerId: "p7", response: "si" as const, updatedAt: at },
+        { playerId: "p5", response: "forse" as const, updatedAt: at },
+      ],
+    },
+  ];
+}
+
 function initialState(demo: boolean): MockState {
   const players = seedPlayers();
   return {
@@ -115,7 +139,7 @@ function initialState(demo: boolean): MockState {
     signedIn: false,
     players,
     matches: demo ? demoMatches(players) : [],
-    proposals: [],
+    proposals: demo ? demoProposals() : [],
     private: players.map((p) => ({ playerId: p.id, inviteToken: `tok-${p.id}`, linkEmail: null })),
     pending: [],
     notifications: [],

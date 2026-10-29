@@ -52,7 +52,11 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
           </div>
         </div>
         {self && (
-          <Link href="/profilo/impostazioni" aria-label="Impostazioni" className="-mr-1 -mt-8 grid h-11 w-11 place-items-center self-start rounded-full active:bg-raised">
+          <Link
+            href="/profilo/impostazioni"
+            aria-label="Impostazioni"
+            className="-mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center self-start rounded-full active:bg-raised"
+          >
             <Settings size={21} />
           </Link>
         )}
