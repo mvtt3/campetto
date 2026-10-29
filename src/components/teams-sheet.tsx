@@ -2,12 +2,12 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { Shuffle } from "lucide-react";
+import { RefreshCw, Shuffle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useData } from "@/lib/data/provider";
 import { balanceTeams } from "@/lib/stats/teams";
-import { shortName, TEAM_SIZE, type Format } from "@/lib/types";
+import { MAX_SUBS, shortName, TEAM_SIZE, type Format } from "@/lib/types";
 import { Avatar } from "./ui/avatar";
 import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
@@ -18,10 +18,12 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
   const { data, engine, me } = useData();
   const size = format && playerIds.length >= TEAM_SIZE[format] * 2 ? TEAM_SIZE[format] : Math.min(4, Math.floor(playerIds.length / 2));
   const [round, setRound] = useState(0);
+  // Chi è in più entra come cambio (fino a due per squadra), tranne nell'1 contro 1.
+  const subsAllowed = size > 1 ? MAX_SUBS : 0;
   const split = useMemo(
-    () => (size ? balanceTeams(playerIds, engine.elo.ratings, size, round ? 1 : 0) : null),
+    () => (size ? balanceTeams(playerIds, engine.elo.ratings, size, round ? 1 : 0, Math.random, subsAllowed) : null),
     // round cambia per rimescolare
-    [playerIds, engine.elo.ratings, size, round],
+    [playerIds, engine.elo.ratings, size, round, subsAllowed],
   );
   const name = (id: string) => shortName(data.players.find((p) => p.id === id), data.players);
   const fmt = `${size}v${size}` as Format;
@@ -32,7 +34,11 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
       open
       onOpenChange={(o) => !o && onClose()}
       title={`Squadre per il ${fmt}`}
-      description="Divise in modo che sia una partita equilibrata"
+      description={
+        split && split.teamA.length + split.teamB.length > size * 2
+          ? "Una partita equilibrata: chi è in più entra a rotazione"
+          : "Divise in modo che sia una partita equilibrata"
+      }
       footer={
         <div className="flex gap-2">
           <Button className="flex-1" sound="shuffle" onClick={() => setRound((r) => r + 1)}>
@@ -40,7 +46,7 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
           </Button>
           {me?.isAdmin && split && (
             <Link
-              href={`/nuova?players=${[...split.teamA, ...split.teamB].join(",")}&format=${fmt}`}
+              href={`/nuova?a=${split.teamA.join(",")}&b=${split.teamB.join(",")}&format=${fmt}`}
               className="sticker press flex h-12 flex-1 items-center justify-center rounded-full bg-court text-[15px] font-bold text-court-ink"
             >
               Segna il risultato
@@ -63,10 +69,17 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
                 <div key={t} className={clsx("sticker halftone rounded-3xl p-4", t === "A" ? "bg-court text-court-ink" : "bg-ball text-ball-ink")}>
                   <p className="text-[13px] font-semibold opacity-85">Squadra {t}</p>
                   <ul className="mt-3 flex flex-col gap-2.5">
-                    {(t === "A" ? split.teamA : split.teamB).map((id) => (
-                      <li key={id} className="flex items-center gap-2">
+                    {(t === "A" ? split.teamA : split.teamB).map((id, i) => (
+                      <li key={id} className={clsx("flex items-center gap-2", i >= size && "opacity-90")}>
                         <Avatar player={data.players.find((p) => p.id === id)} size={30} href={false} ring="none" />
-                        <span className="truncate text-[15px] font-semibold">{name(id)}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-semibold">{name(id)}</span>
+                          {i >= size && (
+                            <span className="flex items-center gap-1 text-[11.5px] font-bold opacity-85">
+                              <RefreshCw size={11} aria-hidden /> cambio
+                            </span>
+                          )}
+                        </span>
                       </li>
                     ))}
                   </ul>

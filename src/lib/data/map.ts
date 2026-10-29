@@ -59,6 +59,7 @@ export function mapMatch(r: any): Match {
     team: p.team,
     hasStats: p.has_stats,
     box: mapBox(p),
+    sub: Boolean(p.sub),
   }));
   const events: MatchEvent[] = (r.match_events ?? [])
     .map((e: any) => ({

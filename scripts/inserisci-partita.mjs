@@ -12,9 +12,10 @@
 //   "punteggio": [21, 17],
 //   "squadraA": ["Matteo Pepe", "Valerio"],
 //   "squadraB": ["Simone", "Mattia"],
+//   "cambiA": ["Cande"],
 //   "statistiche": { "Valerio": { "pts": 9, "fg3m": 1, "ast": 3, "dreb": 4 } }
 // }]
-// Le statistiche sono facoltative. Nomi: il nome scelto nell'app, nome e cognome, solo nome se unico, o cognome.
+// Le statistiche e i cambi ("cambiA", "cambiB": chi entrava a rotazione, al massimo due per squadra) sono facoltativi. Nomi: il nome scelto nell'app, nome e cognome, solo nome se unico, o cognome.
 // Date: dal 1° ottobre 2026 in poi (prima l'app non esisteva).
 
 import fs from "node:fs";
@@ -61,9 +62,9 @@ function find(name) {
 for (const m of matches) {
   const stats = m.statistiche ?? {};
   const hasStats = Object.keys(stats).length > 0;
-  const line = (name, team) => {
+  const line = (name, team, sub = false) => {
     const box = stats[name] ?? {};
-    return { player_id: find(name), team, has_stats: hasStats, box };
+    return { player_id: find(name), team, has_stats: hasStats, sub, box };
   };
   const payload = {
     played_at: m.data,
@@ -73,7 +74,12 @@ for (const m of matches) {
     score_b: m.punteggio[1],
     stats_source: hasStats ? "importata" : "solo_risultato",
     notes: m.note ?? null,
-    players: [...m.squadraA.map((n) => line(n, "A")), ...m.squadraB.map((n) => line(n, "B"))],
+    players: [
+      ...m.squadraA.map((n) => line(n, "A")),
+      ...m.squadraB.map((n) => line(n, "B")),
+      ...(m.cambiA ?? []).map((n) => line(n, "A", true)),
+      ...(m.cambiB ?? []).map((n) => line(n, "B", true)),
+    ],
     events: [],
   };
   await c.query("begin");

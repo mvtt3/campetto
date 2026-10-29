@@ -18,7 +18,7 @@ const EMPTY: Record<Format, string> = {
   "4v4": `Nel 4 contro 4 nessuna squadra ha ancora giocato ${TEAM_MIN_GAMES} partite insieme in questo periodo`,
 };
 
-export const TEAMS_INFO = `Gli stessi giocatori, insieme, nello stesso formato: conta solo vinte e perse. Prima chi ha più vittorie che sconfitte. Servono almeno ${TEAM_MIN_GAMES} partite insieme`;
+export const TEAMS_INFO = `Gli stessi giocatori, insieme, nello stesso formato: conta solo vinte e perse. Con un cambio è un'altra squadra. Prima chi ha più vittorie che sconfitte. Servono almeno ${TEAM_MIN_GAMES} partite insieme`;
 
 /** Il formato con più partite nel periodo: è quello che si apre. */
 function busiestFormat(matches: Match[]): Format {
@@ -28,7 +28,9 @@ function busiestFormat(matches: Match[]): Format {
 }
 
 function names(r: TeamRecord, players: Player[]): string {
-  return r.ids.map((id) => shortName(players.find((p) => p.id === id), players)).join(" · ");
+  const nm = (id: string) => shortName(players.find((p) => p.id === id), players);
+  const base = r.ids.filter((id) => !r.subs.includes(id)).map(nm).join(" · ");
+  return r.subs.length ? `${base} + ${r.subs.map(nm).join(", ")}` : base;
 }
 
 const pctLabel = (r: TeamRecord) => `${Math.round(r.winPct * 100)}% vinte`;

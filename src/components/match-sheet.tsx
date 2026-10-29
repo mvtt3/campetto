@@ -1,8 +1,9 @@
 "use client";
 
+import { matchMvp } from "@/lib/stats/match-mvp";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
+import { Crown, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useData } from "@/lib/data/provider";
 import { matchRecap } from "@/lib/recap";
@@ -24,7 +25,10 @@ export const SOURCE_LABEL: Record<StatsSource, string> = {
 
 function TeamBlock({ m, team, players }: { m: Match; team: Team; players: Player[] }) {
   const won = winnerOf(m) === team;
-  const ids = m.players.filter((p) => p.team === team);
+  const ids = m.players.filter((p) => p.team === team).sort((x, y) => Number(!!x.sub) - Number(!!y.sub));
+  const starters = ids.filter((l) => !l.sub);
+  const subs = ids.filter((l) => l.sub);
+  const nm = (id: string) => shortName(players.find((p) => p.id === id), players);
   return (
     <div
       className={clsx(
@@ -39,12 +43,20 @@ function TeamBlock({ m, team, players }: { m: Match; team: Team; players: Player
       <div className="mt-1 flex items-end justify-center -space-x-2.5">
         {ids.map((l) => {
           const pl = players.find((p) => p.id === l.playerId);
-          return pl ? <Character key={l.playerId} id={characterOf(pl)} number={pl.jerseyNumber} height={ids.length > 3 ? 46 : 54} /> : null;
+          return pl ? (
+            <span key={l.playerId} className={clsx(l.sub && "opacity-80")}>
+              <Character id={characterOf(pl)} number={pl.jerseyNumber} height={(ids.length > 3 ? 46 : 54) * (l.sub ? 0.86 : 1)} />
+            </span>
+          ) : null;
         })}
       </div>
-      <p className="mt-1.5 line-clamp-2 text-center text-[12.5px] font-semibold leading-tight">
-        {ids.map((l) => shortName(players.find((p) => p.id === l.playerId), players)).join(", ")}
-      </p>
+      <p className="mt-1.5 text-center text-[12.5px] font-semibold leading-tight">{starters.map((l) => nm(l.playerId)).join(", ")}</p>
+      {subs.length > 0 && (
+        <p className="mt-0.5 text-center text-[11.5px] font-bold leading-tight opacity-85">
+          <RefreshCw size={11} className="mr-1 inline align-[-1px]" aria-hidden />
+          {subs.length === 1 ? "Cambio" : "Cambi"}: {subs.map((l) => nm(l.playerId)).join(", ")}
+        </p>
+      )}
     </div>
   );
 }
@@ -59,6 +71,9 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
   const players = data.players;
   const withStats = m?.players.filter((p) => p.hasStats) ?? [];
   const date = m ? new Date(m.playedAt) : null;
+  const mvp = m ? matchMvp(m) : null;
+  const mvpPlayer = mvp ? players.find((p) => p.id === mvp.playerId) : undefined;
+  const mvpLine = mvp ? normalizeBox(m!.players.find((l) => l.playerId === mvp.playerId)!.box) : null;
 
   return (
     <Sheet
@@ -123,6 +138,26 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
             <TeamBlock m={m} team="B" players={players} />
           </div>
 
+          {mvp && mvpPlayer && mvpLine && (
+            <section className="sticker relative flex items-center gap-3 overflow-hidden rounded-[22px] bg-volt py-2 pl-2 pr-3 text-volt-ink" aria-label="MVP della partita">
+              <span className="grid w-14 shrink-0 place-items-end justify-center">
+                <Character id={characterOf(mvpPlayer)} number={mvpPlayer.jerseyNumber} height={64} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1 text-[12px] font-bold opacity-80">
+                  <Crown size={13} aria-hidden /> MVP della partita
+                </p>
+                <p className="title truncate text-[18px] leading-tight">{shortName(mvpPlayer, players)}</p>
+                <p className="text-[12.5px] font-semibold opacity-80">
+                  {mvpLine.pts} punti · {mvpLine.oreb + mvpLine.dreb} rimbalzi · {mvpLine.ast} assist
+                </p>
+              </div>
+              <InfoTip label="Come si sceglie l'MVP della partita" size={16}>
+                Il migliore della squadra che vince, per valutazione: punti, rimbalzi, assist, rubate e stoppate, meno tiri sbagliati e palle perse. Serve il tabellino
+              </InfoTip>
+            </section>
+          )}
+
           <p className="rounded-2xl border-2 border-dashed border-line-strong bg-raised px-4 py-3 text-[15px] leading-snug">{matchRecap(m, players)}</p>
           {m.notes && <p className="text-[14px] text-muted">{m.notes}</p>}
 
@@ -131,15 +166,15 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
               <h3 className="title mb-2 flex items-center gap-1.5 text-[16px]">
                 Tabellino
                 <InfoTip label="Cosa vogliono dire le colonne" size={15}>
-                  Da 2 e Da 3: canestri segnati su tentati · Rimb. rimbalzi · Ass. assist · Rub. palle rubate · Stop. stoppate
+                  Da 2 e Da 3: canestri segnati su tentati · Rimb. rimbalzi · Ass. assist · Rub. palle rubate · Stop. stoppate · la corona è l&apos;MVP della partita
                 </InfoTip>
               </h3>
               <div className="scroll-x -mx-5 px-5">
-                <table className="tnum w-full min-w-[440px] text-[13.5px]">
+                <table className="tnum w-full min-w-[480px] text-[13.5px]">
                   <thead>
                     <tr className="text-left text-[11.5px] text-muted">
                       <th className="py-1.5 pr-2 font-semibold">Giocatore</th>
-                      {["Punti", "Da 2", "Da 3", "Rimb.", "Ass.", "Rub.", "Stop.", "Perse"].map((h) => (
+                      {["Punti", "Da 2", "Da 3", "Rimb.", "Ass.", "Rub.", "Stop.", "Perse", "Falli"].map((h) => (
                         <th key={h} className="px-1.5 py-1.5 text-right font-semibold">
                           {h}
                         </th>
@@ -157,6 +192,8 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
                               <td className="max-w-[120px] truncate py-2 pr-2 font-semibold">
                                 <span className={clsx("mr-1.5 inline-block h-2.5 w-2.5 rounded-full", t === "A" ? "bg-court" : "bg-ball")} />
                                 {shortName(players.find((p) => p.id === l.playerId), players)}
+                                {l.sub && <RefreshCw size={11} className="ml-1 inline align-[-1px] text-muted" aria-label="cambio" />}
+                                {mvp?.playerId === l.playerId && <Crown size={12} className="ml-1 inline align-[-1px] text-gold" aria-label="MVP della partita" />}
                               </td>
                               <td className="px-1.5 text-right font-bold">{b.pts}</td>
                               <td className="px-1.5 text-right text-muted">{b.fg2a ? `${b.fg2m}/${b.fg2a}` : "—"}</td>
@@ -166,6 +203,7 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
                               <td className="px-1.5 text-right">{b.stl}</td>
                               <td className="px-1.5 text-right">{b.blk}</td>
                               <td className="px-1.5 text-right">{b.tov}</td>
+                              <td className="px-1.5 text-right">{b.fouls}</td>
                             </tr>
                           );
                         }),

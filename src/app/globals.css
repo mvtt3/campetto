@@ -99,6 +99,14 @@ body {
   overscroll-behavior: none;
 }
 
+/* Niente zoom col pizzico né col doppio tocco, ovunque: si scorre e basta.
+   Nel livello "base", così chi vuole il trascinamento libero (orologio, personaggio 3D) lo sovrascrive. */
+@layer base {
+  * {
+    touch-action: pan-x pan-y;
+  }
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -211,7 +219,6 @@ body {
 button,
 a,
 [role="button"] {
-  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }

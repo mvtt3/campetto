@@ -1,10 +1,12 @@
 "use client";
 
+import { Crown } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { BADGE_BY_KEY, type BadgeUnlock } from "@/lib/badges";
 import { useData } from "@/lib/data/provider";
 import { play } from "@/lib/sound";
+import { matchMvp } from "@/lib/stats/match-mvp";
 import { normalizeBox, teamOf } from "@/lib/stats/player";
 import { sortChrono } from "@/lib/periods";
 import { winnerOf } from "@/lib/types";
@@ -29,6 +31,8 @@ interface ResultItem {
   theirs: number;
   line: string | null;
   elo: number | null;
+  /** Nell'ultima partita sei stato l'MVP. */
+  mvp: boolean;
 }
 type Item = ResultItem | { kind: "badge"; id: string; unlock: BadgeUnlock } | { kind: "character"; id: AvatarPresetId };
 
@@ -86,6 +90,7 @@ export function BadgeCelebration() {
           theirs: t === "A" ? last.scoreB : last.scoreA,
           line,
           elo: firstPoint && lastPoint ? Math.round(lastPoint.after - firstPoint.before) : null,
+          mvp: matchMvp(last)?.playerId === me.id,
         });
       }
     }
@@ -201,6 +206,11 @@ function ResultBody({ item }: { item: ResultItem }) {
         {item.mine}–{item.theirs}
       </p>
       {total > 1 && <p className="relative mt-1 text-[12.5px] font-semibold text-white/75">L&apos;ultima, dalla tua parte</p>}
+      {item.mvp && (
+        <p className="sticker-sm relative mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-volt px-3 py-1 text-[13.5px] font-bold text-volt-ink">
+          <Crown size={15} aria-hidden /> Sei l&apos;MVP della partita
+        </p>
+      )}
       {item.line && <p className="relative mt-2 text-[14px] font-semibold text-white/90">{item.line}</p>}
       {item.elo !== null && item.elo !== 0 && (
         <p className="relative mt-1.5 inline-flex rounded-full bg-white/15 px-3 py-0.5 text-[13px] font-bold">

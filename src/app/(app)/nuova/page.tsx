@@ -3,17 +3,17 @@
 import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BoxEditor } from "@/components/box-editor";
-import { autoBalance, teamIds, TeamPicker, type Assignment } from "@/components/team-picker";
+import { autoBalance, subsOf, teamIds, TeamPicker, teamsReady, type Assignment } from "@/components/team-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, haptic, Stepper } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import type { SaveMatchInput } from "@/lib/data/backend";
 import { useData } from "@/lib/data/provider";
 import { teamBoxPoints } from "@/lib/stats/player";
-import { emptyBox, FORMATS, shortName, TEAM_SIZE, type Box, type Format, type Team } from "@/lib/types";
+import { emptyBox, FORMATS, maxPerTeam, shortName, TEAM_SIZE, withSubs, type Box, type Format, type Team } from "@/lib/types";
 import { DateTimeField } from "@/components/ui/pickers";
 import { APP_START } from "@/lib/periods";
 import { say } from "@/lib/voice";
@@ -116,7 +116,8 @@ function NewMatchInner() {
       setFormat(editing.format);
       setPlayedAt(toLocalInput(new Date(editing.playedAt)));
       setTarget(editing.targetPoints);
-      setAssign(Object.fromEntries(editing.players.map((p) => [p.playerId, p.team])));
+      // Prima chi era in campo, poi i cambi: l'ordine dice chi è il cambio.
+      setAssign(Object.fromEntries([...editing.players].sort((x, y) => Number(!!x.sub) - Number(!!y.sub)).map((p) => [p.playerId, p.team])));
       setScoreA(editing.scoreA);
       setScoreB(editing.scoreB);
       const has = editing.players.some((p) => p.hasStats);
@@ -127,10 +128,19 @@ function NewMatchInner() {
     }
     const ids = (params.get("players") ?? "").split(",").filter((id) => data.players.some((p) => p.id === id));
     const f = params.get("format") as Format | null;
+    // Dalle squadre già fatte (con i cambi in fondo a ogni squadra).
+    const fromA = (params.get("a") ?? "").split(",").filter((id) => data.players.some((p) => p.id === id));
+    const fromB = (params.get("b") ?? "").split(",").filter((id) => data.players.some((p) => p.id === id));
+    if (f && FORMATS.includes(f) && fromA.length && fromB.length) {
+      setFormat(f);
+      setAssign(Object.fromEntries([...fromA.map((id) => [id, "A"]), ...fromB.map((id) => [id, "B"])]));
+      setStep(1);
+      return;
+    }
     const fmt: Format | null = f && FORMATS.includes(f) ? f : ids.length >= 2 ? (`${Math.min(4, Math.floor(ids.length / 2))}v${Math.min(4, Math.floor(ids.length / 2))}` as Format) : null;
     if (fmt) setFormat(fmt);
     if (fmt && ids.length >= TEAM_SIZE[fmt] * 2) {
-      const res = autoBalance(ids.slice(0, TEAM_SIZE[fmt] * 2), engine.elo.ratings, fmt);
+      const res = autoBalance(ids.slice(0, maxPerTeam(fmt) * 2), engine.elo.ratings, fmt);
       if (res) {
         setAssign(res);
         setStep(1);
@@ -142,18 +152,21 @@ function NewMatchInner() {
   const size = TEAM_SIZE[format];
   const a = teamIds(assign, "A");
   const b = teamIds(assign, "B");
-  const teamsOk = a.length === size && b.length === size;
+  const teamsOk = teamsReady(assign, format);
+  const subs = subsOf(assign, format);
   const name = (id: string) => shortName(data.players.find((p) => p.id === id), data.players);
-  const namesA = a.map(name).join(", ") || "Squadra A";
-  const namesB = b.map(name).join(", ") || "Squadra B";
+  const teamNames = (ids: string[]) =>
+    ids.length ? ids.map((id) => (subs.has(id) ? `${name(id)} (cambio)` : name(id))).join(", ") : null;
+  const namesA = teamNames(a) ?? "Squadra A";
+  const namesB = teamNames(b) ?? "Squadra B";
   const scoreOk = scoreA !== scoreB;
   const ordered = useMemo(() => [...teamIds(assign, "A"), ...teamIds(assign, "B")], [assign]);
   const cur = current && ordered.includes(current) ? current : ordered[0];
 
   const changeFormat = (f: Format) => {
     setFormat(f);
-    // Keep only as many players per team as the new format allows.
-    const n = TEAM_SIZE[f];
+    // Keep only as many players per team as the new format allows (cambi compresi).
+    const n = maxPerTeam(f);
     const next: Assignment = {};
     teamIds(assign, "A").slice(0, n).forEach((id) => (next[id] = "A"));
     teamIds(assign, "B").slice(0, n).forEach((id) => (next[id] = "B"));
@@ -186,12 +199,15 @@ function NewMatchInner() {
           : "tabellino"
         : "solo_risultato",
       notes: editing?.notes ?? null,
-      players: ordered.map((id) => ({
-        playerId: id,
-        team: assign[id],
-        hasStats: withBox,
-        box: withBox ? { ...(boxes[id] ?? emptyBox()), pts: (boxes[id]?.fg2m ?? 0) * 2 + (boxes[id]?.fg3m ?? 0) * 3 || boxes[id]?.pts || 0 } : emptyBox(),
-      })),
+      players: withSubs(
+        format,
+        ordered.map((id) => ({
+          playerId: id,
+          team: assign[id],
+          hasStats: withBox,
+          box: withBox ? { ...(boxes[id] ?? emptyBox()), pts: (boxes[id]?.fg2m ?? 0) * 2 + (boxes[id]?.fg3m ?? 0) * 3 || boxes[id]?.pts || 0 } : emptyBox(),
+        })),
+      ),
       events: sameRoster && withBox ? editing!.events.map((e) => ({ playerId: e.playerId, kind: e.kind, targetPlayerId: e.targetPlayerId, videoTs: e.videoTs })) : [],
     };
     try {
@@ -209,7 +225,8 @@ function NewMatchInner() {
   };
 
   const next = () => {
-    if (step === 1 && !teamsOk) return toast(`Mi servono ${size} giocatori per squadra`, "error");
+    if (step === 1 && !teamsOk)
+      return toast(a.length > maxPerTeam(format) || b.length > maxPerTeam(format) ? "Al massimo due cambi per squadra: togline uno" : `Mi servono ${size} giocatori per squadra`, "error");
     if (step === 2 && !scoreOk) return toast("Al campetto non si pareggia: controlla il punteggio", "error");
     setStep((s) => Math.min(3, s + 1));
   };
@@ -318,6 +335,7 @@ function NewMatchInner() {
                 >
                   <Avatar player={data.players.find((p) => p.id === id)} size={32} href={false} ring="none" />
                   {name(id)}
+                  {subs.has(id) && <RefreshCw size={12} aria-label="cambio" className="opacity-70" />}
                   <span className="tnum text-[12px] opacity-70">{(boxes[id]?.fg2m ?? 0) * 2 + (boxes[id]?.fg3m ?? 0) * 3}</span>
                 </button>
               ))}

@@ -1,5 +1,6 @@
 import { periodRange, seasonKey, seasonOf, sortChrono } from "./periods";
-import { efficiency, normalizeBox, teamOf } from "./stats/player";
+import { matchMvp } from "./stats/match-mvp";
+import { normalizeBox, teamOf } from "./stats/player";
 import { comebackSize } from "./stats/records";
 import { winnerOf, type Match } from "./types";
 import type { MonthAward, SeasonAward } from "./stats/awards";
@@ -89,7 +90,7 @@ export const BADGES: BadgeDef[] = [
   { key: "cappotto", name: "Cappotto", unit: "vittorie", description: "Vittorie lasciando gli avversari a 5 punti o meno", category: "speciali", icon: "shutout", thresholds: [1, 2, 3, 5, 10], mode: "total" },
   { key: "fotofinish", name: "Al fotofinish", unit: "vittorie", description: "Vittorie con 2 punti di scarto o meno", category: "speciali", icon: "clutch", thresholds: [1, 3, 5, 10, 20], mode: "total" },
   { key: "apripista", name: "Apripista", unit: "stagioni", description: "Presente alla prima partita della stagione", category: "speciali", icon: "opener", thresholds: [1, 2, 3, 4, 6], mode: "total" },
-  { key: "migliore", name: "Migliore in campo", unit: "partite", description: "Partite chiuse con la valutazione più alta in campo", category: "speciali", icon: "star", thresholds: [1, 3, 5, 10, 25], mode: "total" },
+  { key: "mvp-partita", name: "MVP della partita", unit: "partite da MVP", description: "Partite vinte da migliore in campo della tua squadra", category: "speciali", icon: "star", thresholds: [1, 3, 10, 25, 50], mode: "total" },
 ];
 
 export const BADGE_BY_KEY = new Map(BADGES.map((b) => [b.key, b]));
@@ -226,12 +227,7 @@ export function computeBadges(
       // Conta solo le partite in cui i falli sono stati segnati (almeno uno in campo).
       const foulsTracked = m.players.some((p) => p.hasStats && p.box.fouls > 0);
       if (foulsTracked && b.fouls === 0) bump("fairplay", 1, "total", d, m.id);
-      // Migliore in campo: la valutazione più alta tra chi ha il tabellino (almeno in due).
-      const rated = m.players.filter((p) => p.hasStats);
-      if (rated.length >= 2) {
-        const myEff = efficiency(b);
-        if (rated.every((p) => p.playerId === playerId || efficiency(normalizeBox(p.box)) <= myEff)) bump("migliore", 1, "total", d, m.id);
-      }
+      if (matchMvp(m)?.playerId === playerId) bump("mvp-partita", 1, "total", d, m.id);
     }
   }
 
@@ -302,6 +298,7 @@ const SINGULAR: Record<string, string> = {
   "vittorie di fila": "vittoria di fila",
   "vittorie in 1v1": "vittoria in 1v1",
   "rimbalzi in attacco": "rimbalzo in attacco",
+  "partite da MVP": "partita da MVP",
 };
 
 /** "1 partita", "3 partite". */

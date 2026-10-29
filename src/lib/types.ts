@@ -2,6 +2,23 @@ export type Format = "1v1" | "2v2" | "3v3" | "4v4";
 export const FORMATS: Format[] = ["1v1", "2v2", "3v3", "4v4"];
 export const TEAM_SIZE: Record<Format, number> = { "1v1": 1, "2v2": 2, "3v3": 3, "4v4": 4 };
 
+/** Quanti cambi può avere una squadra: si gioca nel formato, ma chi è in più entra a rotazione. */
+export const MAX_SUBS = 2;
+
+/** Quanti giocatori al massimo per squadra, cambi compresi (nell'1 contro 1 niente cambi). */
+export function maxPerTeam(f: Format): number {
+  return TEAM_SIZE[f] + (f === "1v1" ? 0 : MAX_SUBS);
+}
+
+/**
+ * Chi è un cambio: nell'ordine in cui sono stati messi in squadra, quelli oltre
+ * il formato (nel 2 contro 2 il terzo della squadra).
+ */
+export function withSubs<T extends { team: Team }>(format: Format, lines: T[]): (T & { sub: boolean })[] {
+  const seen = { A: 0, B: 0 };
+  return lines.map((l) => ({ ...l, sub: ++seen[l.team] > TEAM_SIZE[format] }));
+}
+
 export type Team = "A" | "B";
 export type StatsSource = "solo_risultato" | "tabellino" | "video" | "importata";
 
@@ -110,6 +127,8 @@ export interface MatchPlayer {
   team: Team;
   hasStats: boolean;
   box: Box;
+  /** Entrato a rotazione: la squadra gioca nel formato, lui fa il cambio. */
+  sub?: boolean;
 }
 
 export type EventKind =

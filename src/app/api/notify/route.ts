@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { matchMvp } from "@/lib/stats/match-mvp";
 import webpush from "web-push";
 import { z } from "zod";
 import { BADGE_BY_KEY, computeBadges } from "@/lib/badges";
@@ -175,18 +176,30 @@ async function matchSaved(ctx: Ctx, matchId: string) {
   if (await ctx.claim(`match:${m.id}`)) {
     const w = m.scoreA > m.scoreB ? "A" : "B";
     const day = dayOnly(m.playedAt);
+    const mvp = matchMvp(m)?.playerId ?? null;
     for (const team of ["A", "B"] as const) {
       const ids = m.players.filter((p) => p.team === team).map((p) => p.playerId).filter((id) => id !== ctx.me);
       if (!ids.length) continue;
       const won = team === w;
       const mine = team === "A" ? m.scoreA : m.scoreB;
       const theirs = team === "A" ? m.scoreB : m.scoreA;
-      await ctx.send(await ctx.targets("partite", ids), {
-        title: won ? `Vittoria ${mine}–${theirs}` : `Sconfitta ${mine}–${theirs}`,
-        body: won ? `Ho segnato la partita di ${day}: avete vinto, bel colpo!` : `Ho segnato la partita di ${day}: stavolta è andata male, ci si rifà la prossima`,
-        url: `/partite?m=${m.id}`,
-        tag: `match-${m.id}`,
-      });
+      const others = ids.filter((id) => id !== mvp);
+      const mvpLine = mvp ? ` MVP della partita: ${name(mvp)}` : "";
+      if (others.length)
+        await ctx.send(await ctx.targets("partite", others), {
+          title: won ? `Vittoria ${mine}–${theirs}` : `Sconfitta ${mine}–${theirs}`,
+          body: won ? `Ho segnato la partita di ${day}: avete vinto, bel colpo!${mvpLine}` : `Ho segnato la partita di ${day}: stavolta è andata male, ci si rifà la prossima`,
+          url: `/partite?m=${m.id}`,
+          tag: `match-${m.id}`,
+        });
+      // L'MVP ha il suo messaggio.
+      if (mvp && ids.includes(mvp))
+        await ctx.send(await ctx.targets("partite", [mvp]), {
+          title: `Vittoria ${mine}–${theirs}, e sei l'MVP!`,
+          body: `Ho segnato la partita di ${day}: il migliore della squadra sei tu`,
+          url: `/partite?m=${m.id}`,
+          tag: `match-${m.id}`,
+        });
     }
   }
 

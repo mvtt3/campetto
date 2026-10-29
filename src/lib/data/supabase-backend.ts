@@ -105,6 +105,7 @@ export function createSupabaseBackend(): Backend {
             player_id: p.playerId,
             team: p.team,
             has_stats: p.hasStats,
+            sub: Boolean(p.sub),
             box: p.box,
           })),
           events: input.events.map((e) => ({

@@ -3,13 +3,14 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Crown, Plus } from "lucide-react";
 import { memo, Suspense, useCallback, useMemo, useRef } from "react";
 import { MatchSheet } from "@/components/match-sheet";
 import { EmptyState, ScreenHeader } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { monthLabel, monthOf } from "@/lib/periods";
+import { matchMvp } from "@/lib/stats/match-mvp";
 import { teamOf } from "@/lib/stats/player";
 import { shortName, winnerOf, type Match } from "@/lib/types";
 
@@ -23,18 +24,17 @@ const MatchRow = memo(function MatchRow({
   onOpen: (id: string) => void;
 }) {
   const { data, me } = useData();
-  const names = (t: "A" | "B") =>
-    m.players
-      .filter((p) => p.team === t)
-      .map((p) =>
-        shortName(
-          data.players.find((x) => x.id === p.playerId),
-          data.players,
-        ),
-      )
-      .join(", ");
+  // I cambi in fondo, con il "+": "Matteo, Simone + Cande".
+  const names = (t: "A" | "B") => {
+    const line = m.players.filter((p) => p.team === t);
+    const nm = (id: string) => shortName(data.players.find((x) => x.id === id), data.players);
+    const base = line.filter((p) => !p.sub).map((p) => nm(p.playerId)).join(", ");
+    const subs = line.filter((p) => p.sub).map((p) => nm(p.playerId));
+    return subs.length ? `${base} + ${subs.join(", ")}` : base;
+  };
   const w = winnerOf(m);
   const mine = me ? teamOf(m, me.id) : null;
+  const mvp = matchMvp(m);
   const d = new Date(m.playedAt);
   return (
     <button
@@ -84,10 +84,21 @@ const MatchRow = memo(function MatchRow({
             </p>
           </div>
         ))}
-        <p className="mt-1 pl-[18px] text-[12px] text-faint">
-          {m.format}
-          {m.players.some((p) => p.hasStats) ? ", con statistiche" : ""}
-          {mine ? (w === mine ? ". Hai vinto" : ". Hai perso") : ""}
+        <p className="mt-1 flex items-center gap-1 truncate pl-[18px] text-[12px] text-faint">
+          <span className="truncate">
+            {m.format}
+            {mvp ? (
+              <>
+                {" · "}
+                <Crown size={11} className="inline align-[-1px] text-gold" aria-hidden /> MVP {shortName(data.players.find((x) => x.id === mvp.playerId), data.players)}
+              </>
+            ) : m.players.some((p) => p.hasStats) ? (
+              ", con statistiche"
+            ) : (
+              ""
+            )}
+            {mine ? (w === mine ? ". Hai vinto" : ". Hai perso") : ""}
+          </span>
         </p>
       </div>
       <span className="w-3 shrink-0" />

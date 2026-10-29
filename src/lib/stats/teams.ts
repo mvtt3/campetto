@@ -28,30 +28,35 @@ function combinations<T>(items: T[], k: number): T[][] {
 
 /**
  * Every possible split of the present players into two teams of `teamSize`,
- * ranked from most to least balanced. Extra players (beyond 2·teamSize) sit out:
- * we try every choice of who plays, preferring to rest the most recent ones is
- * left to the caller, so here the first 2·teamSize players are used.
+ * ranked from most to least balanced. With `maxSubs` the extra players (up to
+ * `maxSubs` per team) join as substitutes: teams of 2 and 3 for five players in
+ * a 2v2, the strength being the average of everyone who rotates. Beyond that,
+ * the last arrived sit out. Within each team the order follows the pool, so the
+ * last arrived are the substitutes.
  */
-export function rankSplits(playerIds: string[], ratings: Map<string, number>, teamSize: number): Split[] {
-  const pool = playerIds.slice(0, teamSize * 2);
+export function rankSplits(playerIds: string[], ratings: Map<string, number>, teamSize: number, maxSubs = 0): Split[] {
+  const pool = playerIds.slice(0, (teamSize + maxSubs) * 2);
   if (pool.length < 2) return [];
   const size = Math.min(teamSize, Math.floor(pool.length / 2));
-  const first = pool[0];
+  const used = maxSubs > 0 && pool.length > size * 2 && size === teamSize ? pool : pool.slice(0, size * 2);
+  const ks = [...new Set([Math.floor(used.length / 2), Math.ceil(used.length / 2)])];
+  const first = used[0];
   const seen = new Set<string>();
   const splits: Split[] = [];
-  for (const combo of combinations(pool, size)) {
-    // Fix the first player in team A to avoid mirrored duplicates.
-    if (!combo.includes(first)) continue;
-    const teamA = combo;
-    const teamB = pool.filter((p) => !teamA.includes(p)).slice(0, size);
-    const key = [...teamA].sort().join(",");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const r = new Map(ratings);
-    for (const id of pool) if (!r.has(id)) r.set(id, ELO_START);
-    const probA = winProbability(teamA, teamB, r);
-    splits.push({ teamA, teamB, probA, imbalance: Math.abs(probA - 0.5) });
-  }
+  const r = new Map(ratings);
+  for (const id of used) if (!r.has(id)) r.set(id, ELO_START);
+  for (const k of ks)
+    for (const combo of combinations(used, k)) {
+      // Fix the first player in team A to avoid mirrored duplicates.
+      if (!combo.includes(first)) continue;
+      const teamA = combo;
+      const teamB = used.filter((p) => !teamA.includes(p));
+      const key = [...teamA].sort().join(",");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const probA = winProbability(teamA, teamB, r);
+      splits.push({ teamA, teamB, probA, imbalance: Math.abs(probA - 0.5) });
+    }
   return splits.sort((a, b) => a.imbalance - b.imbalance);
 }
 
@@ -65,8 +70,9 @@ export function balanceTeams(
   teamSize: number,
   shuffle = 0,
   random: () => number = Math.random,
+  maxSubs = 0,
 ): Split | null {
-  const ranked = rankSplits(playerIds, ratings, teamSize);
+  const ranked = rankSplits(playerIds, ratings, teamSize, maxSubs);
   if (!ranked.length) return null;
   if (!shuffle) return ranked[0];
   const best = ranked[0].imbalance;

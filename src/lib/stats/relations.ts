@@ -157,8 +157,10 @@ export function form(playerId: string, matches: Match[], n = 5): ("V" | "S")[] {
 }
 
 export interface TeamRecord {
-  /** I giocatori della squadra, in ordine stabile. */
+  /** I giocatori della squadra, in ordine stabile (cambi compresi). */
   ids: string[];
+  /** Chi entrava come cambio. */
+  subs: string[];
   games: number;
   wins: number;
   losses: number;
@@ -181,13 +183,13 @@ export function teamRecords(matches: Match[], format: Match["format"], minGames 
     const w = winnerOf(m);
     if (!w) continue;
     for (const team of ["A", "B"] as const) {
-      const ids = m.players
-        .filter((p) => p.team === team)
-        .map((p) => p.playerId)
-        .sort();
+      const line = m.players.filter((p) => p.team === team);
+      // Con i cambi è un'altra squadra: conta chi c'era, titolari prima.
+      const ids = [...line].sort((x, y) => Number(!!x.sub) - Number(!!y.sub) || x.playerId.localeCompare(y.playerId)).map((p) => p.playerId);
       if (!ids.length) continue;
-      const key = ids.join("|");
-      const r = map.get(key) ?? { ids, games: 0, wins: 0, losses: 0, winPct: 0, lastPlayed: m.playedAt };
+      const subs = line.filter((p) => p.sub).map((p) => p.playerId);
+      const key = [...ids].sort().join("|") + (subs.length ? `|cambi:${[...subs].sort().join(",")}` : "");
+      const r = map.get(key) ?? { ids, subs, games: 0, wins: 0, losses: 0, winPct: 0, lastPlayed: m.playedAt };
       r.games++;
       if (w === team) r.wins++;
       else r.losses++;

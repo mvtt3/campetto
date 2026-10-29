@@ -67,6 +67,31 @@ test("nuova partita solo risultato", async ({ page }) => {
   await expect(page.getByRole("dialog").getByText("Vince")).toBeVisible();
 });
 
+test("2 contro 2 in cinque: il quinto fa il cambio", async ({ page }) => {
+  await openApp(page);
+  await page.goto("/nuova");
+  await page.getByRole("button", { name: "2v2" }).click();
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await pickTeams(page, ["p1", "p2", "p3", "p4", "p5"]);
+  // Il quinto va nella squadra più corta, come cambio.
+  await expect(page.getByTestId("pick-p5")).toHaveAttribute("aria-label", /squadra A, cambio/);
+  await expect(page.getByText("Previsione")).toBeVisible();
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await expect(page.getByText(/\(cambio\)/)).toBeVisible();
+  await page.getByLabel("Punti squadra A").fill("21");
+  await page.getByLabel("Punti squadra B").fill("15");
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await page.getByRole("button", { name: "Salva solo il risultato" }).click();
+  await expect(page).toHaveURL(/\/partite\?m=/);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("21–15");
+  await expect(dialog).toContainText(/Cambio: \S+/);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("match-row").first()).toContainText(" + ");
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("campetto:mock:v1")!).matches[0].players.filter((p: { sub?: boolean }) => p.sub));
+  expect(saved).toHaveLength(1);
+});
+
 test("pareggio non ammesso e squadre incomplete bloccate", async ({ page }) => {
   await openApp(page);
   await page.goto("/nuova");
@@ -104,6 +129,12 @@ test("nuova partita con tabellino", async ({ page }) => {
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page.getByRole("dialog")).toContainText("Tabellino");
   await expect(page.getByRole("dialog")).toContainText("Mattia");
+  // Mattia ha vinto ed è il migliore della sua squadra: è l'MVP della partita.
+  const mvp = page.getByRole("region", { name: "MVP della partita" });
+  await expect(mvp).toContainText("Mattia");
+  await expect(mvp).toContainText("7 punti");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("match-row").first()).toContainText("MVP Mattia");
 });
 
 test("proponi una partita e rispondi", async ({ page }) => {
@@ -504,4 +535,17 @@ test("dopo la partita: com'è andata, poi i personaggi nuovi", async ({ page }) 
     await party.getByRole("button").last().click();
     await page.waitForTimeout(400);
   }
+});
+
+test("dal profilo, il personaggio apre la collezione", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo");
+  await page.getByRole("link", { name: /Il tuo personaggio/ }).click();
+  await expect(page).toHaveURL(/\/profilo\/impostazioni$/);
+  const sheet = page.getByRole("dialog", { name: "Il tuo personaggio" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText(/Collezione \d+ di \d+/)).toBeVisible();
+  // Chiusa la collezione si resta nelle impostazioni.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "Impostazioni" })).toBeVisible();
 });

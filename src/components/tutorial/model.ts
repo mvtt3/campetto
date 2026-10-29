@@ -46,7 +46,7 @@ export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
       title: "Partite",
       path: "/partite",
       steps: [
-        step("matches-list", "Tutte le partite", "Tocca una partita per vedere risultato e tabellino"),
+        step("matches-list", "Tutte le partite", "Tocca una partita per vedere risultato, MVP e tabellino"),
         ...(isAdmin ? [step("matches-add", "Aggiungi una partita", "Solo tu puoi inserire, modificare o eliminare le partite")] : []),
       ],
     },
@@ -54,7 +54,7 @@ export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
       title: "Profilo",
       path: "/profilo",
       steps: [
-        step("profile-card", "Il tuo personaggio", "Palleggia qui e scende in campo: con i badge sblocchi quelli rari, epici e mitici"),
+        step("profile-card", "Il tuo personaggio", "Palleggia qui e scende in campo: toccalo per la collezione, con i badge sblocchi quelli rari, epici e mitici"),
         step("profile-stats", "I tuoi numeri", "Le medie, la forma e l'andamento mese per mese"),
         step("profile-tabs", "Statistiche avanzate", "Tiro, impatto e i tuoi massimi: le vedi solo tu, agli altri arrivano solo quelle comuni"),
         step("profile-settings", "La guida resta qui", "Nelle impostazioni la ritrovi, anche per una sola scheda"),

@@ -1,4 +1,5 @@
 import { monthKey, monthOf, sortChrono } from "../periods";
+import { matchMvp } from "./match-mvp";
 import { winnerOf, type BoxKey, type Match, type Team } from "../types";
 import { normalizeBox, teamOf } from "./player";
 
@@ -176,6 +177,28 @@ export function groupRecords(matches: Match[]): GroupRecord[] {
           date: `${k}-01`,
         };
   if (busiest) out.push(busiest);
+
+  // Più volte MVP della partita
+  const mvps = new Map<string, { n: number; last: Match }>();
+  for (const m of chrono) {
+    const mvp = matchMvp(m);
+    if (!mvp) continue;
+    const cur = mvps.get(mvp.playerId);
+    mvps.set(mvp.playerId, { n: (cur?.n ?? 0) + 1, last: m });
+  }
+  let topMvp: GroupRecord | null = null;
+  for (const [id, { n, last }] of mvps)
+    if (!topMvp || n > topMvp.value)
+      topMvp = {
+        key: "mvp-partita",
+        label: "Più volte MVP della partita",
+        value: n,
+        display: n === 1 ? "1 volta" : `${n} volte`,
+        playerIds: [id],
+        matchId: last.id,
+        date: last.playedAt,
+      };
+  if (topMvp) out.push(topMvp);
 
   return out;
 }

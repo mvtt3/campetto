@@ -68,9 +68,11 @@ export function computeElo(matches: Match[], playerIds: string[] = []): EloResul
       [a, deltaA],
       [b, -deltaA],
     ] as const) {
+      // Con i cambi si gioca a turno: ognuno sta in campo meno, e prende la sua parte.
+      const share = Math.min(1, size / ids.length);
       for (const id of ids) {
         const before = ratings.get(id) ?? ELO_START;
-        const after = before + delta;
+        const after = before + delta * share;
         ratings.set(id, after);
         if (!history.has(id)) history.set(id, []);
         history.get(id)!.push({ matchId: m.id, date: m.playedAt, before, after });

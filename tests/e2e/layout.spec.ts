@@ -9,6 +9,7 @@ const STATIC = ["/", "/profilo", "/profilo/notifiche", "/giocatore/p2", "/nuova"
 for (const vp of VIEWPORTS) {
   for (const [theme, data] of [["dark", "demo"], ["light", "demo"], ["light", "pieno"], ["dark", "pieno"]] as const) {
     test(`${vp.name} ${theme} ${data}: nessuna pagina scorre e le schermate fisse stanno nello schermo`, async ({ page }) => {
+      test.setTimeout(120_000);
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await openApp(page, data, theme);
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

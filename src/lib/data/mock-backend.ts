@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_NOTIFY_PREFS, emptyBox, TEAM_SIZE, type Dataset, type Format, type Match, type Player } from "../types";
+import { DEFAULT_NOTIFY_PREFS, emptyBox, MAX_SUBS, TEAM_SIZE, type Dataset, type Format, type Match, type Player } from "../types";
 import type { AuthState, Backend, PendingUser, PlayerPrivate } from "./backend";
 import { APP_START } from "../periods";
 
@@ -71,7 +71,9 @@ export function demoMatches(players: Player[], now = new Date(), count = 24): Ma
     if (d < APP_START) break;
     const format = formats[i % formats.length];
     const n = TEAM_SIZE[format];
-    const pool = [...players].sort(() => rnd() - 0.5).slice(0, n * 2);
+    // Nel mese pieno ogni tanto si è in uno in più: il quinto fa il cambio nella squadra A.
+    const extra = count > 24 && format !== "1v1" && format !== "4v4" && i % 4 === 1 ? 1 : 0;
+    const pool = [...players].sort(() => rnd() - 0.5).slice(0, n * 2 + extra);
     const id = `demo-${i}`;
     const winA = rnd() > 0.45;
     const lose = Math.floor(rnd() * 18) + 2;
@@ -79,11 +81,13 @@ export function demoMatches(players: Player[], now = new Date(), count = 24): Ma
     const scoreB = winA ? lose : 21;
     const withStats = i % 3 !== 2;
     const lines = pool.map((p, k) => {
-      const team = (k < n ? "A" : "B") as "A" | "B";
+      // Ordine: A in campo, B in campo, poi il cambio di A.
+      const team = (k < n || k >= n * 2 ? "A" : "B") as "A" | "B";
+      const sub = k >= n * 2;
       const teamPts = team === "A" ? scoreA : scoreB;
       const box = emptyBox();
       if (withStats) {
-        const share = Math.round(teamPts / n);
+        const share = Math.round(teamPts / (team === "A" ? n + extra : n));
         box.fg3m = Math.min(Math.floor(rnd() * 3), Math.floor(share / 3));
         box.fg2m = Math.max(0, Math.floor((share - box.fg3m * 3) / 2));
         box.fg2a = box.fg2m + Math.floor(rnd() * 5);
@@ -97,7 +101,7 @@ export function demoMatches(players: Player[], now = new Date(), count = 24): Ma
         box.tov = Math.floor(rnd() * 3);
         box.fouls = Math.floor(rnd() * 4);
       }
-      return { matchId: id, playerId: p.id, team, hasStats: withStats, box };
+      return { matchId: id, playerId: p.id, team, hasStats: withStats, box, ...(sub ? { sub: true } : {}) };
     });
     out.push({
       id,
@@ -223,9 +227,13 @@ export function createMockBackend(): Backend {
     },
     async saveMatch(input) {
       const size = TEAM_SIZE[input.format];
-      const a = input.players.filter((p) => p.team === "A").length;
-      const b = input.players.filter((p) => p.team === "B").length;
-      if (a !== size || b !== size) throw new Error(`Per il ${input.format} servono ${size} giocatori per squadra.`);
+      for (const t of ["A", "B"] as const) {
+        const line = input.players.filter((p) => p.team === t);
+        const starters = line.filter((p) => !p.sub).length;
+        const subs = line.length - starters;
+        if (starters !== size) throw new Error(`Per il ${input.format} servono ${size} giocatori per squadra.`);
+        if (subs > (input.format === "1v1" ? 0 : MAX_SUBS)) throw new Error("Troppi cambi per una squadra.");
+      }
       if (input.scoreA === input.scoreB) throw new Error("Il risultato non può essere un pareggio");
       const id = input.id ?? rid();
       const existing = state.matches.find((m) => m.id === id);

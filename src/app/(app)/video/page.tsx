@@ -4,13 +4,13 @@ import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { FileVideo, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { teamIds, TeamPicker, type Assignment } from "@/components/team-picker";
+import { teamIds, TeamPicker, teamsReady, type Assignment } from "@/components/team-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, haptic, ScreenHeader, Segmented, Stepper } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { boxesFromEvents } from "@/lib/stats/player";
-import { FORMATS, shortName, TEAM_SIZE, type EventKind, type Format } from "@/lib/types";
+import { FORMATS, shortName, TEAM_SIZE, withSubs, type EventKind, type Format } from "@/lib/types";
 import { say } from "@/lib/voice";
 
 interface TagEvent {
@@ -106,7 +106,7 @@ export default function VideoPage() {
   const a = teamIds(assign, "A");
   const b = teamIds(assign, "B");
   const ids = [...a, ...b];
-  const teamsOk = a.length === size && b.length === size;
+  const teamsOk = teamsReady(assign, format);
   const live = useMemo(() => {
     let sa = 0;
     let sb = 0;
@@ -157,7 +157,10 @@ export default function VideoPage() {
         scoreA,
         scoreB,
         statsSource: "video",
-        players: ids.map((pid) => ({ playerId: pid, team: assign[pid], hasStats: true, box: boxes[pid] })),
+        players: withSubs(
+          format,
+          ids.map((pid) => ({ playerId: pid, team: assign[pid], hasStats: true, box: boxes[pid] })),
+        ),
         events,
       });
       localStorage.removeItem(DRAFT);

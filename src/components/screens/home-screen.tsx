@@ -13,7 +13,9 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
 import { eloDelta, eloOf } from "@/lib/stats/elo";
+import { matchMvp } from "@/lib/stats/match-mvp";
 import { computePlayerStats, teamOf } from "@/lib/stats/player";
+import { Character, characterOf } from "@/components/character";
 import { shortName, winnerOf } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { InfoTip } from "@/components/ui/info";
@@ -53,6 +55,8 @@ export function HomeScreen() {
   const elo = eloOf(engine.elo, me.id);
   const delta = Math.round(eloDelta(engine.elo, me.id, new Date(year, month, 1)));
   const last = data.matches[0];
+  const lastMvp = last ? matchMvp(last) : null;
+  const lastMvpPlayer = lastMvp ? data.players.find((p) => p.id === lastMvp.playerId) : undefined;
   const lastTeam = last ? teamOf(last, me.id) : null;
   const mvp = engine.mvp;
   const mvpPlayer = data.players.find((p) => p.id === mvp?.entry.playerId);
@@ -199,6 +203,19 @@ export function HomeScreen() {
             <div className="min-h-0">
               <Link href={last ? `/partite?m=${last.id}` : "/partite"} className="card flex h-full flex-col overflow-hidden p-4 short:p-3.5">
                 <h2 className="text-[13.5px] font-semibold text-muted">Ultima partita</h2>
+                {lastMvpPlayer && (
+                  <div className="mt-1.5 flex min-w-0 items-end gap-1.5">
+                    <span className="shrink-0 short:hidden" aria-hidden>
+                      <Character id={characterOf(lastMvpPlayer)} number={lastMvpPlayer.jerseyNumber} height={52} />
+                    </span>
+                    <span className="min-w-0 pb-1">
+                      <span className="flex items-center gap-1 text-[11.5px] font-bold text-gold">
+                        <Crown size={12} /> MVP
+                      </span>
+                      <span className="block truncate text-[13.5px] font-bold">{shortName(lastMvpPlayer, data.players)}</span>
+                    </span>
+                  </div>
+                )}
                 {last ? (
                   <div className="flex flex-1 flex-col justify-end">
                     <p className="score text-[40px] short:text-[30px]">

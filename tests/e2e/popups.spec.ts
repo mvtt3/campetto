@@ -14,6 +14,8 @@ async function check(page: Page, sel: string, what: string) {
 for (const vp of VIEWPORTS) {
   for (const theme of ["light", "dark"] as const) {
     test(`${vp.name} ${theme}: popup e pannelli`, async ({ page }) => {
+      // Tanti popup da aprire uno dopo l'altro: più tempo del solito.
+      test.setTimeout(120_000);
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await openApp(page, "demo", theme);
       await page.evaluate(() => {

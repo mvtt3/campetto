@@ -214,7 +214,7 @@ export const GOALS: Partial<Record<AvatarPresetId, CharacterGoal>> = {
   ninja: { badge: "rubate", tier: 4 },
   drago: { badge: "triple", tier: 4 },
   centurione: { badge: "mvp-mese", tier: 3 },
-  astronauta: { badge: "migliore", tier: 4 },
+  astronauta: { badge: "mvp-partita", tier: 4 },
   sole: { all: [{ badge: "costanza", tier: 3 }, { badge: "apripista", tier: 2 }] },
   luchador: { badge: "campione", tier: 1 },
   titano: { badge: "stoppate", tier: 4 },

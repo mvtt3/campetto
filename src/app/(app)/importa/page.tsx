@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { parseImport, type ImportRow } from "@/lib/importer";
 import { normalizeBox } from "@/lib/stats/player";
-import { FORMATS, adminName, type Format, type Team } from "@/lib/types";
+import { FORMATS, adminName, maxPerTeam, withSubs, type Format, type Team } from "@/lib/types";
 import { DateTimeField, Menu } from "@/components/ui/pickers";
 import { APP_START } from "@/lib/periods";
 import { say } from "@/lib/voice";
@@ -49,11 +49,15 @@ export default function ImportPage() {
   const ready = rows ?? [];
   const a = ready.filter((r) => r.team === "A");
   const b = ready.filter((r) => r.team === "B");
+  // Il formato lo dà la squadra più corta; chi è in più nell'altra (fino a due) è un cambio.
   const format = useMemo<Format | null>(() => {
-    if (!a.length || a.length !== b.length) return null;
-    const f = `${a.length}v${a.length}` as Format;
-    return FORMATS.includes(f) ? f : null;
+    const n = Math.min(a.length, b.length);
+    if (!n) return null;
+    const f = `${n}v${n}` as Format;
+    if (!FORMATS.includes(f) || Math.max(a.length, b.length) > maxPerTeam(f)) return null;
+    return f;
   }, [a.length, b.length]);
+  const subCount = format ? a.length + b.length - Number(format[0]) * 2 : 0;
   const allMatched = ready.every((r) => r.playerId) && new Set(ready.map((r) => r.playerId)).size === ready.length;
   const canSave = ready.length > 0 && allMatched && format && scoreA !== scoreB;
 
@@ -70,7 +74,10 @@ export default function ImportPage() {
         scoreA,
         scoreB,
         statsSource: "importata",
-        players: ready.map((r) => ({ playerId: r.playerId!, team: r.team!, hasStats: true, box: normalizeBox(r.box) })),
+        players: withSubs(
+          format,
+          ready.map((r) => ({ playerId: r.playerId!, team: r.team!, hasStats: true, box: normalizeBox(r.box) })),
+        ),
         events: [],
       });
       void backend.notify({ type: "match_saved", matchId: id, isNew: true });
@@ -163,7 +170,9 @@ export default function ImportPage() {
             <DateTimeField value={playedAt} onChange={setPlayedAt} min={APP_START} max={new Date()} label="Data della partita" />
             <p className="text-[13px] text-muted">
               {[
-                format ? `Formato ${format}` : "Le due squadre devono avere lo stesso numero di giocatori, da 1 a 4",
+                format
+                  ? `Formato ${format}${subCount ? `, con ${subCount === 1 ? "un cambio" : `${subCount} cambi`}` : ""}`
+                  : "Da 1 a 4 giocatori per squadra, al massimo due cambi in più",
                 !allMatched && "abbina ogni riga a un giocatore diverso",
                 scoreA === scoreB && "il risultato non può essere un pareggio",
               ]

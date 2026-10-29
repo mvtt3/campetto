@@ -103,12 +103,18 @@ export function ProposalCard({ proposal, compact }: { proposal: Proposal; compac
         {yes.length ? <AvatarStack players={yes} size={compact ? 28 : 32} /> : null}
         <div className="min-w-0 flex-1">
           <p className="text-[13.5px]">
-            <span className="tnum font-bold">{yes.length}</span>
+            <span className="tnum font-bold">{Math.min(yes.length, needed)}</span>
             <span className="text-muted">
               {" "}
               di {needed} {full ? "" : `per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
             </span>
             {full && <span className="font-bold text-ok"> si gioca!</span>}
+            {yes.length > needed && (
+              <span className="font-semibold text-muted">
+                {" "}
+                +{yes.length - needed} {proposal.format === "1v1" ? "in attesa" : yes.length - needed === 1 ? "cambio" : "cambi"}
+              </span>
+            )}
             {maybe.length > 0 && <span className="text-muted">, {maybe.length} forse</span>}
           </p>
           <div className="mt-1.5 h-2.5 overflow-hidden rounded-full border-2 border-edge bg-raised" aria-hidden>

@@ -14,6 +14,7 @@ const RULES: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
   [/giocatore ha già un account/i, "Questo giocatore ha già un account: se sei tu, chiedi a Matteo"],
   [/pareggio/i, "Al campetto non si pareggia: controlla il punteggio"],
   [/Per il (\dv\d) servono (\d)/i, (m) => `Per il ${m[1]} mi servono ${m[2]} giocatori per squadra`],
+  [/Troppi cambi/i, "Al massimo due cambi per squadra: togline uno"],
   [/data è nel futuro/i, "Questa partita non si è ancora giocata: controlla la data"],
   [/Punteggio non valido/i, "Il punteggio non mi torna: controllalo"],
   [/in campo due volte/i, "Ho visto lo stesso giocatore in tutte e due le squadre: controlla"],

@@ -19,7 +19,7 @@ export interface SaveMatchInput {
   scoreB: number;
   statsSource: StatsSource;
   notes?: string | null;
-  players: { playerId: string; team: Team; hasStats: boolean; box: Box }[];
+  players: { playerId: string; team: Team; hasStats: boolean; box: Box; sub?: boolean }[];
   events: { playerId: string; kind: EventKind; targetPlayerId: string | null; videoTs: number | null }[];
 }
 

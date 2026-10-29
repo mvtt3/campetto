@@ -63,6 +63,11 @@ export default function SettingsPage() {
     setTheme(getThemePref());
     setStandalone(isStandalone());
     setSounds(soundOn());
+    // Arrivando dal personaggio nel profilo: la collezione è già aperta.
+    if (new URLSearchParams(window.location.search).get("personaggi")) {
+      setCharacters(true);
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
     /* eslint-enable react-hooks/set-state-in-effect */
     const h = (e: Event) => {
       e.preventDefault();

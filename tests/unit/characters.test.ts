@@ -53,7 +53,7 @@ describe("personaggi", () => {
   it("le sfide toccano quasi tutti i badge, rubate e stoppate comprese", () => {
     const used = new Set<string>();
     for (const g of Object.values(GOALS)) if (g && !("allTier" in g)) for (const s of "all" in g ? g.all : [g]) used.add(s.badge);
-    for (const k of ["rubate", "stoppate", "partita-rubate", "partita-stoppate", "fairplay", "mira", "doppia-doppia", "rimbalzi-off", "migliore"]) expect(used.has(k), k).toBe(true);
+    for (const k of ["rubate", "stoppate", "partita-rubate", "partita-stoppate", "fairplay", "mira", "doppia-doppia", "rimbalzi-off", "mvp-partita"]) expect(used.has(k), k).toBe(true);
     expect(used.size).toBeGreaterThanOrEqual(BADGES.length - 2);
   });
 
@@ -101,7 +101,7 @@ describe("badge nuovi", () => {
     expect(v("doppia-doppia")).toBe(1);
     expect(v("mira")).toBe(1);
     expect(v("fairplay")).toBe(1);
-    expect(v("migliore")).toBe(1);
+    expect(v("mvp-partita")).toBe(1);
     expect(v("partita-rubate")).toBe(4);
     expect(v("partita-stoppate")).toBe(3);
     expect(v("rimbalzi-off")).toBe(3);
@@ -109,7 +109,7 @@ describe("badge nuovi", () => {
     const d = computeBadges("d", [m], ctx).states;
     expect(d.find((s) => s.def.key === "fairplay")!.value).toBe(1);
     expect(d.find((s) => s.def.key === "mira")!.value).toBe(0);
-    expect(d.find((s) => s.def.key === "migliore")!.value).toBe(0);
+    expect(d.find((s) => s.def.key === "mvp-partita")!.value).toBe(0);
   });
 
   it("il fair play conta solo se quel giorno i falli si segnavano", () => {
@@ -120,5 +120,42 @@ describe("badge nuovi", () => {
       lines: [line("a", "A", { pts: 8 }), line("b", "B", { pts: 6 })],
     });
     expect(computeBadges("a", [m], ctx).states.find((s) => s.def.key === "fairplay")!.value).toBe(0);
+  });
+});
+
+describe("MVP della partita", () => {
+  it("è il migliore di chi vince, non il migliore in assoluto", async () => {
+    const { matchMvp } = await import("@/lib/stats/match-mvp");
+    const m = match({
+      date: "2026-10-12T18:00:00Z",
+      a: 21,
+      b: 19,
+      lines: [
+        { id: "a", team: "A", box: { pts: 8, fg2m: 4, fg2a: 6, ast: 3, dreb: 2 } },
+        { id: "b", team: "A", box: { pts: 13, fg2m: 5, fg2a: 9, fg3m: 1, fg3a: 2, dreb: 1 } },
+        { id: "c", team: "B", box: { pts: 19, fg2m: 8, fg2a: 9, fg3m: 1, fg3a: 1, dreb: 6, ast: 4 } },
+        { id: "d", team: "B", box: {} },
+      ],
+    });
+    // a: 8 + 2 + 3 − 2 sbagliati = 11; b: 13 + 1 − 5 sbagliati = 9; c perde.
+    expect(matchMvp(m)?.playerId).toBe("a");
+  });
+
+  it("a pari valutazione chi ha segnato di più; senza tabellino niente MVP", async () => {
+    const { matchMvp } = await import("@/lib/stats/match-mvp");
+    const tie = match({
+      date: "2026-10-13T18:00:00Z",
+      a: 21,
+      b: 10,
+      lines: [
+        { id: "a", team: "A", box: { pts: 4, fg2m: 2, fg2a: 2, ast: 6 } },
+        { id: "b", team: "A", box: { pts: 10, fg2m: 5, fg2a: 5 } },
+        { id: "c", team: "B", box: { pts: 10, fg2m: 5, fg2a: 5 } },
+        { id: "d", team: "B", box: {} },
+      ],
+    });
+    expect(matchMvp(tie)?.playerId).toBe("b");
+    const bare = match({ date: "2026-10-14T18:00:00Z", a: 21, b: 10, lines: [{ id: "a", team: "A" }, { id: "b", team: "B" }] });
+    expect(matchMvp(bare)).toBeNull();
   });
 });

@@ -16,6 +16,9 @@ import { trophiesOf } from "@/lib/stats/awards";
 import { eloOf } from "@/lib/stats/elo";
 import { displayName, type Player } from "@/lib/types";
 
+/** Dal profilo alla collezione dei personaggi, già aperta. */
+export const CHARACTERS_HREF = "/profilo/impostazioni?personaggi=1";
+
 /** La figurina del giocatore: foto, nome, ruolo, ELO e i tre badge in vetrina. */
 export function ProfileHeader({
   player,
@@ -48,19 +51,35 @@ export function ProfileHeader({
       style={{ backgroundColor: tint }}
     >
       <CourtLines className="absolute inset-0 h-full w-full" />
-      {/* Il personaggio a figura intera, in piedi a destra (nel proprio profilo palleggia). */}
-      <span
-        className="pointer-events-none absolute right-2.5 top-2"
-        aria-hidden
-      >
-        <Character
-          id={charId}
-          number={player.jerseyNumber}
-          height={104}
-          idle={self}
-          className="short:h-[84px] short:w-auto"
-        />
-      </span>
+      {/* Il personaggio a figura intera, in piedi a destra (nel proprio profilo palleggia e si tocca per cambiarlo). */}
+      {self ? (
+        <Link
+          href={CHARACTERS_HREF}
+          className="press absolute right-2.5 top-2 z-10 rounded-2xl"
+          data-tour="profile-character"
+        >
+          <span className="sr-only">Il tuo personaggio, {AVATAR_PRESETS.find((p) => p.id === charId)?.name}: apri la collezione</span>
+          <Character
+            id={charId}
+            number={player.jerseyNumber}
+            height={104}
+            idle
+            className="short:h-[84px] short:w-auto"
+          />
+        </Link>
+      ) : (
+        <span
+          className="pointer-events-none absolute right-2.5 top-2"
+          aria-hidden
+        >
+          <Character
+            id={charId}
+            number={player.jerseyNumber}
+            height={104}
+            className="short:h-[84px] short:w-auto"
+          />
+        </span>
+      )}
       <div className="relative flex items-center gap-4 pr-[58px] short:gap-3 short:pr-[46px]">
         <span className="rounded-full ring-4 ring-[#fffaf0]/30">
           <Avatar player={player} size={68} href={false} />
@@ -81,18 +100,19 @@ export function ProfileHeader({
               </InfoTip>
             </span>
             {isMvp && engine.mvp?.period.kind === "month" && (
-              <span className="flex items-center gap-1 rounded-full border-2 border-[#1d1a16] bg-volt px-2.5 py-0.5 text-[12.5px] font-bold text-[#1d1a16]">
-                <Crown size={13} /> MVP di{" "}
-                {MONTHS_IT[engine.mvp.period.month].toLowerCase()}
+              // Sui telefoni bassi basta la cornice d'oro attorno alla foto: una riga in meno.
+              <span className="flex items-center gap-1 rounded-full border-2 border-[#1d1a16] bg-volt px-2.5 py-0.5 text-[12.5px] font-bold text-[#1d1a16] short:hidden">
+                <Crown size={13} /> MVP di {MONTHS_IT[engine.mvp.period.month].toLowerCase()}
               </span>
             )}
             {self && (
-              <span
-                className="rounded-full bg-[var(--chip)] px-2.5 py-1 text-[12.5px] font-semibold"
+              <Link
+                href={CHARACTERS_HREF}
+                className="press rounded-full bg-[var(--chip)] px-2.5 py-1 text-[12.5px] font-semibold"
                 title={CHARACTER_TAGLINE[charId]}
               >
                 {AVATAR_PRESETS.find((p) => p.id === charId)?.name}
-              </span>
+              </Link>
             )}
             {trophies > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-[var(--chip)] px-2.5 py-1 text-[12.5px] font-semibold">
