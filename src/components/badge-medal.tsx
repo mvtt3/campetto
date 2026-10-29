@@ -100,8 +100,8 @@ export function BadgeMedal({
         <path
           d="M50 3 L90 22 Q95 25 95 31 L95 72 Q95 78 90 81 L50 105 L10 81 Q5 78 5 72 L5 31 Q5 25 10 22 Z"
           fill={`url(#${id})`}
-          stroke={tier === 0 ? "var(--line-strong)" : "rgb(255 255 255 / 0.35)"}
-          strokeWidth={tier === 0 ? 2 : 1.5}
+          stroke={tier === 0 ? "var(--line-strong)" : "#1d1a16"}
+          strokeWidth={tier === 0 ? 2.5 : 5}
           strokeDasharray={tier === 0 ? "5 4" : undefined}
         />
         {tier >= 4 && (
@@ -126,8 +126,8 @@ export function BadgeTile({ state, onClick, selected }: { state: BadgeState; onC
     <button
       onClick={onClick}
       className={clsx(
-        "flex flex-col items-center rounded-[18px] px-1.5 pb-2.5 pt-3 text-center transition-colors",
-        selected ? "bg-ball-soft ring-2 ring-ball" : "bg-surface ring-1 ring-line ring-inset",
+        "flex flex-col items-center rounded-2xl px-1.5 pb-2.5 pt-3 text-center transition-colors",
+        selected ? "bg-ball-soft ring-2 ring-ball" : "card",
       )}
       aria-label={`${def.name}, ${TIER_STYLE[tier].label}`}
     >

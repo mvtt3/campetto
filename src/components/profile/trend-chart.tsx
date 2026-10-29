@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Segmented } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT, monthsWithMatches } from "@/lib/periods";
@@ -34,7 +34,7 @@ export function TrendChart({ playerId }: { playerId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="shrink-0 text-[13px] font-semibold text-muted">Mese per mese</h2>
+        <h2 className="title shrink-0 text-[16px]">Andamento</h2>
         <Segmented
           size="sm"
           className="min-w-0 max-w-[240px] flex-1"
@@ -50,26 +50,33 @@ export function TrendChart({ playerId }: { playerId: string }) {
       <div className="min-h-0 flex-1" aria-label={`Grafico ${metric} mese per mese`}>
         {has ? (
           <ResponsiveContainer width="100%" height="100%" minHeight={90}>
-            <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+            <AreaChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+              <defs>
+                <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--court)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="var(--court)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "var(--muted)", fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "var(--faint)", fontSize: 11 }} width={44} domain={["auto", "auto"]} />
               <Tooltip
-                contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, fontSize: 13 }}
+                contentStyle={{ background: "var(--surface)", border: "none", borderRadius: 14, fontSize: 13, boxShadow: "var(--shadow)" }}
                 labelStyle={{ color: "var(--muted)" }}
                 itemStyle={{ color: "var(--text)" }}
                 formatter={(v) => [v, metric === "eff" ? "Valutazione" : metric === "pts" ? "Punti" : "ELO"]}
               />
-              <Line
+              <Area
                 type="monotone"
                 dataKey={metric}
-                stroke="var(--ball)"
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: "var(--ball)", strokeWidth: 0 }}
-                activeDot={{ r: 5 }}
+                stroke="var(--court)"
+                strokeWidth={3}
+                fill="url(#trend-fill)"
+                dot={{ r: 3.5, fill: "var(--surface)", stroke: "var(--court)", strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: "var(--ball)", strokeWidth: 0 }}
                 connectNulls
-                isAnimationActive={false}
+                animationDuration={900}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         ) : (
           <p className="grid h-full place-items-center text-center text-[13px] text-muted">

@@ -49,6 +49,14 @@ const SINGLE_GAME: { key: BoxKey | "reb"; label: string; unit: string }[] = [
   { key: "blk", label: "Più stoppate in una partita", unit: "stoppate" },
 ];
 
+const SINGULAR_UNIT: Record<string, string> = {
+  punti: "punto",
+  rimbalzi: "rimbalzo",
+  triple: "tripla",
+  rubate: "rubata",
+  stoppate: "stoppata",
+};
+
 export function groupRecords(matches: Match[]): GroupRecord[] {
   const out: GroupRecord[] = [];
   const chrono = sortChrono(matches);
@@ -67,7 +75,7 @@ export function groupRecords(matches: Match[]): GroupRecord[] {
             key: def.key,
             label: def.label,
             value: v,
-            display: `${v} ${def.unit}`,
+            display: `${v} ${v === 1 ? (SINGULAR_UNIT[def.unit] ?? def.unit) : def.unit}`,
             playerIds: [p.playerId],
             matchId: m.id,
             date: m.playedAt,

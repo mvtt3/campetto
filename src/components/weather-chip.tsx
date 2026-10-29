@@ -32,7 +32,7 @@ export function WeatherChip({ at, className }: { at: string; className?: string 
       title={`${WEATHER_LABEL[kind]}, pioggia ${w.rainProb}%`}
     >
       <Icon size={15} aria-hidden />
-      <span className="num-wide">{Math.round(w.temp)}°</span>
+      <span className="tnum">{Math.round(w.temp)}°</span>
       {risk ? <span>Rischio pioggia {w.rainProb}%</span> : <span className="sr-only">{WEATHER_LABEL[kind]}</span>}
     </span>
   );

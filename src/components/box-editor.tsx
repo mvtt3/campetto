@@ -34,7 +34,7 @@ export function BoxEditor({ box, onChange }: { box: Box; onChange: (b: Box) => v
       {FIELDS.map((f) => (
         <Stepper key={f.key} compact label={f.label} value={box[f.key]} onChange={(v) => set(f.key, v)} />
       ))}
-      <div className="flex h-11 items-center justify-center gap-2 rounded-[14px] bg-ball-soft text-ball">
+      <div className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-ball-soft text-ball">
         <span className="num text-[24px]" data-testid="box-points">
           {pts}
         </span>

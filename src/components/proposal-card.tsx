@@ -1,9 +1,10 @@
 "use client";
 
 import clsx from "clsx";
-import Link from "next/link";
 import { Shuffle, X } from "lucide-react";
+import { motion } from "motion/react";
 import { useState } from "react";
+import { TeamsSheet } from "./teams-sheet";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
 import { shortName, type Proposal, type ResponseKind } from "@/lib/types";
@@ -78,14 +79,16 @@ export function ProposalCard({ proposal, compact }: { proposal: Proposal; compac
   const creator = byId.get(proposal.createdBy);
   const isToday = new Date(proposal.startsAt).toDateString() === new Date().toDateString();
   const canCancel = me && (me.id === proposal.createdBy || me.isAdmin);
-  const teamsHref = `/nuova?players=${yes.map((p) => p.id).join(",")}${proposal.format ? `&format=${proposal.format}` : ""}`;
+
+  const [teamsOpen, setTeamsOpen] = useState(false);
+  const progress = Math.min(1, yes.length / needed);
 
   return (
-    <div data-testid="proposal-card" className={clsx("flex flex-col", compact ? "gap-3" : "gap-4")}>
+    <div data-testid="proposal-card" className={clsx("flex flex-col", compact ? "gap-3 short:gap-2" : "gap-4")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="title truncate text-[19px]">{proposalWhen(proposal.startsAt)}</p>
-          <p className="mt-0.5 truncate text-[13px] text-muted">
+          <p className={clsx("mt-0.5 truncate text-[13px] text-muted", compact && "short:hidden")}>
             {proposal.format ? `${proposal.format}, ` : ""}proposta da {shortName(creator, data.players)}
             {proposal.note ? `. ${proposal.note}` : ""}
           </p>
@@ -95,50 +98,60 @@ export function ProposalCard({ proposal, compact }: { proposal: Proposal; compac
 
       <div className="flex items-center gap-3">
         {yes.length ? <AvatarStack players={yes} size={compact ? 28 : 32} /> : null}
-        <p className="text-[14px]">
-          <span className={clsx("num-wide font-bold", full && "text-ball")}>{yes.length}</span>
-          <span className="text-muted">
-            {" "}
-            di {needed} {full ? ": si gioca!" : `per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
-          </span>
-          {maybe.length > 0 && <span className="text-muted">, {maybe.length} forse</span>}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13.5px]">
+            <span className="tnum font-bold">{yes.length}</span>
+            <span className="text-muted">
+              {" "}
+              di {needed} {full ? "" : `per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
+            </span>
+            {full && <span className="font-bold text-ok"> si gioca!</span>}
+            {maybe.length > 0 && <span className="text-muted">, {maybe.length} forse</span>}
+          </p>
+          <div className="mt-1.5 h-2.5 overflow-hidden rounded-full border-2 border-edge bg-raised" aria-hidden>
+            <motion.div
+              className={clsx("h-full rounded-full", full ? "bg-ok" : "bg-court")}
+              initial={false}
+              animate={{ width: `${progress * 100}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 26 }}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-2" role="group" aria-label="La tua risposta">
-        {RESPONSES.map((r) => (
-          <button
-            key={r.value}
-            aria-pressed={mine === r.value}
-            onClick={() => void respond(proposal, r.value)}
-            className={clsx(
-              "h-11 flex-1 rounded-[14px] text-[14px] font-semibold transition-colors active:scale-[0.97]",
-              mine === r.value
-                ? r.value === "si"
-                  ? "bg-ball text-ball-ink"
-                  : "bg-text text-bg"
-                : "bg-raised text-text ring-1 ring-line ring-inset",
-            )}
-          >
-            {r.label}
-          </button>
-        ))}
+        {RESPONSES.map((r) => {
+          const on = mine === r.value;
+          return (
+            <button
+              key={r.value}
+              aria-pressed={on}
+              onClick={() => void respond(proposal, r.value)}
+              className={clsx(
+                "sticker-sm press h-11 flex-1 rounded-full text-[14px] font-bold transition-colors",
+                on ? (r.value === "si" ? "bg-volt text-volt-ink" : r.value === "no" ? "bg-text text-bg" : "bg-court text-court-ink") : "bg-surface text-text",
+              )}
+            >
+              {r.label}
+            </button>
+          );
+        })}
       </div>
 
-      {!compact && (isToday || full || canCancel) && (
+      {!compact && ((isToday || full) && yes.length >= 2 || canCancel) && (
         <div className="flex gap-2">
           {(isToday || full) && yes.length >= 2 && (
-            <Link
-              href={teamsHref}
-              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-text text-[14px] font-semibold text-bg"
+            <button
+              onClick={() => setTeamsOpen(true)}
+              className="sticker press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-court text-[14px] font-bold text-court-ink"
             >
               <Shuffle size={17} /> Fai le squadre
-            </Link>
+            </button>
           )}
           {canCancel &&
             (confirmCancel ? (
               <button
-                className="h-11 flex-1 rounded-[14px] bg-raised text-[14px] font-semibold text-danger ring-1 ring-line ring-inset"
+                className="sticker-sm press h-11 flex-1 rounded-full bg-surface text-[14px] font-bold text-danger"
                 onClick={async () => {
                   mutate((d) => ({ ...d, proposals: d.proposals.filter((x) => x.id !== proposal.id) }));
                   try {
@@ -149,12 +162,12 @@ export function ProposalCard({ proposal, compact }: { proposal: Proposal; compac
                   }
                 }}
               >
-                Conferma annullamento
+                Annulla la proposta
               </button>
             ) : (
               <button
                 aria-label="Annulla la proposta"
-                className="grid h-11 w-11 place-items-center rounded-[14px] bg-raised text-muted ring-1 ring-line ring-inset"
+                className="sticker-sm press grid h-11 w-11 place-items-center rounded-full bg-surface text-muted"
                 onClick={() => setConfirmCancel(true)}
               >
                 <X size={18} />
@@ -162,6 +175,7 @@ export function ProposalCard({ proposal, compact }: { proposal: Proposal; compac
             ))}
         </div>
       )}
+      {teamsOpen && <TeamsSheet playerIds={yes.map((p) => p.id)} format={proposal.format} onClose={() => setTeamsOpen(false)} />}
     </div>
   );
 }

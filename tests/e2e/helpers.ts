@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 /** Apre l'app con il backend di prova: "demo" carica una storia di partite, "empty" parte da zero. */
-export async function openApp(page: Page, mode: "demo" | "empty" = "empty", theme: "dark" | "light" = "dark") {
+export async function openApp(page: Page, mode: "demo" | "empty" = "empty", theme: "dark" | "light" = "light", as?: string) {
   await page.addInitScript((t) => {
     try {
       if (!localStorage.getItem("campetto:theme")) localStorage.setItem("campetto:theme", t);
@@ -9,7 +9,8 @@ export async function openApp(page: Page, mode: "demo" | "empty" = "empty", them
       /* ignore */
     }
   }, theme);
-  await page.goto(mode === "demo" ? "/?mock=demo" : "/?mock=reset&signed=1");
+  const who = as ? `&as=${as}` : "";
+  await page.goto(mode === "demo" ? `/?mock=demo${who}` : `/?mock=reset&signed=1${who}`);
   await page.getByRole("navigation", { name: "Navigazione principale" }).waitFor();
 }
 

@@ -155,6 +155,12 @@ export function createMockBackend(): Backend {
   if (mode === "reset" || mode === "demo" || !raw) {
     state = initialState(mode === "demo");
     if (params.get("signed") === "1" || mode === "demo") state.signedIn = true;
+    // ?as=p2 entra come un giocatore normale (non amministratore)
+    const as = params.get("as");
+    if (as && state.players.some((p) => p.id === as)) {
+      state.meId = as;
+      for (const p of state.players) p.userId = p.id === as ? "u1" : p.id === "p1" ? "u-admin" : null;
+    }
   } else {
     state = JSON.parse(raw);
   }

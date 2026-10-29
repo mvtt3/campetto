@@ -175,7 +175,7 @@ export default function VideoPage() {
       <>
         <ScreenHeader title="Segna dal video" back="/partite" subtitle="Il video resta sul telefono, non viene caricato" />
         <main className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-3">
-          <label className="flex h-16 shrink-0 cursor-pointer items-center gap-3 rounded-[18px] bg-surface px-4 ring-1 ring-line ring-inset">
+          <label className="flex h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl bg-surface px-4">
             <FileVideo size={24} className="shrink-0 text-ball" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[15px] font-semibold">{file ? file.name : "Scegli il video della partita"}</span>
@@ -237,7 +237,7 @@ export default function VideoPage() {
             </p>
           )}
           <div className="scroll-area min-h-0 flex-1">
-            <table className="num-wide w-full text-[13.5px]">
+            <table className="tnum w-full text-[13.5px]">
               <thead>
                 <tr className="text-left text-[11.5px] text-muted">
                   <th className="py-1.5 font-semibold">Giocatore</th>
@@ -310,7 +310,7 @@ export default function VideoPage() {
             setEvents((xs) => xs.slice(0, -1));
             setAssistFor(null);
           }}
-          className="grid h-10 w-10 place-items-center rounded-full bg-raised ring-1 ring-line ring-inset disabled:opacity-30"
+          className="grid h-10 w-10 place-items-center rounded-full bg-raised disabled:opacity-30"
         >
           <Undo2 size={18} />
         </button>
@@ -330,7 +330,7 @@ export default function VideoPage() {
             aria-pressed={current === id}
             className={clsx(
               "flex h-11 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-3 text-[13.5px] font-semibold",
-              current === id ? (assign[id] === "A" ? "bg-ball text-ball-ink" : "bg-text text-bg") : "bg-raised ring-1 ring-line ring-inset",
+              current === id ? (assign[id] === "A" ? "bg-ball text-ball-ink" : "bg-text text-bg") : "bg-raised",
             )}
           >
             <Avatar player={data.players.find((p) => p.id === id)} size={32} href={false} ring="none" />
@@ -340,7 +340,7 @@ export default function VideoPage() {
       </div>
 
       {assistFor !== null && mates.length > 0 && (
-        <div className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-[14px] bg-ball-soft px-3 py-2">
+        <div className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-2xl bg-ball-soft px-3 py-2">
           <span className="text-[13px] font-semibold text-ball">Assist di</span>
           <div className="scroll-x flex flex-1 gap-1.5">
             {mates.map((id) => (
@@ -361,8 +361,8 @@ export default function VideoPage() {
             key={x.kind}
             onClick={() => add(x.kind)}
             className={clsx(
-              "rounded-[14px] px-1 text-center font-semibold leading-tight active:scale-95",
-              x.strong ? "num col-span-2 bg-ball text-[30px] text-ball-ink" : "bg-raised text-[12.5px] ring-1 ring-line ring-inset",
+              "rounded-2xl px-1 text-center font-semibold leading-tight active:scale-95",
+              x.strong ? "num col-span-2 bg-ball text-[30px] text-ball-ink" : "bg-raised text-[12.5px]",
             )}
           >
             {x.label}
@@ -375,7 +375,7 @@ export default function VideoPage() {
             videoRef.current?.pause();
             setStage("review");
           }}
-          className="rounded-[14px] bg-text text-[13px] font-semibold text-bg"
+          className="rounded-2xl bg-text text-[13px] font-semibold text-bg"
         >
           Fine
         </button>

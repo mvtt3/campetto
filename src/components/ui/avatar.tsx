@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useData } from "@/lib/data/provider";
 import { initials, type Player } from "@/lib/types";
 
-const PALETTE = ["#3b6e8f", "#7a5c99", "#2f7d6b", "#9a6b2f", "#8f3b4e", "#4f6b2f", "#355c9a", "#6b4f3b"];
+const PALETTE = ["#2D5BE3", "#F26A1B", "#2E9E5B", "#7C4DCC", "#E5412D", "#1597A6", "#D99A00", "#C93B78"];
 
 export function playerColor(p: Pick<Player, "id" | "cardColor">): string {
   if (p.cardColor) return p.cardColor;
@@ -39,17 +39,17 @@ export function Avatar({
       title={isMvp ? `${player.firstName} è l'MVP in carica` : undefined}
     >
       <span
-        className="grid h-full w-full place-items-center overflow-hidden rounded-full text-white"
+        className="grid h-full w-full place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16] text-[#fffaf0]"
         style={{
           background: playerColor(player),
-          boxShadow: isMvp ? "0 0 0 2px var(--surface)" : undefined,
+          boxShadow: isMvp ? "0 0 0 2.5px var(--surface)" : undefined,
         }}
       >
         {player.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={player.avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <span className="font-bold" style={{ fontSize: Math.max(10, size * 0.36), fontStretch: "85%" }}>
+          <span className="num" style={{ fontSize: Math.max(10, size * 0.34) }}>
             {initials(player)}
           </span>
         )}
@@ -77,7 +77,7 @@ export function AvatarStack({ players, size = 28, max = 5 }: { players: Player[]
       ))}
       {extra > 0 && (
         <span
-          className="num-wide grid place-items-center rounded-full bg-raised text-[11px] font-bold text-muted ring-2 ring-surface"
+          className="tnum grid place-items-center rounded-full bg-raised text-[11px] font-bold text-muted ring-2 ring-surface"
           style={{ width: size, height: size, marginLeft: -size * 0.28 }}
         >
           +{extra}

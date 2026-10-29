@@ -14,3 +14,7 @@
 12. **Email dell'admin fuori dal repository** (che è pubblico): il collegamento automatico di Matteo Pepe è stato impostato direttamente nel database.
 13. **Backend di prova** (`?mock=demo`) attivo solo su localhost, usato dai test automatici.
 14. **Tablet**: l'app resta una colonna da telefono centrata, per avere la stessa esperienza ovunque.
+15. **Partite solo all'amministratore** (29/10): i giocatori guardano e basta. Il database rifiuta inserimenti, modifiche ed eliminazioni da chi non è amministratore; la conferma del risultato da parte degli avversari è stata tolta perché non serve più.
+16. **Semplificazione** (29/10): 4 schede (Home, Classifica, Partite, Profilo); classifica con un solo selettore di statistica e il formato in un menu; record e albo d'oro in una pagina a parte; impostazioni ridotte a foto, soprannome, numero, tema e notifiche. Le squadre equilibrate si vedono da "Fai le squadre" nella partita proposta.
+17. **Nuovo stile** (29/10): poster retrò anni '30 su richiesta di Matteo. La mascotte Spicchio è un disegno originale in quello stile, non una copia dei riferimenti (che erano opere di altri autori, con marchi).
+18. **Tema chiaro di base** (29/10): il tema scuro resta come opzione.

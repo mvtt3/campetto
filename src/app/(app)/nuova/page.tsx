@@ -55,7 +55,7 @@ function ScoreSide({
             haptic(5);
             onChange(Math.max(0, value - 1));
           }}
-          className="h-12 flex-1 rounded-[14px] bg-raised text-[22px] ring-1 ring-line ring-inset"
+          className="h-12 flex-1 rounded-2xl bg-raised text-[22px]"
         >
           −
         </button>
@@ -65,14 +65,14 @@ function ScoreSide({
             haptic(5);
             onChange(Math.min(200, value + 1));
           }}
-          className="h-12 flex-1 rounded-[14px] bg-raised text-[22px] ring-1 ring-line ring-inset"
+          className="h-12 flex-1 rounded-2xl bg-raised text-[22px]"
         >
           +
         </button>
       </div>
       <button
         onClick={() => onChange(target)}
-        className="h-10 w-full rounded-[14px] text-[14px] font-semibold text-ball ring-1 ring-ball/40 ring-inset"
+        className="h-10 w-full rounded-2xl text-[14px] font-semibold text-ball ring-1 ring-ball/40 ring-inset"
       >
         {target}
       </button>
@@ -249,8 +249,8 @@ function NewMatchInner() {
                     }}
                     aria-pressed={format === f}
                     className={clsx(
-                      "num h-20 rounded-[18px] text-[28px]",
-                      format === f ? "bg-ball text-ball-ink" : "bg-raised ring-1 ring-line ring-inset",
+                      "num h-20 rounded-2xl text-[28px]",
+                      format === f ? "bg-ball text-ball-ink" : "bg-raised",
                     )}
                   >
                     {f}
@@ -265,7 +265,7 @@ function NewMatchInner() {
                 value={playedAt}
                 max={maxDate}
                 onChange={(e) => setPlayedAt(e.target.value)}
-                className="h-12 w-full rounded-[14px] bg-raised px-4 text-[15px] ring-1 ring-line ring-inset outline-none"
+                className="h-12 w-full rounded-2xl bg-raised px-4 text-[15px] outline-none"
               />
             </section>
             <section>
@@ -314,12 +314,12 @@ function NewMatchInner() {
                   aria-pressed={id === cur}
                   className={clsx(
                     "flex h-11 shrink-0 items-center gap-2 rounded-full pl-1 pr-3 text-[13.5px] font-semibold",
-                    id === cur ? (assign[id] === "A" ? "bg-ball text-ball-ink" : "bg-text text-bg") : "bg-raised ring-1 ring-line ring-inset",
+                    id === cur ? (assign[id] === "A" ? "bg-ball text-ball-ink" : "bg-text text-bg") : "bg-raised",
                   )}
                 >
                   <Avatar player={data.players.find((p) => p.id === id)} size={32} href={false} ring="none" />
                   {name(id)}
-                  <span className="num-wide text-[12px] opacity-70">{(boxes[id]?.fg2m ?? 0) * 2 + (boxes[id]?.fg3m ?? 0) * 3}</span>
+                  <span className="tnum text-[12px] opacity-70">{(boxes[id]?.fg2m ?? 0) * 2 + (boxes[id]?.fg3m ?? 0) * 3}</span>
                 </button>
               ))}
             </div>

@@ -86,10 +86,10 @@ export function TeamPicker({
               data-testid={`pick-${p.id}`}
               aria-label={`${shortName(p, data.players)}${t ? `, squadra ${t}` : ""}`}
               className={clsx(
-                "flex h-14 items-center gap-2.5 rounded-[16px] px-2.5 text-left transition-colors",
+                "flex h-14 items-center gap-2.5 rounded-2xl px-2.5 text-left transition-colors",
                 t === "A" && "bg-ball text-ball-ink",
                 t === "B" && "bg-text text-bg",
-                !t && "bg-raised ring-1 ring-line ring-inset",
+                !t && "bg-raised",
               )}
             >
               <Avatar player={p} size={34} href={false} ring="none" />
@@ -117,14 +117,14 @@ export function TeamPicker({
           <button
             disabled={selected.length !== size * 2}
             onClick={() => balance(0)}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-raised text-[14px] font-semibold ring-1 ring-line ring-inset disabled:opacity-40"
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-raised text-[14px] font-semibold disabled:opacity-40"
           >
             <Scale size={17} /> Equilibra
           </button>
           <button
             disabled={selected.length !== size * 2}
             onClick={() => balance(1)}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-raised text-[14px] font-semibold ring-1 ring-line ring-inset disabled:opacity-40"
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-raised text-[14px] font-semibold disabled:opacity-40"
           >
             <Shuffle size={17} /> Rimescola
           </button>

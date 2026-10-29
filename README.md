@@ -2,9 +2,19 @@
 
 L'app del nostro campetto di basket a Nichelino: partite, statistiche in stile NBA, classifiche, MVP, badge, record, stagioni e organizzazione delle partite con notifiche e meteo. Gratuita in tutto: Next.js su Vercel (piano Hobby), Supabase (piano Free), login con Google, meteo da Open-Meteo.
 
+## Chi fa cosa
+
+- **Giocatori**: guardano partite, statistiche, classifiche, badge e profili, e rispondono alle partite proposte ("Ci sono / Forse / No"). Non possono inserire, modificare o eliminare partite: lo blocca il database stesso.
+- **Amministratore (Matteo)**: inserisce le partite dall'app (Partite, poi Aggiungi; oppure Profilo, ingranaggio, Gestione del gruppo: aggiungi, importa, segna dal video) e gestisce giocatori e inviti.
+- **Claude**: può inserire le partite con `scripts/inserisci-partita.mjs` (vedi sotto) o con l'importazione nell'app.
+
+## Stile
+
+Poster da campetto in stile cartone animato anni '30: carta color crema con la grana, contorni d'inchiostro, ombre piene da adesivo, titoli e numeri in Ultra, testo in Archivo. La mascotte è **Spicchio** (`src/components/mascot.tsx`), una palla a spicchi con guanti bianchi e scarpe alte rosse, in tre pose (ciao, esulta, boh); il logo è Spicchio nel badge giallo e blu. Tema chiaro di base, scuro opzionale.
+
 ## Cosa fa
 
-- **Partite**: 1v1, 2v2, 3v3, 4v4 fino a 21 (modificabile). Si segna il risultato in pochi secondi; il tabellino è facoltativo e si può aggiungere a mano, **dal video** (si guarda il filmato sul telefono e si toccano le azioni) oppure **importandolo** da un CSV/JSON.
+- **Partite**: 1v1, 2v2, 3v3, 4v4 fino a 21 (modificabile). L'amministratore segna il risultato in pochi secondi; il tabellino è facoltativo e si può aggiungere a mano, **dal video** (si guarda il filmato sul telefono e si toccano le azioni) oppure **importandolo** da un CSV/JSON.
 - **Statistiche** per giocatore, per mese, stagione o sempre, e per formato: vittorie, punti, rimbalzi, assist, rubate, stoppate, perse, percentuali al tiro, eFG%, TS%, valutazione NBA, plus/minus, ELO, chimica con i compagni e testa a testa.
 - **MVP del mese** (40% vittorie, 40% valutazione, 20% crescita ELO, minimo 3 partite) con la **cornice d'oro** per l'MVP in carica; migliori per categoria, record del gruppo, stagioni trimestrali con trofeo permanente, albo d'oro.
 - **Badge** a 5 livelli (Bronzo, Argento, Oro, Hall of Fame, Leggenda), vetrina di 3 badge nel profilo e animazione allo sblocco.
@@ -37,6 +47,16 @@ Le migrazioni sono in `supabase/migrations/`. Ogni tabella ha RLS: solo i giocat
 ## Aggiungere un giocatore
 
 Profilo → Impostazioni → Amministrazione → **+**. Poi apri il giocatore e mandagli il suo **link d'invito** (Copia o Condividi). Chi lo apre entra con Google e trova già il suo profilo con tutte le partite giocate. In alternativa scrivi la sua email Google: al primo accesso viene collegato da solo. Chi entra senza invito finisce in "In attesa" e lo colleghi da lì.
+
+## Inserire partite da riga di comando (per Claude)
+
+Dal PC, nella cartella del progetto (serve la password del database):
+
+```bash
+PGPW='password' node scripts/inserisci-partita.mjs partite.json
+```
+
+Il formato del file è descritto in cima allo script. Usa la stessa funzione `save_match` dell'app, con gli stessi controlli, come se la inserisse l'amministratore.
 
 ## Importare statistiche
 

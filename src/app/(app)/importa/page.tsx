@@ -95,7 +95,7 @@ export default function ImportPage() {
               aria-label="Dati da importare"
               placeholder="Incolla qui"
               rows={9}
-              className="num-wide w-full resize-none rounded-[16px] bg-surface p-3.5 font-mono text-[13px] ring-1 ring-line ring-inset outline-none placeholder:text-faint"
+              className="tnum w-full resize-none rounded-2xl bg-surface p-3.5 font-mono text-[13px] outline-none placeholder:text-faint"
             />
             <div className="flex gap-2">
               <Button className="flex-1" onClick={() => setText(EXAMPLE)}>
@@ -109,7 +109,7 @@ export default function ImportPage() {
         ) : (
           <div className="flex flex-col gap-4">
             {errors.length > 0 && (
-              <ul className="rounded-[16px] bg-ball-soft px-4 py-3 text-[13.5px] text-ball">
+              <ul className="rounded-2xl bg-ball-soft px-4 py-3 text-[13.5px] text-ball">
                 {errors.map((e) => (
                   <li key={e}>{e}</li>
                 ))}
@@ -117,7 +117,7 @@ export default function ImportPage() {
             )}
             <div className="flex flex-col gap-2">
               {ready.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-[16px] bg-surface px-3 py-2.5 ring-1 ring-line ring-inset">
+                <div key={i} className="flex items-center gap-2 rounded-2xl card px-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <select
                       value={r.playerId ?? ""}
@@ -132,7 +132,7 @@ export default function ImportPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="num-wide mt-1 truncate text-[12px] text-muted">
+                    <p className="tnum mt-1 truncate text-[12px] text-muted">
                       {normalizeBox(r.box).pts} pt, {r.box.oreb + r.box.dreb} rimb, {r.box.ast} ass, {r.box.stl} rub, {r.box.blk} stop
                     </p>
                   </div>
@@ -166,7 +166,7 @@ export default function ImportPage() {
               aria-label="Data della partita"
               value={playedAt}
               onChange={(e) => setPlayedAt(e.target.value)}
-              className="h-12 w-full rounded-[14px] bg-raised px-4 text-[15px] ring-1 ring-line ring-inset outline-none"
+              className="h-12 w-full rounded-2xl bg-raised px-4 text-[15px] outline-none"
             />
             <p className="text-[13px] text-muted">
               {format ? `Formato ${format}.` : "Le due squadre devono avere lo stesso numero di giocatori (da 1 a 4)."}

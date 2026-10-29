@@ -85,8 +85,8 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
                   }}
                   aria-pressed={active}
                   className={clsx(
-                    "flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-[16px]",
-                    active ? "bg-ball text-ball-ink" : "bg-raised ring-1 ring-line ring-inset",
+                    "flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-2xl",
+                    active ? "bg-ball text-ball-ink" : "bg-raised",
                   )}
                 >
                   <span className="text-[11.5px] font-semibold opacity-80">{d.toLocaleDateString("it-IT", { weekday: "short" })}</span>
@@ -104,7 +104,7 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
                 key={t}
                 onClick={() => setTime(t)}
                 aria-pressed={time === t}
-                className={clsx("num-wide h-10 rounded-full px-4 text-[14px] font-semibold", time === t ? "bg-text text-bg" : "bg-raised ring-1 ring-line ring-inset")}
+                className={clsx("tnum h-10 rounded-full px-4 text-[14px] font-semibold", time === t ? "bg-text text-bg" : "bg-raised")}
               >
                 {t}
               </button>
@@ -114,7 +114,7 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
               aria-label="Altro orario"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="h-10 rounded-full bg-raised px-3 text-[14px] ring-1 ring-line ring-inset outline-none"
+              className="h-10 rounded-full bg-raised px-3 text-[14px] outline-none"
             />
           </div>
         </section>
@@ -136,7 +136,7 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
             maxLength={140}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Facoltativa, es. porto io il pallone"
-            className="h-12 w-full rounded-[14px] bg-raised px-4 text-[15px] ring-1 ring-line ring-inset outline-none placeholder:text-faint"
+            className="h-12 w-full rounded-2xl bg-raised px-4 text-[15px] outline-none placeholder:text-faint"
           />
         </section>
       </div>
@@ -188,7 +188,7 @@ function OrganizeInner() {
         action={
           <button
             onClick={() => router.push("/organizza?nuova=1")}
-            className="flex h-10 items-center gap-1.5 rounded-[14px] bg-ball px-3.5 text-[14px] font-semibold text-ball-ink"
+            className="flex h-10 items-center gap-1.5 rounded-2xl bg-ball px-3.5 text-[14px] font-semibold text-ball-ink"
           >
             <Plus size={17} strokeWidth={2.6} /> Proponi
           </button>
@@ -233,8 +233,8 @@ function OrganizeInner() {
                 aria-pressed={Boolean(isSel)}
                 aria-label={`${d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric" })}${count ? `, ${count} partite` : ""}`}
                 className={clsx(
-                  "flex h-[62px] flex-col items-center justify-center rounded-[14px]",
-                  isSel ? "bg-text text-bg" : sameDay(d, today) ? "bg-ball-soft ring-1 ring-ball/40 ring-inset" : "bg-surface ring-1 ring-line ring-inset",
+                  "flex h-[62px] flex-col items-center justify-center rounded-2xl",
+                  isSel ? "bg-text text-bg" : sameDay(d, today) ? "bg-ball-soft ring-1 ring-ball/40 ring-inset" : "card",
                   past && !isSel && "opacity-45",
                 )}
               >

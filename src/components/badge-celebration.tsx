@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { BADGE_BY_KEY, type BadgeUnlock } from "@/lib/badges";
 import { useData } from "@/lib/data/provider";
 import { BadgeMedal, TIER_STYLE } from "./badge-medal";
-import { Button } from "./ui/basics";
+import { motion } from "motion/react";
+import { Mascot } from "./mascot";
+import { Button, CourtLines } from "./ui/basics";
 
 const key = (u: BadgeUnlock) => `${u.key}:${u.tier}`;
 
@@ -59,23 +61,31 @@ export function BadgeCelebration() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="badge-title"
-      className="fixed inset-0 z-[70] grid place-items-center bg-black/70 px-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] grid place-items-center bg-[#0b1230]/70 px-8 backdrop-blur-sm"
       onClick={() => setQueue((q) => q.slice(1))}
     >
-      <div className="flex w-full max-w-xs flex-col items-center rounded-[28px] bg-surface px-6 pb-6 pt-8 text-center ring-1 ring-line">
-        <BadgeMedal icon={def.icon} tier={current.tier} size={112} animate key={key(current)} />
-        <p className="mt-5 text-[13px] text-muted">Badge sbloccato</p>
-        <h2 id="badge-title" className="title mt-1 text-[26px]">
+      <motion.div
+        key={key(current)}
+        initial={{ opacity: 0, scale: 0.85, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        className="court relative flex w-full max-w-xs flex-col items-center overflow-hidden rounded-[32px] px-6 pb-6 pt-7 text-center"
+      >
+        <CourtLines className="absolute inset-0 h-full w-full" />
+        <div className="relative flex items-end gap-1">
+          <Mascot pose="esulta" size={86} />
+          <BadgeMedal icon={def.icon} tier={current.tier} size={92} animate />
+        </div>
+        <p className="relative mt-4 text-[14px] font-semibold text-volt">Badge sbloccato</p>
+        <h2 id="badge-title" className="display relative mt-1 text-[28px]">
           {def.name}
         </h2>
-        <p className="mt-1 font-semibold" style={{ color: current.tier >= 3 ? "var(--gold)" : "var(--text)" }}>
-          {TIER_STYLE[current.tier].label}
-        </p>
-        <p className="mt-2 text-[14px] text-muted">{def.description}</p>
-        <Button variant="primary" block className="mt-6" onClick={() => setQueue((q) => q.slice(1))}>
-          {queue.length > 1 ? "Avanti" : "Grande"}
+        <p className="relative mt-1 font-bold">{TIER_STYLE[current.tier].label}</p>
+        <p className="relative mt-2 text-[14px] text-white/85">{def.description}</p>
+        <Button block variant="light" className="relative mt-6 text-court" onClick={() => setQueue((q) => q.slice(1))}>
+          {queue.length > 1 ? "Avanti" : "Grande!"}
         </Button>
-      </div>
+      </motion.div>
     </div>
   );
 }

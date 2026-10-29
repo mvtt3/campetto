@@ -2,7 +2,8 @@
 
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
-import { Copy, Link2, Plus, Share2, UserCheck, UserX } from "lucide-react";
+import Link from "next/link";
+import { ClipboardPaste, Copy, Link2, Plus, Share2, UserCheck, UserX, Video } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, EmptyState, ScreenHeader, Segmented, Toggle } from "@/components/ui/basics";
@@ -73,14 +74,14 @@ function PlayerSheet({
             placeholder="Nome"
             value={first}
             onChange={(e) => setFirst(e.target.value)}
-            className="h-12 rounded-[14px] bg-raised px-4 ring-1 ring-line ring-inset outline-none"
+            className="h-12 rounded-2xl bg-raised px-4 outline-none"
           />
           <input
             aria-label="Cognome"
             placeholder="Cognome (facoltativo)"
             value={last}
             onChange={(e) => setLast(e.target.value)}
-            className="h-12 rounded-[14px] bg-raised px-4 ring-1 ring-line ring-inset outline-none"
+            className="h-12 rounded-2xl bg-raised px-4 outline-none"
           />
         </div>
         <div>
@@ -91,7 +92,7 @@ function PlayerSheet({
                 key={r}
                 aria-pressed={roles.includes(r)}
                 onClick={() => setRoles((xs) => (xs.includes(r) ? xs.filter((x) => x !== r) : [...xs, r]))}
-                className={clsx("h-9 rounded-full px-3.5 text-[14px] font-semibold", roles.includes(r) ? "bg-text text-bg" : "bg-raised ring-1 ring-line ring-inset")}
+                className={clsx("h-9 rounded-full px-3.5 text-[14px] font-semibold", roles.includes(r) ? "bg-court text-court-ink" : "bg-raised")}
               >
                 {r}
               </button>
@@ -109,11 +110,11 @@ function PlayerSheet({
             placeholder="facoltativa"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-12 w-full rounded-[14px] bg-raised px-4 ring-1 ring-line ring-inset outline-none placeholder:text-faint"
+            className="h-12 w-full rounded-2xl bg-raised px-4 outline-none placeholder:text-faint"
           />
         </div>
         {priv && !p?.userId && (
-          <div className="rounded-[16px] bg-raised p-3.5 ring-1 ring-line ring-inset">
+          <div className="rounded-2xl bg-raised p-3.5">
             <p className="text-[13px] font-semibold text-muted">Link d&apos;invito personale</p>
             <p className="mt-1 break-all font-mono text-[12px]">{link}</p>
             <div className="mt-3 flex gap-2">
@@ -151,7 +152,7 @@ function PlayerSheet({
           </div>
         )}
         {p && (
-          <div className="flex items-center justify-between rounded-[16px] bg-raised px-3.5 py-3 ring-1 ring-line ring-inset">
+          <div className="flex items-center justify-between rounded-2xl bg-raised px-3.5 py-3">
             <div>
               <p className="text-[15px] font-semibold">Archiviato</p>
               <p className="text-[12.5px] text-muted">Non compare più nelle squadre; le sue partite restano</p>
@@ -214,17 +215,29 @@ export default function AdminPage() {
   return (
     <>
       <ScreenHeader
-        title="Amministrazione"
+        title="Gestione"
         back="/profilo/impostazioni"
         action={
           tab === "giocatori" ? (
-            <button onClick={() => setOpen("new")} aria-label="Aggiungi giocatore" className="grid h-11 w-11 place-items-center rounded-full bg-ball text-ball-ink">
-              <Plus size={22} strokeWidth={2.6} />
+            <button onClick={() => setOpen("new")} aria-label="Aggiungi giocatore" className="press flex h-11 items-center gap-1.5 rounded-full bg-surface px-4 text-[14px] font-semibold sticker-sm">
+              <Plus size={18} strokeWidth={2.6} /> Giocatore
             </button>
           ) : undefined
         }
       />
-      <div className="shrink-0 px-4 pb-3">
+      <div className="grid shrink-0 grid-cols-3 gap-2 px-5 pb-3">
+        {[
+          { href: "/nuova", label: "Aggiungi partita", icon: Plus, cls: "bg-ball text-ball-ink" },
+          { href: "/importa", label: "Importa statistiche", icon: ClipboardPaste, cls: "bg-court text-court-ink" },
+          { href: "/video", label: "Segna dal video", icon: Video, cls: "bg-text text-bg" },
+        ].map(({ href, label, icon: Icon, cls }) => (
+          <Link key={href} href={href} className={clsx("press flex h-[84px] flex-col justify-between rounded-3xl p-3 text-[13px] font-semibold leading-tight", cls)}>
+            <Icon size={20} />
+            {label}
+          </Link>
+        ))}
+      </div>
+      <div className="shrink-0 px-5 pb-3">
         <Segmented
           value={tab}
           onChange={setTab}
@@ -234,14 +247,14 @@ export default function AdminPage() {
           ]}
         />
       </div>
-      <main className="scroll-area min-h-0 flex-1 px-4 pb-4">
+      <main className="scroll-area min-h-0 flex-1 px-5 pb-4">
         {tab === "giocatori" ? (
           <div className="flex flex-col gap-2">
             {data.players.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setOpen(p)}
-                className={clsx("flex items-center gap-3 rounded-[18px] bg-surface px-3 py-2.5 text-left ring-1 ring-line ring-inset", p.archived && "opacity-50")}
+                className={clsx("card press flex items-center gap-3 px-3 py-2.5 text-left", p.archived && "opacity-50")}
               >
                 <Avatar player={p} size={40} href={false} />
                 <div className="min-w-0 flex-1">
@@ -261,7 +274,7 @@ export default function AdminPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {pending.map((u) => (
-              <div key={u.userId} className="rounded-[18px] bg-surface px-3.5 py-3 ring-1 ring-line ring-inset">
+              <div key={u.userId} className="card px-4 py-3">
                 <p className="truncate text-[15px] font-semibold">{u.fullName ?? u.email}</p>
                 <p className="truncate text-[12.5px] text-muted">{u.email}</p>
                 <div className="mt-3 flex gap-2">
@@ -310,7 +323,7 @@ export default function AdminPage() {
                   toast((e as Error).message, "error");
                 }
               }}
-              className="flex items-center gap-3 rounded-[16px] bg-raised px-3 py-2.5 text-left ring-1 ring-line ring-inset"
+              className="flex items-center gap-3 rounded-2xl bg-raised px-3 py-2.5 text-left"
             >
               <Avatar player={p} size={36} href={false} />
               <span className="text-[15px] font-semibold">{playerName(p)}</span>

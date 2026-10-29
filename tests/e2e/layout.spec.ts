@@ -3,7 +3,7 @@ import { VIEWPORTS } from "../../playwright.config";
 import { openApp, pageScrolls, staticContentOverflows } from "./helpers";
 
 // Schermate che devono stare tutte in uno schermo, senza scorrere.
-const STATIC = ["/", "/profilo", "/nuova", "/giocatore/p2", "/classifiche", "/partite", "/organizza", "/video"];
+const STATIC = ["/", "/profilo", "/nuova", "/giocatore/p3", "/classifiche", "/partite", "/organizza", "/video", "/admin", "/classifiche/albo"];
 
 for (const vp of VIEWPORTS) {
   for (const theme of ["dark", "light"] as const) {

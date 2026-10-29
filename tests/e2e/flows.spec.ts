@@ -10,10 +10,39 @@ test("dal login con Google si entra nell'app", async ({ page }) => {
 
 test("app vuota: stati vuoti curati", async ({ page }) => {
   await openApp(page);
-  await expect(page.getByText("Nessuna partita in programma.")).toBeVisible();
+  await expect(page.getByText("Nessuno ha ancora proposto un giorno.")).toBeVisible();
   await expect(page.getByText("Ancora nessuno")).toBeVisible();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
   await expect(page.getByText("Ancora nessuna partita")).toBeVisible();
+});
+
+test("un giocatore normale guarda soltanto: niente inserimento partite", async ({ page }) => {
+  await openApp(page, "demo", "light", "p2");
+  await expect(page.getByRole("heading", { name: "Ciao Valerio" })).toBeVisible();
+  await page.getByRole("link", { name: "Partite", exact: true }).click();
+  await expect(page.getByTestId("match-row").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Aggiungi partita" })).toHaveCount(0);
+  await page.getByTestId("match-row").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Modifica" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Elimina partita" })).toHaveCount(0);
+  for (const path of ["/nuova", "/importa", "/video", "/admin"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/$/);
+  }
+  await page.goto("/profilo/impostazioni");
+  await expect(page.getByText("Gestione del gruppo")).toHaveCount(0);
+});
+
+test("l'amministratore vede gli strumenti per inserire le partite", async ({ page }) => {
+  await openApp(page);
+  await page.goto("/partite");
+  await page.getByRole("link", { name: "Aggiungi partita" }).first().click();
+  await expect(page).toHaveURL(/\/nuova/);
+  await page.goto("/profilo/impostazioni");
+  await page.getByText("Gestione del gruppo").click();
+  await expect(page.getByRole("link", { name: /Importa statistiche/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Segna dal video/ })).toBeVisible();
 });
 
 async function pickTeams(page: import("@playwright/test").Page, ids: string[]) {
@@ -22,7 +51,7 @@ async function pickTeams(page: import("@playwright/test").Page, ids: string[]) {
 
 test("nuova partita solo risultato", async ({ page }) => {
   await openApp(page);
-  await page.getByRole("link", { name: "Nuova partita" }).click();
+  await page.goto("/nuova");
   await page.getByRole("button", { name: "2v2" }).click();
   await page.getByRole("button", { name: "Avanti" }).click();
   await pickTeams(page, ["p1", "p2", "p3", "p4"]);
@@ -35,6 +64,7 @@ test("nuova partita solo risultato", async ({ page }) => {
   await expect(page).toHaveURL(/\/partite\?m=/);
   await expect(page.getByRole("dialog")).toContainText("21–17");
   await expect(page.getByRole("dialog")).toContainText("Matteo P. e Valerio");
+  await expect(page.getByRole("dialog").getByText("Vince")).toBeVisible();
 });
 
 test("pareggio non ammesso e squadre incomplete bloccate", async ({ page }) => {
@@ -121,18 +151,20 @@ test("segna dal video", async ({ page }) => {
   await expect(page.getByText("Risultato finale")).toBeVisible();
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page.getByRole("dialog")).toContainText("5–2");
-  await expect(page.getByRole("dialog")).toContainText("azioni segnate dal video");
+  await expect(page.getByRole("dialog")).toContainText("Dal video");
 });
 
 test("MVP con cornice d'oro e profilo di un altro giocatore", async ({ page }) => {
   await openApp(page, "demo");
   await expect(page.locator('[title$="è l\'MVP in carica"]').first()).toBeVisible();
-  await page.getByRole("link", { name: "Classifiche" }).click();
-  await page.getByRole("tab", { name: "Numeri" }).click();
+  await page.getByRole("link", { name: "Classifica" }).click();
+  await expect(page.getByLabel("Podio")).toBeVisible();
   await page.getByRole("button", { name: "Assist" }).click();
-  await expect(page.getByText("Assist a partita")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Assist" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("link", { name: "Albo" }).click();
+  await expect(page.getByText("Più punti in una partita")).toBeVisible();
   await page.goto("/giocatore/p3");
-  await expect(page.getByText("Il vostro testa a testa")).toBeVisible();
+  await expect(page.getByText("Testa a testa")).toBeVisible();
   await expect(page.getByRole("link", { name: "Vedi tutti i badge" })).toBeVisible();
 });
 
@@ -142,7 +174,7 @@ test("animazione del badge sbloccato", async ({ page }) => {
   await page.reload();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("Badge sbloccato");
-  await dialog.getByRole("button").first().click();
+  await dialog.getByRole("button").last().click();
 });
 
 test("vetrina dei badge", async ({ page }) => {
@@ -167,4 +199,23 @@ test("amministrazione: link d'invito", async ({ page }) => {
   await page.goto("/admin");
   await page.getByRole("button", { name: /Valerio Semeraro/ }).click();
   await expect(page.getByText("/invito/tok-p2")).toBeVisible();
+});
+
+test("squadre equilibrate per chi viene oggi", async ({ page }) => {
+  await openApp(page, "demo");
+  const at = new Date();
+  at.setHours(at.getHours() + 2, 0, 0, 0);
+  await page.evaluate((iso) => {
+    const st = JSON.parse(localStorage.getItem("campetto:mock:v1")!);
+    st.proposals[0].startsAt = iso;
+    st.proposals[0].responses.push({ playerId: "p1", response: "si", updatedAt: iso });
+    localStorage.setItem("campetto:mock:v1", JSON.stringify(st));
+  }, at.toISOString());
+  await page.goto("/organizza");
+  await page.getByRole("button", { name: "Fai le squadre" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Squadra A");
+  await expect(dialog).toContainText("Chi vince?");
+  await dialog.getByRole("button", { name: "Rimescola" }).click();
+  await expect(dialog.getByRole("link", { name: "Segna il risultato" })).toBeVisible();
 });

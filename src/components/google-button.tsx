@@ -10,8 +10,9 @@ export function GoogleButton({ onClick, label = "Entra con Google" }: { onClick:
     <div className="w-full">
       <Button
         size="lg"
+        variant="light"
         block
-        className="bg-white text-[#1f1f1f] ring-1 ring-black/10"
+        className="text-[#1d1a16]"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -37,7 +38,7 @@ export function GoogleButton({ onClick, label = "Entra con Google" }: { onClick:
         {label}
       </Button>
       {error && (
-        <p role="alert" className="mt-3 text-center text-[13px] text-danger">
+        <p role="alert" className="mt-3 rounded-2xl border-2 border-[#1d1a16] bg-[#fffaf0] px-4 py-2 text-center text-[13px] text-[#e5412d]">
           {error}
         </p>
       )}

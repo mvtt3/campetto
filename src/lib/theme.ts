@@ -5,17 +5,17 @@ const KEY = "campetto:theme";
 
 export function getThemePref(): ThemePref {
   try {
-    return (localStorage.getItem(KEY) as ThemePref) || "system";
+    return (localStorage.getItem(KEY) as ThemePref) || "light";
   } catch {
-    return "system";
+    return "light";
   }
 }
 
 export function applyTheme(pref: ThemePref) {
-  const dark = pref === "dark" || (pref === "system" && !window.matchMedia("(prefers-color-scheme: light)").matches);
+  const dark = pref === "dark" || (pref === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   const meta = document.querySelectorAll('meta[name="theme-color"]');
-  meta.forEach((m) => m.setAttribute("content", dark ? "#12161b" : "#f2f3f1"));
+  meta.forEach((m) => m.setAttribute("content", dark ? "#17130f" : "#f2e8d5"));
 }
 
 export function setThemePref(pref: ThemePref) {

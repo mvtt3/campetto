@@ -9,8 +9,8 @@
   "display": "standalone",
   "display_override": ["standalone"],
   "orientation": "portrait",
-  "background_color": "#12161b",
-  "theme_color": "#12161b",
+  "background_color": "#ffc531",
+  "theme_color": "#f2e8d5",
   "categories": ["sports", "lifestyle"],
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

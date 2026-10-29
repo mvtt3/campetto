@@ -145,27 +145,14 @@ async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
   }
 }
 
-async function matchSaved(ctx: Ctx, matchId: string, isNew: boolean) {
+async function matchSaved(ctx: Ctx, matchId: string) {
   const [players, { data }] = await Promise.all([loadPlayers(ctx.sb), ctx.sb.from("matches").select(MATCH_SELECT).order("played_at")]);
   const matches: Match[] = (data ?? []).map(mapMatch);
   const m = matches.find((x) => x.id === matchId);
   if (!m) return;
   const name = (id: string) => shortName(players.find((p) => p.id === id), players);
 
-  // 1. Chiedi alla squadra avversaria di confermare.
-  const myLine = m.players.find((p) => p.playerId === ctx.me);
-  if (isNew && myLine) {
-    const opponents = m.players.filter((p) => p.team !== myLine.team).map((p) => p.playerId);
-    const score = myLine.team === "A" ? `${m.scoreA}–${m.scoreB}` : `${m.scoreB}–${m.scoreA}`;
-    await ctx.send(await ctx.targets("conferme", opponents), {
-      title: "Conferma il risultato",
-      body: `${name(ctx.me)} ha segnato ${score} nel ${m.format}. Tocca per confermare.`,
-      url: `/partite?m=${m.id}`,
-      tag: `match-${m.id}`,
-    });
-  }
-
-  // 2. Nuovo MVP in carica.
+  // Nuovo MVP in carica.
   const ids = players.map((p) => p.id);
   const elo = computeElo(matches, ids);
   const mvp = currentMvp(ids, matches, new Date(), elo);
@@ -181,7 +168,7 @@ async function matchSaved(ctx: Ctx, matchId: string, isNew: boolean) {
     }
   }
 
-  // 3. Badge sbloccati con questa partita.
+  // Badge sbloccati con questa partita.
   const now = new Date();
   const months = monthlyHistory(ids, matches, now);
   const seasons = seasonHistory(ids, matches, now);
@@ -264,7 +251,7 @@ export async function POST(req: Request) {
       ]);
       for (const row of data ?? []) await proposalSummary(ctx, mapProposal(row), players);
     } else if (body.type === "match_saved") {
-      await matchSaved(ctx, body.matchId, body.isNew);
+      await matchSaved(ctx, body.matchId);
     }
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 });

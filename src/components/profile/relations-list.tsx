@@ -27,10 +27,10 @@ export function RelationsList({ playerId }: { playerId: string }) {
     <div className="flex flex-col gap-5">
       {chem.length > 0 && (
         <section>
-          <h2 className="mb-2 px-1 text-[13px] font-semibold text-muted">Con chi vinci di più</h2>
+          <h2 className="title mb-2 px-1 text-[16px]">Con chi vinci di più</h2>
           <div className="flex flex-col gap-2">
             {chem.map((l) => (
-              <div key={l.playerId} className="flex items-center gap-3 rounded-[18px] bg-surface px-3 py-2.5 ring-1 ring-line ring-inset">
+              <div key={l.playerId} className="flex items-center gap-3 card px-3 py-2.5">
                 <Avatar player={data.players.find((p) => p.id === l.playerId)} size={36} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{name(l.playerId)}</p>
@@ -48,10 +48,10 @@ export function RelationsList({ playerId }: { playerId: string }) {
       )}
       {h2h.length > 0 && (
         <section>
-          <h2 className="mb-2 px-1 text-[13px] font-semibold text-muted">Testa a testa</h2>
+          <h2 className="title mb-2 px-1 text-[16px]">Testa a testa</h2>
           <div className="flex flex-col gap-2">
             {h2h.map(({ p, h }) => (
-              <div key={p.id} className="flex items-center gap-3 rounded-[18px] bg-surface px-3 py-2.5 ring-1 ring-line ring-inset">
+              <div key={p.id} className="flex items-center gap-3 card px-3 py-2.5">
                 <Avatar player={p} size={36} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{name(p.id)}</p>

@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
-import { Chips, fmt, pct, signed } from "@/components/ui/basics";
+import { fmt, pct, signed } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, periodRange, type FormatFilter, type Period } from "@/lib/periods";
 import { eloDelta, eloOf } from "@/lib/stats/elo";
 import { computePlayerStats } from "@/lib/stats/player";
-import { FORMATS } from "@/lib/types";
 
 export function FullStats({ playerId }: { playerId: string }) {
   const { data, engine } = useData();
@@ -71,20 +70,15 @@ export function FullStats({ playerId }: { playerId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <PeriodPicker value={period} onChange={setPeriod} />
-      <Chips
-        value={format}
-        onChange={setFormat}
-        options={[{ value: "all" as const, label: "Tutti i formati" }, ...FORMATS.map((f) => ({ value: f, label: f }))]}
-      />
+      <PeriodPicker value={period} onChange={setPeriod} format={format} onFormat={setFormat} />
       {rows.map((g) => (
-        <section key={g.group} className="rounded-[18px] bg-surface px-4 py-2 ring-1 ring-line ring-inset">
-          <h3 className="py-1.5 text-[13px] font-semibold text-muted">{g.group}</h3>
+        <section key={g.group} className="card px-4 py-2">
+          <h3 className="title py-2 text-[15px]">{g.group}</h3>
           <dl>
             {g.items.map(([k, v]) => (
               <div key={k} className="flex items-baseline justify-between border-t border-line py-2 text-[14.5px]">
                 <dt className="text-muted">{k}</dt>
-                <dd className="num-wide font-semibold">{v}</dd>
+                <dd className="tnum font-bold">{v}</dd>
               </div>
             ))}
           </dl>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo } from "next/font/google";
+import { Archivo, Ultra } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
@@ -7,6 +7,14 @@ const archivo = Archivo({
   subsets: ["latin", "latin-ext"],
   axes: ["wdth"],
   variable: "--font-archivo",
+  display: "swap",
+});
+
+// Slab grosso da poster anni '30: titoli e numeri.
+const ultra = Ultra({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-ultra",
   display: "swap",
 });
 
@@ -31,17 +39,17 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#12161b" },
-    { media: "(prefers-color-scheme: light)", color: "#f2f3f1" },
+    { media: "(prefers-color-scheme: dark)", color: "#17130f" },
+    { media: "(prefers-color-scheme: light)", color: "#f2e8d5" },
   ],
 };
 
 // Applica il tema prima del primo disegno, così non c'è il lampo di colore sbagliato.
-const themeScript = `(function(){try{var t=localStorage.getItem('campetto:theme')||'system';var d=t==='dark'||(t==='system'&&!window.matchMedia('(prefers-color-scheme: light)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='dark';}})();`;
+const themeScript = `(function(){try{var t=localStorage.getItem('campetto:theme')||'light';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="it" className={archivo.variable} data-theme="dark" suppressHydrationWarning>
+    <html lang="it" className={`${archivo.variable} ${ultra.variable}`} data-theme="light" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

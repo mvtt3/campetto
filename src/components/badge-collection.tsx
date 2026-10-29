@@ -46,7 +46,7 @@ export function BadgeCollection({ playerId, editable }: { playerId: string; edit
   return (
     <div className="flex flex-col gap-3">
       <p className="px-1 text-[14px] text-muted">
-        <span className="num-wide font-bold text-text">{unlocked}</span> di {states.length} sbloccati
+        <span className="tnum font-bold text-text">{unlocked}</span> di {states.length} sbloccati
         {editable && ". Tocca un badge per metterlo in vetrina."}
       </p>
       <Segmented value={cat} onChange={setCat} size="sm" options={CATS} />
@@ -79,7 +79,7 @@ export function BadgeCollection({ playerId, editable }: { playerId: string; edit
           <div className="flex flex-col items-center gap-4 pb-2">
             <BadgeMedal icon={open.def.icon} tier={open.tier} size={92} />
             <p className="text-[15px] font-semibold">{TIER_STYLE[open.tier].label}</p>
-            <p className="num-wide text-[14px] text-muted">
+            <p className="tnum text-[14px] text-muted">
               {open.value} {open.def.unit}
               {open.next ? `, prossimo livello a ${open.next}` : ", livello massimo"}
             </p>
@@ -88,7 +88,7 @@ export function BadgeCollection({ playerId, editable }: { playerId: string; edit
                 <li key={t} className="flex flex-1 flex-col items-center gap-1.5">
                   <BadgeMedal icon={open.def.icon} tier={(open.tier > i ? i + 1 : 0) as 0 | 1 | 2 | 3 | 4 | 5} size={34} />
                   <span className="text-[11px] text-muted">{TIER_STYLE[(i + 1) as 1].label}</span>
-                  <span className="num-wide text-[12px] font-semibold">{t}</span>
+                  <span className="tnum text-[12px] font-semibold">{t}</span>
                 </li>
               ))}
             </ol>
