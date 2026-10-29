@@ -13,10 +13,10 @@ const REST = 64;
 type Phase = "idle" | "pull" | "ready" | "loading" | "done";
 
 /** La faccia di Spicchio, ritagliata dalla mascotte. */
-export function SpicchioFace({ size = 34 }: { size?: number }) {
+export function SpicchioFace({ size = 34, pose = "ciao" }: { size?: number; pose?: "ciao" | "boh" }) {
   return (
     <svg viewBox="31 33 98 98" width={size} height={size} aria-hidden className="overflow-hidden rounded-full">
-      <Mascot pose="ciao" size={160} animate={false} />
+      <Mascot pose={pose} size={160} animate={false} />
     </svg>
   );
 }

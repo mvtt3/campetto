@@ -12,6 +12,7 @@ import { AvatarStack } from "./ui/avatar";
 import { haptic } from "./ui/basics";
 import { useToast } from "./ui/toast";
 import { WeatherChip } from "./weather-chip";
+import { say } from "@/lib/voice";
 
 export function proposalWhen(iso: string, now = new Date()): string {
   const d = new Date(iso);
@@ -60,7 +61,7 @@ export function useRespond() {
       await backend.respond(p.id, next);
       if (next === "si") void backend.notify({ type: "proposal_response", proposalId: p.id });
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
     }
   };
 }
@@ -156,9 +157,10 @@ export function ProposalCard({ proposal, compact }: { proposal: Proposal; compac
                   mutate((d) => ({ ...d, proposals: d.proposals.filter((x) => x.id !== proposal.id) }));
                   try {
                     await backend.cancelProposal(proposal.id);
-                    toast("Proposta annullata");
+                    void backend.notify({ type: "proposal_cancelled", proposalId: proposal.id });
+                    toast("Ho annullato la proposta e avvisato chi aveva risposto");
                   } catch (e) {
-                    toast((e as Error).message, "error");
+                    toast(say(e), "error");
                   }
                 }}
               >

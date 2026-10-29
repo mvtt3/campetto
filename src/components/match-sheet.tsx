@@ -13,6 +13,7 @@ import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
 import { InfoTip } from "@/components/ui/info";
+import { say } from "@/lib/voice";
 
 export const SOURCE_LABEL: Record<StatsSource, string> = {
   solo_risultato: "Solo risultato",
@@ -96,11 +97,11 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
                     try {
                       await backend.deleteMatch(m.id);
                       mutate((d) => ({ ...d, matches: d.matches.filter((x) => x.id !== m.id) }));
-                      toast("Partita eliminata");
+                      toast("Ho eliminato la partita");
                       onClose();
                       void refresh();
                     } catch (e) {
-                      toast((e as Error).message, "error");
+                      toast(say(e), "error");
                     } finally {
                       setBusy(false);
                       setConfirmDelete(false);

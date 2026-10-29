@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import type { PendingUser, PlayerPrivate } from "@/lib/data/backend";
 import { useData } from "@/lib/data/provider";
 import { adminName, playerName, type Player } from "@/lib/types";
+import { say } from "@/lib/voice";
 
 const ROLES = ["Play", "Guardia", "Ala piccola", "Ala grande", "Centro"];
 
@@ -39,17 +40,17 @@ function PlayerSheet({
   const link = priv ? `${typeof window !== "undefined" ? window.location.origin : ""}/invito/${priv.inviteToken}` : "";
 
   const save = async () => {
-    if (!first.trim()) return toast("Serve almeno il nome", "error");
+    if (!first.trim()) return toast("Mi serve almeno il nome", "error");
     setBusy(true);
     try {
       const id = await backend.upsertPlayer({ id: p?.id, firstName: first, lastName: last || null, roles, archived });
       if ((priv?.linkEmail ?? "") !== email.trim().toLowerCase()) await backend.setLinkEmail(id, email || null);
       await refresh();
       onChanged();
-      toast(isNew ? "Giocatore aggiunto" : "Giocatore aggiornato");
+      toast(isNew ? "Ho aggiunto il giocatore" : "Ho aggiornato il giocatore");
       onClose();
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
     } finally {
       setBusy(false);
     }
@@ -123,7 +124,7 @@ function PlayerSheet({
                 className="flex-1"
                 onClick={async () => {
                   await navigator.clipboard.writeText(link);
-                  toast("Link copiato");
+                  toast("Ho copiato il link");
                 }}
               >
                 <Copy size={15} /> Copia
@@ -143,7 +144,7 @@ function PlayerSheet({
                 onClick={async () => {
                   await backend.regenerateInvite(p!.id);
                   onChanged();
-                  toast("Nuovo link creato: quello vecchio non vale più");
+                  toast("Ho creato un link nuovo, quello vecchio non vale più");
                 }}
               >
                 <Link2 size={15} /> Nuovo
@@ -168,10 +169,10 @@ function PlayerSheet({
                 await backend.unlinkPlayer(p.id);
                 await refresh();
                 onChanged();
-                toast("Account scollegato");
+                toast("Ho scollegato l'account");
                 onClose();
               } catch (e) {
-                toast((e as Error).message, "error");
+                toast(say(e), "error");
               }
             }}
           >
@@ -199,7 +200,7 @@ export default function AdminPage() {
       setPriv(a);
       setPending(b);
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
     }
   }, [backend, toast]);
 
@@ -287,7 +288,7 @@ export default function AdminPage() {
                     onClick={async () => {
                       await backend.resolvePending(u.userId, null);
                       await load();
-                      toast("Richiesta rifiutata");
+                      toast("Ho rifiutato la richiesta");
                     }}
                   >
                     Rifiuta
@@ -317,10 +318,10 @@ export default function AdminPage() {
                 try {
                   await backend.resolvePending(linking!.userId, p.id);
                   await Promise.all([load(), refresh()]);
-                  toast(`${p.firstName} è dentro`);
+                  toast(`Fatto, ${p.firstName} è dentro`);
                   setLinking(null);
                 } catch (e) {
-                  toast((e as Error).message, "error");
+                  toast(say(e), "error");
                 }
               }}
               className="flex items-center gap-3 rounded-2xl bg-raised px-3 py-2.5 text-left"

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Ultra } from "next/font/google";
 import "./globals.css";
+import { Intro, introScript } from "@/components/intro";
 import { Providers } from "@/components/providers";
 
 const archivo = Archivo({
@@ -52,9 +53,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="it" className={`${archivo.variable} ${ultra.variable}`} data-theme="light" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: introScript }} />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Intro />
+          {children}
+        </Providers>
       </body>
     </html>
   );

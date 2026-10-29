@@ -15,6 +15,7 @@ import { teamBoxPoints } from "@/lib/stats/player";
 import { emptyBox, FORMATS, shortName, TEAM_SIZE, type Box, type Format, type Team } from "@/lib/types";
 import { DateTimeField } from "@/components/ui/pickers";
 import { APP_START } from "@/lib/periods";
+import { say } from "@/lib/voice";
 
 const STEPS = ["Formato", "Squadre", "Risultato", "Tabellino"] as const;
 
@@ -196,18 +197,18 @@ function NewMatchInner() {
       const id = await backend.saveMatch(input);
       void backend.notify({ type: "match_saved", matchId: id, isNew: !editing });
       await refresh();
-      toast(editing ? "Partita aggiornata" : "Partita salvata");
+      toast(editing ? "Ho aggiornato la partita" : "Ho salvato la partita");
       router.replace(`/partite?m=${id}`);
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
       setBusy(false);
     }
     void mutate;
   };
 
   const next = () => {
-    if (step === 1 && !teamsOk) return toast(`Servono ${size} giocatori per squadra`, "error");
-    if (step === 2 && !scoreOk) return toast("Il risultato non può essere un pareggio", "error");
+    if (step === 1 && !teamsOk) return toast(`Mi servono ${size} giocatori per squadra`, "error");
+    if (step === 2 && !scoreOk) return toast("Al campetto non si pareggia: controlla il punteggio", "error");
     setStep((s) => Math.min(3, s + 1));
   };
 

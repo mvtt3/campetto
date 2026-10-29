@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, Spinner } from "./ui/basics";
+import { say } from "@/lib/voice";
 
 export function GoogleButton({ onClick, label = "Entra con Google" }: { onClick: () => Promise<void>; label?: string }) {
   const [busy, setBusy] = useState(false);
@@ -20,7 +21,7 @@ export function GoogleButton({ onClick, label = "Entra con Google" }: { onClick:
           try {
             await onClick();
           } catch (e) {
-            setError((e as Error).message || "Accesso non riuscito, riprova");
+            setError(say(e));
             setBusy(false);
           }
         }}

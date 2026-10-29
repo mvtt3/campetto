@@ -9,6 +9,7 @@ import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Chips, EmptyState, ScreenHeader } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
+import { GroupStrip } from "@/components/group-strip";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, periodRange, type FormatFilter, type Period } from "@/lib/periods";
@@ -156,10 +157,13 @@ export function RankingScreen() {
 
       <PullToRefresh className="px-5 pb-4 pt-2">
         {rows.length === 0 ? (
-          <EmptyState
-            title="Classifica ancora vuota"
-            text={board === "mvp" ? "Per entrare in classifica servono almeno 3 partite nel periodo" : "Non ci sono ancora abbastanza partite in questo periodo"}
-          />
+          <>
+            <EmptyState
+              title="Classifica ancora vuota"
+              text={board === "mvp" ? "Per entrare in classifica servono almeno 3 partite nel periodo" : "Non ci sono ancora abbastanza partite in questo periodo"}
+            />
+            <GroupStrip title="Intanto, ecco il gruppo" />
+          </>
         ) : (
           <div key={`${board}-${period.kind}-${format}`} className="relative" data-tour="rank-podium">
             <div className="absolute right-0 top-1 z-10">

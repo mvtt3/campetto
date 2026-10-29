@@ -33,7 +33,7 @@ export default defineConfig({
     },
     {
       name: "schermate",
-      testMatch: /layout\.spec\.ts/,
+      testMatch: /(layout|popups)\.spec\.ts/,
       use: { browserName: "chromium", isMobile: true, hasTouch: true },
     },
   ],

@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { compressAvatar } from "@/lib/theme";
 import { NAME_MAX, nameError, type Player } from "@/lib/types";
+import { say } from "@/lib/voice";
 
 /**
  * Primo accesso: ognuno sceglie come apparire nell'app (nome e figurina o foto).
@@ -35,7 +36,7 @@ export function Onboarding({ me }: { me: Player }) {
       mutate((d) => ({ ...d, players: d.players.map((p) => (p.id === me.id ? { ...p, nickname: clean, avatarUrl: avatar } : p)) }));
     } catch (e) {
       const msg = (e as Error).message;
-      toast(/duplicate|unique|players_nickname/i.test(msg) ? "Questo nome è già preso" : msg, "error");
+      toast(say(e), "error");
       if (/duplicate|unique|players_nickname/i.test(msg)) setStep(0);
       setBusy(false);
     }
@@ -135,7 +136,7 @@ export function Onboarding({ me }: { me: Player }) {
                     try {
                       setAvatar(await backend.uploadAvatar(await compressAvatar(f)));
                     } catch (e) {
-                      toast((e as Error).message, "error");
+                      toast(say(e), "error");
                     } finally {
                       setUploading(false);
                     }

@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { FORMATS, type Format } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
+import { say } from "@/lib/voice";
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -45,16 +46,16 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
     const [h, m] = time.split(":").map(Number);
     const [y, mo, d] = day.split("-").map(Number);
     const startsAt = new Date(y, mo - 1, d, h, m);
-    if (startsAt.getTime() < Date.now() - 60 * 60_000) return toast("Scegli un orario futuro", "error");
+    if (startsAt.getTime() < Date.now() - 60 * 60_000) return toast("Questo orario è già passato: scegline uno più avanti", "error");
     setBusy(true);
     try {
       const id = await backend.createProposal({ startsAt: startsAt.toISOString(), format: format === "any" ? null : format, note: note.trim() || null });
       void backend.notify({ type: "proposal_new", proposalId: id });
       await refresh();
-      toast("Proposta inviata a tutti");
+      toast("Fatto, ho avvisato tutti");
       onClose();
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
     } finally {
       setBusy(false);
     }

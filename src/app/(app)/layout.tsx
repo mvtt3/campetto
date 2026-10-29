@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { flushSync } from "react-dom";
 import { WifiOff } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { BadgeCelebration } from "@/components/badge-celebration";
@@ -108,15 +109,26 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const path = usePathname();
   const flushed = useRef(false);
   const adminOnly = ADMIN_ONLY.some((p) => path.startsWith(p));
-  const activeTab = TABS.some((t) => t.path === path) ? path : null;
+  // Il cambio scheda si vede subito: non aspetta che il router aggiorni l'indirizzo.
+  const [pending, setPending] = useState<{ from: string; to: string } | null>(null);
+  const activeTab = pending && pending.from === path ? pending.to : TABS.some((t) => t.path === path) ? path : null;
+  const pathRef = useRef(path);
+  useEffect(() => {
+    pathRef.current = path;
+    // Arrivato il nuovo indirizzo, la scheda "in anticipo" non serve più
+    // (altrimenti il tasto indietro riporterebbe la scheda sbagliata).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPending((p) => (p && p.from !== path ? null : p));
+  }, [path]);
   const appReady =
     auth.status === "ready" && !!me?.nickname && !(adminOnly && !me.isAdmin);
   const [kept, ensureTabs] = useKeptTabs(activeTab, appReady);
   const pager = useRef<HTMLDivElement>(null);
-  const goTab = useCallback(
-    (p: string) => window.history.pushState(null, "", p),
-    [],
-  );
+  const goTab = useCallback((p: string) => {
+    if (p === pathRef.current) return;
+    flushSync(() => setPending({ from: pathRef.current, to: p }));
+    window.history.pushState(null, "", p);
+  }, []);
   useTabSwipe({
     pager,
     paths: TAB_PATHS,
@@ -146,6 +158,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       "/classifiche/albo",
       "/profilo/badge",
       "/profilo/impostazioni",
+      "/profilo/notifiche",
     ];
     const t = setTimeout(() => pages.forEach((p) => router.prefetch(p)), 600);
     return () => clearTimeout(t);
@@ -176,9 +189,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         title="Quasi dentro"
         text={
           <>
-            Hai fatto l&apos;accesso{auth.email ? ` come ${auth.email}` : ""},
-            ma il tuo account non è ancora collegato a un giocatore. Chiedi a
-            Matteo il tuo link d&apos;invito.
+            Ti ho riconosciuto{auth.email ? ` come ${auth.email}` : ""}, ma non so ancora chi sei in campo. Chiedi a Matteo il tuo link
+            d&apos;invito e aprilo da qui
           </>
         }
       >
@@ -192,7 +204,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   if (auth.status === "error")
     return (
-      <Message title="Accesso non riuscito" text={auth.message}>
+      <Message title="Non sono riuscito a farti entrare" text={auth.message}>
         <Button variant="court" onClick={() => void reinit()}>
           Riprova
         </Button>
@@ -209,7 +221,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="mx-auto flex h-dvh max-w-lg flex-col">
         {!online && (
           <div className="safe-top flex items-center justify-center gap-2 bg-ball px-4 py-1.5 text-[12.5px] font-semibold text-ball-ink">
-            <WifiOff size={14} /> Sei offline: vedi gli ultimi dati salvati
+            <WifiOff size={14} /> Sei offline: ti mostro gli ultimi dati che ho salvato
           </div>
         )}
         <div
@@ -237,7 +249,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         {!activeTab && (
           <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         )}
-        <BottomNav />
+        <BottomNav current={activeTab ?? path} onTab={goTab} />
         <BadgeCelebration />
       </div>
     </TutorialProvider>

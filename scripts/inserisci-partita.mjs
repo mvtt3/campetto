@@ -43,8 +43,10 @@ const admin = players.find((p) => p.is_admin && p.user_id);
 if (!admin) throw new Error("Nessun amministratore collegato a un account.");
 
 const norm = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+// Come ci chiamiamo tra noi.
+const ALIAS = { matti: "mattia", cande: "lorenzo candela" };
 function find(name) {
-  const n = norm(name);
+  const n = ALIAS[norm(name)] ?? norm(name);
   const hits = players.filter(
     (p) =>
       (p.nickname && norm(p.nickname) === n) ||

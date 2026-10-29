@@ -111,3 +111,76 @@ export async function truncatedTitles(page: Page): Promise<string[]> {
       .map((el) => `${el.tagName.toLowerCase()} "${el.textContent?.trim()}"`),
   );
 }
+
+/**
+ * Controlli per popup e pannelli: dentro lo schermo, nessun testo che esce dal
+ * suo pulsante, nessun controllo sovrapposto a un altro.
+ */
+export async function popupProblems(page: Page, selector: string): Promise<string[]> {
+  return page.evaluate((sel) => {
+    const out: string[] = [];
+    const roots = [...document.querySelectorAll<HTMLElement>(sel)].filter((el) => el.getClientRects().length);
+    if (!roots.length) return [`nessun popup "${sel}"`];
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    for (const root of roots) {
+      const r = root.getBoundingClientRect();
+      if (r.left < -1 || r.right > vw + 1 || r.top < -1 || r.bottom > vh + 3)
+        out.push(`popup fuori schermo (${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)})`);
+      // Testi più larghi del loro contenitore (escluse le ellissi volute).
+      root.querySelectorAll<HTMLElement>("button, a, h1, h2, h3, p, label, span").forEach((el) => {
+        if (!el.getClientRects().length || el.closest("svg")) return;
+        const cs = getComputedStyle(el);
+        if (cs.textOverflow === "ellipsis" || cs.overflowX === "auto" || cs.overflowX === "scroll" || cs.display === "inline") return;
+        // Le icone piccole (la "i" in corsivo) sporgono di un pixel per natura: non contano.
+        if (el.clientWidth <= 26 || !(el.textContent || "").trim() || cs.clip !== "auto" || el.clientWidth <= 1) return;
+        // Si misura il testo vero (non le aree di tocco invisibili attorno ai pulsanti).
+        const box = el.getBoundingClientRect();
+        // Solo il testo scritto direttamente qui (i figli si controllano da soli),
+        // escluse le sigle di due o tre lettere degli avatar.
+        const out1 = [...el.childNodes].some((n) => {
+          if (n.nodeType !== Node.TEXT_NODE || (n.textContent || "").trim().length <= 3) return false;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          return [...range.getClientRects()].some((t) => t.width > 1 && (t.right > box.right + 2 || t.left < box.left - 2));
+        });
+        if (out1) out.push(`testo che esce: ${el.tagName.toLowerCase()} "${(el.textContent || "").trim().slice(0, 30)}"`);
+      });
+      // Controlli sovrapposti.
+      const ctrls = [...root.querySelectorAll<HTMLElement>("button, a, input, textarea, [role='slider'], [role='switch']")].filter(
+        (el) => el.getClientRects().length && !el.closest("[aria-hidden='true']"),
+      );
+      // Rettangolo davvero visibile: tagliato dai contenitori che scorrono o nascondono.
+      const visible = (el: HTMLElement) => {
+        const r = el.getBoundingClientRect();
+        let left = r.left, top = r.top, right = r.right, bottom = r.bottom;
+        for (let p = el.parentElement; p; p = p.parentElement) {
+          const cs = getComputedStyle(p);
+          if (cs.overflowX !== "visible" || cs.overflowY !== "visible") {
+            const pr = p.getBoundingClientRect();
+            left = Math.max(left, pr.left); top = Math.max(top, pr.top);
+            right = Math.min(right, pr.right); bottom = Math.min(bottom, pr.bottom);
+          }
+        }
+        return { left, top, right, bottom };
+      };
+      const rects = ctrls.map((el) => ({ el, r: visible(el) })).filter((x) => x.r.right - x.r.left > 1 && x.r.bottom - x.r.top > 1);
+      for (let i = 0; i < rects.length; i++)
+        for (let j = i + 1; j < rects.length; j++) {
+          const a = rects[i];
+          const b = rects[j];
+          if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+          const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+          const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+          if (w > 4 && h > 4)
+            out.push(`controlli sovrapposti: "${(a.el.getAttribute("aria-label") || a.el.textContent || "").trim().slice(0, 20)}" e "${(b.el.getAttribute("aria-label") || b.el.textContent || "").trim().slice(0, 20)}"`);
+        }
+    }
+    return out;
+  }, selector);
+}
+
+/** Sullo schermo intero: controlli sovrapposti e testi che escono, solo la parte visibile. */
+export async function screenProblems(page: Page): Promise<string[]> {
+  return popupProblems(page, "body");
+}

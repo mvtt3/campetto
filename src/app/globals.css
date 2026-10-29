@@ -474,3 +474,237 @@ a,
     stroke-dashoffset: 0;
   }
 }
+
+/* ---------- Apertura: Spicchio tira a canestro ---------- */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background-color: #ffc531;
+  color: #1d1a16;
+  padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+  cursor: pointer;
+  overflow: hidden;
+}
+html[data-intro="off"] .intro {
+  display: none;
+}
+.intro-leave {
+  animation: intro-leave 0.42s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+@keyframes intro-leave {
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+.intro-title {
+  text-align: center;
+  animation: intro-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+.intro-word {
+  font-size: 46px;
+  line-height: 1;
+  text-shadow: 3px 3px 0 #fffaf0;
+}
+.intro-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+@keyframes intro-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-6deg);
+  }
+}
+.intro-stage {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  flex: none;
+}
+.intro-hoop {
+  position: absolute;
+  right: 0;
+  top: 0;
+  overflow: visible;
+  animation: intro-fade 0.4s 0.15s ease-out both;
+}
+.intro-net {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: intro-net 0.45s 1.55s ease-out both;
+}
+@keyframes intro-net {
+  40% {
+    transform: scaleY(1.18) scaleX(0.92);
+  }
+}
+.intro-spicchio {
+  position: absolute;
+  left: 10px;
+  top: 140px;
+  width: 128px;
+  height: 160px;
+  transform-origin: 50% 100%;
+  animation:
+    intro-in 0.45s 0.1s cubic-bezier(0.2, 0.9, 0.3, 1.3) both,
+    intro-jump 0.6s 0.4s ease-in-out both;
+}
+@keyframes intro-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.7);
+  }
+}
+@keyframes intro-jump {
+  0% {
+    transform: none;
+  }
+  45% {
+    transform: translateY(6px) scaleY(0.93);
+  }
+  75% {
+    transform: translateY(-16px);
+  }
+  100% {
+    transform: none;
+  }
+}
+.intro-pose {
+  position: absolute;
+  inset: 0;
+}
+.intro-pose-b {
+  opacity: 0;
+  animation: intro-swap 0.01s 1.6s both;
+}
+.intro-pose-a {
+  animation: intro-swap-out 0.01s 1.6s both;
+}
+@keyframes intro-swap {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes intro-swap-out {
+  to {
+    opacity: 0;
+  }
+}
+.intro-ball-x {
+  position: absolute;
+  left: 105px;
+  top: 150px;
+  animation: intro-ball-x 1.1s 0.75s linear both;
+}
+.intro-ball-y {
+  animation: intro-ball-y 1.1s 0.75s both;
+}
+.intro-ball {
+  animation: intro-spin 1.1s 0.75s linear both;
+}
+@keyframes intro-ball-x {
+  0% {
+    transform: translateX(0);
+  }
+  73% {
+    transform: translateX(126px);
+  }
+  100% {
+    transform: translateX(126px);
+  }
+}
+@keyframes intro-ball-y {
+  0% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.3, 0.6, 0.55, 1);
+  }
+  38% {
+    transform: translateY(-132px);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.75, 0.5);
+  }
+  73% {
+    transform: translateY(-88px);
+    animation-timing-function: ease-in;
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+@keyframes intro-spin {
+  to {
+    transform: rotate(-540deg);
+  }
+}
+.intro-swish {
+  position: absolute;
+  left: 112px;
+  top: 118px;
+  font-size: 30px;
+  color: #e5412d;
+  text-shadow: 2px 2px 0 #1d1a16;
+  transform: rotate(-10deg) scale(0);
+  animation: intro-swish 0.5s 1.6s cubic-bezier(0.2, 0.9, 0.3, 1.5) both;
+}
+@keyframes intro-swish {
+  to {
+    transform: rotate(-10deg) scale(1);
+  }
+}
+.intro-caption {
+  min-height: 48px;
+  max-width: 300px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  text-wrap: balance;
+  animation: intro-fade 0.4s 0.9s ease-out both;
+}
+.intro-dots i {
+  font-style: normal;
+  animation: intro-dot 1s infinite both;
+}
+.intro-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.intro-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes intro-dot {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes intro-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (max-height: 600px) {
+  .intro-stage {
+    transform: scale(0.82);
+    margin: -27px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro *,
+  .intro {
+    animation-duration: 0.01s !important;
+    animation-delay: 0s !important;
+  }
+}

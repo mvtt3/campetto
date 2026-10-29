@@ -23,8 +23,9 @@ const ITEMS = [
  * La scheda attiva cambia solo colore (niente animazioni di layout: più leggera sui telefoni economici).
  * Il cambio scheda aggiorna solo l'indirizzo: le schermate restano montate nel layout dell'app.
  */
-export function BottomNav() {
-  const path = usePathname();
+export function BottomNav({ current, onTab }: { current?: string; onTab?: (href: string) => void }) {
+  const routePath = usePathname();
+  const path = current ?? routePath;
   return (
     <nav aria-label="Navigazione principale" data-tour="nav" className="safe-bottom shrink-0 px-4 pb-3 pt-1">
       <ul className="sticker mx-auto grid h-[66px] max-w-md grid-cols-4 gap-1 rounded-[24px] bg-surface p-1.5">
@@ -42,7 +43,9 @@ export function BottomNav() {
                   // Le quattro schede sono già montate nel layout: basta cambiare l'indirizzo,
                   // senza far ripartire la navigazione di Next (più veloce sui telefoni lenti).
                   e.preventDefault();
-                  if (path !== href) window.history.pushState(null, "", href);
+                  if (path === href) return;
+                  if (onTab) onTab(href);
+                  else window.history.pushState(null, "", href);
                 }}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}

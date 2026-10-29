@@ -1,7 +1,7 @@
 {
   "name": "Campetto",
   "short_name": "Campetto",
-  "description": "Partite, statistiche e classifiche del nostro campetto.",
+  "description": "Partite, statistiche e classifiche del nostro campetto",
   "lang": "it",
   "start_url": "/?source=pwa",
   "scope": "/",

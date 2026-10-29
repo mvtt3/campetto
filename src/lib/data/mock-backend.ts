@@ -28,6 +28,8 @@ const SEED: [string, string | null, string[], string, string | null][] = [
   ["Mattia", null, ["Play", "Guardia"], "Mattia", "preset:coppola"],
   ["Matteo", "Mocciaro", ["Ala grande", "Centro"], "Mocciaro", "preset:muscoli"],
   ["Simone", "Falbo", ["Ala grande", "Centro", "Ala piccola"], "Simone", null],
+  ["Mori", null, [], "Mori", "preset:collana"],
+  ["Samuele", "Formigaro", [], "Samuele", null],
 ];
 
 const rid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));

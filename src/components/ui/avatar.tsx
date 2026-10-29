@@ -8,6 +8,27 @@ import { initials, shortName, type Player } from "@/lib/types";
 
 const PALETTE = ["#2D5BE3", "#F26A1B", "#2E9E5B", "#7C4DCC", "#E5412D", "#1597A6", "#D99A00", "#C93B78"];
 
+/** Gli sfondi tra cui scegliere per la propria figurina. */
+export const CARD_COLORS: { value: string; name: string }[] = [
+  { value: "#F26A1B", name: "Arancione" },
+  { value: "#FFC531", name: "Giallo" },
+  { value: "#2D5BE3", name: "Blu" },
+  { value: "#E5412D", name: "Rosso" },
+  { value: "#2E9E5B", name: "Verde" },
+  { value: "#7C4DCC", name: "Viola" },
+  { value: "#1597A6", name: "Turchese" },
+  { value: "#C93B78", name: "Fucsia" },
+];
+
+/** true per i colori chiari, dove il testo va scuro. */
+export function isLightColor(hex: string): boolean {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62;
+}
+
 export function playerColor(p: Pick<Player, "id" | "cardColor">): string {
   if (p.cardColor) return p.cardColor;
   let h = 0;
@@ -42,7 +63,7 @@ export function Avatar({
       title={isMvp ? `${name} è l'MVP in carica` : undefined}
     >
       <span
-        className="grid h-full w-full place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16] text-[#fffaf0]"
+        className={clsx("grid h-full w-full place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16]", isLightColor(playerColor(player)) ? "text-[#1d1a16]" : "text-[#fffaf0]")}
         style={{
           background: playerColor(player),
           boxShadow: isMvp ? "0 0 0 2.5px var(--surface)" : undefined,

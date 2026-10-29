@@ -17,6 +17,7 @@ import { computePlayerStats, teamOf } from "@/lib/stats/player";
 import { shortName, winnerOf } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { InfoTip } from "@/components/ui/info";
+import { greeting } from "@/lib/greeting";
 
 function relativeDay(iso: string, now: Date): string {
   const d = new Date(iso);
@@ -56,17 +57,21 @@ export function HomeScreen() {
   const mvp = engine.mvp;
   const mvpPlayer = data.players.find((p) => p.id === mvp?.entry.playerId);
   const goodMonth = mine.games > 0 && mine.winPct >= 0.5;
+  const hello = greeting(now.getHours());
 
   return (
     <>
       <header className="safe-top shrink-0 px-5">
         <div className={"flex h-16 items-center justify-between short:h-14"}>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Logo size={46} text={false} className="shrink-0 short:h-10 short:w-10" />
-            <div>
-            <p className="text-[13px] font-semibold text-muted">{now.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}</p>
-            <h1 className="display text-[26px]">Ciao {me.nickname ?? me.firstName}</h1>
-            </div>
+            <h1 className="min-w-0">
+              <span className="block text-[14px] font-bold text-muted">{hello.lead},</span>{" "}
+              <span className="display block truncate text-[26px] leading-[1.05]">
+                {me.nickname ?? me.firstName}
+                {hello.question ? "?" : ""}
+              </span>
+            </h1>
           </div>
           <Avatar player={me} size={44} />
         </div>

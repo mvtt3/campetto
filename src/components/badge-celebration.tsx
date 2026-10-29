@@ -7,6 +7,8 @@ import { BadgeMedal, TIER_STYLE } from "./badge-medal";
 import { motion } from "motion/react";
 import { Mascot } from "./mascot";
 import { Button, CourtLines } from "./ui/basics";
+import { useToast } from "./ui/toast";
+import { RARITY, rarityProgress, type Rarity } from "./avatar-presets";
 
 const key = (u: BadgeUnlock) => `${u.key}:${u.tier}`;
 
@@ -18,6 +20,25 @@ export function BadgeCelebration() {
   const { me, engine, loading } = useData();
   const unlocks = useMemo(() => (me ? engine.badges(me.id).unlocks : []), [me, engine]);
   const [queue, setQueue] = useState<BadgeUnlock[]>([]);
+  const toast = useToast();
+
+  // Figurine appena sbloccate: un avviso di Spicchio, una volta sola per telefono.
+  useEffect(() => {
+    if (!me || loading) return;
+    const tiers = engine.badges(me.id).states.map((b) => b.tier);
+    const open = (["rara", "epica", "leggendaria"] as Rarity[]).filter((r) => rarityProgress(r, tiers).unlocked);
+    const storeKey = `campetto:figurine:${me.id}`;
+    let seen: string[] | null = null;
+    try {
+      seen = JSON.parse(localStorage.getItem(storeKey) ?? "null");
+      localStorage.setItem(storeKey, JSON.stringify(open));
+    } catch {
+      return;
+    }
+    if (seen === null) return;
+    const fresh = open.filter((r) => !seen!.includes(r));
+    if (fresh.length) toast(`Hai sbloccato le figurine ${RARITY[fresh[fresh.length - 1]].label.toLowerCase()}! Le trovi in Impostazioni`);
+  }, [me, engine, loading, toast]);
 
   useEffect(() => {
     if (!me || loading) return;

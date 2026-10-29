@@ -9,6 +9,7 @@ import { MONTHS_IT, monthKey } from "@/lib/periods";
 import { TIER_NAMES } from "@/lib/badges";
 import { currentMvp, monthlyHistory, seasonHistory } from "@/lib/stats/awards";
 import { computeElo } from "@/lib/stats/elo";
+import { groupRecords } from "@/lib/stats/records";
 import { shortName, type Match, type NotifyKind, type Player, type Proposal } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -17,6 +18,8 @@ export const dynamic = "force-dynamic";
 const Body = z.discriminatedUnion("type", [
   z.object({ type: z.literal("proposal_new"), proposalId: z.uuid() }),
   z.object({ type: z.literal("proposal_response"), proposalId: z.uuid() }),
+  z.object({ type: z.literal("proposal_cancelled"), proposalId: z.uuid() }),
+  z.object({ type: z.literal("tick") }),
   z.object({ type: z.literal("match_saved"), matchId: z.uuid(), isNew: z.boolean() }),
   z.object({ type: z.literal("flush") }),
   z.object({ type: z.literal("test") }),
@@ -38,12 +41,25 @@ interface Target {
   auth: string;
 }
 
+/** Ora di Roma: il silenzio di notte vale dalle 23 alle 8. */
+function romeHour(d = new Date()): number {
+  return Number(new Intl.DateTimeFormat("it-IT", { hour: "numeric", hourCycle: "h23", timeZone: "Europe/Rome" }).format(d));
+}
+const isNight = (d = new Date()) => {
+  const h = romeHour(d);
+  return h >= 23 || h < 8;
+};
+
 class Ctx {
   sent = 0;
+  quiet = new Set<string>();
   constructor(
     public sb: SupabaseClient,
     public me: string,
-  ) {}
+    players: Player[] = [],
+  ) {
+    if (isNight()) for (const p of players) if (p.notifyPrefs.notte) this.quiet.add(p.id);
+  }
 
   async targets(kind: NotifyKind, players: string[] | null, exclude: string | null = null): Promise<Target[]> {
     if (players && !players.length) return [];
@@ -53,7 +69,9 @@ class Ctx {
 
   async send(targets: Target[], payload: Payload) {
     await Promise.all(
-      targets.map(async (t) => {
+      targets
+        .filter((t) => !this.quiet.has(t.player_id))
+        .map(async (t) => {
         try {
           await webpush.sendNotification(
             { endpoint: t.endpoint, keys: { p256dh: t.p256dh, auth: t.auth } },
@@ -99,19 +117,19 @@ async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
   });
   const when = dayLabel(p.startsAt);
   if (decision.threshold) {
-    const to = await ctx.targets("riepiloghi", yes);
+    const to = await ctx.targets("completa", yes);
     await ctx.send(to, {
       title: "Si gioca!",
-      body: `Siete in ${yes.length} ${when}${p.format ? ` per il ${p.format}` : ""}.`,
+      body: `Ho fatto la conta: siete in ${yes.length} ${when}${p.format ? ` per il ${p.format}` : ""}. Ci vediamo al campetto`,
       url: "/organizza",
       tag: `proposal-${p.id}`,
     });
     // Chi non ha ancora risposto sa che la partita c'è.
     const answered = new Set(p.responses.map((r) => r.playerId));
     const others = players.filter((x) => !x.archived && !answered.has(x.id)).map((x) => x.id);
-    await ctx.send(await ctx.targets("riepiloghi", others), {
+    await ctx.send(await ctx.targets("completa", others), {
       title: "Si gioca!",
-      body: `${summaryText(names, when).replace(", vieni anche tu?", "")}. C'è posto anche per te?`,
+      body: `Ho già ${yes.length} giocatori ${when}. Vuoi esserci anche tu?`,
       url: "/organizza",
       tag: `proposal-${p.id}`,
       actions: [
@@ -130,7 +148,7 @@ async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
       .map((x) => x.id);
     await ctx.send(await ctx.targets("riepiloghi", noAnswer), {
       title: `${yes.length} di ${neededPlayers(p.format)} per ${when.split(" alle")[0]}`,
-      body: summaryText(names, when),
+      body: `Ti aggiorno: ${summaryText(names, when)}`,
       url: "/organizza",
       tag: `proposal-${p.id}`,
       actions: [
@@ -152,6 +170,39 @@ async function matchSaved(ctx: Ctx, matchId: string) {
   if (!m) return;
   const name = (id: string) => shortName(players.find((p) => p.id === id), players);
 
+  // Il risultato a chi ha giocato (tranne chi l'ha inserita).
+  if (await ctx.claim(`match:${m.id}`)) {
+    const w = m.scoreA > m.scoreB ? "A" : "B";
+    const day = dayOnly(m.playedAt);
+    for (const team of ["A", "B"] as const) {
+      const ids = m.players.filter((p) => p.team === team).map((p) => p.playerId).filter((id) => id !== ctx.me);
+      if (!ids.length) continue;
+      const won = team === w;
+      const mine = team === "A" ? m.scoreA : m.scoreB;
+      const theirs = team === "A" ? m.scoreB : m.scoreA;
+      await ctx.send(await ctx.targets("partite", ids), {
+        title: won ? `Vittoria ${mine}–${theirs}` : `Sconfitta ${mine}–${theirs}`,
+        body: won ? `Ho segnato la partita di ${day}: avete vinto, bel colpo!` : `Ho segnato la partita di ${day}: stavolta è andata male, ci si rifà la prossima`,
+        url: `/partite?m=${m.id}`,
+        tag: `match-${m.id}`,
+      });
+    }
+  }
+
+  // Record del gruppo battuti in questa partita (non il primo record in assoluto).
+  const before = new Map(groupRecords(matches.filter((x) => x.id !== m.id)).map((r) => [r.key, r]));
+  for (const rec of groupRecords(matches)) {
+    const old = before.get(rec.key);
+    if (rec.matchId !== m.id || !old || rec.value <= old.value || !SINGLE_GAME_KEYS.has(rec.key)) continue;
+    if (!(await ctx.claim(`record:${rec.key}:${m.id}`))) continue;
+    await ctx.send(await ctx.targets("record", null), {
+      title: "Nuovo record!",
+      body: `${name(rec.playerIds[0])} ha fatto ${rec.display} in una partita: è il nuovo record del gruppo`,
+      url: "/classifiche/albo",
+      tag: `record-${rec.key}`,
+    });
+  }
+
   // Nuovo MVP in carica.
   const ids = players.map((p) => p.id);
   const elo = computeElo(matches, ids);
@@ -159,12 +210,16 @@ async function matchSaved(ctx: Ctx, matchId: string) {
   if (mvp && mvp.period.kind === "month") {
     const key = `mvp:${monthKey(mvp.period.year, mvp.period.month)}:${mvp.entry.playerId}`;
     if (await ctx.claim(key)) {
-      await ctx.send(await ctx.targets("mvp", null), {
-        title: "Nuovo MVP",
-        body: `${name(mvp.entry.playerId)} è l'MVP di ${MONTHS_IT[mvp.period.month].toLowerCase()}.`,
-        url: "/classifiche",
-        tag: "mvp",
-      });
+      const month = MONTHS_IT[mvp.period.month].toLowerCase();
+      const targets = await ctx.targets("mvp", null);
+      await ctx.send(
+        targets.filter((t) => t.player_id === mvp.entry.playerId),
+        { title: "Sei tu l'MVP!", body: `Ti ho messo la corona d'oro: sei l'MVP di ${month}`, url: "/classifiche", tag: "mvp" },
+      );
+      await ctx.send(
+        targets.filter((t) => t.player_id !== mvp.entry.playerId),
+        { title: "Nuovo MVP", body: `${name(mvp.entry.playerId)} è l'MVP di ${month}. Riesci a strappargli la corona?`, url: "/classifiche", tag: "mvp" },
+      );
     }
   }
 
@@ -186,7 +241,7 @@ async function matchSaved(ctx: Ctx, matchId: string) {
     if (toSend.length) {
       await ctx.send(await ctx.targets("badge", [line.playerId]), {
         title: toSend.length === 1 ? "Badge sbloccato" : `${toSend.length} badge sbloccati`,
-        body: toSend.join(", "),
+        body: `Ti ho appena consegnato ${toSend.join(", ")}. Lo trovi nel profilo`,
         url: "/profilo/badge",
         tag: `badge-${m.id}`,
       });
@@ -194,7 +249,72 @@ async function matchSaved(ctx: Ctx, matchId: string) {
   }
 }
 
+const SINGLE_GAME_KEYS = new Set(["pts", "ast", "reb", "fg3m", "stl", "blk"]);
+
+function dayOnly(iso: string): string {
+  return dayLabel(iso).replace(/ alle .*/, "");
+}
+
+async function proposalCancelled(ctx: Ctx, p: Proposal, players: Player[]) {
+  if (!(await ctx.claim(`cancel:${p.id}`))) return;
+  const who = shortName(players.find((x) => x.id === p.createdBy), players);
+  const ids = p.responses.filter((r) => r.response !== "no" && r.playerId !== ctx.me).map((r) => r.playerId);
+  await ctx.send(await ctx.targets("annullate", ids), {
+    title: "Partita annullata",
+    body: `${who} ha annullato la partita di ${dayLabel(p.startsAt)}. Se ne propongono un'altra ti avviso io`,
+    url: "/organizza",
+    tag: `proposal-${p.id}`,
+  });
+}
+
+interface Reminder {
+  player_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  proposal_id: string;
+  starts_at: string;
+  format: string | null;
+  yes_count: number;
+  quiet: boolean;
+}
+
+/** Chiamato ogni 10 minuti dal database: i promemoria un'ora prima della partita. */
+async function tick(req: Request) {
+  const secret = req.headers.get("x-campetto-cron");
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!secret) return Response.json({ error: "Accesso richiesto" }, { status: 401 });
+  if (!privateKey) return Response.json({ skipped: "VAPID_PRIVATE_KEY mancante" }, { status: 202 });
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:campetto@example.com", VAPID_PUBLIC_KEY, privateKey);
+  const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await sb.rpc("cron_due_reminders", { p_secret: secret });
+  if (error) return Response.json({ error: "Non autorizzato" }, { status: 403 });
+  let sent = 0;
+  const night = isNight();
+  for (const r of (data as Reminder[] | null) ?? []) {
+    if (night && r.quiet) continue;
+    const time = new Date(r.starts_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+    try {
+      await webpush.sendNotification(
+        { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
+        JSON.stringify({
+          title: "Tra un'ora si gioca",
+          body: `Ti aspetto al campetto alle ${time}: siete in ${r.yes_count}${r.format ? ` per il ${r.format}` : ""}`,
+          url: "/organizza",
+          tag: `reminder-${r.proposal_id}`,
+        }),
+        { TTL: 3600, urgency: "high" },
+      );
+      sent++;
+    } catch {
+      /* abbonamento scaduto: lo ripulisce il prossimo invio normale */
+    }
+  }
+  return Response.json({ sent });
+}
+
 export async function POST(req: Request) {
+  if (req.headers.get("x-campetto-cron")) return tick(req);
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return Response.json({ error: "Accesso richiesto" }, { status: 401 });
@@ -214,13 +334,14 @@ export async function POST(req: Request) {
   if (!privateKey) return Response.json({ skipped: "VAPID_PRIVATE_KEY mancante" }, { status: 202 });
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:campetto@example.com", VAPID_PUBLIC_KEY, privateKey);
 
-  const ctx = new Ctx(sb, meId as string);
+  const ctx = new Ctx(sb, meId as string, await loadPlayers(sb));
   const body = parsed.data;
   try {
     if (body.type === "test") {
+      ctx.quiet.clear();
       await ctx.send(await ctx.targets("proposte", [ctx.me]), {
-        title: "Notifiche attive",
-        body: "Da ora ti avvisiamo quando qualcuno vuole giocare",
+        title: "Ci sono anch'io!",
+        body: "Perfetto, da ora ti avviso io quando si gioca",
         url: "/",
         tag: "test",
       });
@@ -231,7 +352,7 @@ export async function POST(req: Request) {
         const who = shortName(players.find((x) => x.id === p.createdBy), players);
         await ctx.send(await ctx.targets("proposte", null, p.createdBy), {
           title: "Si gioca?",
-          body: `${who} vuole giocare ${dayLabel(p.startsAt)}${p.format ? ` (${p.format})` : ""}, ci sei?`,
+          body: `${who} propone ${dayLabel(p.startsAt)}${p.format ? ` per un ${p.format}` : ""}. Ti tengo un posto?`,
           url: "/organizza",
           tag: `proposal-${p.id}`,
           actions: [
@@ -244,6 +365,9 @@ export async function POST(req: Request) {
     } else if (body.type === "proposal_response") {
       const [players, { data }] = await Promise.all([loadPlayers(sb), sb.from("proposals").select(PROPOSAL_SELECT).eq("id", body.proposalId).single()]);
       if (data) await proposalSummary(ctx, mapProposal(data), players);
+    } else if (body.type === "proposal_cancelled") {
+      const [players, { data }] = await Promise.all([loadPlayers(sb), sb.from("proposals").select(PROPOSAL_SELECT).eq("id", body.proposalId).single()]);
+      if (data) await proposalCancelled(ctx, mapProposal(data), players);
     } else if (body.type === "flush") {
       const [players, { data }] = await Promise.all([
         loadPlayers(sb),
@@ -253,8 +377,8 @@ export async function POST(req: Request) {
     } else if (body.type === "match_saved") {
       await matchSaved(ctx, body.matchId);
     }
-  } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: 500 });
+  } catch {
+    return Response.json({ error: "Non sono riuscito a mandare le notifiche" }, { status: 500 });
   }
   return Response.json({ sent: ctx.sent });
 }

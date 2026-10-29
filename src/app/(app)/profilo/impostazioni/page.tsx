@@ -1,20 +1,23 @@
 "use client";
 
+import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Compass, Download, LogOut, Palette, Shield } from "lucide-react";
+import { Bell, Camera, ChevronRight, Compass, Download, LogOut, Palette, Shield, Check } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { SECTION_IDS, sections } from "@/components/tutorial/model";
 import { useTutorial } from "@/components/tutorial/tutorial";
 import { Sheet } from "@/components/ui/sheet";
 import { NAME_MAX, nameError } from "@/lib/types";
-import { Avatar } from "@/components/ui/avatar";
-import { Button, ScreenHeader, Segmented, Spinner, Toggle } from "@/components/ui/basics";
+import { Avatar, CARD_COLORS, isLightColor, playerColor } from "@/components/ui/avatar";
+import { Button, ScreenHeader, Segmented, Spinner } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
-import { currentSubscription, disablePush, enablePush, isIos, isStandalone, pushSupported } from "@/lib/notifications/push-client";
+import { isIos, isStandalone } from "@/lib/notifications/push-client";
+import { usePush } from "@/lib/notifications/use-push";
 import { compressAvatar, getThemePref, setThemePref, type ThemePref } from "@/lib/theme";
+import { say } from "@/lib/voice";
 
 type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void> };
 
@@ -32,12 +35,11 @@ function Row({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
 }
 
 export default function SettingsPage() {
-  const { me, data, backend, mutate, reinit } = useData();
+  const { me, data, engine, backend, mutate, reinit } = useData();
   const router = useRouter();
   const toast = useToast();
   const [theme, setTheme] = useState<ThemePref>("light");
-  const [pushOn, setPushOn] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
+  const push = usePush();
   const [nickname, setNickname] = useState("");
   const [jersey, setJersey] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -52,7 +54,6 @@ export default function SettingsPage() {
     setTheme(getThemePref());
     setStandalone(isStandalone());
     /* eslint-enable react-hooks/set-state-in-effect */
-    void currentSubscription().then((s) => setPushOn(Boolean(s)));
     const h = (e: Event) => {
       e.preventDefault();
       setInstall(e as BeforeInstallPromptEvent);
@@ -77,31 +78,7 @@ export default function SettingsPage() {
       await backend.updateMe(patch);
       if (ok) toast(ok);
     } catch (e) {
-      toast((e as Error).message, "error");
-    }
-  };
-
-  const togglePush = async (on: boolean) => {
-    setPushBusy(true);
-    try {
-      if (on) {
-        const r = await enablePush(backend);
-        if (r === "ok") {
-          setPushOn(true);
-          toast("Notifiche attive");
-          void backend.notify({ type: "test" });
-        } else if (r === "denied") toast("Hai bloccato le notifiche: riattivale dalle impostazioni del telefono", "error");
-        else if (r === "install") toast("Su iPhone aggiungi prima l'app alla schermata Home", "error");
-        else toast("Questo browser non supporta le notifiche", "error");
-      } else {
-        await disablePush(backend);
-        setPushOn(false);
-        toast("Notifiche spente");
-      }
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setPushBusy(false);
+      toast(say(e), "error");
     }
   };
 
@@ -123,6 +100,30 @@ export default function SettingsPage() {
             </span>
             <ChevronRight size={18} className="text-faint" />
           </button>
+          <div className="border-t border-line px-4 py-3">
+            <p className="mb-2.5 text-[15px]">Sfondo della figurina</p>
+            <div className="grid grid-cols-8 gap-1.5" role="radiogroup" aria-label="Sfondo della figurina">
+              {CARD_COLORS.map((c) => {
+                const on = playerColor(me).toLowerCase() === c.value.toLowerCase();
+                return (
+                  <button
+                    key={c.value}
+                    role="radio"
+                    aria-checked={on}
+                    aria-label={c.name}
+                    onClick={() => void patchMe({ cardColor: c.value }, `Sfondo ${c.name.toLowerCase()}, ottima scelta`)}
+                    className={clsx(
+                      "press grid aspect-square w-full max-w-[38px] place-items-center justify-self-center rounded-full border-[2.5px] border-edge",
+                      on && "sticker-sm scale-110",
+                    )}
+                    style={{ background: c.value }}
+                  >
+                    {on && <Check size={16} strokeWidth={3.2} className={isLightColor(c.value) ? "text-[#1d1a16]" : "text-[#fffaf0]"} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <Row>
             <label htmlFor="nick" className="shrink-0 text-[15px]">
               Nome nell&apos;app
@@ -140,7 +141,7 @@ export default function SettingsPage() {
                 if (err) {
                   toast(err, "error");
                   setNickname(me.nickname ?? "");
-                } else void patchMe({ nickname: clean }, "Nome salvato");
+                } else void patchMe({ nickname: clean }, "Ho salvato il nome");
               }}
               className="h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:font-normal placeholder:text-faint"
             />
@@ -157,7 +158,7 @@ export default function SettingsPage() {
               onChange={(e) => setJersey(e.target.value.replace(/\D/g, "").slice(0, 2))}
               onBlur={() => {
                 const v = jersey === "" ? null : Number(jersey);
-                if (v !== me.jerseyNumber) void patchMe({ jerseyNumber: v }, "Numero salvato");
+                if (v !== me.jerseyNumber) void patchMe({ jerseyNumber: v }, "Ho salvato il numero");
               }}
               className="tnum h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:text-faint"
             />
@@ -182,13 +183,13 @@ export default function SettingsPage() {
             />
           </Row>
           <Row icon={<Bell size={18} />}>
-            <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-semibold">Notifiche</p>
-              <p className="text-[12.5px] text-muted">
-                {pushSupported() ? "Partite proposte, nuovo MVP, badge" : isIos() && !standalone ? "Su iPhone servono l'app nella Home" : "Non disponibili in questo browser"}
-              </p>
-            </div>
-            {pushBusy ? <Spinner size={14} /> : <Toggle label="Notifiche" checked={pushOn} onChange={(v) => void togglePush(v)} />}
+            <Link href="/profilo/notifiche" className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold">Notifiche</span>
+                <span className="block text-[12.5px] text-muted">{push.on ? "Attive, scegli cosa ricevere" : "Spente, tocca per sceglierle"}</span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-faint" />
+            </Link>
           </Row>
           {!standalone && (
             <Row icon={<Download size={18} />}>
@@ -281,20 +282,22 @@ export default function SettingsPage() {
           </div>
         </div>
       </Sheet>
-      <Sheet open={picking} onOpenChange={setPicking} title="La tua figurina" description="Tocca per sceglierla: si aggiorna subito">
+      <Sheet open={picking} onOpenChange={setPicking} title="La tua figurina" description="Alcune si sbloccano con i badge">
         <div className="pb-2">
           <AvatarPicker
             value={me.avatarUrl}
             uploading={uploading}
-            onPreset={(url) => void patchMe({ avatarUrl: url }, "Figurina aggiornata")}
-            onInitials={() => void patchMe({ avatarUrl: null }, "Ora hai le iniziali")}
+            onPreset={(url) => void patchMe({ avatarUrl: url }, "Ho cambiato la figurina")}
+            onInitials={() => void patchMe({ avatarUrl: null }, "Ora uso le tue iniziali")}
+            tiers={engine.badges(me.id).states.map((b) => b.tier)}
+            onLocked={(m) => toast(m)}
             onFile={async (f) => {
               setUploading(true);
               try {
                 const url = await backend.uploadAvatar(await compressAvatar(f));
-                await patchMe({ avatarUrl: url }, "Foto aggiornata");
+                await patchMe({ avatarUrl: url }, "Ho messo la tua foto");
               } catch (err) {
-                toast((err as Error).message, "error");
+                toast(say(err), "error");
               } finally {
                 setUploading(false);
               }

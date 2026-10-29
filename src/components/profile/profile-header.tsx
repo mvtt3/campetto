@@ -1,10 +1,12 @@
 "use client";
 
+import clsx from "clsx";
 import Link from "next/link";
 import { Crown, Settings, Trophy } from "lucide-react";
 import { BadgeMedal } from "@/components/badge-medal";
-import { Avatar, playerColor } from "@/components/ui/avatar";
+import { Avatar, isLightColor, playerColor } from "@/components/ui/avatar";
 import { CourtLines } from "@/components/ui/basics";
+import { InfoTip } from "@/components/ui/info";
 import { showcaseBadges } from "@/lib/badges";
 import { useData } from "@/lib/data/provider";
 import { MONTHS_IT } from "@/lib/periods";
@@ -20,11 +22,15 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
   const showcase = showcaseBadges(engine.badges(player.id).states, player.showcase);
   const trophies = trophiesOf(player.id, engine.seasons).length;
   const tint = playerColor(player);
+  const light = isLightColor(tint);
   const badgesHref = self ? "/profilo/badge" : `/giocatore/${player.id}/badge`;
 
   return (
     <div
-      className="halftone relative overflow-hidden rounded-[26px] border-[2.5px] border-edge p-5 text-[#fffaf0] shadow-[var(--shadow-pop)]"
+      className={clsx(
+        "halftone relative overflow-hidden rounded-[26px] border-[2.5px] border-edge p-5 shadow-[var(--shadow-pop)]",
+        light ? "text-[#1d1a16] [--soft:rgb(29_26_22/0.72)] [--chip:rgb(29_26_22/0.1)]" : "text-[#fffaf0] [--soft:rgb(255_255_255/0.8)] [--chip:rgb(255_255_255/0.2)]",
+      )}
       style={{ backgroundColor: tint }}
     >
       <CourtLines className="absolute inset-0 h-full w-full" />
@@ -39,12 +45,15 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
         </span>
         <div className="min-w-0 flex-1">
           <h1 className="display line-clamp-2 break-words text-[20px] leading-[1.02]">{displayName(player)}</h1>
-          <p className="truncate text-[13.5px] text-white/80">
+          <p className="truncate text-[13.5px] text-[var(--soft)]">
             {player.roles.join(", ") || "Giocatore"}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-white/20 px-2.5 py-1 text-[12.5px] font-semibold">
+            <span className="flex items-center gap-1.5 rounded-full bg-[var(--chip)] py-1 pl-2.5 pr-1.5 text-[12.5px] font-semibold">
               ELO <span className="tnum font-bold">{elo}</span>
+              <InfoTip label="Cos'è l'ELO" size={15}>
+                È il punteggio di forza: si parte da 1000, sale quando vinci e scende quando perdi, di più se l&apos;avversario è forte
+              </InfoTip>
             </span>
             {isMvp && engine.mvp?.period.kind === "month" && (
               <span className="flex items-center gap-1 rounded-full border-2 border-[#1d1a16] bg-volt px-2.5 py-0.5 text-[12.5px] font-bold text-[#1d1a16]">
@@ -52,14 +61,14 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
               </span>
             )}
             {trophies > 0 && (
-              <span className="flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[12.5px] font-semibold">
+              <span className="flex items-center gap-1 rounded-full bg-[var(--chip)] px-2.5 py-1 text-[12.5px] font-semibold">
                 <Trophy size={13} /> {trophies}
               </span>
             )}
           </div>
         </div>
         {self && (
-          <Link href="/profilo/impostazioni" aria-label="Impostazioni" data-tour="profile-settings" className="press -mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center self-start rounded-full bg-white/15">
+          <Link href="/profilo/impostazioni" aria-label="Impostazioni" data-tour="profile-settings" className="press -mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center self-start rounded-full bg-[var(--chip)]">
             <Settings size={20} />
           </Link>
         )}

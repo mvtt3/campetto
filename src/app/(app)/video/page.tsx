@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { boxesFromEvents } from "@/lib/stats/player";
 import { FORMATS, shortName, TEAM_SIZE, type EventKind, type Format } from "@/lib/types";
+import { say } from "@/lib/voice";
 
 interface TagEvent {
   playerId: string;
@@ -119,11 +120,11 @@ export default function VideoPage() {
   const name = (id: string) => shortName(data.players.find((p) => p.id === id), data.players);
 
   const add = (kind: EventKind) => {
-    if (!current) return toast("Scegli prima il giocatore", "error");
+    if (!current) return toast("Dimmi prima chi ha fatto l'azione", "error");
     if (kind === "ast") {
       const mates = ids.filter((id) => id !== current && assign[id] === assign[current]);
       if (!mates.length) {
-        toast("Nel 1v1 non ci sono assist", "error");
+        toast("Nel 1v1 non ci sono assist da segnare", "error");
         return;
       }
     }
@@ -145,7 +146,7 @@ export default function VideoPage() {
   };
 
   const save = async () => {
-    if (scoreA === scoreB) return toast("Il risultato non può essere un pareggio", "error");
+    if (scoreA === scoreB) return toast("Al campetto non si pareggia: controlla il punteggio", "error");
     setBusy(true);
     const boxes = boxesFromEvents(events, ids);
     try {
@@ -162,10 +163,10 @@ export default function VideoPage() {
       localStorage.removeItem(DRAFT);
       void backend.notify({ type: "match_saved", matchId: id, isNew: true });
       await refresh();
-      toast("Partita salvata con il tabellino del video");
+      toast("Ho salvato la partita con il tabellino del video");
       router.replace(`/partite?m=${id}`);
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
       setBusy(false);
     }
   };

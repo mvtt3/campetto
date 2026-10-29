@@ -10,6 +10,7 @@ import { normalizeBox } from "@/lib/stats/player";
 import { FORMATS, adminName, type Format, type Team } from "@/lib/types";
 import { DateTimeField, Menu } from "@/components/ui/pickers";
 import { APP_START } from "@/lib/periods";
+import { say } from "@/lib/voice";
 
 const EXAMPLE = `Giocatore;Squadra;Punti;Triple;Rimbalzi;Assist;Rubate;Stoppate;Perse
 Valerio Semeraro;A;9;1;4;3;1;0;1
@@ -74,10 +75,10 @@ export default function ImportPage() {
       });
       void backend.notify({ type: "match_saved", matchId: id, isNew: true });
       await refresh();
-      toast("Statistiche importate");
+      toast("Ho importato le statistiche");
       router.replace(`/partite?m=${id}`);
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
       setBusy(false);
     }
   };

@@ -54,10 +54,10 @@ export default function HallPage() {
                     ))}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12.5px] text-muted">{r.label}</p>
+                    <p className="text-[12.5px] leading-tight text-muted [text-wrap:balance]">{r.label}</p>
                     <p className="truncate text-[15px] font-semibold">{r.playerIds.map(name).join(", ")}</p>
                   </div>
-                  <p className="num shrink-0 text-[22px] text-court">{r.display}</p>
+                  <p className="num max-w-[42%] shrink-0 text-right text-[19px] leading-none text-court">{r.display}</p>
                 </button>
               ))}
             </div>

@@ -5,15 +5,53 @@ export const TEAM_SIZE: Record<Format, number> = { "1v1": 1, "2v2": 2, "3v3": 3,
 export type Team = "A" | "B";
 export type StatsSource = "solo_risultato" | "tabellino" | "video" | "importata";
 
-export type NotifyKind = "proposte" | "riepiloghi" | "mvp" | "badge" | "conferme";
-export type NotifyPrefs = Record<NotifyKind, boolean>;
+export type NotifyKind =
+  | "proposte"
+  | "riepiloghi"
+  | "completa"
+  | "annullate"
+  | "promemoria"
+  | "partite"
+  | "mvp"
+  | "badge"
+  | "record";
+/** Un interruttore per ogni tipo di notifica, più il silenzio di notte (23–8). */
+export type NotifyPrefs = Record<NotifyKind, boolean> & { notte: boolean };
 export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
   proposte: true,
   riepiloghi: true,
+  completa: true,
+  annullate: true,
+  promemoria: true,
+  partite: true,
   mvp: true,
   badge: true,
-  conferme: true,
+  record: true,
+  notte: true,
 };
+
+/** Le notifiche che si possono scegliere, raggruppate come nelle impostazioni. */
+export const NOTIFY_GROUPS: { title: string; items: { kind: NotifyKind; label: string; hint: string }[] }[] = [
+  {
+    title: "Organizzare",
+    items: [
+      { kind: "proposte", label: "Nuove proposte", hint: "Quando qualcuno propone di giocare" },
+      { kind: "riepiloghi", label: "Chi viene", hint: "Chi ha detto ci sono, a gruppi per non disturbarti" },
+      { kind: "completa", label: "Squadre al completo", hint: "Quando si arriva al numero giusto per giocare" },
+      { kind: "promemoria", label: "Promemoria", hint: "Un'ora prima della partita a cui hai detto ci sono" },
+      { kind: "annullate", label: "Partite annullate", hint: "Se salta una partita a cui avevi risposto" },
+    ],
+  },
+  {
+    title: "Risultati e premi",
+    items: [
+      { kind: "partite", label: "Partite registrate", hint: "Il risultato delle partite in cui hai giocato" },
+      { kind: "mvp", label: "MVP del mese", hint: "Quando cambia chi porta la corona" },
+      { kind: "badge", label: "Badge e figurine", hint: "Quando sblocchi un badge o una figurina nuova" },
+      { kind: "record", label: "Record del gruppo", hint: "Quando qualcuno batte un record" },
+    ],
+  },
+];
 
 export interface Player {
   id: string;
@@ -167,9 +205,9 @@ export const NAME_MAX = 16;
 /** Controlla il nome scelto: lunghezza e nessun doppione nel gruppo. Restituisce l'errore o null. */
 export function nameError(name: string, players: Pick<Player, "id" | "nickname">[], meId: string): string | null {
   const n = name.trim().replace(/\s+/g, " ");
-  if (n.length < NAME_MIN) return `Almeno ${NAME_MIN} lettere.`;
-  if (n.length > NAME_MAX) return `Al massimo ${NAME_MAX} caratteri.`;
-  if (players.some((p) => p.id !== meId && p.nickname?.trim().toLowerCase() === n.toLowerCase())) return "Questo nome è già preso";
+  if (n.length < NAME_MIN) return `Mi servono almeno ${NAME_MIN} lettere`;
+  if (n.length > NAME_MAX) return `Massimo ${NAME_MAX} caratteri`;
+  if (players.some((p) => p.id !== meId && p.nickname?.trim().toLowerCase() === n.toLowerCase())) return "Questo nome ce l'ha già qualcuno: provane un altro";
   return null;
 }
 

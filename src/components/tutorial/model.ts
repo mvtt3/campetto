@@ -54,7 +54,7 @@ export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
       title: "Profilo",
       path: "/profilo",
       steps: [
-        step("profile-card", "La tua figurina", "Nome, figurina, ruoli e badge in vetrina"),
+        step("profile-card", "La tua figurina", "Più badge prendi, più figurine speciali sblocchi: le scegli dalle impostazioni"),
         step("profile-stats", "I tuoi numeri", "Le medie, la forma e l'andamento mese per mese"),
         step("profile-settings", "La guida resta qui", "Nelle impostazioni la ritrovi, anche per una sola scheda"),
       ],

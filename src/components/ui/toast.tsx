@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { SpicchioFace } from "./pull-to-refresh";
 
 interface ToastItem {
   id: number;
@@ -31,11 +32,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
             className={clsx(
-              "sticker pointer-events-auto max-w-sm rounded-2xl px-4 py-3 text-[14px] font-bold",
-              t.tone === "error" ? "bg-surface text-danger" : "bg-volt text-volt-ink",
+              "sticker pointer-events-auto flex max-w-sm items-center gap-2.5 rounded-[20px] py-2 pl-2 pr-4 text-[14px] font-bold leading-snug [text-wrap:pretty]",
+              t.tone === "error" ? "bg-surface text-text" : "bg-volt text-volt-ink",
             )}
           >
-            {t.text}
+            <span className={clsx("grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16]", t.tone === "error" ? "bg-danger" : "bg-court")}>
+              <SpicchioFace size={30} pose={t.tone === "error" ? "boh" : "ciao"} />
+            </span>
+            <span className="min-w-0">{t.text}</span>
           </div>
         ))}
       </div>

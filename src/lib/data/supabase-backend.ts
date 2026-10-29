@@ -3,19 +3,15 @@
 import { accessToken, signInWithGoogle, supabase } from "../supabase/client";
 import { MATCH_SELECT, PROPOSAL_SELECT, mapMatch, mapPlayer, mapProposal } from "./map";
 import type { AuthState, Backend, NotifyBody, PendingUser, PlayerPrivate } from "./backend";
+import { say } from "../voice";
 
 function fail(error: { message: string } | null): void {
   if (error) throw new Error(friendly(error.message));
 }
 
-/** Postgres messages raised by our functions are already in Italian; others get a generic text. */
+/** Gli errori arrivano già nella voce di Spicchio (vedi lib/voice). */
 function friendly(msg: string): string {
-  if (/fetch|network|Failed to/i.test(msg)) return "Connessione assente, riprova quando sei online";
-  if (/permission denied|row-level security/i.test(msg)) return "Non hai i permessi per questa azione";
-  if (/players_nickname_key/i.test(msg)) return "Questo nome è già preso";
-  if (/players_nickname_len/i.test(msg)) return "Il nome deve avere da 2 a 16 caratteri";
-  if (/matches_since_start/i.test(msg)) return "Il Campetto parte da ottobre 2026: scegli una data da allora in poi";
-  return msg;
+  return say(new Error(msg));
 }
 
 export function createSupabaseBackend(): Backend {
@@ -46,7 +42,7 @@ export function createSupabaseBackend(): Backend {
         }
         return { status: "ready", meId };
       } catch (e) {
-        return { status: "error", message: (e as Error).message };
+        return { status: "error", message: say(e) };
       }
     },
 

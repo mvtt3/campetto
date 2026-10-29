@@ -12,14 +12,43 @@ const RED = "#E5412D";
 const YELLOW = "#FFC531";
 const GOLD = "#E8A80C";
 
+export type Rarity = "base" | "rara" | "epica" | "leggendaria";
+
+/**
+ * Le figurine. Le prime sei sono di tutti; le altre si sbloccano con i badge
+ * (personaggi originali ispirati ai ruoli del basket, nessun giocatore vero).
+ */
 export const AVATAR_PRESETS = [
-  { id: "collana", name: "Oro", bg: "#2D5BE3" },
-  { id: "occhiali", name: "Prof", bg: "#FFC531" },
-  { id: "bandana", name: "Bandana", bg: "#2E9E5B" },
-  { id: "lungo", name: "Pivot", bg: "#7C4DCC" },
-  { id: "coppola", name: "Tappo", bg: "#1597A6" },
-  { id: "muscoli", name: "Muscolo", bg: "#E5412D" },
+  { id: "collana", name: "Oro", bg: "#2D5BE3", rarity: "base" },
+  { id: "occhiali", name: "Prof", bg: "#FFC531", rarity: "base" },
+  { id: "bandana", name: "Bandana", bg: "#2E9E5B", rarity: "base" },
+  { id: "lungo", name: "Pivot", bg: "#7C4DCC", rarity: "base" },
+  { id: "coppola", name: "Tappo", bg: "#1597A6", rarity: "base" },
+  { id: "muscoli", name: "Muscolo", bg: "#E5412D", rarity: "base" },
+  { id: "cecchino", name: "Cecchino", bg: "#1597A6", rarity: "rara" },
+  { id: "regista", name: "Regista", bg: "#2E9E5B", rarity: "rara" },
+  { id: "muro", name: "Muro", bg: "#E5412D", rarity: "rara" },
+  { id: "volo", name: "Volo", bg: "#2D5BE3", rarity: "epica" },
+  { id: "gigante", name: "Gigante", bg: "#7C4DCC", rarity: "epica" },
+  { id: "mago", name: "Mago", bg: "#1D1A16", rarity: "epica" },
+  { id: "re", name: "Il Re", bg: "#E5412D", rarity: "leggendaria" },
+  { id: "leggenda", name: "Leggenda", bg: "#1D1A16", rarity: "leggendaria" },
 ] as const;
+
+/** Come si sbloccano: quanti badge servono e di che livello (1 bronzo, 2 argento, 3 oro, 4 Hall of Fame). */
+export const RARITY: Record<Rarity, { label: string; minTier: number; count: number; rule: string; ring: string }> = {
+  base: { label: "Di tutti", minTier: 0, count: 0, rule: "", ring: "#1D1A16" },
+  rara: { label: "Rare", minTier: 1, count: 3, rule: "3 badge qualsiasi", ring: "#C9D3E0" },
+  epica: { label: "Epiche", minTier: 2, count: 3, rule: "3 badge d'argento", ring: "#B48CFF" },
+  leggendaria: { label: "Leggendarie", minTier: 3, count: 3, rule: "3 badge d'oro", ring: "#FFC531" },
+};
+
+/** Quanti badge hai al livello richiesto, e se la rarità è sbloccata. */
+export function rarityProgress(rarity: Rarity, badgeTiers: number[]): { have: number; need: number; unlocked: boolean } {
+  const r = RARITY[rarity];
+  const have = r.count ? badgeTiers.filter((t) => t >= r.minTier).length : 0;
+  return { have: Math.min(have, r.count), need: r.count, unlocked: have >= r.count };
+}
 
 export type AvatarPresetId = (typeof AVATAR_PRESETS)[number]["id"];
 
@@ -41,7 +70,7 @@ interface Head {
 }
 
 /** Raggiera da poster dietro al personaggio. */
-function Sunburst({ bg }: { bg: string }) {
+function Sunburst({ bg, rarity = "base" }: { bg: string; rarity?: Rarity }) {
   const rays = Array.from({ length: 12 }, (_, i) => {
     const a0 = ((i * 30 - 6) * Math.PI) / 180;
     const a1 = ((i * 30 + 6) * Math.PI) / 180;
@@ -50,7 +79,13 @@ function Sunburst({ bg }: { bg: string }) {
   return (
     <>
       <rect width="100" height="100" fill={bg} />
-      <path d={rays} fill="#FFFFFF" opacity="0.16" />
+      <path d={rays} fill={rarity === "leggendaria" ? YELLOW : "#FFFFFF"} opacity={rarity === "leggendaria" ? 0.45 : rarity === "epica" ? 0.22 : 0.16} />
+      {rarity !== "base" && (
+        <g fill={rarity === "leggendaria" ? YELLOW : CREAM} stroke={INK} strokeWidth="1.2" strokeLinejoin="round">
+          <path d="M14 18 L15.6 22 L20 22.4 L16.6 25.2 L17.8 29.4 L14 27 L10.2 29.4 L11.4 25.2 L8 22.4 L12.4 22 Z" />
+          {rarity !== "rara" && <path d="M86 14 L87.2 17 L90.4 17.3 L88 19.4 L88.8 22.6 L86 20.8 L83.2 22.6 L84 19.4 L81.6 17.3 L84.8 17 Z" />}
+        </g>
+      )}
     </>
   );
 }
@@ -264,6 +299,168 @@ function Figure({ id, uid }: { id: AvatarPresetId; uid: string }) {
         </>
       );
     }
+    case "cecchino": {
+      // Il tiratore: fascia, occhio che prende la mira, la retina sullo sfondo.
+      const h: Head = { cx: 50, cy: 48, rx: 26, ry: 26, ball: "#F26A1B", dark: "#C9500F" };
+      return (
+        <>
+          <g fill="none" stroke={CREAM} strokeWidth="1.6" opacity="0.55">
+            <circle cx="82" cy="30" r="9" />
+            <path d="M73 30 L91 30 M82 21 L82 39" />
+          </g>
+          <Jersey color={CREAM} trim="#1597A6" />
+          <text x="50" y="94" textAnchor="middle" fontFamily="var(--font-ultra), Georgia, serif" fontSize="10" fill="#1597A6">3</text>
+          <Ball h={h} uid={uid} />
+          <path d="M24.6 37 Q50 26 75.4 37 L76 43 Q50 33 24 43 Z" fill={YELLOW} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+          <Eye x={42} y={49} lid ball={h.ball} />
+          <Eye x={58} y={48} />
+          <path d="M43 62 Q51 65 59 60" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+        </>
+      );
+    }
+    case "regista": {
+      // Il playmaker: cappellino con visiera e fischietto al collo.
+      const h: Head = { cx: 50, cy: 50, rx: 26, ry: 26, ball: "#F26A1B", dark: "#C9500F" };
+      return (
+        <>
+          <Jersey color="#2D5BE3" trim={CREAM} />
+          <path d="M38 79 Q46 86 52 84" fill="none" stroke={INK} strokeWidth="1.8" />
+          <rect x="50" y="81" width="9" height="6" rx="2" fill="#C9D3E0" stroke={INK} strokeWidth="1.8" />
+          <Ball h={h} uid={uid} />
+          <path d="M25.5 42 Q26 24 50 23.5 Q74 24 74.5 42 Q50 35 25.5 42 Z" fill={CREAM} stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
+          <path d="M50 23.5 V38" stroke={INK} strokeWidth="1.4" opacity="0.6" />
+          <path d="M22 43 Q36 34 56 38 Q46 46 22 46 Z" fill="#2D5BE3" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+          <Eye x={43} y={52} s={0.92} look={-1} />
+          <Eye x={59} y={52} s={0.92} look={-1} />
+          <Grin x={51} y={63} w={0.85} />
+        </>
+      );
+    }
+    case "muro": {
+      // Il difensore: muro di mattoni dietro, guanto alzato, faccia seria.
+      const h: Head = { cx: 50, cy: 50, rx: 26, ry: 26, ball: "#F26A1B", dark: "#C9500F" };
+      return (
+        <>
+          <g stroke={INK} strokeWidth="1.2" opacity="0.35" fill="none">
+            {[18, 30, 42, 54, 66].map((y, i) => (
+              <path key={y} d={`M-5 ${y} H105 ${Array.from({ length: 6 }, (_, k) => `M${k * 20 + (i % 2 ? 10 : 0)} ${y} V${y + 12}`).join(" ")}`} />
+            ))}
+          </g>
+          <Jersey color={YELLOW} trim={INK} wide />
+          <Ball h={h} uid={uid} />
+          <g transform="translate(83 46) rotate(12)">
+            <path d="M-8 8 Q-11 -3 -7 -12 Q-3 -17 1 -13 Q4 -19 8 -14 Q12 -10 10 -2 Q12 4 8 9 Q1 13 -5 11 Z" fill={CREAM} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+            <path d="M1 -13 Q0 -8 2 -4 M8 -14 Q6 -8 7 -3" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
+          </g>
+          <Eye x={42} y={49} s={0.9} />
+          <Eye x={58} y={49} s={0.9} />
+          <Brows x={50} y={40} tilt={-2.2} w={7} />
+          <path d="M42 62 H58" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+        </>
+      );
+    }
+    case "volo": {
+      // Lo schiacciatore: ali ai lati, sorriso a tutta faccia.
+      const h: Head = { cx: 50, cy: 50, rx: 25, ry: 25, ball: "#F26A1B", dark: "#C9500F" };
+      const wing = "M0 0 Q-10 -14 -24 -12 Q-18 -8 -22 -4 Q-14 -3 -18 2 Q-10 2 -12 7 Q-4 5 0 4 Z";
+      return (
+        <>
+          <Jersey color={CREAM} trim={RED} />
+          <g fill={CREAM} stroke={INK} strokeWidth="2.2" strokeLinejoin="round">
+            <path d={wing} transform="translate(27 48)" />
+            <path d={wing} transform="translate(73 48) scale(-1 1)" />
+          </g>
+          <Ball h={h} uid={uid} />
+          <Eye x={42} y={47} />
+          <Eye x={58} y={47} />
+          <Grin x={50} y={59} w={1.05} />
+        </>
+      );
+    }
+    case "gigante": {
+      // Il più alto di tutti: testa lunghissima che esce dal cartellino, fascia al polso.
+      const h: Head = { cx: 50, cy: 40, rx: 21, ry: 36, ball: "#F26A1B", dark: "#C9500F" };
+      return (
+        <>
+          <Jersey color={CREAM} trim="#7C4DCC" />
+          <Ball h={h} uid={uid} />
+          <Eye x={43} y={44} lid ball={h.ball} />
+          <Eye x={57} y={44} lid ball={h.ball} />
+          <path d="M45 60 Q50 63 56 59" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+          <path d="M33 16 L36 11 M67 16 L64 11 M50 8 V2" stroke={CREAM} strokeWidth="2.4" strokeLinecap="round" />
+        </>
+      );
+    }
+    case "mago": {
+      // Il passatore magico: cappello a punta con le stelle e scintille.
+      const h: Head = { cx: 50, cy: 54, rx: 25, ry: 25, ball: "#F26A1B", dark: "#C9500F" };
+      return (
+        <>
+          <Jersey color="#7C4DCC" trim={YELLOW} />
+          <Ball h={h} uid={uid} />
+          <path d="M26 41 Q50 33 74 41 L56 8 Q53 3 50 6 Z" fill="#2D5BE3" stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
+          <path d="M20 42 Q50 31 80 42 Q82 46 78 47 Q50 38 22 47 Q18 46 20 42 Z" fill="#2D5BE3" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+          <g fill={YELLOW}>
+            <path d="M49 20 L50.6 23.4 L54 24 L51.4 26.2 L52.2 29.6 L49 27.8 L45.8 29.6 L46.6 26.2 L44 24 L47.4 23.4 Z" />
+            <circle cx="60" cy="33" r="1.6" />
+            <circle cx="40" cy="35" r="1.3" />
+          </g>
+          <Eye x={42} y={55} s={0.9} look={1} />
+          <Eye x={58} y={55} s={0.9} look={1} />
+          <path d="M42 66 Q50 72 58 66" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+          <path d="M84 60 L86 56 L88 60 L92 62 L88 64 L86 68 L84 64 L80 62 Z" fill={YELLOW} stroke={INK} strokeWidth="1.2" />
+        </>
+      );
+    }
+    case "re": {
+      // Il Re del campetto: corona d'oro e mantello rosso con l'ermellino.
+      const h: Head = { cx: 50, cy: 52, rx: 25, ry: 25, ball: "#F26A1B", dark: "#C9500F" };
+      return (
+        <>
+          <path d="M8 104 Q10 80 30 76 L70 76 Q90 80 92 104 Z" fill="#B3261E" stroke={INK} strokeWidth="2.8" strokeLinejoin="round" />
+          <path d="M26 78 Q50 90 74 78 L72 84 Q50 96 28 84 Z" fill={CREAM} stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+          <g fill={INK}>
+            <circle cx="38" cy="85" r="1.1" />
+            <circle cx="50" cy="89" r="1.1" />
+            <circle cx="62" cy="85" r="1.1" />
+          </g>
+          <Ball h={h} uid={uid} />
+          <path d="M30 34 L34 16 L42 27 L50 12 L58 27 L66 16 L70 34 Q50 28 30 34 Z" fill={YELLOW} stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
+          <g fill={RED} stroke={INK} strokeWidth="1.2">
+            <circle cx="50" cy="26" r="2.4" />
+            <circle cx="38.5" cy="29" r="1.8" />
+            <circle cx="61.5" cy="29" r="1.8" />
+          </g>
+          <Eye x={42} y={51} s={0.92} lid ball={h.ball} />
+          <Eye x={58} y={51} s={0.92} lid ball={h.ball} />
+          <path d="M42 63 Q51 69 60 62" fill="none" stroke={INK} strokeWidth="2.8" strokeLinecap="round" />
+        </>
+      );
+    }
+    case "leggenda": {
+      // La Leggenda: palla d'oro, corona d'alloro e stelle tutto intorno.
+      const h: Head = { cx: 50, cy: 50, rx: 26, ry: 26, ball: "#F2B705", dark: "#B98500" };
+      const leaf = (x: number, y: number, rot: number, k: number) => (
+        <ellipse key={k} cx={x} cy={y} rx="4.2" ry="2.1" transform={`rotate(${rot} ${x} ${y})`} fill="#2E9E5B" stroke={INK} strokeWidth="1.3" />
+      );
+      return (
+        <>
+          <Jersey color={CREAM} trim={YELLOW} />
+          <Ball h={h} uid={uid} />
+          <g>
+            {[0, 1, 2, 3, 4].map((i) => leaf(30 + i * 3.4, 38 - i * 4.6, -50 + i * 12, i))}
+            {[0, 1, 2, 3, 4].map((i) => leaf(70 - i * 3.4, 38 - i * 4.6, 50 - i * 12, 10 + i))}
+          </g>
+          <Eye x={42} y={48} />
+          <Eye x={58} y={48} />
+          <Grin x={50} y={60} />
+          <g fill={YELLOW} stroke={INK} strokeWidth="1.2">
+            <path d="M84 52 L85.6 56 L90 56.4 L86.6 59.2 L87.8 63.4 L84 61 L80.2 63.4 L81.4 59.2 L78 56.4 L82.4 56 Z" />
+            <path d="M16 56 L17.2 59 L20.4 59.3 L18 61.4 L18.8 64.6 L16 62.8 L13.2 64.6 L14 61.4 L11.6 59.3 L14.8 59 Z" />
+          </g>
+        </>
+      );
+    }
   }
 }
 
@@ -272,7 +469,7 @@ export function PresetAvatar({ id, title }: { id: AvatarPresetId; title?: string
   const p = AVATAR_PRESETS.find((x) => x.id === id)!;
   return (
     <svg viewBox="0 0 100 100" className="h-full w-full" role={title ? "img" : undefined} aria-label={title} aria-hidden={title ? undefined : true}>
-      <Sunburst bg={p.bg} />
+      <Sunburst bg={p.bg} rarity={p.rarity} />
       <g transform="translate(50 58) scale(1.16) translate(-50 -58)">
         <Figure id={id} uid={uid} />
       </g>

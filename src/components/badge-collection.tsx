@@ -7,6 +7,7 @@ import { BadgeMedal, BadgeTile, TIER_STYLE } from "./badge-medal";
 import { Button, Segmented } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
+import { say } from "@/lib/voice";
 
 const CATS: { value: BadgeCategory | "tutti"; label: string }[] = [
   { value: "tutti", label: "Tutti" },
@@ -37,9 +38,9 @@ export function BadgeCollection({ playerId, editable }: { playerId: string; edit
     mutate((d) => ({ ...d, players: d.players.map((p) => (p.id === player.id ? { ...p, showcase: next } : p)) }));
     try {
       await backend.updateMe({ showcase: next });
-      toast(showcase.includes(key) ? "Tolto dalla vetrina" : "Messo in vetrina");
+      toast(showcase.includes(key) ? "L'ho tolto dalla vetrina" : "L'ho messo in vetrina");
     } catch (e) {
-      toast((e as Error).message, "error");
+      toast(say(e), "error");
     }
   };
 
