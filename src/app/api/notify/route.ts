@@ -20,6 +20,7 @@ const Body = z.discriminatedUnion("type", [
   z.object({ type: z.literal("proposal_response"), proposalId: z.uuid() }),
   z.object({ type: z.literal("proposal_cancelled"), proposalId: z.uuid() }),
   z.object({ type: z.literal("tick") }),
+  z.object({ type: z.literal("feedback"), kind: z.string().max(20) }),
   z.object({ type: z.literal("match_saved"), matchId: z.uuid(), isNew: z.boolean() }),
   z.object({ type: z.literal("flush") }),
   z.object({ type: z.literal("test") }),
@@ -368,6 +369,17 @@ export async function POST(req: Request) {
     } else if (body.type === "proposal_cancelled") {
       const [players, { data }] = await Promise.all([loadPlayers(sb), sb.from("proposals").select(PROPOSAL_SELECT).eq("id", body.proposalId).single()]);
       if (data) await proposalCancelled(ctx, mapProposal(data), players);
+    } else if (body.type === "feedback") {
+      // Avvisa l'amministratore che è arrivata una segnalazione.
+      const players = await loadPlayers(sb);
+      const admins = players.filter((p) => p.isAdmin && p.id !== ctx.me).map((p) => p.id);
+      const who = shortName(players.find((p) => p.id === ctx.me), players);
+      await ctx.send(await ctx.targets("segnalazioni" as NotifyKind, admins), {
+        title: body.kind === "idea" ? "Una nuova idea" : "Nuova segnalazione",
+        body: `${who} mi ha scritto dall'app: la guardo nel prossimo controllo`,
+        url: "/profilo/impostazioni",
+        tag: "feedback",
+      });
     } else if (body.type === "flush") {
       const [players, { data }] = await Promise.all([
         loadPlayers(sb),

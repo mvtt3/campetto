@@ -68,6 +68,7 @@ export type NotifyBody =
   | { type: "proposal_new"; proposalId: string }
   | { type: "proposal_response"; proposalId: string }
   | { type: "proposal_cancelled"; proposalId: string }
+  | { type: "feedback"; kind: string }
   | { type: "match_saved"; matchId: string; isNew: boolean }
   | { type: "flush" }
   | { type: "test" };

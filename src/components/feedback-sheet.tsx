@@ -46,6 +46,7 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
         /* nessuna schermata */
       }
       await backend.sendFeedback({ kind, message: text, screen, device: deviceInfo(), appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? null });
+      void backend.notify({ type: "feedback", kind });
       haptic(12);
       toast(kind === "idea" ? "Grazie! Ho segnato la tua idea" : "Grazie! L'ho passato a chi aggiusta l'app");
       setText("");
