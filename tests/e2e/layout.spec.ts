@@ -22,6 +22,16 @@ for (const vp of VIEWPORTS) {
         expect(await truncatedTitles(page), `${path} ha titoli tagliati`).toEqual([]);
         expect(await screenProblems(page), `${path} ha testi o controlli sovrapposti`).toEqual([]);
       }
+      // La classifica delle squadre, formato per formato.
+      await page.goto("/classifiche");
+      await page.getByRole("button", { name: "Squadre" }).click();
+      for (const f of ["1v1", "2v2", "3v3", "4v4"]) {
+        await page.getByRole("tab", { name: f }).click();
+        await page.waitForTimeout(450);
+        expect(await pageScrolls(page), `squadre ${f} fa scorrere la pagina`).toBe(false);
+        expect(await clippedStickers(page), `squadre ${f} taglia bordi o ombre`).toEqual([]);
+        expect(await screenProblems(page), `squadre ${f} ha testi o controlli sovrapposti`).toEqual([]);
+      }
     });
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { Scale, Shuffle } from "lucide-react";
 import { useData } from "@/lib/data/provider";
@@ -123,7 +124,10 @@ export function TeamPicker({
           </button>
           <button
             disabled={selected.length !== size * 2}
-            onClick={() => balance(1)}
+            onClick={() => {
+              play("shuffle");
+              balance(1);
+            }}
             className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-raised text-[14px] font-semibold disabled:opacity-40"
           >
             <Shuffle size={17} /> Rimescola

@@ -35,7 +35,7 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
       description="Divise in modo che sia una partita equilibrata"
       footer={
         <div className="flex gap-2">
-          <Button className="flex-1" onClick={() => setRound((r) => r + 1)}>
+          <Button className="flex-1" sound="shuffle" onClick={() => setRound((r) => r + 1)}>
             <Shuffle size={17} /> Rimescola
           </Button>
           {me?.isAdmin && split && (

@@ -75,7 +75,7 @@ export function Avatar({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={player.avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <span className="num" style={{ fontSize: Math.max(10, size * 0.34) }}>
+          <span className="num" style={{ fontSize: Math.max(10, size * 0.34) }} aria-hidden>
             {initials(player)}
           </span>
         )}
@@ -85,7 +85,8 @@ export function Avatar({
   if (href === false) return inner;
   const target = href ?? (me?.id === player.id ? "/profilo" : `/giocatore/${player.id}`);
   return (
-    <Link href={target} aria-label={`Profilo di ${name}`} className="shrink-0 rounded-full">
+    <Link href={target} className="shrink-0 rounded-full">
+      <span className="sr-only">Profilo di {name}</span>
       {inner}
     </Link>
   );

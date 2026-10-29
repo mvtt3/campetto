@@ -1,5 +1,6 @@
 "use client";
 
+import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { Shuffle, X } from "lucide-react";
 import { motion } from "motion/react";
@@ -59,6 +60,7 @@ export function useRespond() {
     }));
     try {
       await backend.respond(p.id, next);
+      if (next === "si") play("success");
       if (next === "si") void backend.notify({ type: "proposal_response", proposalId: p.id });
     } catch (e) {
       toast(say(e), "error");

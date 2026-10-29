@@ -53,15 +53,55 @@ for (const vp of VIEWPORTS) {
 
       // Figurine e notifiche
       await page.goto("/profilo/impostazioni");
-      await page.getByRole("button", { name: "Cambia foto profilo" }).click();
+      await page.getByRole("button", { name: /Foto profilo/ }).click();
       await check(page, '[role="dialog"]', "figurine");
       await page.keyboard.press("Escape");
-      await page.getByRole("button", { name: "Scegli il tuo personaggio" }).click();
+      await page.getByRole("button", { name: /Il tuo personaggio/ }).click();
       await check(page, '[role="dialog"]', "personaggi");
       await page.getByRole("button", { name: "Leggenda, bloccato" }).click();
       await check(page, "[data-over-sheet] > div:last-child", "scheda del personaggio");
       await page.getByRole("button", { name: "Ci provo!" }).click();
+      await page.getByRole("button", { name: /^Jack/ }).click();
+      await check(page, "[data-over-sheet] > div:last-child", "scheda di un personaggio sbloccato");
       await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+
+      // Classifica delle squadre e la sua "i"
+      await page.goto("/classifiche");
+      await page.getByRole("button", { name: "Squadre" }).click();
+      await page.getByRole("button", { name: "Come funziona la classifica delle squadre" }).click();
+      await check(page, '[role="tooltip"]', "fumetto squadre");
+      await page.mouse.click(5, vp.height / 2);
+
+      // Le feste dopo la partita: risultato e personaggio nuovo.
+      await page.evaluate(() => {
+        const ms = JSON.parse(localStorage.getItem("campetto:mock:v1")!).matches as { id: string; playedAt: string; players: { playerId: string }[] }[];
+        const mine = ms.filter((m) => m.players.some((p) => p.playerId === "p1")).sort((x, y) => x.playedAt.localeCompare(y.playedAt));
+        const fresh = mine.slice(-2).map((m) => m.id);
+        localStorage.setItem("campetto:seen-matches:p1", JSON.stringify(ms.map((m) => m.id).filter((id) => !fresh.includes(id))));
+        localStorage.setItem("campetto:seen-badges:p1", JSON.stringify(["x"]));
+        localStorage.setItem("campetto:personaggi:p1", JSON.stringify([]));
+      });
+      await page.goto("/");
+      await check(page, '[aria-labelledby="party-title"] > div', "risultato dell'ultima partita");
+      for (let i = 0; i < 8; i++) {
+        const party = page.locator('[aria-labelledby="party-title"]');
+        if (!(await party.count())) break;
+        if (/Nuovo personaggio/.test((await party.textContent()) ?? "")) {
+          await page.waitForTimeout(1200);
+          await check(page, '[aria-labelledby="party-title"] > div', "personaggio sbloccato");
+          await party.getByRole("button", { name: "Dopo" }).click();
+          continue;
+        }
+        await party.getByRole("button").last().click();
+        await page.waitForTimeout(450);
+      }
+
+      // Un messaggio di Spicchio (errore) in alto.
+      await page.goto("/profilo/impostazioni");
+      await page.getByLabel("Nome nell'app").fill("x");
+      await page.getByLabel("Numero di maglia").click();
+      await check(page, '[role="alert"]', "messaggio di errore");
       await page.goto("/profilo/impostazioni");
       await page.getByRole("button", { name: /Segnala un problema/ }).click();
       await check(page, '[role="dialog"]', "segnala un problema");

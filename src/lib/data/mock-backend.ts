@@ -44,7 +44,7 @@ function seedPlayers(): Player[] {
     jerseyNumber: null,
     cardColor: null,
     avatarUrl,
-    character: (["re", "bandana", "occhiali", "cecchino", "coppola", "muscoli", "volo", "collana", "mago"] as const)[i] ?? null,
+    character: (["bomber", "bandana", "occhiali", "cecchino", "coppola", "muscoli", "volo", "collana", "ladro"] as const)[i] ?? null,
     userId: i === 0 ? "u1" : null,
     isAdmin: i === 0,
     showcase: [],

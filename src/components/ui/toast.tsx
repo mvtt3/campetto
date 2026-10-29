@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { play } from "@/lib/sound";
 import { SpicchioFace } from "./pull-to-refresh";
 
 interface ToastItem {
@@ -17,6 +18,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const show = useCallback((text: string, tone: "ok" | "error" = "ok") => {
     const id = Date.now() + Math.random();
+    if (tone === "error") play("error");
     // Un messaggio alla volta: quello nuovo prende il posto del vecchio, che svanisce.
     setItems((xs) => [...xs.filter((x) => !x.leaving).map((x) => ({ ...x, leaving: true })), { id, text, tone }]);
     setTimeout(() => setItems((xs) => xs.filter((x) => x.id === id || !x.leaving)), 520);

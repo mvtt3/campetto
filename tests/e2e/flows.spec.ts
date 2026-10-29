@@ -109,6 +109,8 @@ test("nuova partita con tabellino", async ({ page }) => {
 test("proponi una partita e rispondi", async ({ page }) => {
   await openApp(page);
   await page.goto("/organizza?nuova=1");
+  // Domani: l'orario di oggi potrebbe essere già passato quando parte il test.
+  await page.getByRole("button", { name: "Domani" }).click();
   await page.getByRole("button", { name: "18:00" }).click();
   await page.getByRole("tab", { name: "3v3" }).click();
   await page.getByRole("button", { name: "Proponi", exact: true }).click();
@@ -280,7 +282,7 @@ test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({ page })
   await field.fill("Pluto Jr");
   await field.blur();
   await expect(page.getByText("Ho salvato il nome")).toBeVisible();
-  await page.getByRole("button", { name: "Cambia foto profilo" }).click();
+  await page.getByRole("button", { name: /Foto profilo/ }).click();
   await page.getByRole("radio", { name: "Figurina Kofi" }).click();
   await expect(page.getByText("Ho cambiato la figurina")).toBeVisible();
   await page.goto("/profilo");
@@ -386,12 +388,13 @@ test("segnala un problema dalle impostazioni", async ({ page }) => {
 test("personaggi: scheda, bloccati e scelta", async ({ page }) => {
   await openApp(page, "demo");
   await page.goto("/profilo/impostazioni");
-  await page.getByRole("button", { name: "Scegli il tuo personaggio" }).click();
+  await page.getByRole("button", { name: /Il tuo personaggio/ }).click();
   // Uno speciale ancora bloccato: la scheda spiega cosa serve.
   await page.getByRole("button", { name: "Leggenda, bloccato" }).click();
   const card = page.getByRole("dialog", { name: "Leggenda" });
   await expect(card.getByText("Si sblocca con")).toBeVisible();
-  await expect(card.getByText(/di \d+ badge/)).toBeVisible();
+  await expect(card.getByText(/^0\/\d+$/)).toBeVisible();
+  await expect(card.getByText("Tutti i badge Leggenda")).toBeVisible();
   await card.getByRole("button", { name: "Ci provo!" }).click();
   await expect(page.getByRole("dialog", { name: "Leggenda" })).toHaveCount(0);
   // Uno di base si sceglie subito.
@@ -400,4 +403,105 @@ test("personaggi: scheda, bloccati e scelta", async ({ page }) => {
   await expect(page.getByText("Ora sei Kenji, gran scelta")).toBeVisible();
   await page.goto("/profilo");
   await expect(page.getByText("Kenji", { exact: true })).toBeVisible();
+});
+
+test("personaggi: si gira col dito e col tocco, il nome è sulla maglia", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openApp(page, "demo");
+  await page.goto("/profilo/impostazioni");
+  await page.getByRole("button", { name: /Il tuo personaggio/ }).click();
+  await page.getByRole("button", { name: /^Jack/ }).click();
+  const card = page.getByRole("dialog", { name: "Jack" });
+  await expect(card).toBeVisible();
+  // Di spalle c'è il nome scelto nell'app, in maiuscolo.
+  await expect(card.locator(".char3d-back text").first()).toHaveText("MATTEO");
+  const angle = () => page.evaluate(() => parseFloat(document.querySelector<HTMLElement>(".char3d-inner")!.style.transform.replace(/[^\d.-]/g, "")));
+  await page.waitForTimeout(1200);
+  const box = (await page.locator(".char3d").boundingBox())!;
+  // Trascina: segue il dito.
+  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 120, box.y + box.height / 2, { steps: 8 });
+  expect(Math.abs(await angle())).toBeGreaterThan(50);
+  await page.mouse.up();
+  // Lasciato, si ferma di fronte o di spalle.
+  await page.waitForTimeout(1500);
+  const rest = ((await angle()) % 180 + 180) % 180;
+  expect(Math.min(rest, 180 - rest)).toBeLessThan(15);
+  // Un tocco: mezzo giro.
+  const before = await angle();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(1600);
+  const turned = Math.abs((await angle()) - before) % 360;
+  expect(Math.min(Math.abs(turned - 180), Math.abs(turned - 180))).toBeLessThan(20);
+  expect(errors).toEqual([]);
+});
+
+test("classifica delle squadre: record per formato, solo vinte e perse", async ({ page }) => {
+  await openApp(page, "pieno");
+  await page.goto("/classifiche");
+  await page.getByRole("button", { name: "Squadre" }).click();
+  await expect(page.getByRole("button", { name: "Formato" })).toHaveCount(0);
+  const top = page.getByLabel("La squadra più forte");
+  await expect(top).toBeVisible();
+  await expect(top).toContainText(/\d+–\d+/);
+  for (const f of ["1v1", "2v2", "3v3", "4v4"]) {
+    await page.getByRole("tab", { name: f }).click();
+    await expect(page.getByRole("tab", { name: f })).toHaveAttribute("aria-selected", "true");
+  }
+  await page.getByRole("button", { name: "Come funziona la classifica delle squadre" }).click();
+  await expect(page.getByRole("tooltip")).toContainText("conta solo vinte e perse");
+});
+
+test("suoni: si spengono e restano spenti", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __osc: number }).__osc = 0;
+    const o = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () {
+      (window as unknown as { __osc: number }).__osc++;
+      return o.call(this);
+    };
+  });
+  await openApp(page, "demo");
+  await page.goto("/profilo/impostazioni");
+  const sw = page.getByRole("switch", { name: "Suoni" });
+  await expect(sw).toHaveAttribute("aria-checked", "true");
+  await sw.click();
+  await expect(sw).toHaveAttribute("aria-checked", "false");
+  await page.reload();
+  await expect(page.getByRole("switch", { name: "Suoni" })).toHaveAttribute("aria-checked", "false");
+  const before = await page.evaluate(() => (window as unknown as { __osc: number }).__osc);
+  await page.getByRole("button", { name: /Segnala un problema/ }).click();
+  await page.getByRole("textbox").fill("Prova dei suoni spenti");
+  await page.getByRole("button", { name: "Invia" }).click();
+  await expect(page.getByText(/Grazie!/)).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __osc: number }).__osc)).toBe(before);
+});
+
+test("dopo la partita: com'è andata, poi i personaggi nuovi", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.evaluate(() => {
+    // Tutte già viste tranne l'ultima giocata da me.
+    const ms = JSON.parse(localStorage.getItem("campetto:mock:v1")!).matches as { id: string; playedAt: string; players: { playerId: string }[] }[];
+    const mine = ms.filter((m) => m.players.some((p) => p.playerId === "p1")).sort((x, y) => x.playedAt.localeCompare(y.playedAt));
+    const last = mine[mine.length - 1].id;
+    localStorage.setItem("campetto:seen-matches:p1", JSON.stringify(ms.map((m) => m.id).filter((id) => id !== last)));
+    localStorage.setItem("campetto:seen-badges:p1", JSON.stringify(["x"]));
+    localStorage.setItem("campetto:personaggi:p1", JSON.stringify([]));
+  });
+  await page.reload();
+  const party = page.locator('[aria-labelledby="party-title"]');
+  await expect(party).toContainText(/Vittoria!|Persa, alla prossima|vinte su/);
+  await expect(party).toContainText(/\d+–\d+/);
+  // Avanti fino ai personaggi (se ce ne sono di nuovi) o alla fine.
+  for (let i = 0; i < 6 && (await party.count()); i++) {
+    if (/Nuovo personaggio/.test((await party.textContent()) ?? "")) {
+      await party.getByRole("button", { name: "Usalo" }).click();
+      await expect(page.getByText(/^Ora sei .+, gran scelta$/)).toBeVisible();
+      break;
+    }
+    await party.getByRole("button").last().click();
+    await page.waitForTimeout(400);
+  }
 });

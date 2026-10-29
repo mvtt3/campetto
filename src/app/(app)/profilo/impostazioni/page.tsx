@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Compass, Download, LogOut, MessageSquareWarning, Palette, Shield, Check } from "lucide-react";
+import { Bell, Camera, ChevronRight, Compass, Download, LogOut, MessageSquareWarning, Palette, Shield, Check, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { AVATAR_PRESETS, type AvatarPresetId } from "@/components/avatar-presets";
@@ -15,12 +15,13 @@ import { useTutorial } from "@/components/tutorial/tutorial";
 import { Sheet } from "@/components/ui/sheet";
 import { NAME_MAX, nameError } from "@/lib/types";
 import { Avatar, CARD_COLORS, isLightColor, playerColor } from "@/components/ui/avatar";
-import { Button, ScreenHeader, Segmented, Spinner } from "@/components/ui/basics";
+import { Button, ScreenHeader, Segmented, Spinner, Toggle } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { isIos, isStandalone } from "@/lib/notifications/push-client";
 import { usePush } from "@/lib/notifications/use-push";
 import { compressAvatar, getThemePref, setThemePref, type ThemePref } from "@/lib/theme";
+import { onSoundChange, play, setSoundOn, soundOn } from "@/lib/sound";
 import { say } from "@/lib/voice";
 
 type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void> };
@@ -54,19 +55,25 @@ export default function SettingsPage() {
   const [feedback, setFeedback] = useState(false);
   const [card, setCard] = useState<AvatarPresetId | null>(null);
   const [guide, setGuide] = useState(false);
+  const [sounds, setSounds] = useState(true);
   const tour = useTutorial();
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     setTheme(getThemePref());
     setStandalone(isStandalone());
+    setSounds(soundOn());
     /* eslint-enable react-hooks/set-state-in-effect */
     const h = (e: Event) => {
       e.preventDefault();
       setInstall(e as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", h);
-    return () => window.removeEventListener("beforeinstallprompt", h);
+    const off = onSoundChange(setSounds);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", h);
+      off();
+    };
   }, []);
 
   useEffect(() => {
@@ -94,7 +101,7 @@ export default function SettingsPage() {
       <ScreenHeader title="Impostazioni" back="/profilo" />
       <main className="scroll-area min-h-0 flex-1 px-5 pb-6 pt-1">
         <Group>
-          <button className="press flex w-full items-center gap-4 px-4 py-4 text-left" onClick={() => setPicking(true)} aria-label="Cambia foto profilo">
+          <button className="press flex w-full items-center gap-4 px-4 py-4 text-left" onClick={() => setPicking(true)}>
             <span className="relative">
               <Avatar player={me} size={64} href={false} />
               <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-edge bg-ball text-ball-ink">
@@ -110,7 +117,6 @@ export default function SettingsPage() {
           <button
             className="press flex w-full items-center gap-4 border-t border-line px-4 py-3 text-left"
             onClick={() => setCharacters(true)}
-            aria-label="Scegli il tuo personaggio"
             data-tour="settings-character"
           >
             <span className="grid h-[72px] w-16 place-items-end justify-center">
@@ -202,6 +208,20 @@ export default function SettingsPage() {
                 { value: "dark", label: "Scuro" },
                 { value: "system", label: "Auto" },
               ]}
+            />
+          </Row>
+          <Row icon={sounds ? <Volume2 size={18} /> : <VolumeX size={18} />}>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold">Suoni</span>
+              <span className="block text-[12.5px] text-muted">{sounds ? "Fischio, canestri e vittorie, sempre leggeri" : "Spenti, l'app resta in silenzio"}</span>
+            </span>
+            <Toggle
+              label="Suoni"
+              checked={sounds}
+              onChange={(on) => {
+                setSoundOn(on);
+                if (on) window.setTimeout(() => play("swish"), 160);
+              }}
             />
           </Row>
           <Row icon={<Bell size={18} />}>

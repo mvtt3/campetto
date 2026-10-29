@@ -64,3 +64,7 @@ scripts/.trace.mjs
 scripts/.full.mjs
 scripts/.review2.mjs
 scripts/.rot.mjs
+scripts/.*.mjs
+src/app/dev/
+scripts/.dev.sh
+scripts/.prod.sh

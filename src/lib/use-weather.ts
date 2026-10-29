@@ -5,12 +5,15 @@ import { forecastUrl, parseForecast, type Forecast } from "./weather";
 
 const KEY = "campetto:weather";
 const TTL = 60 * 60_000;
+const RETRY = 10 * 60_000;
 let inflight: Promise<Forecast> | null = null;
 
 async function load(): Promise<Forecast> {
   try {
     const cached = JSON.parse(localStorage.getItem(KEY) ?? "null");
-    if (cached && Date.now() - cached.at < TTL) return cached.f as Forecast;
+    if (cached?.f && Date.now() - cached.at < TTL) return cached.f as Forecast;
+    // Se il servizio del meteo non risponde, riprovo tra un po' (non a ogni schermata).
+    if (cached?.failed && Date.now() - cached.at < RETRY) throw new Error("meteo");
   } catch {
     /* ignore */
   }
@@ -25,6 +28,16 @@ async function load(): Promise<Forecast> {
           /* ignore */
         }
         return f;
+      })
+      .catch((e) => {
+        try {
+          const old = JSON.parse(localStorage.getItem(KEY) ?? "null");
+          // Tengo l'ultima previsione buona, se c'è: meglio di niente.
+          localStorage.setItem(KEY, JSON.stringify({ ...(old?.f ? { f: old.f } : {}), at: Date.now(), failed: true }));
+        } catch {
+          /* ignore */
+        }
+        throw e;
       })
       .finally(() => {
         inflight = null;

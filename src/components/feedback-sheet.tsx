@@ -7,6 +7,7 @@ import { Button, haptic } from "@/components/ui/basics";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
+import { play } from "@/lib/sound";
 import { say } from "@/lib/voice";
 
 type Kind = "problema" | "idea" | "altro";
@@ -48,6 +49,7 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
       await backend.sendFeedback({ kind, message: text, screen, device: deviceInfo(), appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? null });
       void backend.notify({ type: "feedback", kind });
       haptic(12);
+      play("success");
       toast(kind === "idea" ? "Grazie! Ho segnato la tua idea" : "Grazie! L'ho passato a chi aggiusta l'app");
       setText("");
       onClose();

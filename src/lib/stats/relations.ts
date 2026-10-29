@@ -155,3 +155,53 @@ export function form(playerId: string, matches: Match[], n = 5): ("V" | "S")[] {
     .reverse()
     .map((m) => (winnerOf(m) === teamOf(m, playerId) ? "V" : "S"));
 }
+
+export interface TeamRecord {
+  /** I giocatori della squadra, in ordine stabile. */
+  ids: string[];
+  games: number;
+  wins: number;
+  losses: number;
+  winPct: number;
+  lastPlayed: string;
+}
+
+/** Quante partite servono insieme per entrare nella classifica delle squadre. */
+export const TEAM_MIN_GAMES = 2;
+
+/**
+ * Il record delle squadre: gli stessi giocatori, insieme, in un formato (2 contro 2,
+ * 3 contro 3…). Conta solo vinte e perse. Prima chi ha più vittorie che sconfitte,
+ * a pari saldo la percentuale migliore, poi chi ha giocato di più.
+ */
+export function teamRecords(matches: Match[], format: Match["format"], minGames = TEAM_MIN_GAMES): TeamRecord[] {
+  const map = new Map<string, TeamRecord>();
+  for (const m of matches) {
+    if (m.format !== format) continue;
+    const w = winnerOf(m);
+    if (!w) continue;
+    for (const team of ["A", "B"] as const) {
+      const ids = m.players
+        .filter((p) => p.team === team)
+        .map((p) => p.playerId)
+        .sort();
+      if (!ids.length) continue;
+      const key = ids.join("|");
+      const r = map.get(key) ?? { ids, games: 0, wins: 0, losses: 0, winPct: 0, lastPlayed: m.playedAt };
+      r.games++;
+      if (w === team) r.wins++;
+      else r.losses++;
+      if (m.playedAt > r.lastPlayed) r.lastPlayed = m.playedAt;
+      map.set(key, r);
+    }
+  }
+  const out = [...map.values()].filter((r) => r.games >= minGames);
+  for (const r of out) r.winPct = r.wins / r.games;
+  return out.sort(
+    (x, y) =>
+      y.wins - y.losses - (x.wins - x.losses) ||
+      y.winPct - x.winPct ||
+      y.games - x.games ||
+      y.lastPlayed.localeCompare(x.lastPlayed),
+  );
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { play, type SoundName } from "@/lib/sound";
 import clsx from "clsx";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -23,13 +24,22 @@ export function Button({
   className,
   children,
   block,
+  sound,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: "sm" | "md" | "lg"; block?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: "sm" | "md" | "lg";
+  block?: boolean;
+  /** Il suono al tocco: i tasti principali fanno un "tic" morbido, gli altri niente. */
+  sound?: SoundName | false;
+}) {
+  const tone = sound === undefined ? (variant === "court" || variant === "primary" ? "tap" : false) : sound;
   return (
     <button
       {...rest}
       onClick={(e) => {
         haptic();
+        if (tone) play(tone);
         rest.onClick?.(e);
       }}
       className={clsx(
@@ -345,6 +355,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       aria-label={label}
       onClick={() => {
         haptic(5);
+        play(checked ? "toggleOff" : "toggleOn");
         onChange(!checked);
       }}
       className={clsx("relative h-8 w-[54px] shrink-0 rounded-full border-2 border-edge transition-colors", checked ? "bg-ok" : "bg-raised")}

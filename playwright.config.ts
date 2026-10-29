@@ -32,6 +32,11 @@ export default defineConfig({
       use: { ...devices["Pixel 7"], viewport: { width: 360, height: 800 } },
     },
     {
+      name: "salute",
+      testMatch: /health\.spec\.ts/,
+      use: { ...devices["Pixel 7"], viewport: { width: 360, height: 800 } },
+    },
+    {
       name: "schermate",
       testMatch: /(layout|popups)\.spec\.ts/,
       use: { browserName: "chromium", isMobile: true, hasTouch: true },

@@ -18,8 +18,9 @@ import { leaderboard, STAT_BY_KEY, type StatKey } from "@/lib/stats/leaderboards
 import { computePlayerStats } from "@/lib/stats/player";
 import { shortName } from "@/lib/types";
 import { Character, characterOf } from "@/components/character";
+import { TeamBoard } from "@/components/team-board";
 
-type Board = "mvp" | StatKey;
+type Board = "mvp" | "squadre" | StatKey;
 
 const BOARDS: { value: Board; label: string }[] = [
   { value: "mvp", label: "MVP" },
@@ -29,6 +30,7 @@ const BOARDS: { value: Board; label: string }[] = [
   { value: "rimbalzi", label: "Rimbalzi" },
   { value: "tre", label: "Da tre" },
   { value: "elo", label: "ELO" },
+  { value: "squadre", label: "Squadre" },
 ];
 
 interface Row {
@@ -101,8 +103,10 @@ export function RankingScreen() {
   const ids = engine.playerIds;
   const scoped = useMemo(() => filterMatches(data.matches, { period, format }), [data.matches, period, format]);
   const range = periodRange(period);
+  const teamScope = useMemo(() => filterMatches(data.matches, { period, format: "all" }), [data.matches, period]);
 
   const { rows, pending, minGames } = useMemo<{ rows: Row[]; pending: Pending[]; minGames: number | null }>(() => {
+    if (board === "squadre") return { rows: [], pending: [], minGames: null };
     if (board === "mvp") {
       const ranked = mvpRanking(ids, data.matches, period, format, { elo: engine.elo });
       const games = ids.map((id) => ({ id, n: computePlayerStats(id, scoped).games }));
@@ -150,7 +154,8 @@ export function RankingScreen() {
       />
       <div className="flex shrink-0 flex-col gap-2.5 px-5 pb-2">
         <div data-tour="rank-period">
-          <PeriodPicker value={period} onChange={setPeriod} format={format} onFormat={setFormat} />
+          {/* Per le squadre il formato si sceglie sotto: qui non serve. */}
+          <PeriodPicker value={period} onChange={setPeriod} format={format} onFormat={board === "squadre" ? undefined : setFormat} />
         </div>
         <div data-tour="rank-boards">
           <Chips value={board} onChange={setBoard} options={BOARDS} />
@@ -158,7 +163,9 @@ export function RankingScreen() {
       </div>
 
       <PullToRefresh className="px-5 pb-4 pt-2">
-        {rows.length === 0 ? (
+        {board === "squadre" ? (
+          <TeamBoard matches={teamScope} />
+        ) : rows.length === 0 ? (
           <>
             <EmptyState
               title="Classifica ancora vuota"

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mascot } from "@/components/mascot";
 import { useData } from "@/lib/data/provider";
+import { play, type SoundName } from "@/lib/sound";
 
 /**
  * L'apertura dell'app: Spicchio tira a canestro e sotto compare una frase sul
@@ -32,6 +33,21 @@ const MINE = [
 
 const MIN_MS = 3100;
 
+/** I suoni dei quattro tiri, in secondi dall'inizio dell'animazione (allineati alle parabole). */
+const SHOT_SOUNDS: Record<number, [SoundName, number][]> = {
+  0: [["board", 1.7]],
+  1: [["swish", 1.64]],
+  2: [
+    ["rim", 1.64],
+    ["rim", 1.97],
+  ],
+  3: [
+    ["rim", 1.64],
+    ["rim", 2.0],
+    ["swish", 2.04],
+  ],
+};
+
 function pickCaption(): string {
   let names: string[] = [];
   try {
@@ -56,6 +72,7 @@ export function Intro() {
   const [caption, setCaption] = useState("");
   const [phase, setPhase] = useState<"show" | "leaving" | "gone">("show");
   const [minDone, setMinDone] = useState(false);
+  const stopSounds = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (document.documentElement.dataset.intro === "off") {
@@ -66,7 +83,22 @@ export function Intro() {
     setCaption(pickCaption());
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const t = window.setTimeout(() => setMinDone(true), reduce ? 700 : MIN_MS);
-    return () => window.clearTimeout(t);
+    // Il fischio che apre e il rumore del tiro, a tempo con l'animazione già partita.
+    const timers: number[] = [];
+    const ball = document.querySelector(".intro-ball-x") as HTMLElement | null;
+    const anim = ball?.getAnimations?.()[0];
+    const elapsed = anim && typeof anim.currentTime === "number" ? anim.currentTime / 1000 : 0;
+    const at = (name: SoundName, sec: number) => {
+      const wait = sec - elapsed;
+      if (wait > -0.05) timers.push(window.setTimeout(() => play(name), Math.max(0, wait) * 1000));
+    };
+    if (elapsed < 0.8) at("whistle", Math.max(elapsed, 0.12));
+    if (!reduce) for (const [name, sec] of SHOT_SOUNDS[Number(document.documentElement.dataset.shot ?? 1)] ?? []) at(name, sec);
+    stopSounds.current = () => timers.forEach((x) => window.clearTimeout(x));
+    return () => {
+      window.clearTimeout(t);
+      timers.forEach((x) => window.clearTimeout(x));
+    };
   }, []);
 
   const ready = auth.status !== "loading";
@@ -88,7 +120,10 @@ export function Intro() {
       className={`intro halftone ${phase === "leaving" ? "intro-leave" : ""}`}
       role="status"
       aria-label="Campetto si sta aprendo"
-      onClick={() => setPhase("leaving")}
+      onClick={() => {
+        stopSounds.current();
+        setPhase("leaving");
+      }}
     >
       <div className="intro-title">
         <p className="display intro-word">Campetto</p>

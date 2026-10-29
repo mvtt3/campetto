@@ -25,6 +25,13 @@ import {
   Trophy,
   Eye,
   Undo2,
+  HandGrab,
+  ShieldBan,
+  Layers2,
+  Focus,
+  Handshake,
+  Award,
+  Repeat2,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -54,6 +61,13 @@ const ICONS: Record<BadgeIcon, LucideIcon> = {
   clutch: Timer,
   opener: TrendingUp,
   sniper: Crosshair,
+  thief: HandGrab,
+  swat: ShieldBan,
+  double: Layers2,
+  aim: Focus,
+  fair: Handshake,
+  star: Award,
+  putback: Repeat2,
 };
 
 /** Fill (two stops) and ink for each tier. */
@@ -87,6 +101,7 @@ export function BadgeMedal({
     <span
       className={clsx("relative inline-grid shrink-0 place-items-center overflow-hidden", className)}
       style={{ width: size, height: size * 1.08, animation: animate ? "badge-reveal 700ms cubic-bezier(.2,.9,.3,1.2)" : undefined }}
+      role="img"
       aria-label={`${s.label}`}
     >
       <svg viewBox="0 0 100 108" className="absolute inset-0 h-full w-full" aria-hidden>
@@ -129,7 +144,6 @@ export function BadgeTile({ state, onClick, selected }: { state: BadgeState; onC
         "flex flex-col items-center rounded-2xl px-1.5 pb-2.5 pt-3 text-center transition-colors",
         selected ? "bg-ball-soft ring-2 ring-ball" : "card",
       )}
-      aria-label={`${def.name}, ${TIER_STYLE[tier].label}`}
     >
       <BadgeMedal icon={def.icon} tier={tier} size={44} />
       <span className={clsx("mt-2 line-clamp-2 text-[12px] font-semibold leading-tight", tier === 0 && "text-muted")}>

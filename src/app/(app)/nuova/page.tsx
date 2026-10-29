@@ -1,5 +1,6 @@
 "use client";
 
+import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
@@ -197,6 +198,7 @@ function NewMatchInner() {
       const id = await backend.saveMatch(input);
       void backend.notify({ type: "match_saved", matchId: id, isNew: !editing });
       await refresh();
+      play("whistle");
       toast(editing ? "Ho aggiornato la partita" : "Ho salvato la partita");
       router.replace(`/partite?m=${id}`);
     } catch (e) {

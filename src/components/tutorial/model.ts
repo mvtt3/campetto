@@ -38,7 +38,7 @@ export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
       path: "/classifiche",
       steps: [
         step("rank-period", "Mese, stagione o sempre", "Le frecce cambiano periodo, il menu sceglie il formato"),
-        step("rank-boards", "Scegli la classifica", "MVP, vittorie, punti, assist e le altre statistiche"),
+        step("rank-boards", "Scegli la classifica", "MVP, vittorie, punti e le altre statistiche. In Squadre, chi vince di più giocando insieme"),
         step("rank-podium", "Il podio", "Conta anche quante volte vieni: chi gioca poco resta fuori classifica"),
       ],
     },
@@ -54,7 +54,7 @@ export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
       title: "Profilo",
       path: "/profilo",
       steps: [
-        step("profile-card", "Il tuo personaggio", "Palleggia qui e scende in campo nelle partite: con i badge ne sblocchi di speciali"),
+        step("profile-card", "Il tuo personaggio", "Palleggia qui e scende in campo: con i badge sblocchi quelli rari, epici e mitici"),
         step("profile-stats", "I tuoi numeri", "Le medie, la forma e l'andamento mese per mese"),
         step("profile-tabs", "Statistiche avanzate", "Tiro, impatto e i tuoi massimi: le vedi solo tu, agli altri arrivano solo quelle comuni"),
         step("profile-settings", "La guida resta qui", "Nelle impostazioni la ritrovi, anche per una sola scheda"),

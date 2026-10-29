@@ -89,7 +89,6 @@ export function Menu<T extends string>({
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={label}
         onClick={() => {
           haptic(5);
           setOpen((o) => !o);
@@ -99,6 +98,7 @@ export function Menu<T extends string>({
           className,
         )}
       >
+        <span className="sr-only">{label}: </span>
         {trigger ?? <span className="truncate">{current?.label}</span>}
         <ChevronDown size={15} className={clsx("text-muted transition-transform duration-200", open && "rotate-180")} aria-hidden />
       </button>
@@ -468,7 +468,6 @@ export function DateTimeField({
     <>
       <button
         type="button"
-        aria-label={`${label}: ${dayLabel(day)}, ${time?.slice(0, 5)}`}
         onClick={() => {
           setDDay(day);
           setDTime(time?.slice(0, 5) ?? "18:00");
@@ -477,7 +476,9 @@ export function DateTimeField({
         className="press flex h-14 w-full items-center gap-3 rounded-[18px] border-[2.5px] border-edge bg-surface px-4 text-left sticker-sm"
       >
         <CalendarDays size={20} className="shrink-0 text-court" aria-hidden />
+        <span className="sr-only">{label}: </span>
         <span className="min-w-0 flex-1 truncate text-[15.5px] font-bold">{dayLabel(day)}</span>
+        <span className="sr-only">, </span>
         <span className="score text-[20px]">{time?.slice(0, 5)}</span>
       </button>
       <Sheet

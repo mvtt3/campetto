@@ -1,5 +1,5 @@
 import { periodRange, seasonKey, seasonOf, sortChrono } from "./periods";
-import { normalizeBox, teamOf } from "./stats/player";
+import { efficiency, normalizeBox, teamOf } from "./stats/player";
 import { comebackSize } from "./stats/records";
 import { winnerOf, type Match } from "./types";
 import type { MonthAward, SeasonAward } from "./stats/awards";
@@ -32,7 +32,14 @@ export type BadgeIcon =
   | "shutout"
   | "clutch"
   | "opener"
-  | "sniper";
+  | "sniper"
+  | "thief"
+  | "swat"
+  | "double"
+  | "aim"
+  | "fair"
+  | "star"
+  | "putback";
 
 export interface BadgeDef {
   key: string;
@@ -60,11 +67,17 @@ export const BADGES: BadgeDef[] = [
   { key: "vittorie", name: "Vincente", unit: "vittorie", description: "Partite vinte in carriera", category: "carriera", icon: "win", thresholds: CAREER, mode: "total" },
   { key: "serie", name: "Inarrestabile", unit: "vittorie di fila", description: "Vittorie consecutive", category: "carriera", icon: "streak", thresholds: [3, 5, 10, 15, 20], mode: "best" },
   { key: "presenze", name: "Sempre presente", unit: "partite", description: "Partite giocate", category: "carriera", icon: "presence", thresholds: [10, 25, 50, 100, 200], mode: "total" },
+  { key: "rimbalzi-off", name: "Seconda occasione", unit: "rimbalzi in attacco", description: "Rimbalzi offensivi in carriera", category: "carriera", icon: "putback", thresholds: [10, 25, 50, 100, 250], mode: "total" },
   // Partita singola
   { key: "partita-punti", name: "Serata perfetta", unit: "punti", description: "Punti in una sola partita", category: "partita", icon: "hot", thresholds: [8, 10, 12, 15, 21], mode: "best" },
   { key: "partita-assist", name: "Visione di gioco", unit: "assist", description: "Assist in una sola partita", category: "partita", icon: "vision", thresholds: [3, 4, 5, 7, 10], mode: "best" },
   { key: "partita-rimbalzi", name: "Padrone dell'area", unit: "rimbalzi", description: "Rimbalzi in una sola partita", category: "partita", icon: "paint", thresholds: [5, 7, 10, 12, 15], mode: "best" },
   { key: "partita-triple", name: "Mano calda", unit: "triple", description: "Triple in una sola partita", category: "partita", icon: "sniper", thresholds: [2, 3, 4, 5, 7], mode: "best" },
+  { key: "partita-rubate", name: "Ladro di palloni", unit: "palle rubate", description: "Palle rubate in una sola partita", category: "partita", icon: "thief", thresholds: [2, 3, 4, 5, 7], mode: "best" },
+  { key: "partita-stoppate", name: "Stoppatore", unit: "stoppate", description: "Stoppate in una sola partita", category: "partita", icon: "swat", thresholds: [2, 3, 4, 5, 7], mode: "best" },
+  { key: "doppia-doppia", name: "Doppia doppia", unit: "partite", description: "Partite con almeno 10 in due voci tra punti, rimbalzi e assist", category: "partita", icon: "double", thresholds: [1, 3, 5, 10, 20], mode: "total" },
+  { key: "mira", name: "Mira perfetta", unit: "partite", description: "Partite con almeno il 60% al tiro, su 5 tiri o più", category: "partita", icon: "aim", thresholds: [1, 3, 5, 10, 25], mode: "total" },
+  { key: "fairplay", name: "Fair play", unit: "partite", description: "Partite senza falli, quando i falli si contano", category: "partita", icon: "fair", thresholds: [1, 5, 10, 25, 50], mode: "total" },
   { key: "pulito", name: "Zero sbavature", unit: "partite", description: "Partite con tabellino e nessuna palla persa", category: "partita", icon: "clean", thresholds: [1, 5, 10, 25, 50], mode: "total" },
   { key: "tuttofare", name: "Tuttofare", unit: "partite", description: "Partite con almeno 5 punti, 3 rimbalzi e 3 assist", category: "partita", icon: "allround", thresholds: [1, 3, 5, 10, 20], mode: "total" },
   // Speciali
@@ -76,6 +89,7 @@ export const BADGES: BadgeDef[] = [
   { key: "cappotto", name: "Cappotto", unit: "vittorie", description: "Vittorie lasciando gli avversari a 5 punti o meno", category: "speciali", icon: "shutout", thresholds: [1, 2, 3, 5, 10], mode: "total" },
   { key: "fotofinish", name: "Al fotofinish", unit: "vittorie", description: "Vittorie con 2 punti di scarto o meno", category: "speciali", icon: "clutch", thresholds: [1, 3, 5, 10, 20], mode: "total" },
   { key: "apripista", name: "Apripista", unit: "stagioni", description: "Presente alla prima partita della stagione", category: "speciali", icon: "opener", thresholds: [1, 2, 3, 4, 6], mode: "total" },
+  { key: "migliore", name: "Migliore in campo", unit: "partite", description: "Partite chiuse con la valutazione più alta in campo", category: "speciali", icon: "star", thresholds: [1, 3, 5, 10, 25], mode: "total" },
 ];
 
 export const BADGE_BY_KEY = new Map(BADGES.map((b) => [b.key, b]));
@@ -203,6 +217,21 @@ export function computeBadges(
       bump("partita-triple", b.fg3m, "best", d, m.id);
       if (b.tov === 0) bump("pulito", 1, "total", d, m.id);
       if (b.pts >= 5 && reb >= 3 && b.ast >= 3) bump("tuttofare", 1, "total", d, m.id);
+      bump("rimbalzi-off", b.oreb, "total", d, m.id);
+      bump("partita-rubate", b.stl, "best", d, m.id);
+      bump("partita-stoppate", b.blk, "best", d, m.id);
+      if ([b.pts, reb, b.ast].filter((v) => v >= 10).length >= 2) bump("doppia-doppia", 1, "total", d, m.id);
+      const fga = b.fg2a + b.fg3a;
+      if (fga >= 5 && (b.fg2m + b.fg3m) / fga >= 0.6) bump("mira", 1, "total", d, m.id);
+      // Conta solo le partite in cui i falli sono stati segnati (almeno uno in campo).
+      const foulsTracked = m.players.some((p) => p.hasStats && p.box.fouls > 0);
+      if (foulsTracked && b.fouls === 0) bump("fairplay", 1, "total", d, m.id);
+      // Migliore in campo: la valutazione più alta tra chi ha il tabellino (almeno in due).
+      const rated = m.players.filter((p) => p.hasStats);
+      if (rated.length >= 2) {
+        const myEff = efficiency(b);
+        if (rated.every((p) => p.playerId === playerId || efficiency(normalizeBox(p.box)) <= myEff)) bump("migliore", 1, "total", d, m.id);
+      }
     }
   }
 
@@ -272,6 +301,7 @@ const SINGULAR: Record<string, string> = {
   triple: "tripla",
   "vittorie di fila": "vittoria di fila",
   "vittorie in 1v1": "vittoria in 1v1",
+  "rimbalzi in attacco": "rimbalzo in attacco",
 };
 
 /** "1 partita", "3 partite". */

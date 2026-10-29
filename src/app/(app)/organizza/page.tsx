@@ -202,15 +202,22 @@ function OrganizeInner() {
                 key={d.toISOString()}
                 onClick={() => setSelected(isSel ? null : d)}
                 aria-pressed={Boolean(isSel)}
-                aria-label={`${d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric" })}${count ? `, ${count} ${count === 1 ? "proposta" : "proposte"}` : ""}`}
                 className={clsx(
                   "flex h-[62px] flex-col items-center justify-center rounded-2xl",
                   isSel ? "bg-text text-bg" : sameDay(d, today) ? "bg-ball-soft ring-1 ring-ball/40 ring-inset" : "card",
                   past && !isSel && "opacity-45",
                 )}
               >
-                <span className="text-[11px] font-semibold opacity-70">{d.toLocaleDateString("it-IT", { weekday: "narrow" })}</span>
-                <span className="num text-[20px]">{d.getDate()}</span>
+                <span className="sr-only">
+                  {d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric" })}
+                  {count ? `, ${count} ${count === 1 ? "proposta" : "proposte"}` : ""}
+                </span>
+                <span className="text-[11px] font-semibold opacity-70" aria-hidden>
+                  {d.toLocaleDateString("it-IT", { weekday: "narrow" })}
+                </span>
+                <span className="num text-[20px]" aria-hidden>
+                  {d.getDate()}
+                </span>
                 <span className={clsx("mt-0.5 h-1.5 w-1.5 rounded-full", count ? (isSel ? "bg-bg" : "bg-ball") : "bg-transparent")} />
               </button>
             );

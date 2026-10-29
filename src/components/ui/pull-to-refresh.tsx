@@ -1,5 +1,6 @@
 "use client";
 
+import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Mascot } from "@/components/mascot";
@@ -39,7 +40,7 @@ export function PullToRefresh({
   scroll?: boolean;
 }) {
   const { refresh } = useData();
-  const box = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const ind = useRef<HTMLDivElement>(null);
   const ball = useRef<HTMLSpanElement>(null);
@@ -126,6 +127,7 @@ export function PullToRefresh({
       ball.current!.style.transform = "";
       await Promise.all([refreshRef.current().catch(() => {}), new Promise((r) => setTimeout(r, 700))]);
       const now = new Date();
+      play("refresh");
       setStamp(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
       setPhase("done");
       paint(0, true);
@@ -146,7 +148,7 @@ export function PullToRefresh({
   }, []);
 
   return (
-    <div
+    <main
       ref={box}
       data-testid="scroll-container"
       className={clsx("relative min-h-0 flex-1", scroll ? "scroll-area" : "overflow-hidden", className)}
@@ -184,6 +186,6 @@ export function PullToRefresh({
       <div ref={content} className={clsx(!scroll && "h-full")}>
         {children}
       </div>
-    </div>
+    </main>
   );
 }
