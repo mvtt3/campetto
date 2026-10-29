@@ -11,7 +11,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import type { PendingUser, PlayerPrivate } from "@/lib/data/backend";
 import { useData } from "@/lib/data/provider";
-import { playerName, type Player } from "@/lib/types";
+import { adminName, playerName, type Player } from "@/lib/types";
 
 const ROLES = ["Play", "Guardia", "Ala piccola", "Ala grande", "Centro"];
 
@@ -259,7 +259,7 @@ export default function AdminPage() {
                 <Avatar player={p} size={40} href={false} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">
-                    {playerName(p)} {p.isAdmin && <span className="text-[12px] font-normal text-ball">admin</span>}
+                    {adminName(p)} {p.isAdmin && <span className="text-[12px] font-normal text-ball">admin</span>}
                   </p>
                   <p className="truncate text-[12.5px] text-muted">{p.roles.join(", ") || "Nessun ruolo"}</p>
                 </div>
@@ -326,7 +326,7 @@ export default function AdminPage() {
               className="flex items-center gap-3 rounded-2xl bg-raised px-3 py-2.5 text-left"
             >
               <Avatar player={p} size={36} href={false} />
-              <span className="text-[15px] font-semibold">{playerName(p)}</span>
+              <span className="text-[15px] font-semibold">{adminName(p)}</span>
             </button>
           ))}
         </div>

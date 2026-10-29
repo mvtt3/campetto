@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { computeBadges, type BadgeState, type BadgeUnlock } from "../badges";
 import { computeElo, type EloResult } from "../stats/elo";
 import { currentMvp, monthlyHistory, seasonHistory, type MonthAward, type MvpEntry, type SeasonAward } from "../stats/awards";
-import type { Period } from "../periods";
+import { sinceStart, type Period } from "../periods";
 import type { Dataset, Player } from "../types";
 import type { AuthState, Backend } from "./backend";
 import { createMockBackend, mockAllowed } from "./mock-backend";
@@ -87,7 +87,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const run = (async () => {
       try {
         const d = await backend.loadAll();
-        setData(d);
+        setData({ ...d, matches: sinceStart(d.matches) });
         setLastError(null);
         try {
           if (backend.kind === "supabase") localStorage.setItem(CACHE_KEY, JSON.stringify(d));
@@ -125,7 +125,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (backend.kind === "supabase") {
         const cached = readCache();
         if (cached) {
-          setData(cached);
+          setData({ ...cached, matches: sinceStart(cached.matches) });
           setLoading(false);
         }
       }

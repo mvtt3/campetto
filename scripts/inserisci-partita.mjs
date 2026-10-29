@@ -14,7 +14,8 @@
 //   "squadraB": ["Simone", "Mattia"],
 //   "statistiche": { "Valerio": { "pts": 9, "fg3m": 1, "ast": 3, "dreb": 4 } }
 // }]
-// Le statistiche sono facoltative. Nomi: nome e cognome, solo nome se unico, o cognome.
+// Le statistiche sono facoltative. Nomi: il nome scelto nell'app, nome e cognome, solo nome se unico, o cognome.
+// Date: dal 1° ottobre 2026 in poi (prima l'app non esisteva).
 
 import fs from "node:fs";
 import pg from "pg";
@@ -37,7 +38,7 @@ const c = new pg.Client({
 });
 await c.connect();
 
-const players = (await c.query("select id, first_name, last_name, user_id, is_admin from public.players where not archived")).rows;
+const players = (await c.query("select id, first_name, last_name, nickname, user_id, is_admin from public.players where not archived")).rows;
 const admin = players.find((p) => p.is_admin && p.user_id);
 if (!admin) throw new Error("Nessun amministratore collegato a un account.");
 
@@ -45,7 +46,11 @@ const norm = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").tri
 function find(name) {
   const n = norm(name);
   const hits = players.filter(
-    (p) => norm(`${p.first_name} ${p.last_name ?? ""}`) === n || norm(p.first_name) === n || (p.last_name && norm(p.last_name) === n),
+    (p) =>
+      (p.nickname && norm(p.nickname) === n) ||
+      norm(`${p.first_name} ${p.last_name ?? ""}`) === n ||
+      norm(p.first_name) === n ||
+      (p.last_name && norm(p.last_name) === n),
   );
   if (hits.length !== 1) throw new Error(`"${name}": ${hits.length ? "ambiguo, usa nome e cognome" : "giocatore non trovato"}`);
   return hits[0].id;

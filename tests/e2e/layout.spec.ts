@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { VIEWPORTS } from "../../playwright.config";
-import { clippedStickers, openApp, pageScrolls, staticContentOverflows } from "./helpers";
+import { clippedStickers, openApp, pageScrolls, staticContentOverflows, truncatedTitles } from "./helpers";
 
 // Schermate che devono stare tutte in uno schermo, senza scorrere.
 const STATIC = ["/", "/profilo", "/nuova", "/giocatore/p3", "/classifiche", "/partite", "/organizza", "/video", "/admin", "/classifiche/albo", "/profilo/badge", "/profilo/impostazioni", "/importa"];
@@ -18,6 +18,7 @@ for (const vp of VIEWPORTS) {
         expect(await pageScrolls(page), `${path} fa scorrere la pagina`).toBe(false);
         expect(await staticContentOverflows(page), `${path} taglia il contenuto`).toEqual([]);
         expect(await clippedStickers(page), `${path} taglia bordi o ombre`).toEqual([]);
+        expect(await truncatedTitles(page), `${path} ha titoli tagliati`).toEqual([]);
       }
     });
   }

@@ -7,7 +7,9 @@ import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { parseImport, type ImportRow } from "@/lib/importer";
 import { normalizeBox } from "@/lib/stats/player";
-import { FORMATS, playerName, type Format, type Team } from "@/lib/types";
+import { FORMATS, adminName, type Format, type Team } from "@/lib/types";
+import { DateTimeField, Menu } from "@/components/ui/pickers";
+import { APP_START } from "@/lib/periods";
 
 const EXAMPLE = `Giocatore;Squadra;Punti;Triple;Rimbalzi;Assist;Rubate;Stoppate;Perse
 Valerio Semeraro;A;9;1;4;3;1;0;1
@@ -82,7 +84,7 @@ export default function ImportPage() {
 
   return (
     <>
-      <ScreenHeader title="Importa statistiche" back="/partite" subtitle="Da un'app di analisi video o da un foglio" />
+      <ScreenHeader title="Importa" back="/partite" subtitle="Statistiche da un'app video o da un foglio" />
       <main className="scroll-area min-h-0 flex-1 px-4 pb-4">
         {!rows ? (
           <div className="flex flex-col gap-3">
@@ -119,19 +121,15 @@ export default function ImportPage() {
               {ready.map((r, i) => (
                 <div key={i} className="flex items-center gap-2 rounded-2xl card px-3 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <select
+                    <Menu
+                      label={`Giocatore per ${r.rawName}`}
+                      align="start"
+                      className="w-full max-w-full justify-between"
                       value={r.playerId ?? ""}
-                      aria-label={`Giocatore per ${r.rawName}`}
-                      onChange={(e) => update(i, { playerId: e.target.value || null })}
-                      className="h-9 w-full truncate rounded-[10px] bg-raised px-2 text-[14px] font-semibold outline-none"
-                    >
-                      <option value="">Scegli per “{r.rawName}”</option>
-                      {active.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {playerName(p)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => update(i, { playerId: v || null })}
+                      trigger={<span className="min-w-0 flex-1 truncate text-left">{r.playerId ? adminName(active.find((p) => p.id === r.playerId)) : `Scegli per “${r.rawName}”`}</span>}
+                      options={[{ value: "", label: `Nessuno` }, ...active.map((p) => ({ value: p.id, label: adminName(p) }))]}
+                    />
                     <p className="tnum mt-1 truncate text-[12px] text-muted">
                       {normalizeBox(r.box).pts} pt, {r.box.oreb + r.box.dreb} rimb, {r.box.ast} ass, {r.box.stl} rub, {r.box.blk} stop
                     </p>
@@ -161,13 +159,7 @@ export default function ImportPage() {
                 <Stepper value={scoreB} onChange={setScoreB} label="punti" max={200} />
               </div>
             </div>
-            <input
-              type="datetime-local"
-              aria-label="Data della partita"
-              value={playedAt}
-              onChange={(e) => setPlayedAt(e.target.value)}
-              className="h-12 w-full rounded-2xl bg-raised px-4 text-[15px] outline-none"
-            />
+            <DateTimeField value={playedAt} onChange={setPlayedAt} min={APP_START} max={new Date()} label="Data della partita" />
             <p className="text-[13px] text-muted">
               {format ? `Formato ${format}.` : "Le due squadre devono avere lo stesso numero di giocatori (da 1 a 4)."}
               {!allMatched && " Abbina ogni riga a un giocatore diverso."}

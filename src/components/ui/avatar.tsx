@@ -3,7 +3,8 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useData } from "@/lib/data/provider";
-import { initials, type Player } from "@/lib/types";
+import { PresetAvatar, presetOf } from "@/components/avatar-presets";
+import { initials, shortName, type Player } from "@/lib/types";
 
 const PALETTE = ["#2D5BE3", "#F26A1B", "#2E9E5B", "#7C4DCC", "#E5412D", "#1597A6", "#D99A00", "#C93B78"];
 
@@ -31,12 +32,14 @@ export function Avatar({
   const { engine, me } = useData();
   if (!player) return <span className="inline-block rounded-full bg-raised" style={{ width: size, height: size }} />;
   const isMvp = ring === "gold" || (ring === "auto" && engine.mvp?.entry.playerId === player.id);
+  const preset = presetOf(player.avatarUrl);
+  const name = shortName(player);
   const pad = isMvp ? Math.max(2, Math.round(size * 0.07)) : 0;
   const inner = (
     <span
       className={clsx("relative inline-grid shrink-0 place-items-center rounded-full", isMvp && "mvp-ring", className)}
       style={{ width: size, height: size, padding: pad }}
-      title={isMvp ? `${player.firstName} è l'MVP in carica` : undefined}
+      title={isMvp ? `${name} è l'MVP in carica` : undefined}
     >
       <span
         className="grid h-full w-full place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16] text-[#fffaf0]"
@@ -45,7 +48,9 @@ export function Avatar({
           boxShadow: isMvp ? "0 0 0 2.5px var(--surface)" : undefined,
         }}
       >
-        {player.avatarUrl ? (
+        {preset ? (
+          <PresetAvatar id={preset} />
+        ) : player.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={player.avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
@@ -59,7 +64,7 @@ export function Avatar({
   if (href === false) return inner;
   const target = href ?? (me?.id === player.id ? "/profilo" : `/giocatore/${player.id}`);
   return (
-    <Link href={target} aria-label={`Profilo di ${player.firstName}`} className="shrink-0 rounded-full">
+    <Link href={target} aria-label={`Profilo di ${name}`} className="shrink-0 rounded-full">
       {inner}
     </Link>
   );

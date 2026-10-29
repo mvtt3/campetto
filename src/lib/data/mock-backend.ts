@@ -2,6 +2,7 @@
 
 import { DEFAULT_NOTIFY_PREFS, emptyBox, TEAM_SIZE, type Dataset, type Format, type Match, type Player } from "../types";
 import type { AuthState, Backend, PendingUser, PlayerPrivate } from "./backend";
+import { APP_START } from "../periods";
 
 /**
  * Backend in memoria (salvato in localStorage) usato per i test automatici e per
@@ -18,28 +19,29 @@ interface MockState extends Dataset {
   notifications: unknown[];
 }
 
-const SEED: [string, string | null, string[]][] = [
-  ["Matteo", "Pepe", ["Guardia", "Ala piccola"]],
-  ["Valerio", "Semeraro", ["Play"]],
-  ["Davide", "Aquilino", ["Guardia", "Ala grande"]],
-  ["Lorenzo", "Candela", ["Play"]],
-  ["Mattia", null, ["Play", "Guardia"]],
-  ["Matteo", "Mocciaro", ["Ala grande", "Centro"]],
-  ["Simone", "Falbo", ["Ala grande", "Centro", "Ala piccola"]],
+// nome, cognome, ruoli, nome scelto nell'app, figurina
+const SEED: [string, string | null, string[], string, string | null][] = [
+  ["Matteo", "Pepe", ["Guardia", "Ala piccola"], "Matteo", null],
+  ["Valerio", "Semeraro", ["Play"], "Valerio", "preset:bandana"],
+  ["Davide", "Aquilino", ["Guardia", "Ala grande"], "Davide", "preset:occhiali"],
+  ["Lorenzo", "Candela", ["Play"], "Lorenzo", null],
+  ["Mattia", null, ["Play", "Guardia"], "Mattia", "preset:coppola"],
+  ["Matteo", "Mocciaro", ["Ala grande", "Centro"], "Mocciaro", "preset:muscoli"],
+  ["Simone", "Falbo", ["Ala grande", "Centro", "Ala piccola"], "Simone", null],
 ];
 
 const rid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
 
 function seedPlayers(): Player[] {
-  return SEED.map(([firstName, lastName, roles], i) => ({
+  return SEED.map(([firstName, lastName, roles, nickname, avatarUrl], i) => ({
     id: `p${i + 1}`,
     firstName,
     lastName,
-    nickname: null,
+    nickname,
     roles,
     jerseyNumber: null,
     cardColor: null,
-    avatarUrl: null,
+    avatarUrl,
     userId: i === 0 ? "u1" : null,
     isAdmin: i === 0,
     showcase: [],
@@ -55,10 +57,15 @@ export function demoMatches(players: Player[], now = new Date()): Match[] {
   const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   const out: Match[] = [];
   const formats: Format[] = ["2v2", "3v3", "3v3", "1v1", "2v2", "4v4"];
-  for (let i = 0; i < 34; i++) {
-    const daysAgo = Math.floor(i * 2.4) + 1;
+  // Lo storico di prova sta tutto dopo l'apertura dell'app (ottobre 2026).
+  const N = 24;
+  const span = Math.max(1, Math.floor((now.getTime() - APP_START.getTime()) / 86_400_000));
+  const step = Math.min(2.4, Math.max(0.5, (span - 1) / N));
+  for (let i = 0; i < N; i++) {
+    const daysAgo = Math.floor(i * step) + 1;
     const d = new Date(now.getTime() - daysAgo * 86_400_000);
-    d.setHours(17, 30, 0, 0);
+    d.setHours(i % 2 && step < 1 ? 19 : 17, 30, 0, 0);
+    if (d < APP_START) break;
     const format = formats[i % formats.length];
     const n = TEAM_SIZE[format];
     const pool = [...players].sort(() => rnd() - 0.5).slice(0, n * 2);
@@ -160,6 +167,11 @@ export function createMockBackend(): Backend {
     if (as && state.players.some((p) => p.id === as)) {
       state.meId = as;
       for (const p of state.players) p.userId = p.id === as ? "u1" : p.id === "p1" ? "u-admin" : null;
+    }
+    // ?nuovo=1: primo accesso, il giocatore deve ancora scegliere nome e figurina
+    if (params.get("nuovo") === "1") {
+      const meP = state.players.find((p) => p.id === state.meId);
+      if (meP) Object.assign(meP, { nickname: null, avatarUrl: null });
     }
   } else {
     state = JSON.parse(raw);
@@ -265,6 +277,9 @@ export function createMockBackend(): Backend {
       save();
     },
     async updateMe(patch) {
+      const nick = patch.nickname?.trim().toLowerCase();
+      if (nick && state.players.some((p) => p.id !== state.meId && p.nickname?.trim().toLowerCase() === nick))
+        throw new Error("duplicate key value violates unique constraint \"players_nickname_key\"");
       Object.assign(me(), patch);
       save();
     },

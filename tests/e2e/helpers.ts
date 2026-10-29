@@ -89,3 +89,13 @@ export async function clippedStickers(page: Page): Promise<string[]> {
     return [...new Set(out)].slice(0, 8);
   });
 }
+
+/** Titoli delle schermate tagliati con i puntini ("Calenda…"): non devono essercene. */
+export async function truncatedTitles(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("h1, h2, button, a")]
+      .filter((el) => el.getClientRects().length && getComputedStyle(el).textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1)
+      .filter((el) => el.tagName === "H1" || el.closest("header") || el.closest("nav"))
+      .map((el) => `${el.tagName.toLowerCase()} "${el.textContent?.trim()}"`),
+  );
+}

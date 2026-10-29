@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
-import { periodLabel, shiftMonth, shiftSeason, type FormatFilter, type Period } from "@/lib/periods";
+import { isBeforeStart, periodLabel, shiftMonth, shiftSeason, type FormatFilter, type Period } from "@/lib/periods";
 import { FORMATS } from "@/lib/types";
 import { haptic, Segmented } from "./ui/basics";
+import { Menu } from "./ui/pickers";
 
 export function defaultPeriod(kind: Period["kind"], now = new Date()): Period {
   if (kind === "all") return { kind: "all" };
@@ -39,7 +40,7 @@ export function PeriodPicker({
   const startX = useRef<number | null>(null);
   const go = (d: number) => {
     const n = shift(value, d);
-    if (isFuture(n)) return;
+    if (isFuture(n) || isBeforeStart(n)) return;
     haptic(5);
     onChange(n);
   };
@@ -55,6 +56,7 @@ export function PeriodPicker({
         ]}
       />
       <div
+        data-no-swipe
         className="flex h-10 items-center gap-1"
         onTouchStart={(e) => (startX.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
@@ -66,7 +68,12 @@ export function PeriodPicker({
       >
         {value.kind !== "all" ? (
           <>
-            <button aria-label="Periodo precedente" onClick={() => go(-1)} className="press grid h-10 w-10 place-items-center rounded-full">
+            <button
+              aria-label="Periodo precedente"
+              onClick={() => go(-1)}
+              disabled={isBeforeStart(shift(value, -1))}
+              className="press grid h-10 w-10 place-items-center rounded-full disabled:opacity-25"
+            >
               <ChevronLeft size={20} />
             </button>
             <p className="title min-w-0 flex-1 truncate text-center text-[16px]" aria-live="polite">
@@ -82,26 +89,20 @@ export function PeriodPicker({
             </button>
           </>
         ) : (
-          <p className="title flex-1 pl-2 text-[16px]">Da quando si gioca</p>
+          <p className="title flex-1 pl-2 text-[16px]">Da ottobre 2026</p>
         )}
         {onFormat && (
-          <label className="relative ml-1 flex h-9 shrink-0 items-center gap-1 rounded-full bg-surface pl-3.5 pr-2.5 text-[13.5px] font-semibold sticker-sm">
-            <span>{format === "all" || !format ? "Tutti" : format}</span>
-            <ChevronDown size={15} className="text-muted" />
-            <select
-              aria-label="Formato"
-              value={format ?? "all"}
-              onChange={(e) => onFormat(e.target.value as FormatFilter)}
-              className="absolute inset-0 cursor-pointer opacity-0"
-            >
-              <option value="all">Tutti i formati</option>
-              {FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Menu<FormatFilter>
+            label="Formato"
+            className="ml-1"
+            value={format ?? "all"}
+            onChange={onFormat}
+            trigger={<span>{format === "all" || !format ? "Tutti" : format}</span>}
+            options={[
+              { value: "all", label: "Tutti i formati" },
+              ...FORMATS.map((f) => ({ value: f as FormatFilter, label: f, hint: `${f[0]} contro ${f[0]}` })),
+            ]}
+          />
         )}
       </div>
     </div>

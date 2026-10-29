@@ -148,8 +148,38 @@ export function shortName(
   return p.firstName;
 }
 
-export function initials(p: Pick<Player, "firstName" | "lastName"> | undefined | null): string {
+/** Il nome che il giocatore ha scelto per l'app; in mancanza, quello vero. */
+export function displayName(p: Pick<Player, "firstName" | "lastName" | "nickname"> | undefined | null): string {
+  if (!p) return "—";
+  return p.nickname?.trim() || playerName(p);
+}
+
+/** Per l'amministratore: nome nell'app e, accanto, quello vero. */
+export function adminName(p: Pick<Player, "firstName" | "lastName" | "nickname"> | undefined | null): string {
+  if (!p) return "—";
+  const real = playerName(p);
+  return p.nickname && p.nickname.trim().toLowerCase() !== real.toLowerCase() ? `${p.nickname} (${real})` : real;
+}
+
+export const NAME_MIN = 2;
+export const NAME_MAX = 16;
+
+/** Controlla il nome scelto: lunghezza e nessun doppione nel gruppo. Restituisce l'errore o null. */
+export function nameError(name: string, players: Pick<Player, "id" | "nickname">[], meId: string): string | null {
+  const n = name.trim().replace(/\s+/g, " ");
+  if (n.length < NAME_MIN) return `Almeno ${NAME_MIN} lettere.`;
+  if (n.length > NAME_MAX) return `Al massimo ${NAME_MAX} caratteri.`;
+  if (players.some((p) => p.id !== meId && p.nickname?.trim().toLowerCase() === n.toLowerCase())) return "Questo nome è già preso.";
+  return null;
+}
+
+export function initials(p: Pick<Player, "firstName" | "lastName" | "nickname"> | undefined | null): string {
   if (!p) return "?";
+  const nick = p.nickname?.trim();
+  if (nick) {
+    const parts = nick.split(/\s+/);
+    return (parts.length > 1 ? parts[0][0] + parts[1][0] : nick.slice(0, 2)).toUpperCase();
+  }
   return (p.firstName[0] + (p.lastName?.[0] ?? p.firstName[1] ?? "")).toUpperCase();
 }
 

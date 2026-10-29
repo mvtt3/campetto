@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, Camera, ChevronRight, Download, LogOut, Palette, Shield } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { AvatarPicker } from "@/components/avatar-picker";
+import { Sheet } from "@/components/ui/sheet";
+import { NAME_MAX, nameError } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, ScreenHeader, Segmented, Spinner, Toggle } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
@@ -27,7 +30,7 @@ function Row({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
 }
 
 export default function SettingsPage() {
-  const { me, backend, mutate, reinit } = useData();
+  const { me, data, backend, mutate, reinit } = useData();
   const router = useRouter();
   const toast = useToast();
   const [theme, setTheme] = useState<ThemePref>("light");
@@ -38,7 +41,7 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const [install, setInstall] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(true);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -103,49 +106,38 @@ export default function SettingsPage() {
       <ScreenHeader title="Impostazioni" back="/profilo" />
       <main className="scroll-area min-h-0 flex-1 px-5 pb-6 pt-1">
         <Group>
-          <div className="flex items-center gap-4 px-4 py-4">
-            <button className="press relative" onClick={() => fileRef.current?.click()} aria-label="Cambia foto profilo" disabled={uploading}>
+          <button className="press flex w-full items-center gap-4 px-4 py-4 text-left" onClick={() => setPicking(true)} aria-label="Cambia foto profilo">
+            <span className="relative">
               <Avatar player={me} size={64} href={false} />
-              <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full bg-ball text-ball-ink ring-2 ring-surface">
+              <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-edge bg-ball text-ball-ink">
                 {uploading ? <Spinner size={10} /> : <Camera size={14} />}
               </span>
-            </button>
-            <div className="min-w-0">
-              <p className="title text-[17px]">La tua foto</p>
-              <p className="text-[13px] text-muted">Tocca per cambiarla</p>
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (!f) return;
-                setUploading(true);
-                try {
-                  const url = await backend.uploadAvatar(await compressAvatar(f));
-                  await patchMe({ avatarUrl: url }, "Foto aggiornata");
-                } catch (err) {
-                  toast((err as Error).message, "error");
-                } finally {
-                  setUploading(false);
-                }
-              }}
-            />
-          </div>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="title block text-[17px]">La tua figurina</span>
+              <span className="block text-[13px] text-muted">Scegline una o metti una tua foto</span>
+            </span>
+            <ChevronRight size={18} className="text-faint" />
+          </button>
           <Row>
             <label htmlFor="nick" className="shrink-0 text-[15px]">
-              Soprannome
+              Nome nell&apos;app
             </label>
             <input
               id="nick"
               value={nickname}
-              maxLength={24}
-              placeholder="Facoltativo"
+              maxLength={NAME_MAX}
+              autoCapitalize="words"
               onChange={(e) => setNickname(e.target.value)}
-              onBlur={() => nickname !== (me.nickname ?? "") && patchMe({ nickname: nickname.trim() || null }, "Soprannome salvato")}
+              onBlur={() => {
+                const clean = nickname.trim().replace(/\s+/g, " ");
+                if (clean === (me.nickname ?? "")) return;
+                const err = nameError(clean, data.players, me.id);
+                if (err) {
+                  toast(err, "error");
+                  setNickname(me.nickname ?? "");
+                } else void patchMe({ nickname: clean }, "Nome salvato");
+              }}
               className="h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:font-normal placeholder:text-faint"
             />
           </Row>
@@ -241,6 +233,27 @@ export default function SettingsPage() {
           </Link>
         </p>
       </main>
+      <Sheet open={picking} onOpenChange={setPicking} title="La tua figurina" description="Tocca per sceglierla: si aggiorna subito.">
+        <div className="pb-2">
+          <AvatarPicker
+            value={me.avatarUrl}
+            uploading={uploading}
+            onPreset={(url) => void patchMe({ avatarUrl: url }, "Figurina aggiornata")}
+            onInitials={() => void patchMe({ avatarUrl: null }, "Ora hai le iniziali")}
+            onFile={async (f) => {
+              setUploading(true);
+              try {
+                const url = await backend.uploadAvatar(await compressAvatar(f));
+                await patchMe({ avatarUrl: url }, "Foto aggiornata");
+              } catch (err) {
+                toast((err as Error).message, "error");
+              } finally {
+                setUploading(false);
+              }
+            }}
+          />
+        </div>
+      </Sheet>
     </>
   );
 }

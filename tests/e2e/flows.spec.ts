@@ -63,7 +63,7 @@ test("nuova partita solo risultato", async ({ page }) => {
   await page.getByRole("button", { name: "Salva solo il risultato" }).click();
   await expect(page).toHaveURL(/\/partite\?m=/);
   await expect(page.getByRole("dialog")).toContainText("21–17");
-  await expect(page.getByRole("dialog")).toContainText("Matteo P. e Valerio");
+  await expect(page.getByRole("dialog")).toContainText("Matteo e Valerio");
   await expect(page.getByRole("dialog").getByText("Vince")).toBeVisible();
 });
 
@@ -257,4 +257,80 @@ test("il tasto indietro chiude il dettaglio della partita", async ({ page }) => 
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page).toHaveURL(/\/partite$/);
   await expect(page.getByTestId("match-row").first()).toBeVisible();
+});
+
+test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({ page }) => {
+  await page.goto("/?mock=reset&signed=1&nuovo=1");
+  const name = page.getByLabel("Il tuo nome nell'app");
+  await name.fill("valerio");
+  await name.blur();
+  await expect(page.getByText("Questo nome è già preso.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Avanti" })).toBeDisabled();
+  await name.fill("Pluto");
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await page.getByRole("radio", { name: "Figurina Bandana" }).click();
+  await expect(page.getByRole("radio", { name: "Figurina Bandana" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Entra in campo" }).click();
+  await expect(page.getByRole("heading", { name: "Ciao Pluto" })).toBeVisible();
+  // Il nome si cambia dalle impostazioni, sempre senza doppioni.
+  await page.goto("/profilo/impostazioni");
+  const field = page.getByLabel("Nome nell'app");
+  await expect(field).toHaveValue("Pluto");
+  await field.fill("Pluto Jr");
+  await field.blur();
+  await expect(page.getByText("Nome salvato")).toBeVisible();
+  await page.getByRole("button", { name: "Cambia foto profilo" }).click();
+  await page.getByRole("radio", { name: "Figurina Muscolo" }).click();
+  await expect(page.getByText("Figurina aggiornata")).toBeVisible();
+  await page.goto("/profilo");
+  await expect(page.getByRole("heading", { name: "Pluto Jr" })).toBeVisible();
+});
+
+test("niente selettori del telefono: menu e orologio dell'app", async ({ page }) => {
+  await openApp(page, "demo");
+  for (const path of ["/classifiche", "/profilo", "/nuova", "/importa", "/organizza?nuova=1"]) {
+    await page.goto(path);
+    await page.waitForTimeout(400);
+    await expect(page.locator('select, input[type="time"], input[type="date"], input[type="datetime-local"]'), path).toHaveCount(0);
+  }
+  await page.goto("/classifiche");
+  await page.getByRole("button", { name: "Formato" }).click();
+  await page.getByRole("option", { name: /3v3/ }).click();
+  await expect(page.getByRole("button", { name: "Formato" })).toContainText("3v3");
+  // L'app parte da ottobre 2026: non si torna più indietro.
+  await expect(page.getByRole("button", { name: "Periodo precedente" })).toBeDisabled();
+  await page.goto("/organizza?nuova=1");
+  await page.getByRole("button", { name: "Altro orario" }).click();
+  const dial = page.getByRole("slider", { name: "Ora" });
+  await dial.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("button", { name: /Altro orario: 20:00/ })).toBeVisible();
+});
+
+async function touchDrag(page: import("@playwright/test").Page, from: [number, number], to: [number, number]) {
+  const cdp = await page.context().newCDPSession(page);
+  const send = (type: string, x?: number, y?: number) =>
+    cdp.send("Input.dispatchTouchEvent", { type: type as "touchStart", touchPoints: x === undefined ? [] : [{ x, y: y! }] });
+  await send("touchStart", from[0], from[1]);
+  for (let i = 1; i <= 10; i++) {
+    await send("touchMove", from[0] + ((to[0] - from[0]) * i) / 10, from[1] + ((to[1] - from[1]) * i) / 10);
+    await page.waitForTimeout(16);
+  }
+  await send("touchEnd");
+}
+
+test("swipe tra le schede e tira giù per aggiornare", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.evaluate(() => localStorage.setItem("campetto:seen-badges:p1", JSON.stringify(Array.from({ length: 200 }, (_, i) => String(i)))));
+  const vp = page.viewportSize()!;
+  await touchDrag(page, [vp.width - 40, 450], [60, 455]);
+  await expect(page).toHaveURL(/\/classifiche$/);
+  await touchDrag(page, [vp.width - 40, 520], [60, 522]);
+  await expect(page).toHaveURL(/\/partite$/);
+  await touchDrag(page, [50, 520], [vp.width - 40, 522]);
+  await expect(page).toHaveURL(/\/classifiche$/);
+  await page.getByRole("navigation", { name: "Navigazione principale" }).getByRole("link", { name: "Home" }).click();
+  await touchDrag(page, [vp.width / 2, 300], [vp.width / 2 + 4, 640]);
+  await expect(page.getByText(/Aggiornato alle \d\d:\d\d/)).toBeVisible();
 });

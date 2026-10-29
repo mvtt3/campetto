@@ -1,15 +1,17 @@
 "use client";
 
-import { memo, startTransition, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { memo, startTransition, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { WifiOff } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { BadgeCelebration } from "@/components/badge-celebration";
 import { Mascot } from "@/components/mascot";
+import { Onboarding } from "@/components/onboarding";
 import { HomeScreen } from "@/components/screens/home-screen";
 import { MatchesScreen } from "@/components/screens/matches-screen";
 import { ProfileScreen } from "@/components/screens/profile-screen";
 import { RankingScreen } from "@/components/screens/ranking-screen";
+import { useTabSwipe } from "@/components/tab-swipe";
 import { Button, Spinner } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 
@@ -29,6 +31,7 @@ const TABS: { path: string; Screen: ComponentType }[] = [
   { path: "/partite", Screen: memo(MatchesScreen) },
   { path: "/profilo", Screen: memo(ProfileScreen) },
 ];
+const TAB_PATHS = TABS.map((t) => t.path);
 
 function useKeptTabs(active: string | null, ready: boolean) {
   const [mounted, setMounted] = useState<string[]>(() => (active ? [active] : []));
@@ -42,7 +45,10 @@ function useKeptTabs(active: string | null, ready: boolean) {
     const id = idle(() => startTransition(() => setMounted((m) => (m.includes(todo[0]) ? m : [...m, todo[0]]))), { timeout: 2500 });
     return () => cancel(id);
   }, [ready, mounted]);
-  return mounted;
+  const ensure = useCallback((paths: string[]) => {
+    setMounted((m) => (paths.every((p) => m.includes(p)) ? m : [...m, ...paths.filter((p) => !m.includes(p))]));
+  }, []);
+  return [mounted, ensure] as const;
 }
 
 function Splash() {
@@ -71,7 +77,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const flushed = useRef(false);
   const adminOnly = ADMIN_ONLY.some((p) => path.startsWith(p));
   const activeTab = TABS.some((t) => t.path === path) ? path : null;
-  const kept = useKeptTabs(activeTab, auth.status === "ready" && !!me);
+  const appReady = auth.status === "ready" && !!me?.nickname && !(adminOnly && !me.isAdmin);
+  const [kept, ensureTabs] = useKeptTabs(activeTab, appReady);
+  const pager = useRef<HTMLDivElement>(null);
+  const goTab = useCallback((p: string) => window.history.pushState(null, "", p), []);
+  useTabSwipe({ pager, paths: TAB_PATHS, active: appReady ? activeTab : null, onCommit: goTab, onPrepare: ensureTabs });
 
   useEffect(() => {
     if (auth.status === "signed-out") router.replace(`/login?next=${encodeURIComponent(path)}`);
@@ -137,6 +147,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </Message>
     );
   if (!me || (adminOnly && !me.isAdmin)) return <Splash />;
+  if (!me.nickname) return <Onboarding me={me} />;
 
   return (
     <div className="mx-auto flex h-dvh max-w-lg flex-col">
@@ -145,11 +156,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <WifiOff size={14} /> Sei offline: vedi gli ultimi dati salvati
         </div>
       )}
-      {TABS.filter((t) => kept.includes(t.path)).map(({ path: p, Screen }) => (
-        <div key={p} data-tab={p} className={activeTab === p ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-          <Screen />
-        </div>
-      ))}
+      <div ref={pager} className={activeTab ? "relative flex min-h-0 flex-1 flex-col overflow-hidden" : "hidden"}>
+        {TABS.filter((t) => kept.includes(t.path)).map(({ path: p, Screen }) => (
+          <div key={p} data-tab={p} className={activeTab === p ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+            <Screen />
+          </div>
+        ))}
+      </div>
       {!activeTab && <div className="flex min-h-0 flex-1 flex-col">{children}</div>}
       <BottomNav />
       <BadgeCelebration />

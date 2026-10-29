@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
-import { Button, Card, EmptyState, haptic, ScreenHeader, Segmented } from "@/components/ui/basics";
+import { Button, Card, EmptyState, ScreenHeader, Segmented } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { DayStrip, TimeField } from "@/components/ui/pickers";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
@@ -22,7 +23,6 @@ function startOfWeek(d: Date): Date {
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const localIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const TIMES = ["10:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
 
 function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClose: () => void; initialDay: Date }) {
   const { backend, refresh } = useData();
@@ -72,51 +72,11 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
       <div className="flex flex-col gap-5 pb-2">
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Giorno</h3>
-          <div className="scroll-x -mx-5 flex gap-2 px-5 py-1">
-            {days.map((d) => {
-              const iso = localIso(d);
-              const active = iso === day;
-              return (
-                <button
-                  key={iso}
-                  onClick={() => {
-                    haptic(5);
-                    setDay(iso);
-                  }}
-                  aria-pressed={active}
-                  className={clsx(
-                    "flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-2xl",
-                    active ? "bg-ball text-ball-ink" : "bg-raised",
-                  )}
-                >
-                  <span className="text-[11.5px] font-semibold opacity-80">{d.toLocaleDateString("it-IT", { weekday: "short" })}</span>
-                  <span className="num text-[22px]">{d.getDate()}</span>
-                </button>
-              );
-            })}
-          </div>
+          <DayStrip value={day} onChange={setDay} min={days[0]} max={days[days.length - 1]} newestFirst={false} />
         </section>
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Ora</h3>
-          <div className="flex flex-wrap gap-2">
-            {TIMES.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTime(t)}
-                aria-pressed={time === t}
-                className={clsx("tnum h-10 rounded-full px-4 text-[14px] font-semibold", time === t ? "bg-text text-bg" : "bg-raised")}
-              >
-                {t}
-              </button>
-            ))}
-            <input
-              type="time"
-              aria-label="Altro orario"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="h-10 rounded-full bg-raised px-3 text-[14px] outline-none"
-            />
-          </div>
+          <TimeField value={time} onChange={setTime} />
         </section>
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Formato</h3>
@@ -188,9 +148,10 @@ function OrganizeInner() {
         action={
           <button
             onClick={() => router.push("/organizza?nuova=1")}
-            className="flex h-10 items-center gap-1.5 rounded-2xl bg-ball px-3.5 text-[14px] font-semibold text-ball-ink"
+            aria-label="Proponi una partita"
+            className="sticker press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ball text-ball-ink"
           >
-            <Plus size={17} strokeWidth={2.6} /> Proponi
+            <Plus size={22} strokeWidth={2.8} />
           </button>
         }
       />

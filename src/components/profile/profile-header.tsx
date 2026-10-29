@@ -10,7 +10,7 @@ import { useData } from "@/lib/data/provider";
 import { MONTHS_IT } from "@/lib/periods";
 import { trophiesOf } from "@/lib/stats/awards";
 import { eloOf } from "@/lib/stats/elo";
-import { playerName, type Player } from "@/lib/types";
+import { displayName, type Player } from "@/lib/types";
 
 /** La figurina del giocatore: foto, nome, ruolo, ELO e i tre badge in vetrina. */
 export function ProfileHeader({ player, self }: { player: Player; self?: boolean }) {
@@ -38,7 +38,7 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
           <Avatar player={player} size={68} href={false} />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="display line-clamp-2 break-words text-[20px] leading-[1.02]">{playerName(player)}</h1>
+          <h1 className="display line-clamp-2 break-words text-[20px] leading-[1.02]">{displayName(player)}</h1>
           <p className="truncate text-[13.5px] text-white/80">
             {player.nickname ? `“${player.nickname}”, ` : ""}
             {player.roles.join(", ") || "Giocatore"}

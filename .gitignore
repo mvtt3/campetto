@@ -51,3 +51,5 @@ scripts/.prof*.mjs
 scripts/.trace.mjs
 scripts/.serve.sh
 scripts/.shots.mjs
+scripts/.ux.mjs
+scripts/.q.mjs

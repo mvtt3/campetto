@@ -13,6 +13,8 @@ import type { SaveMatchInput } from "@/lib/data/backend";
 import { useData } from "@/lib/data/provider";
 import { teamBoxPoints } from "@/lib/stats/player";
 import { emptyBox, FORMATS, shortName, TEAM_SIZE, type Box, type Format, type Team } from "@/lib/types";
+import { DateTimeField } from "@/components/ui/pickers";
+import { APP_START } from "@/lib/periods";
 
 const STEPS = ["Formato", "Squadre", "Risultato", "Tabellino"] as const;
 
@@ -99,7 +101,7 @@ function NewMatchInner() {
   const [boxes, setBoxes] = useState<Record<string, Box>>({});
   const [current, setCurrent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [maxDate] = useState(() => toLocalInput(new Date(Date.now() + 86_400_000)));
+  const [maxDate] = useState(() => new Date());
   const init = useRef(false);
 
   // Prefill: from an existing match (edit) or from the players who said yes.
@@ -260,13 +262,7 @@ function NewMatchInner() {
             </section>
             <section>
               <h2 className="mb-2 text-[13px] font-semibold text-muted">Quando</h2>
-              <input
-                type="datetime-local"
-                value={playedAt}
-                max={maxDate}
-                onChange={(e) => setPlayedAt(e.target.value)}
-                className="h-12 w-full rounded-2xl bg-raised px-4 text-[15px] outline-none"
-              />
+              <DateTimeField value={playedAt} onChange={setPlayedAt} min={APP_START} max={maxDate} />
             </section>
             <section>
               <h2 className="mb-2 text-[13px] font-semibold text-muted">Si gioca fino a</h2>

@@ -7,6 +7,21 @@ export type Period =
 
 export type FormatFilter = Format | "all";
 
+/** Il Campetto nasce a ottobre 2026: niente date, mesi o stagioni prima di allora. */
+export const APP_START = new Date(2026, 9, 1);
+
+/** Toglie eventuali partite precedenti all'apertura dell'app. */
+export function sinceStart<T extends { playedAt: string }>(matches: T[]): T[] {
+  const t = APP_START.getTime();
+  return matches.filter((m) => new Date(m.playedAt).getTime() >= t);
+}
+
+/** true se il periodo finisce prima che l'app esistesse. */
+export function isBeforeStart(p: Period): boolean {
+  const r = periodRange(p);
+  return !!r && r.end.getTime() <= APP_START.getTime();
+}
+
 export interface Filter {
   period: Period;
   format: FormatFilter;
