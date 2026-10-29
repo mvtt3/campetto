@@ -4,7 +4,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { animate, motion, useReducedMotion } from "motion/react";
-import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Mascot, type MascotPose } from "../mascot";
 
 export function haptic(ms = 8) {
@@ -113,16 +113,25 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
   tone?: "default" | "court";
 }) {
-  const id = useId();
+  const index = Math.max(0, options.findIndex((o) => o.value === value));
   return (
     <div
       role="tablist"
       className={clsx(
-        "flex rounded-full p-1",
+        "relative flex rounded-full p-1",
         tone === "court" ? "bg-white/15" : "sticker-sm bg-surface",
         className,
       )}
     >
+      {/* Indicatore che scorre: solo transform, nessun ricalcolo dell'impaginazione. */}
+      <span
+        aria-hidden
+        className={clsx(
+          "absolute inset-y-1 left-1 rounded-full border-2 border-edge transition-transform duration-200 ease-out",
+          tone === "court" ? "bg-white" : "bg-court",
+        )}
+        style={{ width: `calc((100% - 0.5rem) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
+      />
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -140,13 +149,6 @@ export function Segmented<T extends string>({
               active ? (tone === "court" ? "text-court" : "text-court-ink") : tone === "court" ? "text-white/80" : "text-muted",
             )}
           >
-            {active && (
-              <motion.span
-                layoutId={`seg-${id}`}
-                className={clsx("absolute inset-0 rounded-full border-2 border-edge", tone === "court" ? "bg-white" : "bg-court")}
-                transition={{ type: "spring", stiffness: 500, damping: 38 }}
-              />
-            )}
             <span className="relative">{o.label}</span>
           </button>
         );
@@ -167,7 +169,8 @@ export function Chips<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={clsx("scroll-x -mx-5 flex gap-2 px-5", className)}>
+    // A capo invece di scorrere: tutte le opzioni restano visibili e nessun bordo viene tagliato.
+    <div className={clsx("flex flex-wrap gap-2 pb-0.5 pr-0.5", className)}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -177,7 +180,7 @@ export function Chips<T extends string>({
             onChange(o.value);
           }}
           className={clsx(
-            "press h-9 shrink-0 rounded-full px-4 text-[14px] font-semibold transition-colors",
+            "press h-9 shrink-0 rounded-full px-3.5 text-[14px] font-bold transition-colors",
             o.value === value ? "sticker-sm bg-volt text-volt-ink" : "sticker-sm bg-surface text-muted",
           )}
         >

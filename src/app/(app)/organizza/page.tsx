@@ -72,7 +72,7 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
       <div className="flex flex-col gap-5 pb-2">
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Giorno</h3>
-          <div className="scroll-x -mx-5 flex gap-2 px-5">
+          <div className="scroll-x -mx-5 flex gap-2 px-5 py-1">
             {days.map((d) => {
               const iso = localIso(d);
               const active = iso === day;

@@ -34,8 +34,7 @@
   --ok: #2e9e5b;
   --shadow: 3px 3px 0 var(--edge);
   --shadow-pop: 5px 5px 0 var(--edge);
-  --grain-opacity: 0.11;
-  color-scheme: light;
+    color-scheme: light;
 }
 
 :root[data-theme="dark"] {
@@ -63,8 +62,7 @@
   --ok: #4cc77d;
   --shadow: 3px 3px 0 var(--edge);
   --shadow-pop: 5px 5px 0 var(--edge);
-  --grain-opacity: 0.07;
-  color-scheme: dark;
+    color-scheme: dark;
 }
 
 @theme inline {
@@ -111,19 +109,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Grana della carta su tutto lo schermo. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 100;
-  opacity: var(--grain-opacity);
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+/* Grana della carta: una piccola immagine ripetuta sullo sfondo (niente
+   sovrapposizioni o fusioni di colore, che sui telefoni economici rallentano). */
+body {
+  background-image: url("/grain-light.png");
+  background-size: 128px 128px;
 }
-:root[data-theme="dark"] body::after {
-  mix-blend-mode: screen;
+:root[data-theme="dark"] body {
+  background-image: url("/grain-dark.png");
 }
 
 /* Titoli da poster. */
@@ -260,42 +253,31 @@ a,
 
 /* Cornice dell'MVP in carica: oro che gira lentamente */
 .mvp-ring {
-  background: conic-gradient(from var(--a, 0deg), #ffe08a, #e8a100, #9c6a00, #ffd257, #e8a100, #ffe08a);
-  animation: mvp-spin 6s linear infinite;
-}
-@property --a {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-@keyframes mvp-spin {
-  to {
-    --a: 360deg;
-  }
+  background: conic-gradient(from 210deg, #ffe08a, #e8a100, #9c6a00, #ffd257, #e8a100, #ffe08a);
 }
 
 /* Mascotte */
 .mascot-ciao .mascot-wave {
   transform-origin: 116px 84px;
-  animation: wave 1.6s ease-in-out infinite;
+  animation: wave 1.6s ease-in-out 3;
 }
 .mascot-esulta .mascot-body {
-  animation: jump 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+  animation: jump 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) 3;
 }
 .mascot-esulta .mascot-shadow {
   transform-origin: 80px 194px;
-  animation: shadow 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+  animation: shadow 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) 3;
 }
 .mascot-esulta .mascot-confetti {
-  animation: confetti 0.9s ease-in-out infinite alternate;
+  animation: confetti 0.9s ease-in-out 6 alternate;
 }
 .mascot-boh .mascot-body {
   transform-origin: 80px 190px;
-  animation: tilt 3s ease-in-out infinite;
+  animation: tilt 3s ease-in-out 2;
 }
 .mascot .mascot-eyes {
   transform-origin: 80px 74px;
-  animation: blink 4.2s infinite;
+  animation: blink 4.2s 3;
 }
 @keyframes wave {
   0%,

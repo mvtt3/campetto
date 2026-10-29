@@ -22,7 +22,7 @@ export function Sheet({
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-40 bg-[#0b1230]/45 backdrop-blur-[2px]" />
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-[#1d1a16]/50" />
         <Drawer.Content
           className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-lg flex-col rounded-t-[30px] border-[2.5px] border-b-0 border-edge bg-surface outline-none"
           aria-describedby={undefined}

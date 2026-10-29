@@ -53,3 +53,39 @@ export async function staticContentOverflows(page: Page): Promise<string[]> {
     return [...new Set(out)].slice(0, 8);
   });
 }
+
+/**
+ * Nessun "adesivo" (card, pulsanti, filtri) deve avere bordo o ombra tagliati
+ * da un contenitore: è quello che si vedeva nei filtri della classifica.
+ * Le righe che scorrono di lato vengono controllate solo in verticale, le liste
+ * che scorrono in verticale solo in orizzontale.
+ */
+export async function clippedStickers(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    const els = document.querySelectorAll<HTMLElement>(".sticker, .sticker-sm, .card, .court");
+    els.forEach((el) => {
+      if (!el.getClientRects().length) return;
+      if (el.closest('[role="dialog"], [aria-hidden="true"]')) return;
+      const cs = getComputedStyle(el);
+      const m = cs.boxShadow.match(/(-?\d+(?:\.\d+)?)px (-?\d+(?:\.\d+)?)px/);
+      const sx = m ? Math.max(0, parseFloat(m[1])) : 0;
+      const sy = m ? Math.max(0, parseFloat(m[2])) : 0;
+      const r = el.getBoundingClientRect();
+      let p = el.parentElement;
+      while (p && p !== document.body) {
+        const ps = getComputedStyle(p);
+        if (ps.overflowX !== "visible" || ps.overflowY !== "visible") break;
+        p = p.parentElement;
+      }
+      if (!p || p === document.body) return;
+      const pr = p.getBoundingClientRect();
+      const horizontalScroller = p.classList.contains("scroll-x");
+      const verticalScroller = p.classList.contains("scroll-area");
+      const name = `${el.tagName.toLowerCase()} "${(el.textContent || "").trim().slice(0, 24)}"`;
+      if (!verticalScroller && (r.top < pr.top - 0.5 || r.bottom + sy > pr.bottom + 0.5)) out.push(`${name} tagliato in verticale`);
+      if (!horizontalScroller && (r.left < pr.left - 0.5 || r.right + sx > pr.right + 0.5)) out.push(`${name} tagliato in orizzontale`);
+    });
+    return [...new Set(out)].slice(0, 8);
+  });
+}

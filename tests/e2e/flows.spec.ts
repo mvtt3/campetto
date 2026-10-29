@@ -112,7 +112,8 @@ test("proponi una partita e rispondi", async ({ page }) => {
   await page.getByRole("button", { name: "18:00" }).click();
   await page.getByRole("tab", { name: "3v3" }).click();
   await page.getByRole("button", { name: "Proponi", exact: true }).click();
-  const card = page.getByTestId("proposal-card").first();
+  // Le schede principali restano montate (nascoste): si guarda solo la scheda visibile.
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
   await expect(card).toContainText("1 di 6");
   await card.getByRole("button", { name: "Forse" }).click();
   await expect(card.getByRole("button", { name: "Forse" })).toHaveAttribute("aria-pressed", "true");
@@ -218,4 +219,42 @@ test("squadre equilibrate per chi viene oggi", async ({ page }) => {
   await expect(dialog).toContainText("Chi vince?");
   await dialog.getByRole("button", { name: "Rimescola" }).click();
   await expect(dialog.getByRole("link", { name: "Segna il risultato" })).toBeVisible();
+});
+
+test("cambio scheda immediato, tasto indietro e pagine interne", async ({ page }) => {
+  await openApp(page, "demo");
+  const nav = page.getByRole("navigation", { name: "Navigazione principale" });
+  await nav.getByRole("link", { name: "Classifica" }).click();
+  await expect(page).toHaveURL(/\/classifiche$/);
+  await expect(page.getByLabel("Podio")).toBeVisible();
+  await nav.getByRole("link", { name: "Partite" }).click();
+  await expect(page).toHaveURL(/\/partite$/);
+  await page.getByTestId("match-row").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/classifiche$/);
+  await expect(page.getByLabel("Podio")).toBeVisible();
+  await page.getByRole("link", { name: "Albo" }).click();
+  await expect(page.getByText("Più punti in una partita")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel("Podio")).toBeVisible();
+  await nav.getByRole("link", { name: "Profilo" }).click();
+  await expect(page.getByText("Andamento")).toBeVisible();
+  await nav.getByRole("link", { name: "Home" }).click();
+  await expect(page.getByRole("heading", { name: "Ciao Matteo" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Ciao Matteo" })).toBeVisible();
+});
+
+test("il tasto indietro chiude il dettaglio della partita", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.getByRole("navigation", { name: "Navigazione principale" }).getByRole("link", { name: "Partite" }).click();
+  await page.getByTestId("match-row").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/partite$/);
+  await expect(page.getByTestId("match-row").first()).toBeVisible();
 });

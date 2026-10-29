@@ -306,7 +306,7 @@ function NewMatchInner() {
 
         {step === 3 && withBox && cur && (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
-            <div className="scroll-x -mx-4 flex shrink-0 gap-2 px-4">
+            <div className="scroll-x -mx-4 flex shrink-0 gap-2 px-4 py-1">
               {ordered.map((id) => (
                 <button
                   key={id}

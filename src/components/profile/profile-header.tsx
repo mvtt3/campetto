@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Crown, Settings, Trophy } from "lucide-react";
-import { motion } from "motion/react";
 import { BadgeMedal } from "@/components/badge-medal";
 import { Avatar, playerColor } from "@/components/ui/avatar";
 import { CourtLines } from "@/components/ui/basics";
@@ -24,10 +23,7 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
   const badgesHref = self ? "/profilo/badge" : `/giocatore/${player.id}/badge`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+    <div
       className="halftone relative overflow-hidden rounded-[26px] border-[2.5px] border-edge p-5 text-[#fffaf0] shadow-[var(--shadow-pop)]"
       style={{ backgroundColor: tint }}
     >
@@ -77,6 +73,6 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
         )}
         <span className="ml-auto text-[13.5px] font-bold">Tutti i badge</span>
       </Link>
-    </motion.div>
+    </div>
   );
 }

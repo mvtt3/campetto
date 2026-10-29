@@ -44,3 +44,10 @@ playwright-report/
 scripts/.shots.mjs
 scripts/.probe.mjs
 scripts/.serve.sh
+
+# misure locali
+scripts/.perf*.mjs
+scripts/.prof*.mjs
+scripts/.trace.mjs
+scripts/.serve.sh
+scripts/.shots.mjs

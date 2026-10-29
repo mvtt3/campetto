@@ -61,7 +61,7 @@ export function BadgeCelebration() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="badge-title"
-      className="fixed inset-0 z-[70] grid place-items-center bg-[#0b1230]/70 px-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] grid place-items-center bg-[#1d1a16]/75 px-8"
       onClick={() => setQueue((q) => q.slice(1))}
     >
       <motion.div
