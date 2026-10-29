@@ -142,7 +142,7 @@ export function HomeScreen() {
               <ProposalCard proposal={next} compact />
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[14.5px] text-muted">Nessuno ha ancora proposto un giorno.</p>
+                <p className="text-[14.5px] text-muted">Nessuno ha ancora proposto un giorno</p>
                 <Link href="/organizza?nuova=1" className="sticker press flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-bold text-ball-ink">
                   <Plus size={17} strokeWidth={2.6} /> Proponi
                 </Link>
@@ -209,7 +209,7 @@ export function HomeScreen() {
                 ) : (
                   <div className="flex flex-1 flex-col justify-end">
                     <p className="title text-[17px]">Si parte da zero</p>
-                    <p className="mt-1 text-[12.5px] text-muted">Le partite compaiono qui appena le inseriamo.</p>
+                    <p className="mt-1 text-[12.5px] text-muted">Le partite compaiono qui appena le inseriamo</p>
                   </div>
                 )}
               </Link>

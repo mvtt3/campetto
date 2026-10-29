@@ -280,7 +280,7 @@ function NewMatchInner() {
               <ScoreSide team="B" value={scoreB} onChange={setScoreB} names={namesB} target={target} />
             </div>
             {!scoreOk && (scoreA > 0 || scoreB > 0) && (
-              <p className="mt-4 text-center text-[13px] text-danger">Il risultato non può essere un pareggio.</p>
+              <p className="mt-4 text-center text-[13px] text-danger">Il risultato non può essere un pareggio</p>
             )}
             {scoreOk && Math.max(scoreA, scoreB) < target && (
               <p className="mt-4 text-center text-[13px] text-muted">Nessuno è arrivato a {target}: va bene lo stesso se avete smesso prima.</p>

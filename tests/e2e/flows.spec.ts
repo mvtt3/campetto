@@ -10,7 +10,7 @@ test("dal login con Google si entra nell'app", async ({ page }) => {
 
 test("app vuota: stati vuoti curati", async ({ page }) => {
   await openApp(page);
-  await expect(page.getByText("Nessuno ha ancora proposto un giorno.")).toBeVisible();
+  await expect(page.getByText("Nessuno ha ancora proposto un giorno")).toBeVisible();
   await expect(page.getByText("Ancora nessuno")).toBeVisible();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
   await expect(page.getByText("Ancora nessuna partita")).toBeVisible();

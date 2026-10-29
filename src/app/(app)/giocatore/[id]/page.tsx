@@ -54,7 +54,7 @@ export default function PlayerPage() {
                     <span className={clsx(lead === "lui" && "text-ball")}>{h.winsB}</span>
                   </p>
                 ) : (
-                  <p className="text-[14px]">Non vi siete ancora sfidati.</p>
+                  <p className="text-[14px]">Non vi siete ancora sfidati</p>
                 )}
               </div>
               <Avatar player={player} size={36} href={false} ring="none" />

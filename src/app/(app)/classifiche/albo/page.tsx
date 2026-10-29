@@ -102,7 +102,7 @@ export default function HallPage() {
                         <Crown size={16} className="text-gold" /> MVP <span className="font-semibold">{name(mo.mvp.playerId)}</span>
                       </p>
                     ) : (
-                      <p className="mt-2 text-[13px] text-muted">Nessun MVP: servono 3 partite.</p>
+                      <p className="mt-2 text-[13px] text-muted">Nessun MVP: servono 3 partite</p>
                     )}
                     {mo.kings.length > 0 && (
                       <ul className="mt-1.5 flex flex-col gap-0.5 text-[13px] text-muted">
