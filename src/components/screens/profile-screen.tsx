@@ -20,7 +20,9 @@ export function ProfileScreen() {
   return (
     <>
       <div className="safe-top shrink-0 px-5 pt-4">
-        <ProfileHeader player={me} self />
+        <div data-tour="profile-card">
+          <ProfileHeader player={me} self />
+        </div>
         <Segmented
           className="mt-3"
           value={tab}
@@ -34,7 +36,7 @@ export function ProfileScreen() {
 
       {tab === "panoramica" ? (
         <PullToRefresh scroll={false} className="px-5 pb-2 pt-3">
-          <div className="flex h-full flex-col gap-3 short:gap-2">
+          <div className="flex h-full flex-col gap-3 short:gap-2" data-tour="profile-stats">
             <KeyRings playerId={me.id} />
             <Form playerId={me.id} />
             <div className="card min-h-0 flex-1 p-4 short:hidden">

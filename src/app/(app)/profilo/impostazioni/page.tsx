@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Download, LogOut, Palette, Shield } from "lucide-react";
+import { Bell, Camera, ChevronRight, Compass, Download, LogOut, Palette, Shield } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { SECTION_IDS, sections } from "@/components/tutorial/model";
+import { useTutorial } from "@/components/tutorial/tutorial";
 import { Sheet } from "@/components/ui/sheet";
 import { NAME_MAX, nameError } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
@@ -42,6 +44,8 @@ export default function SettingsPage() {
   const [install, setInstall] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(true);
   const [picking, setPicking] = useState(false);
+  const [guide, setGuide] = useState(false);
+  const tour = useTutorial();
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -86,9 +90,9 @@ export default function SettingsPage() {
           setPushOn(true);
           toast("Notifiche attive");
           void backend.notify({ type: "test" });
-        } else if (r === "denied") toast("Hai bloccato le notifiche: riattivale dalle impostazioni del telefono.", "error");
-        else if (r === "install") toast("Su iPhone aggiungi prima l'app alla schermata Home.", "error");
-        else toast("Questo browser non supporta le notifiche.", "error");
+        } else if (r === "denied") toast("Hai bloccato le notifiche: riattivale dalle impostazioni del telefono", "error");
+        else if (r === "install") toast("Su iPhone aggiungi prima l'app alla schermata Home", "error");
+        else toast("Questo browser non supporta le notifiche", "error");
       } else {
         await disablePush(backend);
         setPushOn(false);
@@ -189,7 +193,7 @@ export default function SettingsPage() {
           {!standalone && (
             <Row icon={<Download size={18} />}>
               <p className="min-w-0 flex-1 text-[13.5px] text-muted">
-                {isIos() ? "In Safari: Condividi, poi “Aggiungi alla schermata Home”." : "Mettila nella Home: si apre a schermo intero."}
+                {isIos() ? "In Safari: Condividi, poi “Aggiungi alla schermata Home”" : "Mettila nella Home: si apre a schermo intero"}
               </p>
               {install && (
                 <Button size="sm" variant="primary" onClick={() => void install.prompt()}>
@@ -198,6 +202,15 @@ export default function SettingsPage() {
               )}
             </Row>
           )}
+        </Group>
+
+        <Group>
+          <Row icon={<Compass size={18} />}>
+            <button onClick={() => setGuide(true)} className="flex flex-1 items-center text-left text-[15px] font-semibold">
+              Guida all&apos;app
+              <ChevronRight size={18} className="ml-auto text-faint" />
+            </button>
+          </Row>
         </Group>
 
         <Group>
@@ -233,7 +246,42 @@ export default function SettingsPage() {
           </Link>
         </p>
       </main>
-      <Sheet open={picking} onOpenChange={setPicking} title="La tua figurina" description="Tocca per sceglierla: si aggiorna subito.">
+      <Sheet open={guide} onOpenChange={setGuide} title="Guida all'app" description="Spicchio ti rimostra come funziona">
+        <div className="flex flex-col gap-3 pb-2">
+          <Button
+            variant="court"
+            block
+            onClick={() => {
+              setGuide(false);
+              window.setTimeout(() => tour?.restart(), 350);
+            }}
+          >
+            Ricomincia da capo
+          </Button>
+          <div className="card overflow-hidden">
+            {SECTION_IDS.map((id) => {
+              const sec = sections(me.isAdmin)[id];
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setGuide(false);
+                    window.setTimeout(() => tour?.begin(id), 350);
+                  }}
+                  className="flex min-h-[56px] w-full items-center gap-3 border-t border-line px-4 text-left first:border-t-0 active:bg-raised"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold">Solo {sec.title}</span>
+                    <span className="block text-[12.5px] text-muted">{sec.steps.length} passaggi brevi</span>
+                  </span>
+                  <ChevronRight size={18} className="text-faint" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Sheet>
+      <Sheet open={picking} onOpenChange={setPicking} title="La tua figurina" description="Tocca per sceglierla: si aggiorna subito">
         <div className="pb-2">
           <AvatarPicker
             value={me.avatarUrl}

@@ -45,9 +45,9 @@ export function BadgeCollection({ playerId, editable }: { playerId: string; edit
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="px-1 text-[14px] text-muted">
+      <p className="px-1 text-center text-[14px] text-muted">
         <span className="tnum font-bold text-text">{unlocked}</span> di {states.length} sbloccati
-        {editable && ". Tocca un badge per metterlo in vetrina."}
+        {editable && " · tocca un badge per metterlo in vetrina"}
       </p>
       <Segmented value={cat} onChange={setCat} size="sm" options={CATS} />
       <div className="grid grid-cols-3 gap-2">

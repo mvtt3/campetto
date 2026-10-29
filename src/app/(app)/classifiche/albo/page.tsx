@@ -36,7 +36,7 @@ export default function HallPage() {
       <PullToRefresh className="px-5 pb-4">
         {tab === "record" ? (
           records.length === 0 ? (
-            <EmptyState title="Ancora nessun record" text="I primati del gruppo compaiono dopo le prime partite." />
+            <EmptyState title="Ancora nessun record" text="I primati del gruppo compaiono dopo le prime partite" />
           ) : (
             <div className="flex flex-col gap-2">
               {records.map((r) => (
@@ -63,7 +63,7 @@ export default function HallPage() {
             </div>
           )
         ) : engine.months.length === 0 ? (
-          <EmptyState title="Albo ancora vuoto" text="Ogni mese qui finiscono l'MVP e i migliori. Ogni tre mesi si chiude una stagione e chi vince prende un trofeo per sempre." />
+          <EmptyState title="Albo ancora vuoto" text="Ogni mese qui finiscono l'MVP e i migliori, ogni tre mesi chi vince la stagione prende un trofeo per sempre" />
         ) : (
           <div className="flex flex-col gap-5">
             <section>

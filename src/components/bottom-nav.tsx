@@ -26,7 +26,7 @@ const ITEMS = [
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav aria-label="Navigazione principale" className="safe-bottom shrink-0 px-4 pb-3 pt-1">
+    <nav aria-label="Navigazione principale" data-tour="nav" className="safe-bottom shrink-0 px-4 pb-3 pt-1">
       <ul className="sticker mx-auto grid h-[66px] max-w-md grid-cols-4 gap-1 rounded-[24px] bg-surface p-1.5">
         {ITEMS.map(({ href, label, icon: Icon, match }) => {
           const active = match(path);

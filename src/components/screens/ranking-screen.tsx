@@ -8,10 +8,11 @@ import { useMemo, useState } from "react";
 import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Chips, EmptyState, ScreenHeader } from "@/components/ui/basics";
+import { InfoTip } from "@/components/ui/info";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, periodRange, type FormatFilter, type Period } from "@/lib/periods";
-import { mvpRanking } from "@/lib/stats/awards";
+import { minGamesFor, MVP_MIN_GAMES, mvpRanking } from "@/lib/stats/awards";
 import { leaderboard, STAT_BY_KEY, type StatKey } from "@/lib/stats/leaderboards";
 import { computePlayerStats } from "@/lib/stats/player";
 import { shortName } from "@/lib/types";
@@ -33,6 +34,21 @@ interface Row {
   rank: number;
   value: string;
   sub?: string;
+}
+
+interface Pending {
+  playerId: string;
+  value: string;
+  missing: number;
+}
+
+function boardInfo(board: Board, minGames: number | null): string {
+  if (board === "mvp")
+    return `Mescola vittorie, valutazione media, presenza e crescita ELO. Per entrare servono almeno ${minGames ?? 3} partite nel periodo.`;
+  if (board === "vittorie") return "Il totale delle vittorie nel periodo: qui conta anche quante volte vieni";
+  if (board === "elo") return "Sale quando vinci e scende quando perdi, di più contro chi è più forte. Nel mese e nella stagione vedi quanto è cambiato.";
+  const extra = board === "tre" ? " e almeno 5 tiri da tre" : "";
+  return `Media a partita. Per entrare servono almeno ${minGames ?? 2} partite con tabellino${extra}, così chi gioca poco non scavalca chi c'è sempre.`;
 }
 
 const PODIUM = [
@@ -83,25 +99,41 @@ export function RankingScreen() {
   const scoped = useMemo(() => filterMatches(data.matches, { period, format }), [data.matches, period, format]);
   const range = periodRange(period);
 
-  const rows = useMemo<Row[]>(() => {
+  const { rows, pending, minGames } = useMemo<{ rows: Row[]; pending: Pending[]; minGames: number | null }>(() => {
     if (board === "mvp") {
-      return mvpRanking(ids, data.matches, period, format, { elo: engine.elo }).map((r, i) => ({
-        playerId: r.playerId,
-        rank: i + 1,
-        value: String(Math.round(r.score * 100)),
-        sub: `${r.games} partite, ${Math.round(r.winPct * 100)}% vinte`,
-      }));
+      const ranked = mvpRanking(ids, data.matches, period, format, { elo: engine.elo });
+      const games = ids.map((id) => ({ id, n: computePlayerStats(id, scoped).games }));
+      const need = minGamesFor(Math.max(0, ...games.map((g) => g.n)), MVP_MIN_GAMES);
+      return {
+        rows: ranked.map((r, i) => ({
+          playerId: r.playerId,
+          rank: i + 1,
+          value: String(Math.round(r.score * 100)),
+          sub: `${r.games} partite, ${Math.round(r.winPct * 100)}% vinte`,
+        })),
+        pending: games
+          .filter((g) => g.n > 0 && g.n < need)
+          .sort((a, b) => b.n - a.n)
+          .map((g) => ({ playerId: g.id, value: "", missing: need - g.n })),
+        minGames: need,
+      };
     }
     const stat = STAT_BY_KEY.get(board)!;
     const stats = ids.map((id) => computePlayerStats(id, scoped));
-    return leaderboard(stat, stats, { elo: engine.elo, start: range?.start, end: range?.end, allTime: period.kind === "all" }).map((r) => {
-      const s = stats.find((x) => x.playerId === r.playerId)!;
-      return { playerId: r.playerId, rank: r.rank, value: stat.format(r.value).replace(".", ","), sub: `${s.games} ${s.games === 1 ? "partita" : "partite"}` };
-    });
+    const lb = leaderboard(stat, stats, { elo: engine.elo, start: range?.start, end: range?.end, allTime: period.kind === "all" });
+    const fmt = (v: number) => stat.format(v).replace(".", ",");
+    return {
+      rows: lb.rows.map((r) => {
+        const s = stats.find((x) => x.playerId === r.playerId)!;
+        const n = stat.qualify?.by === "statGames" ? s.statGames : s.games;
+        return { playerId: r.playerId, rank: r.rank, value: fmt(r.value), sub: stat.qualify ? `su ${n} ${n === 1 ? "partita" : "partite"}` : `${s.games} ${s.games === 1 ? "partita" : "partite"}` };
+      }),
+      pending: lb.pending.map((r) => ({ playerId: r.playerId, value: fmt(r.value), missing: r.missing })),
+      minGames: lb.minGames,
+    };
   }, [board, ids, data.matches, period, format, engine.elo, scoped, range?.start, range?.end]);
 
-  const stat = board === "mvp" ? null : STAT_BY_KEY.get(board)!;
-  const note = board === "mvp" ? "Conta vittorie, valutazione e crescita. Servono almeno 3 partite." : stat?.note;
+  const info = boardInfo(board, minGames);
 
   return (
     <>
@@ -114,18 +146,25 @@ export function RankingScreen() {
         }
       />
       <div className="flex shrink-0 flex-col gap-2.5 px-5 pb-2">
-        <PeriodPicker value={period} onChange={setPeriod} format={format} onFormat={setFormat} />
-        <Chips value={board} onChange={setBoard} options={BOARDS} />
+        <div data-tour="rank-period">
+          <PeriodPicker value={period} onChange={setPeriod} format={format} onFormat={setFormat} />
+        </div>
+        <div data-tour="rank-boards">
+          <Chips value={board} onChange={setBoard} options={BOARDS} />
+        </div>
       </div>
 
       <PullToRefresh className="px-5 pb-4 pt-2">
         {rows.length === 0 ? (
           <EmptyState
             title="Classifica ancora vuota"
-            text={board === "mvp" ? "Per entrare in classifica servono almeno 3 partite nel periodo." : "Non ci sono ancora abbastanza partite in questo periodo."}
+            text={board === "mvp" ? "Per entrare in classifica servono almeno 3 partite nel periodo" : "Non ci sono ancora abbastanza partite in questo periodo"}
           />
         ) : (
-          <div key={`${board}-${period.kind}-${format}`}>
+          <div key={`${board}-${period.kind}-${format}`} className="relative" data-tour="rank-podium">
+            <div className="absolute right-0 top-1 z-10">
+              <InfoTip label="Come funziona questa classifica">{info}</InfoTip>
+            </div>
             <Podium rows={rows} />
             <ol className="flex flex-col gap-2">
               {rows.slice(3).map((r) => {
@@ -149,7 +188,31 @@ export function RankingScreen() {
                 );
               })}
             </ol>
-            {note && <p className="px-1 pt-3 text-[12.5px] text-faint">{note}</p>}
+            {pending.length > 0 && (
+              <section className="mt-5" aria-label="Fuori classifica">
+                <h3 className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-bold text-muted">
+                  Fuori classifica
+                  <InfoTip label="Perché sono fuori classifica" size={16}>
+                    Hanno giocato meno partite del minimo di questo periodo: entrano appena le raggiungono
+                  </InfoTip>
+                </h3>
+                <ul className="flex flex-col gap-1.5">
+                  {pending.map((r) => {
+                    const p = data.players.find((x) => x.id === r.playerId);
+                    return (
+                      <li key={r.playerId} className="flex items-center gap-3 rounded-[18px] border-2 border-dashed border-line-strong px-3 py-2 opacity-80">
+                        <Avatar player={p} size={30} href={false} ring="none" />
+                        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">{shortName(p, data.players)}</span>
+                        <span className="shrink-0 text-[12.5px] font-semibold text-muted">
+                          {r.value && <span className="num mr-2 text-[15px] text-faint">{r.value}</span>}
+                          {r.missing === 1 ? "manca 1 partita" : `mancano ${r.missing} partite`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
           </div>
         )}
       </PullToRefresh>

@@ -20,7 +20,7 @@ export function GoogleButton({ onClick, label = "Entra con Google" }: { onClick:
           try {
             await onClick();
           } catch (e) {
-            setError((e as Error).message || "Accesso non riuscito, riprova.");
+            setError((e as Error).message || "Accesso non riuscito, riprova");
             setBusy(false);
           }
         }}

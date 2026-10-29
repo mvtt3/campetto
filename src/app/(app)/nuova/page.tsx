@@ -206,8 +206,8 @@ function NewMatchInner() {
   };
 
   const next = () => {
-    if (step === 1 && !teamsOk) return toast(`Servono ${size} giocatori per squadra.`, "error");
-    if (step === 2 && !scoreOk) return toast("Il risultato non può essere un pareggio.", "error");
+    if (step === 1 && !teamsOk) return toast(`Servono ${size} giocatori per squadra`, "error");
+    if (step === 2 && !scoreOk) return toast("Il risultato non può essere un pareggio", "error");
     setStep((s) => Math.min(3, s + 1));
   };
 
@@ -291,8 +291,8 @@ function NewMatchInner() {
         {step === 3 && !withBox && (
           <div className="flex flex-1 flex-col justify-center gap-4 text-center">
             <p className="title text-[22px]">Vuoi aggiungere il tabellino?</p>
-            <p className="mx-auto max-w-[30ch] text-[14.5px] text-muted">
-              Punti, rimbalzi, assist e il resto per ogni giocatore. Puoi farlo anche dopo, oppure dal video.
+            <p className="mx-auto max-w-[30ch] text-balance text-[14.5px] text-muted">
+              Punti, rimbalzi e assist di ognuno, anche più tardi o dal video
             </p>
             <Button className="mx-auto mt-2 w-full max-w-xs" onClick={() => setWithBox(true)}>
               Aggiungi il tabellino
@@ -325,7 +325,7 @@ function NewMatchInner() {
             {pointsCheck && (
               <p className={clsx("shrink-0 text-center text-[12.5px]", pointsCheck.pa === scoreA && pointsCheck.pb === scoreB ? "text-ok" : "text-muted")}>
                 Dal tabellino: A {pointsCheck.pa} su {scoreA}, B {pointsCheck.pb} su {scoreB}
-                {pointsCheck.pa === scoreA && pointsCheck.pb === scoreB ? ". Tutto torna." : "."}
+                {pointsCheck.pa === scoreA && pointsCheck.pb === scoreB ? " · tutto torna" : ""}
               </p>
             )}
           </div>

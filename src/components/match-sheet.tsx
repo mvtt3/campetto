@@ -12,6 +12,7 @@ import { Avatar } from "./ui/avatar";
 import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
+import { InfoTip } from "@/components/ui/info";
 
 export const SOURCE_LABEL: Record<StatsSource, string> = {
   solo_risultato: "Solo risultato",
@@ -68,7 +69,7 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
         }
       }}
       title={m ? date!.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" }).replace(/^./, (c) => c.toUpperCase()) : ""}
-      description={m ? `${m.format}, ore ${date!.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}. ${SOURCE_LABEL[m.statsSource]}.` : undefined}
+      description={m ? `${m.format} · ore ${date!.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} · ${SOURCE_LABEL[m.statsSource].toLowerCase()}` : undefined}
       footer={
         m && me?.isAdmin ? (
           <div className="flex gap-2">
@@ -126,7 +127,12 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
 
           {withStats.length > 0 && (
             <div>
-              <h3 className="title mb-2 text-[16px]">Tabellino</h3>
+              <h3 className="title mb-2 flex items-center gap-1.5 text-[16px]">
+                Tabellino
+                <InfoTip label="Cosa vogliono dire le colonne" size={15}>
+                  Da 2 e Da 3: canestri segnati su tentati · Rimb. rimbalzi · Ass. assist · Rub. palle rubate · Stop. stoppate
+                </InfoTip>
+              </h3>
               <div className="scroll-x -mx-5 px-5">
                 <table className="tnum w-full min-w-[440px] text-[13.5px]">
                   <thead>

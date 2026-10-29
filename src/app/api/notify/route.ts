@@ -220,7 +220,7 @@ export async function POST(req: Request) {
     if (body.type === "test") {
       await ctx.send(await ctx.targets("proposte", [ctx.me]), {
         title: "Notifiche attive",
-        body: "Da ora ti avvisiamo quando qualcuno vuole giocare.",
+        body: "Da ora ti avvisiamo quando qualcuno vuole giocare",
         url: "/",
         tag: "test",
       });

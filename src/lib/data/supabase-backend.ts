@@ -10,11 +10,11 @@ function fail(error: { message: string } | null): void {
 
 /** Postgres messages raised by our functions are already in Italian; others get a generic text. */
 function friendly(msg: string): string {
-  if (/fetch|network|Failed to/i.test(msg)) return "Connessione assente. Riprova quando sei online.";
-  if (/permission denied|row-level security/i.test(msg)) return "Non hai i permessi per questa azione.";
-  if (/players_nickname_key/i.test(msg)) return "Questo nome è già preso.";
-  if (/players_nickname_len/i.test(msg)) return "Il nome deve avere da 2 a 16 caratteri.";
-  if (/matches_since_start/i.test(msg)) return "Il Campetto parte da ottobre 2026: scegli una data da allora in poi.";
+  if (/fetch|network|Failed to/i.test(msg)) return "Connessione assente, riprova quando sei online";
+  if (/permission denied|row-level security/i.test(msg)) return "Non hai i permessi per questa azione";
+  if (/players_nickname_key/i.test(msg)) return "Questo nome è già preso";
+  if (/players_nickname_len/i.test(msg)) return "Il nome deve avere da 2 a 16 caratteri";
+  if (/matches_since_start/i.test(msg)) return "Il Campetto parte da ottobre 2026: scegli una data da allora in poi";
   return msg;
 }
 

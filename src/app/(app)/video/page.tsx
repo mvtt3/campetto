@@ -77,7 +77,7 @@ export default function VideoPage() {
         setAssign(d.assign);
         setEvents(d.events);
         /* eslint-enable react-hooks/set-state-in-effect */
-        toast("Ho ripreso le azioni che avevi segnato. Riapri il video per continuare.");
+        toast("Ho ripreso le azioni che avevi segnato: riapri il video per continuare");
       }
     } catch {
       /* ignore */
@@ -119,11 +119,11 @@ export default function VideoPage() {
   const name = (id: string) => shortName(data.players.find((p) => p.id === id), data.players);
 
   const add = (kind: EventKind) => {
-    if (!current) return toast("Scegli prima il giocatore.", "error");
+    if (!current) return toast("Scegli prima il giocatore", "error");
     if (kind === "ast") {
       const mates = ids.filter((id) => id !== current && assign[id] === assign[current]);
       if (!mates.length) {
-        toast("Nel 1v1 non ci sono assist.", "error");
+        toast("Nel 1v1 non ci sono assist", "error");
         return;
       }
     }
@@ -145,7 +145,7 @@ export default function VideoPage() {
   };
 
   const save = async () => {
-    if (scoreA === scoreB) return toast("Il risultato non può essere un pareggio.", "error");
+    if (scoreA === scoreB) return toast("Il risultato non può essere un pareggio", "error");
     setBusy(true);
     const boxes = boxesFromEvents(events, ids);
     try {
@@ -233,7 +233,7 @@ export default function VideoPage() {
           </div>
           {(scoreA !== live.a || scoreB !== live.b) && (
             <p className="text-[13px] text-muted">
-              Dalle azioni segnate risulta {live.a}–{live.b}. Va bene anche diverso, se qualche canestro è fuori dal video.
+              Dalle azioni segnate risulta {live.a}–{live.b}: va bene anche diverso, se qualche canestro è fuori dal video
             </p>
           )}
           <div className="scroll-area min-h-0 flex-1">

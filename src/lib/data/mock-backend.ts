@@ -214,7 +214,7 @@ export function createMockBackend(): Backend {
       const a = input.players.filter((p) => p.team === "A").length;
       const b = input.players.filter((p) => p.team === "B").length;
       if (a !== size || b !== size) throw new Error(`Per il ${input.format} servono ${size} giocatori per squadra.`);
-      if (input.scoreA === input.scoreB) throw new Error("Il risultato non può essere un pareggio.");
+      if (input.scoreA === input.scoreB) throw new Error("Il risultato non può essere un pareggio");
       const id = input.id ?? rid();
       const existing = state.matches.find((m) => m.id === id);
       const m: Match = {

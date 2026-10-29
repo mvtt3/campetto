@@ -21,7 +21,7 @@ export function RelationsList({ playerId }: { playerId: string }) {
   );
   const name = (id: string) => shortName(data.players.find((p) => p.id === id), data.players);
 
-  if (!chem.length && !h2h.length) return <EmptyState title="Ancora niente da mostrare" text="Compagni e avversari compaiono dopo le prime partite di squadra." />;
+  if (!chem.length && !h2h.length) return <EmptyState title="Ancora niente da mostrare" text="Compagni e avversari compaiono dopo le prime partite di squadra" />;
 
   return (
     <div className="flex flex-col gap-5">

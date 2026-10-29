@@ -35,7 +35,7 @@ export function Onboarding({ me }: { me: Player }) {
       mutate((d) => ({ ...d, players: d.players.map((p) => (p.id === me.id ? { ...p, nickname: clean, avatarUrl: avatar } : p)) }));
     } catch (e) {
       const msg = (e as Error).message;
-      toast(/duplicate|unique|players_nickname/i.test(msg) ? "Questo nome è già preso." : msg, "error");
+      toast(/duplicate|unique|players_nickname/i.test(msg) ? "Questo nome è già preso" : msg, "error");
       if (/duplicate|unique|players_nickname/i.test(msg)) setStep(0);
       setBusy(false);
     }

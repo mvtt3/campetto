@@ -6,6 +6,7 @@ import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT, monthsWithMatches } from "@/lib/periods";
 import { eloByMonth } from "@/lib/stats/elo";
 import { computePlayerStats } from "@/lib/stats/player";
+import { InfoTip } from "@/components/ui/info";
 
 type Metric = "eff" | "pts" | "elo";
 const LABEL: Record<Metric, string> = { eff: "Valutazione", pts: "Punti", elo: "ELO" };
@@ -57,7 +58,12 @@ export function TrendChart({ playerId }: { playerId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="title shrink-0 text-[16px]">Andamento</h2>
+        <h2 className="title flex shrink-0 items-center gap-1.5 text-[16px]">
+          Andamento
+          <InfoTip label="Cosa mostra il grafico" size={15}>
+            Mese per mese: la valutazione media (punti, rimbalzi, assist, rubate e stoppate meno errori e perse), i punti a partita o l&apos;ELO
+          </InfoTip>
+        </h2>
         <Segmented
           size="sm"
           className="min-w-0 max-w-[230px] flex-1"

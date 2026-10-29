@@ -1,7 +1,19 @@
 import type { Page } from "@playwright/test";
 
 /** Apre l'app con il backend di prova: "demo" carica una storia di partite, "empty" parte da zero. */
-export async function openApp(page: Page, mode: "demo" | "empty" = "empty", theme: "dark" | "light" = "light", as?: string) {
+/** Segna la guida come già vista, così non copre le schermate nei test. */
+export async function skipTour(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      for (let i = 1; i <= 7; i++) localStorage.setItem(`campetto:tour:p${i}`, JSON.stringify({ version: 1, status: "dismissed", section: null, step: 0 }));
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+export async function openApp(page: Page, mode: "demo" | "empty" = "empty", theme: "dark" | "light" = "light", as?: string, tour = false) {
+  if (!tour) await skipTour(page);
   await page.addInitScript((t) => {
     try {
       if (!localStorage.getItem("campetto:theme")) localStorage.setItem("campetto:theme", t);

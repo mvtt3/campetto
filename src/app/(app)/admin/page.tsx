@@ -39,7 +39,7 @@ function PlayerSheet({
   const link = priv ? `${typeof window !== "undefined" ? window.location.origin : ""}/invito/${priv.inviteToken}` : "";
 
   const save = async () => {
-    if (!first.trim()) return toast("Serve almeno il nome.", "error");
+    if (!first.trim()) return toast("Serve almeno il nome", "error");
     setBusy(true);
     try {
       const id = await backend.upsertPlayer({ id: p?.id, firstName: first, lastName: last || null, roles, archived });
@@ -219,8 +219,8 @@ export default function AdminPage() {
         back="/profilo/impostazioni"
         action={
           tab === "giocatori" ? (
-            <button onClick={() => setOpen("new")} aria-label="Aggiungi giocatore" className="press flex h-11 items-center gap-1.5 rounded-full bg-surface px-4 text-[14px] font-semibold sticker-sm">
-              <Plus size={18} strokeWidth={2.6} /> Giocatore
+            <button onClick={() => setOpen("new")} aria-label="Aggiungi giocatore" className="press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface sticker-sm">
+              <Plus size={20} strokeWidth={2.6} />
             </button>
           ) : undefined
         }
@@ -270,7 +270,7 @@ export default function AdminPage() {
             ))}
           </div>
         ) : pending.length === 0 ? (
-          <EmptyState title="Nessuno in attesa" text="Chi entra con Google senza invito compare qui: lo colleghi a un giocatore con un tocco." />
+          <EmptyState title="Nessuno in attesa" text="Chi entra con Google senza invito compare qui: lo colleghi a un giocatore con un tocco" />
         ) : (
           <div className="flex flex-col gap-2">
             {pending.map((u) => (

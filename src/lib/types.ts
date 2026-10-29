@@ -169,7 +169,7 @@ export function nameError(name: string, players: Pick<Player, "id" | "nickname">
   const n = name.trim().replace(/\s+/g, " ");
   if (n.length < NAME_MIN) return `Almeno ${NAME_MIN} lettere.`;
   if (n.length > NAME_MAX) return `Al massimo ${NAME_MAX} caratteri.`;
-  if (players.some((p) => p.id !== meId && p.nickname?.trim().toLowerCase() === n.toLowerCase())) return "Questo nome è già preso.";
+  if (players.some((p) => p.id !== meId && p.nickname?.trim().toLowerCase() === n.toLowerCase())) return "Questo nome è già preso";
   return null;
 }
 

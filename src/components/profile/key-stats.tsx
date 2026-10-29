@@ -6,6 +6,7 @@ import { CountUp, Ring } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { computePlayerStats } from "@/lib/stats/player";
 import { form } from "@/lib/stats/relations";
+import { InfoTip } from "@/components/ui/info";
 
 /** Quattro anelli: le cose che contano a colpo d'occhio. */
 export function KeyRings({ playerId }: { playerId: string }) {
@@ -36,7 +37,12 @@ export function Form({ playerId }: { playerId: string }) {
   const recent = form(playerId, data.matches, 6);
   return (
     <div className="flex items-center gap-3 px-1">
-      <span className="title text-[15px]">Forma</span>
+      <span className="title flex items-center gap-1.5 text-[15px]">
+        Forma
+        <InfoTip label="Cos'è la forma" size={15}>
+          Le ultime 6 partite, la più recente a sinistra: V vinta, S persa
+        </InfoTip>
+      </span>
       <div className="flex gap-1.5" aria-label={`Ultime partite: ${recent.join(" ") || "nessuna"}`}>
         {recent.length ? (
           recent.map((r, i) => (

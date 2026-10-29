@@ -404,12 +404,19 @@ export function DayStrip({ value, onChange, min, max, newestFirst = true }: { va
     return newestFirst ? out.reverse() : out;
   }, [min, max, newestFirst]);
   const ref = useRef<HTMLDivElement>(null);
+  const first = useRef(true);
+  // Il giorno scelto sta sempre al centro, già all'apertura.
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, []);
+    const strip = ref.current;
+    const sel = strip?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!strip || !sel) return;
+    const left = sel.offsetLeft - (strip.clientWidth - sel.offsetWidth) / 2;
+    strip.scrollTo({ left, behavior: first.current ? "instant" : "smooth" });
+    first.current = false;
+  }, [value, days]);
   const today = isoDay(new Date());
   return (
-    <div ref={ref} className="scroll-x -mx-5 flex gap-2 px-5 pb-2 pt-1" role="group" aria-label="Giorno">
+    <div ref={ref} className="scroll-x relative -mx-5 flex gap-2 px-5 pb-2 pt-1" role="group" aria-label="Giorno">
       {days.map((d) => {
         const iso = isoDay(d);
         const on = iso === value;

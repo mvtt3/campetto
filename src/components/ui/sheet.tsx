@@ -28,9 +28,9 @@ export function Sheet({
           aria-describedby={undefined}
         >
           <div className="mx-auto mt-3 h-1.5 w-11 shrink-0 rounded-full bg-line-strong" />
-          <div className="shrink-0 px-5 pb-2 pt-3">
+          <div className="shrink-0 px-6 pb-2 pt-3 text-center">
             <Drawer.Title className="display text-[22px]">{title}</Drawer.Title>
-            {description && <Drawer.Description className="mt-0.5 text-[13px] text-muted">{description}</Drawer.Description>}
+            {description && <Drawer.Description className="mx-auto mt-0.5 max-w-[34ch] text-[13px] text-muted">{description}</Drawer.Description>}
           </div>
           <div className="scroll-area min-h-0 flex-1 px-5 pb-4" data-vaul-no-drag="">
             {children}

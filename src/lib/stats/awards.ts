@@ -13,6 +13,13 @@ import { computeElo, eloDelta, type EloResult } from "./elo";
 import { computePlayerStats, type PlayerStats } from "./player";
 
 export const MVP_MIN_GAMES = 3;
+/** Per entrare in una classifica "a partita" serve almeno questa quota delle partite di chi ha giocato di più. */
+export const PRESENCE_SHARE = 0.4;
+
+/** Partite minime nel periodo: almeno `abs`, e almeno il 40% di quelle del più presente. */
+export function minGamesFor(maxGames: number, abs: number): number {
+  return Math.max(abs, Math.ceil(maxGames * PRESENCE_SHARE));
+}
 
 export interface MvpEntry {
   playerId: string;
@@ -30,9 +37,10 @@ function normalizer(values: number[]) {
 }
 
 /**
- * MVP ranking for a period: 40% win%, 40% average efficiency, 20% ELO change.
- * Players without box scores in the period are scored on win% and ELO only
- * (weights renormalised to 2/3 and 1/3).
+ * MVP del periodo: 35% vittorie, 35% valutazione media, 15% presenza, 15% crescita ELO.
+ * Per entrare servono almeno 3 partite e almeno il 40% delle partite di chi ha giocato di più:
+ * chi viene due volte con una bella media non scavalca chi c'è sempre.
+ * Senza tabellini nel periodo: 50% vittorie, 25% presenza, 25% ELO.
  */
 export function mvpRanking(
   playerIds: string[],
@@ -46,9 +54,11 @@ export function mvpRanking(
   const elo = opts.elo ?? computeElo(matches, playerIds);
   const range = periodRange(period);
 
-  const rows = playerIds
-    .map((id) => ({ id, s: computePlayerStats(id, scoped) }))
-    .filter((r) => r.s.games >= minGames)
+  const all = playerIds.map((id) => ({ id, s: computePlayerStats(id, scoped) }));
+  const maxGames = Math.max(0, ...all.map((r) => r.s.games));
+  const need = opts.minGames ?? minGamesFor(maxGames, minGames);
+  const rows = all
+    .filter((r) => r.s.games >= need)
     .map((r) => ({
       playerId: r.id,
       games: r.s.games,
@@ -67,8 +77,9 @@ export function mvpRanking(
     .map((r) => {
       const w = nWin(r.winPct);
       const e = nElo(r.eloDelta);
+      const p = r.games / maxGames;
       const score =
-        nEff && r.effAvg !== null ? 0.4 * w + 0.4 * nEff(r.effAvg) + 0.2 * e : (2 / 3) * w + (1 / 3) * e;
+        nEff && r.effAvg !== null ? 0.35 * w + 0.35 * nEff(r.effAvg) + 0.15 * p + 0.15 * e : 0.5 * w + 0.25 * p + 0.25 * e;
       return { ...r, score };
     })
     .sort((a, b) => b.score - a.score || b.winPct - a.winPct || b.games - a.games);

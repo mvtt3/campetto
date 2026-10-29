@@ -11,6 +11,7 @@ import { shortName, TEAM_SIZE, type Format } from "@/lib/types";
 import { Avatar } from "./ui/avatar";
 import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
+import { InfoTip } from "@/components/ui/info";
 
 /** Squadre equilibrate per chi ha detto "ci sono", in base all'ELO. Solo da guardare. */
 export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]; format: Format | null; onClose: () => void }) {
@@ -31,7 +32,7 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
       open
       onOpenChange={(o) => !o && onClose()}
       title={`Squadre per il ${fmt}`}
-      description="Divise in modo che sia una partita equilibrata."
+      description="Divise in modo che sia una partita equilibrata"
       footer={
         <div className="flex gap-2">
           <Button className="flex-1" onClick={() => setRound((r) => r + 1)}>
@@ -76,7 +77,12 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
           <div>
             <div className="mb-1.5 flex justify-between text-[13px] font-semibold">
               <span className="text-court">A {Math.round(split.probA * 100)}%</span>
-              <span className="text-muted">Chi vince?</span>
+              <span className="flex items-center gap-1 text-muted">
+                Chi vince?
+                <InfoTip label="Come si calcola chi vince" size={14}>
+                  Una stima dall&apos;ELO di chi gioca: le squadre sono divise per avvicinarsi al 50%
+                </InfoTip>
+              </span>
               <span className="text-ball">B {Math.round((1 - split.probA) * 100)}%</span>
             </div>
             <div className="flex h-4 overflow-hidden rounded-full border-2 border-edge bg-ball">

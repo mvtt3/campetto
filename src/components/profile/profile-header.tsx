@@ -40,7 +40,6 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
         <div className="min-w-0 flex-1">
           <h1 className="display line-clamp-2 break-words text-[20px] leading-[1.02]">{displayName(player)}</h1>
           <p className="truncate text-[13.5px] text-white/80">
-            {player.nickname ? `“${player.nickname}”, ` : ""}
             {player.roles.join(", ") || "Giocatore"}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -60,7 +59,7 @@ export function ProfileHeader({ player, self }: { player: Player; self?: boolean
           </div>
         </div>
         {self && (
-          <Link href="/profilo/impostazioni" aria-label="Impostazioni" className="press -mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center self-start rounded-full bg-white/15">
+          <Link href="/profilo/impostazioni" aria-label="Impostazioni" data-tour="profile-settings" className="press -mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center self-start rounded-full bg-white/15">
             <Settings size={20} />
           </Link>
         )}

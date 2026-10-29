@@ -7,7 +7,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
 import { Button, Card, EmptyState, ScreenHeader, Segmented } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { DayStrip, TimeField } from "@/components/ui/pickers";
+import { DayStrip, dayLabel, TimeField } from "@/components/ui/pickers";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
@@ -33,16 +33,19 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Da oggi a sei settimane avanti (o oltre il giorno scelto nel calendario).
   const days = useMemo(() => {
     const today = new Date();
-    return Array.from({ length: 14 }, (_, i) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
-  }, []);
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const span = Math.max(42, Math.round((initialDay.getTime() - start.getTime()) / 86_400_000) + 14);
+    return Array.from({ length: span }, (_, i) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
+  }, [initialDay]);
 
   const submit = async () => {
     const [h, m] = time.split(":").map(Number);
     const [y, mo, d] = day.split("-").map(Number);
     const startsAt = new Date(y, mo - 1, d, h, m);
-    if (startsAt.getTime() < Date.now() - 60 * 60_000) return toast("Scegli un orario futuro.", "error");
+    if (startsAt.getTime() < Date.now() - 60 * 60_000) return toast("Scegli un orario futuro", "error");
     setBusy(true);
     try {
       const id = await backend.createProposal({ startsAt: startsAt.toISOString(), format: format === "any" ? null : format, note: note.trim() || null });
@@ -62,7 +65,7 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
       open={open}
       onOpenChange={(o) => !o && onClose()}
       title="Proponi una partita"
-      description="Tutti ricevono una notifica e rispondono con un tocco."
+      description="Tutti ricevono una notifica e rispondono con un tocco"
       footer={
         <Button variant="primary" block onClick={submit} disabled={busy}>
           {busy ? "Invio…" : "Proponi"}
@@ -71,7 +74,9 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
     >
       <div className="flex flex-col gap-5 pb-2">
         <section>
-          <h3 className="mb-2 text-[13px] font-semibold text-muted">Giorno</h3>
+          <h3 className="mb-2 flex items-baseline justify-between text-[13px] font-semibold text-muted">
+            Giorno <span className="text-[14px] font-bold text-text">{dayLabel(day)}</span>
+          </h3>
           <DayStrip value={day} onChange={setDay} min={days[0]} max={days[days.length - 1]} newestFirst={false} />
         </section>
         <section>
@@ -83,7 +88,7 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
           <Segmented
             value={format}
             onChange={setFormat}
-            options={[{ value: "any" as const, label: "Vediamo" }, ...FORMATS.map((f) => ({ value: f, label: f }))]}
+            options={[{ value: "any" as const, label: "Libero" }, ...FORMATS.map((f) => ({ value: f, label: f }))]}
           />
         </section>
         <section>
@@ -108,8 +113,12 @@ function OrganizeInner() {
   const { data } = useData();
   const router = useRouter();
   const params = useSearchParams();
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const [selected, setSelected] = useState<Date | null>(null);
+  // ?giorno=AAAA-MM-GG apre il calendario già su quel giorno (dalla Home).
+  const [selected, setSelected] = useState<Date | null>(() => {
+    const g = params.get("giorno")?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return g ? new Date(+g[1], +g[2] - 1, +g[3]) : null;
+  });
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(selected ?? new Date()));
   const creating = params.get("nuova") === "1";
   const respond = useRespond();
   const handled = useRef(false);
@@ -192,7 +201,7 @@ function OrganizeInner() {
                 key={d.toISOString()}
                 onClick={() => setSelected(isSel ? null : d)}
                 aria-pressed={Boolean(isSel)}
-                aria-label={`${d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric" })}${count ? `, ${count} partite` : ""}`}
+                aria-label={`${d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric" })}${count ? `, ${count} ${count === 1 ? "proposta" : "proposte"}` : ""}`}
                 className={clsx(
                   "flex h-[62px] flex-col items-center justify-center rounded-2xl",
                   isSel ? "bg-text text-bg" : sameDay(d, today) ? "bg-ball-soft ring-1 ring-ball/40 ring-inset" : "card",
@@ -211,7 +220,7 @@ function OrganizeInner() {
         {list.length === 0 ? (
           <EmptyState
             title={selected ? "Nessuna partita in questo giorno" : "Nessuna partita in programma"}
-            text="Proponi un giorno e un orario: arriva una notifica a tutti."
+            text="Proponi un giorno e un orario: arriva una notifica a tutti"
             action={
               <Button variant="primary" onClick={() => router.push("/organizza?nuova=1")}>
                 Proponi una partita

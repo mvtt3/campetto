@@ -23,7 +23,7 @@ export default function LoginPage() {
   }, [auth.status, router, next]);
 
   return (
-    <Welcome title="Campetto" text="Le nostre partite a Nichelino: risultati, statistiche, classifiche e chi viene a giocare.">
+    <Welcome title="Campetto" text="Le nostre partite a Nichelino: risultati, statistiche, classifiche e chi viene a giocare">
       <GoogleButton onClick={() => backend.signIn(next)} />
       <p className="mt-4 text-center text-[12.5px] text-[#3d342a]">
         Entrando accetti i{" "}

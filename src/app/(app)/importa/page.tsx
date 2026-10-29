@@ -161,9 +161,13 @@ export default function ImportPage() {
             </div>
             <DateTimeField value={playedAt} onChange={setPlayedAt} min={APP_START} max={new Date()} label="Data della partita" />
             <p className="text-[13px] text-muted">
-              {format ? `Formato ${format}.` : "Le due squadre devono avere lo stesso numero di giocatori (da 1 a 4)."}
-              {!allMatched && " Abbina ogni riga a un giocatore diverso."}
-              {scoreA === scoreB && " Il risultato non può essere un pareggio."}
+              {[
+                format ? `Formato ${format}` : "Le due squadre devono avere lo stesso numero di giocatori, da 1 a 4",
+                !allMatched && "abbina ogni riga a un giocatore diverso",
+                scoreA === scoreB && "il risultato non può essere un pareggio",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
         )}

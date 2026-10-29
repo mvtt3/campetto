@@ -20,7 +20,7 @@ const ultra = Ultra({
 
 export const metadata: Metadata = {
   title: "Campetto",
-  description: "Partite, statistiche e classifiche del nostro campetto.",
+  description: "Partite, statistiche e classifiche del nostro campetto",
   applicationName: "Campetto",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Campetto", statusBarStyle: "black-translucent" },

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openApp } from "./helpers";
+import { openApp, skipTour } from "./helpers";
 
 test("dal login con Google si entra nell'app", async ({ page }) => {
   await page.goto("/?mock=reset");
@@ -77,7 +77,7 @@ test("pareggio non ammesso e squadre incomplete bloccate", async ({ page }) => {
   await page.getByRole("button", { name: "Avanti" }).click();
   await page.getByLabel("Punti squadra A").fill("10");
   await page.getByLabel("Punti squadra B").fill("10");
-  await expect(page.getByText("Il risultato non può essere un pareggio.")).toBeVisible();
+  await expect(page.getByText("Il risultato non può essere un pareggio")).toBeVisible();
   await expect(page.getByRole("button", { name: "Avanti" })).toBeDisabled();
 });
 
@@ -100,7 +100,7 @@ test("nuova partita con tabellino", async ({ page }) => {
   await expect(page.getByTestId("box-points")).toHaveText("7");
   await page.getByRole("button", { name: /Simone/ }).click();
   await page.getByRole("button", { name: "Aggiungi Da 2 segnati" }).click();
-  await expect(page.getByText("Tutto torna.")).toBeVisible();
+  await expect(page.getByText(/tutto torna/)).toBeVisible();
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page.getByRole("dialog")).toContainText("Tabellino");
   await expect(page.getByRole("dialog")).toContainText("Mattia");
@@ -128,7 +128,7 @@ test("importa statistiche da testo", async ({ page }) => {
   await page.goto("/importa");
   await page.getByRole("button", { name: "Usa un esempio" }).click();
   await page.getByRole("button", { name: "Controlla" }).click();
-  await expect(page.getByText("Formato 2v2.")).toBeVisible();
+  await expect(page.getByText(/Formato 2v2/)).toBeVisible();
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page).toHaveURL(/\/partite\?m=/);
   await expect(page.getByRole("dialog")).toContainText("21–18");
@@ -152,7 +152,7 @@ test("segna dal video", async ({ page }) => {
   await expect(page.getByText("Risultato finale")).toBeVisible();
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page.getByRole("dialog")).toContainText("5–2");
-  await expect(page.getByRole("dialog")).toContainText("Dal video");
+  await expect(page.getByRole("dialog")).toContainText(/dal video/i);
 });
 
 test("MVP con cornice d'oro e profilo di un altro giocatore", async ({ page }) => {
@@ -260,11 +260,12 @@ test("il tasto indietro chiude il dettaglio della partita", async ({ page }) => 
 });
 
 test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({ page }) => {
+  await skipTour(page);
   await page.goto("/?mock=reset&signed=1&nuovo=1");
   const name = page.getByLabel("Il tuo nome nell'app");
   await name.fill("valerio");
   await name.blur();
-  await expect(page.getByText("Questo nome è già preso.")).toBeVisible();
+  await expect(page.getByText("Questo nome è già preso")).toBeVisible();
   await expect(page.getByRole("button", { name: "Avanti" })).toBeDisabled();
   await name.fill("Pluto");
   await page.getByRole("button", { name: "Avanti" }).click();
@@ -333,4 +334,36 @@ test("swipe tra le schede e tira giù per aggiornare", async ({ page }) => {
   await page.getByRole("navigation", { name: "Navigazione principale" }).getByRole("link", { name: "Home" }).click();
   await touchDrag(page, [vp.width / 2, 300], [vp.width / 2 + 4, 640]);
   await expect(page.getByText(/Aggiornato alle \d\d:\d\d/)).toBeVisible();
+});
+
+test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle impostazioni", async ({ page }) => {
+  await openApp(page, "demo", "light", undefined, true);
+  await page.evaluate(() => localStorage.setItem("campetto:seen-badges:p1", JSON.stringify(Array.from({ length: 300 }, (_, i) => String(i)))));
+  const card = page.getByRole("dialog", { name: "Iniziamo?" });
+  await expect(card).toBeVisible({ timeout: 8000 });
+  await card.getByRole("button", { name: "Inizia" }).click();
+  const tour = page.locator('[data-tour-overlay] [role="dialog"]');
+  await expect(tour).toContainText("Il tuo mese");
+  await expect(tour).toContainText("Home · 1 di 4");
+  await tour.getByRole("button", { name: "Avanti" }).click();
+  await expect(tour).toContainText("Chi viene a giocare");
+  await tour.getByRole("button", { name: "Salta Home" }).click();
+  await expect(page).toHaveURL(/\/classifiche$/);
+  await expect(tour).toContainText("Mese, stagione o sempre");
+  await tour.getByRole("button", { name: "Salta Classifica" }).click();
+  await expect(page).toHaveURL(/\/partite$/);
+  await tour.getByRole("button", { name: "Salta Partite" }).click();
+  await expect(page).toHaveURL(/\/profilo$/);
+  for (let i = 0; i < 2; i++) await tour.getByRole("button", { name: "Avanti" }).click();
+  await tour.getByRole("button", { name: "Fine" }).click();
+  await expect(page.getByText("Tutto pronto")).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  // Chiusa la prima volta, non riparte da sola.
+  await page.reload();
+  await page.waitForTimeout(2000);
+  await expect(page.getByRole("dialog", { name: "Iniziamo?" })).toHaveCount(0);
+  await page.goto("/profilo/impostazioni");
+  await page.getByRole("button", { name: "Guida all'app" }).click();
+  await page.getByRole("button", { name: /Solo Classifica/ }).click();
+  await expect(tour).toContainText("Classifica · 1 di 3");
 });

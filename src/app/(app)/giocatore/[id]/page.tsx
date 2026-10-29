@@ -28,7 +28,7 @@ export default function PlayerPage() {
     return (
       <>
         <ScreenHeader title="Giocatore" back="/classifiche" />
-        <EmptyState title="Giocatore non trovato" text="Forse è stato tolto dal gruppo." />
+        <EmptyState title="Giocatore non trovato" text="Forse è stato tolto dal gruppo" />
       </>
     );
   }

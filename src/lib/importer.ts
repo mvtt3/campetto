@@ -175,7 +175,7 @@ export function parseImport(text: string, players: Player[]): ImportResult {
   let records: Record<string, unknown>[] = [];
   let scoreA: number | null = null;
   let scoreB: number | null = null;
-  if (!t) return { rows: [], errors: ["Incolla prima i dati."], scoreA, scoreB };
+  if (!t) return { rows: [], errors: ["Incolla prima i dati"], scoreA, scoreB };
 
   if (t.startsWith("{") || t.startsWith("[")) {
     try {
@@ -189,7 +189,7 @@ export function parseImport(text: string, players: Player[]): ImportResult {
         if (sb !== undefined) scoreB = num(sb);
       }
     } catch {
-      return { rows: [], errors: ["JSON non valido."], scoreA, scoreB };
+      return { rows: [], errors: ["JSON non valido"], scoreA, scoreB };
     }
   } else {
     const lines = t.split(/\r?\n/).filter((l) => l.trim());

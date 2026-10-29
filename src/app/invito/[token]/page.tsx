@@ -31,7 +31,7 @@ export default function InvitePage() {
   }, [auth.status, reinit, router]);
 
   return (
-    <Welcome kicker="Sei stato invitato" title="Entra in campo" text="Accedi con Google: il tuo profilo è già pronto, con tutte le partite giocate finora.">
+    <Welcome kicker="Sei stato invitato" title="Entra in campo" text="Accedi con Google: il tuo profilo è già pronto, con tutte le partite giocate finora">
       {auth.status === "error" ? (
         <div className="text-center">
           <p className="mb-4 rounded-2xl border-2 border-[#1d1a16] bg-[#fffaf0] px-4 py-3 text-[14px]">{auth.message}</p>
