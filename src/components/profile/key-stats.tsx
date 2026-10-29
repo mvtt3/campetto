@@ -19,7 +19,7 @@ export function KeyRings({ playerId }: { playerId: string }) {
     { label: "Assist", value: Math.min(1, s.avg.ast / 6), text: s.statGames ? s.avg.ast.toFixed(1).replace(".", ",") : "—", color: "var(--gold)" },
   ];
   return (
-    <div className="card grid grid-cols-4 gap-1 px-2 py-3.5">
+    <div className="card grid grid-cols-4 gap-1 px-2 py-3.5 short:py-2.5">
       {items.map((it) => (
         <div key={it.label} className="flex flex-col items-center gap-1.5">
           <Ring value={it.value} size={58} stroke={7} color={it.color} track="var(--raised)" label={`${it.label}: ${typeof it.text === "string" ? it.text : s.games}`}>

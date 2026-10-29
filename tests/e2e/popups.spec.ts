@@ -56,6 +56,16 @@ for (const vp of VIEWPORTS) {
       await page.getByRole("button", { name: "Cambia foto profilo" }).click();
       await check(page, '[role="dialog"]', "figurine");
       await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "Scegli il tuo personaggio" }).click();
+      await check(page, '[role="dialog"]', "personaggi");
+      await page.getByRole("button", { name: "Leggenda, bloccato" }).click();
+      await check(page, "[data-over-sheet] > div:last-child", "scheda del personaggio");
+      await page.getByRole("button", { name: "Ci provo!" }).click();
+      await page.keyboard.press("Escape");
+      await page.goto("/profilo/impostazioni");
+      await page.getByRole("button", { name: /Segnala un problema/ }).click();
+      await check(page, '[role="dialog"]', "segnala un problema");
+      await page.keyboard.press("Escape");
       await page.goto("/profilo/notifiche");
       await check(page, "main", "pagina notifiche");
 

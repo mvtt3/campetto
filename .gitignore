@@ -61,3 +61,6 @@ scripts/.spot2.mjs
 scripts/.review.mjs
 scripts/.dbg.mjs
 scripts/.trace.mjs
+scripts/.full.mjs
+scripts/.review2.mjs
+scripts/.rot.mjs

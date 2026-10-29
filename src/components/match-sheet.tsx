@@ -8,12 +8,12 @@ import { useData } from "@/lib/data/provider";
 import { matchRecap } from "@/lib/recap";
 import { normalizeBox } from "@/lib/stats/player";
 import { shortName, winnerOf, type Match, type Player, type StatsSource, type Team } from "@/lib/types";
-import { Avatar } from "./ui/avatar";
 import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
 import { InfoTip } from "@/components/ui/info";
 import { say } from "@/lib/voice";
+import { Character, characterOf } from "./character";
 
 export const SOURCE_LABEL: Record<StatsSource, string> = {
   solo_risultato: "Solo risultato",
@@ -35,12 +35,12 @@ function TeamBlock({ m, team, players }: { m: Match; team: Team; players: Player
     >
       {won && <span className="absolute -top-3 rounded-full border-2 border-[#1d1a16] bg-volt px-2.5 py-0.5 text-[12px] font-bold text-volt-ink">Vince</span>}
       <p className="score text-[54px]">{team === "A" ? m.scoreA : m.scoreB}</p>
-      <div className="mt-2 flex -space-x-2">
-        {ids.map((l) => (
-          <span key={l.playerId} className="rounded-full ring-2 ring-white/70">
-            <Avatar player={players.find((p) => p.id === l.playerId)} size={30} href={false} ring="none" />
-          </span>
-        ))}
+      {/* La squadra in campo: i personaggini, uno accanto all'altro. */}
+      <div className="mt-1 flex items-end justify-center -space-x-2.5">
+        {ids.map((l) => {
+          const pl = players.find((p) => p.id === l.playerId);
+          return pl ? <Character key={l.playerId} id={characterOf(pl)} number={pl.jerseyNumber} height={ids.length > 3 ? 46 : 54} /> : null;
+        })}
       </div>
       <p className="mt-1.5 line-clamp-2 text-center text-[12.5px] font-semibold leading-tight">
         {ids.map((l) => shortName(players.find((p) => p.id === l.playerId), players)).join(", ")}

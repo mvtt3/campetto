@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FullStats } from "@/components/profile/full-stats";
+import { StatsDashboard } from "@/components/profile/stats-dashboard";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { RelationsList } from "@/components/profile/relations-list";
 import { TrendChart } from "@/components/profile/trend-chart";
@@ -10,7 +10,7 @@ import { Segmented } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 
-type Tab = "panoramica" | "numeri";
+type Tab = "panoramica" | "statistiche";
 
 export function ProfileScreen() {
   const { me } = useData();
@@ -23,15 +23,16 @@ export function ProfileScreen() {
         <div data-tour="profile-card">
           <ProfileHeader player={me} self />
         </div>
-        <Segmented
-          className="mt-3"
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: "panoramica", label: "Panoramica" },
-            { value: "numeri", label: "Tutti i numeri" },
-          ]}
-        />
+        <div data-tour="profile-tabs" className="mt-3">
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "panoramica", label: "Panoramica" },
+              { value: "statistiche", label: "Statistiche" },
+            ]}
+          />
+        </div>
       </div>
 
       {tab === "panoramica" ? (
@@ -46,11 +47,10 @@ export function ProfileScreen() {
         </PullToRefresh>
       ) : (
         <PullToRefresh className="px-5 pb-4 pt-3">
-          <div className="card mb-4 h-52 p-4">
-            <TrendChart playerId={me.id} />
+          <div data-tour="profile-advanced">
+            <StatsDashboard playerId={me.id} advanced />
           </div>
-          <FullStats playerId={me.id} />
-          <div className="mt-5">
+          <div className="mt-4">
             <RelationsList playerId={me.id} />
           </div>
         </PullToRefresh>

@@ -167,6 +167,7 @@ export function createSupabaseBackend(): Backend {
       if ("jerseyNumber" in patch) row.jersey_number = patch.jerseyNumber;
       if ("cardColor" in patch) row.card_color = patch.cardColor;
       if ("avatarUrl" in patch) row.avatar_url = patch.avatarUrl;
+      if ("character" in patch) row.character = patch.character;
       if ("showcase" in patch) row.showcase = patch.showcase;
       if ("notifyPrefs" in patch) row.notify_prefs = patch.notifyPrefs;
       fail((await sb.from("players").update(row).eq("id", meId!)).error);
@@ -237,6 +238,21 @@ export function createSupabaseBackend(): Backend {
 
     async resolvePending(userId, playerId) {
       fail((await sb.rpc("admin_resolve_pending", { p_user: userId, p_player: playerId })).error);
+    },
+
+    async sendFeedback(input) {
+      fail(
+        (
+          await sb.from("feedback").insert({
+            player_id: meId,
+            kind: input.kind,
+            message: input.message.trim(),
+            screen: input.screen,
+            device: input.device,
+            app_version: input.appVersion,
+          })
+        ).error,
+      );
     },
 
     async savePushSubscription(sub) {

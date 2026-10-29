@@ -27,6 +27,7 @@ export interface MvpEntry {
   games: number;
   winPct: number;
   effAvg: number | null;
+  plusMinusAvg: number;
   eloDelta: number;
 }
 
@@ -37,7 +38,9 @@ function normalizer(values: number[]) {
 }
 
 /**
- * MVP del periodo: 35% vittorie, 35% valutazione media, 15% presenza, 15% crescita ELO.
+ * MVP del periodo: conta soprattutto far vincere la squadra, non solo i numeri.
+ * 35% vittorie, 20% impatto (+/− medio: di quanto vince la tua squadra quando ci sei),
+ * 30% valutazione media (statistiche), 15% presenza.
  * Per entrare servono almeno 3 partite e almeno il 40% delle partite di chi ha giocato di più:
  * chi viene due volte con una bella media non scavalca chi c'è sempre.
  * Senza tabellini nel periodo: 50% vittorie, 25% presenza, 25% ELO.
@@ -64,6 +67,7 @@ export function mvpRanking(
       games: r.s.games,
       winPct: r.s.winPct,
       effAvg: r.s.effAvg,
+      plusMinusAvg: r.s.plusMinusAvg,
       eloDelta: eloDelta(elo, r.id, range?.start, range?.end),
     }));
   if (!rows.length) return [];
@@ -71,15 +75,15 @@ export function mvpRanking(
   const nWin = normalizer(rows.map((r) => r.winPct));
   const effs = rows.filter((r) => r.effAvg !== null).map((r) => r.effAvg as number);
   const nEff = effs.length ? normalizer(effs) : null;
-  const nElo = normalizer(rows.map((r) => r.eloDelta));
+  const nImpact = normalizer(rows.map((r) => r.plusMinusAvg));
 
   return rows
     .map((r) => {
       const w = nWin(r.winPct);
-      const e = nElo(r.eloDelta);
+      const i = nImpact(r.plusMinusAvg);
       const p = r.games / maxGames;
       const score =
-        nEff && r.effAvg !== null ? 0.35 * w + 0.35 * nEff(r.effAvg) + 0.15 * p + 0.15 * e : 0.5 * w + 0.25 * p + 0.25 * e;
+        nEff && r.effAvg !== null ? 0.35 * w + 0.2 * i + 0.3 * nEff(r.effAvg) + 0.15 * p : 0.5 * w + 0.3 * i + 0.2 * p;
       return { ...r, score };
     })
     .sort((a, b) => b.score - a.score || b.winPct - a.winPct || b.games - a.games);

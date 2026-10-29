@@ -3,15 +3,15 @@
 import clsx from "clsx";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { FullStats } from "@/components/profile/full-stats";
+import { StatsDashboard } from "@/components/profile/stats-dashboard";
 import { Form, KeyRings } from "@/components/profile/key-stats";
 import { ProfileHeader } from "@/components/profile/profile-header";
-import { Avatar } from "@/components/ui/avatar";
 import { EmptyState, ScreenHeader, Segmented } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { headToHead } from "@/lib/stats/relations";
 import { shortName } from "@/lib/types";
+import { Character, characterOf } from "@/components/character";
 
 export default function PlayerPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +47,7 @@ export default function PlayerPage() {
           onChange={setTab}
           options={[
             { value: "panoramica", label: "Panoramica" },
-            { value: "numeri", label: "Tutti i numeri" },
+            { value: "numeri", label: "Numeri" },
           ]}
         />
       </div>
@@ -57,7 +57,7 @@ export default function PlayerPage() {
             <KeyRings playerId={player.id} />
             {me && h && (
               <div className="card flex items-center gap-3 px-4 py-3 short:py-1.5">
-                <Avatar player={me} size={44} href={false} ring="none" />
+                <Character id={characterOf(me)} number={me.jerseyNumber} height={64} className="short:h-10 short:w-auto" />
                 <div className="min-w-0 flex-1 text-center">
                   <p className="text-[12.5px] font-semibold text-muted">Testa a testa</p>
                   {h.games ? (
@@ -70,7 +70,7 @@ export default function PlayerPage() {
                     <p className="text-[14px]">Non vi siete ancora sfidati</p>
                   )}
                 </div>
-                <Avatar player={player} size={44} href={false} ring="none" />
+                <Character id={characterOf(player)} number={player.jerseyNumber} height={64} className="short:h-10 short:w-auto" />
               </div>
             )}
             <Form playerId={player.id} />
@@ -78,7 +78,7 @@ export default function PlayerPage() {
         </PullToRefresh>
       ) : (
         <PullToRefresh className="px-5 pb-4 pt-3">
-          <FullStats playerId={player.id} />
+          <StatsDashboard playerId={player.id} />
         </PullToRefresh>
       )}
     </>

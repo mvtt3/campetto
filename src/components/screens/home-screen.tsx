@@ -58,6 +58,8 @@ export function HomeScreen() {
   const mvpPlayer = data.players.find((p) => p.id === mvp?.entry.playerId);
   const goodMonth = mine.games > 0 && mine.winPct >= 0.5;
   const hello = greeting(now.getHours());
+  // Il punteggio del mese resta su una riga anche con tante partite.
+  const digits = String(mine.wins).length + String(mine.losses).length;
 
   return (
     <>
@@ -68,7 +70,8 @@ export function HomeScreen() {
             <h1 className="min-w-0">
               <span className="block text-[14px] font-bold text-muted">{hello.lead},</span>{" "}
               <span className="display block truncate text-[26px] leading-[1.05]">
-                {me.nickname ?? me.firstName}
+                {/* L'MVP in carica viene salutato come tale. */}
+                {engine.mvp?.entry.playerId === me.id ? "MVP" : (me.nickname ?? me.firstName)}
                 {hello.question ? "?" : ""}
               </span>
             </h1>
@@ -85,7 +88,13 @@ export function HomeScreen() {
             <div className={"relative flex items-end gap-3 p-5 short:p-4"}>
               <div className="min-w-0 flex-1">
                 <h2 className="text-[14px] font-semibold text-white/85">Il tuo {MONTHS_IT[month].toLowerCase()}</h2>
-                <p className={"score mt-2 text-[64px] short:mt-1 short:text-[46px]"} aria-label={`${mine.wins} vinte, ${mine.losses} perse`}>
+                <p
+                  className={clsx(
+                    "score mt-2 whitespace-nowrap short:mt-1",
+                    digits <= 3 ? "text-[64px] short:text-[46px]" : digits <= 4 ? "text-[54px] short:text-[42px]" : "text-[44px] short:text-[36px]",
+                  )}
+                  aria-label={`${mine.wins} vinte, ${mine.losses} perse`}
+                >
                   <CountUp value={mine.wins} />
                   <span className="text-white/45">–</span>
                   <CountUp value={mine.losses} />
@@ -139,7 +148,7 @@ export function HomeScreen() {
           >
             <div className="mb-3 flex items-center justify-between short:mb-1.5">
               <h2 className="title text-[16px]">Prossima partita</h2>
-              <Link href="/organizza" className="press -my-2 flex items-center gap-1.5 py-2 text-[13.5px] font-semibold text-court">
+              <Link href="/organizza" className="press -my-2 flex items-center gap-1.5 py-2 text-[13.5px] font-semibold text-text">
                 <CalendarDays size={16} /> Calendario
               </Link>
             </div>
@@ -162,19 +171,19 @@ export function HomeScreen() {
                 <h2 className="relative flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold">
                   <Crown size={15} className="shrink-0" /> MVP in carica
                   <InfoTip label="Come si diventa MVP" size={14} className="ml-auto">
-                    Il migliore del mese per vittorie, valutazione, presenza e crescita ELO, con almeno 3 partite giocate
+                    Chi fa vincere di più: 35% vittorie, 20% quanto la squadra va meglio con te, 30% statistiche, 15% presenza. Servono 3 partite
                   </InfoTip>
                 </h2>
                 {mvp && mvpPlayer ? (
-                  <div className="relative flex min-h-0 flex-1 flex-col justify-end gap-2 short:flex-row short:items-center">
+                  <div className="relative flex min-h-0 flex-1 flex-row items-end gap-2">
                     <span className="short:hidden">
-                      <Avatar player={mvpPlayer} size={52} href={false} />
+                      <Avatar player={mvpPlayer} size={44} href={false} />
                     </span>
                     <span className="hidden short:inline">
-                      <Avatar player={mvpPlayer} size={36} href={false} />
+                      <Avatar player={mvpPlayer} size={34} href={false} />
                     </span>
                     <div className="min-w-0">
-                      <p className="title truncate text-[18px]">{shortName(mvpPlayer, data.players)}</p>
+                      <p className="title truncate text-[17px] leading-tight">{shortName(mvpPlayer, data.players)}</p>
                       <p className="text-[12.5px] font-semibold opacity-75">di {mvp.period.kind === "month" ? MONTHS_IT[mvp.period.month].toLowerCase() : ""}</p>
                     </div>
                   </div>

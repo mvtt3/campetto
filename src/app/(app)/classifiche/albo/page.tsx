@@ -38,26 +38,24 @@ export default function HallPage() {
           records.length === 0 ? (
             <EmptyState title="Ancora nessun record" text="I primati del gruppo compaiono dopo le prime partite" />
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {records.map((r) => (
                 <button
                   key={r.key}
                   disabled={!r.matchId}
                   onClick={() => setOpenMatch(data.matches.find((m) => m.id === r.matchId) ?? null)}
-                  className="card press flex items-center gap-3 px-4 py-3 text-left"
+                  className="card press flex min-w-0 flex-col items-center px-2.5 pb-3 pt-2.5 text-center"
                 >
-                  <div className="flex -space-x-2">
+                  <p className="min-h-[2.4em] text-[12px] font-semibold leading-tight text-muted [text-wrap:balance]">{r.label}</p>
+                  <p className="num mt-1 text-[22px] leading-none text-court">{r.display}</p>
+                  <div className="mt-2 flex -space-x-2">
                     {r.playerIds.slice(0, 3).map((id) => (
                       <span key={id} className="rounded-full ring-2 ring-surface">
-                        <Avatar player={data.players.find((p) => p.id === id)} size={34} href={false} ring="none" />
+                        <Avatar player={data.players.find((p) => p.id === id)} size={28} href={false} ring="none" />
                       </span>
                     ))}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12.5px] leading-tight text-muted [text-wrap:balance]">{r.label}</p>
-                    <p className="truncate text-[15px] font-semibold">{r.playerIds.map(name).join(", ")}</p>
-                  </div>
-                  <p className="num max-w-[42%] shrink-0 text-right text-[19px] leading-none text-court">{r.display}</p>
+                  <p className="mt-1 w-full truncate text-[13px] font-bold">{r.playerIds.map(name).join(", ")}</p>
                 </button>
               ))}
             </div>
@@ -67,48 +65,50 @@ export default function HallPage() {
         ) : (
           <div className="flex flex-col gap-5">
             <section>
-              <h2 className="title mb-2 px-1 text-[16px]">Stagioni</h2>
-              <div className="flex flex-col gap-2">
+              <h2 className="title mb-2 text-center text-[16px]">Stagioni</h2>
+              <div className="grid grid-cols-2 gap-2.5">
                 {engine.seasons.map((s) => {
                   const top = s.ranking[0];
                   return (
-                    <div key={`${s.year}-${s.quarter}`} className="card flex items-center gap-3 px-4 py-3">
-                      <span className={clsx("grid h-11 w-11 place-items-center rounded-full", s.closed ? "bg-gold-soft text-gold" : "bg-raised text-muted")}>
-                        <Trophy size={20} />
+                    <div key={`${s.year}-${s.quarter}`} className="card flex min-w-0 flex-col items-center px-2.5 pb-3 pt-3 text-center">
+                      <span className={clsx("grid h-10 w-10 place-items-center rounded-full border-2 border-edge", s.closed ? "bg-volt text-volt-ink" : "bg-raised text-muted")}>
+                        <Trophy size={18} />
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[15px] font-semibold">{seasonLabel(s.year, s.quarter)}</p>
-                        <p className="truncate text-[12.5px] text-muted">
-                          {top ? `${s.closed ? "Campione" : "In testa"}: ${name(top.playerId)}` : "Ancora nessuno con 3 partite"}
-                        </p>
-                      </div>
-                      {top && <Avatar player={data.players.find((p) => p.id === top.playerId)} size={36} />}
+                      <p className="mt-1.5 text-[13px] font-bold leading-tight [text-wrap:balance]">{seasonLabel(s.year, s.quarter).replace("Stagione ", "")}</p>
+                      <p className="mt-0.5 text-[11.5px] text-muted">{top ? (s.closed ? "Campione" : "In testa") : "Servono 3 partite"}</p>
+                      {top && (
+                        <span className="mt-1.5 flex max-w-full items-center gap-1.5">
+                          <Avatar player={data.players.find((p) => p.id === top.playerId)} size={26} />
+                          <span className="truncate text-[13px] font-bold">{name(top.playerId)}</span>
+                        </span>
+                      )}
                     </div>
                   );
                 })}
               </div>
             </section>
             <section>
-              <h2 className="title mb-2 px-1 text-[16px]">Mese per mese</h2>
-              <div className="flex flex-col gap-2">
+              <h2 className="title mb-2 text-center text-[16px]">Mese per mese</h2>
+              <div className="flex flex-col gap-2.5">
                 {engine.months.map((mo) => (
-                  <div key={`${mo.year}-${mo.month}`} className="card px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <p className="title text-[16px]">{monthLabel(mo.year, mo.month)}</p>
-                      {!mo.closed && <span className="rounded-full bg-court-soft px-2 py-0.5 text-[12px] font-semibold text-court">in corso</span>}
-                    </div>
+                  <div key={`${mo.year}-${mo.month}`} className="card px-3 pb-3 pt-3 text-center">
+                    <p className="title flex items-center justify-center gap-2 text-[16px]">
+                      {monthLabel(mo.year, mo.month)}
+                      {!mo.closed && <span className="rounded-full bg-court-soft px-2 py-0.5 text-[11.5px] font-semibold text-court">in corso</span>}
+                    </p>
                     {mo.mvp ? (
-                      <p className="mt-2 flex items-center gap-2 text-[14px]">
-                        <Crown size={16} className="text-gold" /> MVP <span className="font-semibold">{name(mo.mvp.playerId)}</span>
+                      <p className="mt-1.5 flex items-center justify-center gap-1.5 text-[14px]">
+                        <Crown size={16} className="text-gold" /> MVP <span className="font-bold">{name(mo.mvp.playerId)}</span>
                       </p>
                     ) : (
-                      <p className="mt-2 text-[13px] text-muted">Nessun MVP: servono 3 partite</p>
+                      <p className="mt-1.5 text-[13px] text-muted">Nessun MVP: servono 3 partite</p>
                     )}
                     {mo.kings.length > 0 && (
-                      <ul className="mt-1.5 flex flex-col gap-0.5 text-[13px] text-muted">
+                      <ul className="mt-2.5 grid grid-cols-2 gap-1.5">
                         {mo.kings.map((k) => (
-                          <li key={k.category}>
-                            {KING_LABELS[k.category]}: <span className="text-text">{name(k.playerId)}</span>
+                          <li key={k.category} className="min-w-0 rounded-[14px] bg-raised px-2 py-1.5">
+                            <span className="block text-[11px] leading-tight text-muted [text-wrap:balance]">{KING_LABELS[k.category]}</span>
+                            <span className="block truncate text-[13px] font-bold">{name(k.playerId)}</span>
                           </li>
                         ))}
                       </ul>

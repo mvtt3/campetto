@@ -25,6 +25,7 @@ export function mapPlayer(r: any): Player {
     jerseyNumber: r.jersey_number,
     cardColor: r.card_color,
     avatarUrl: r.avatar_url,
+    character: r.character ?? null,
     userId: r.user_id,
     isAdmin: r.is_admin,
     showcase: r.showcase ?? [],

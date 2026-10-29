@@ -5,6 +5,7 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentType,
@@ -114,6 +115,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const activeTab = pending && pending.from === path ? pending.to : TABS.some((t) => t.path === path) ? path : null;
   const pathRef = useRef(path);
   useEffect(() => {
+    // Per le segnalazioni: l'ultima schermata vista prima delle impostazioni.
+    if (!path.startsWith("/profilo/impostazioni")) {
+      try {
+        sessionStorage.setItem("campetto:ultima-schermata", path);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [path]);
+  useEffect(() => {
     pathRef.current = path;
     // Arrivato il nuovo indirizzo, la scheda "in anticipo" non serve più
     // (altrimenti il tasto indietro riporterebbe la scheda sbagliata).
@@ -124,17 +135,42 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     auth.status === "ready" && !!me?.nickname && !(adminOnly && !me.isAdmin);
   const [kept, ensureTabs] = useKeptTabs(activeTab, appReady);
   const pager = useRef<HTMLDivElement>(null);
-  const goTab = useCallback((p: string) => {
+  // Da dove arriva il cambio scheda: dal tocco sulla barra entra con una dissolvenza.
+  const enter = useRef<{ to: string; dir: number } | null>(null);
+  const goTab = useCallback((p: string, how: "tap" | "swipe" = "swipe") => {
     if (p === pathRef.current) return;
+    const from = TAB_PATHS.indexOf(pathRef.current);
+    enter.current = how === "tap" && from >= 0 ? { to: p, dir: TAB_PATHS.indexOf(p) > from ? 1 : -1 } : null;
     flushSync(() => setPending({ from: pathRef.current, to: p }));
     window.history.pushState(null, "", p);
   }, []);
+  const tapTab = useCallback((p: string) => goTab(p, "tap"), [goTab]);
+  // Durante lo swipe la barra in basso si accende sulla nuova scheda appena si alza il dito.
+  const [navHint, setNavHint] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNavHint(null);
+  }, [activeTab]);
+  useLayoutEffect(() => {
+    const e = enter.current;
+    if (!e || e.to !== activeTab) return;
+    enter.current = null;
+    const el = pager.current?.querySelector<HTMLElement>(`:scope > [data-tab="${e.to}"]`);
+    if (!el) return;
+    const cls = e.dir > 0 ? "tab-enter-right" : "tab-enter-left";
+    el.classList.add(cls);
+    const done = () => el.classList.remove(cls);
+    el.addEventListener("animationend", done, { once: true });
+    const t = window.setTimeout(done, 450);
+    return () => window.clearTimeout(t);
+  }, [activeTab]);
   useTabSwipe({
     pager,
     paths: TAB_PATHS,
     active: appReady ? activeTab : null,
     onCommit: goTab,
     onPrepare: ensureTabs,
+    onRelease: setNavHint,
   });
 
   useEffect(() => {
@@ -247,9 +283,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           )}
         </div>
         {!activeTab && (
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <div key={path} className="page-enter flex min-h-0 flex-1 flex-col">
+            {children}
+          </div>
         )}
-        <BottomNav current={activeTab ?? path} onTab={goTab} />
+        <BottomNav current={navHint ?? activeTab ?? path} onTab={tapTab} />
         <BadgeCelebration />
       </div>
     </TutorialProvider>

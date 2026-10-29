@@ -21,6 +21,7 @@ export function useTabSwipe({
   active,
   onCommit,
   onPrepare,
+  onRelease,
 }: {
   pager: RefObject<HTMLDivElement | null>;
   paths: string[];
@@ -28,6 +29,8 @@ export function useTabSwipe({
   onCommit: (path: string) => void;
   /** Chiamato a inizio gesto, per avere già pronte le schede vicine. */
   onPrepare: (paths: string[]) => void;
+  /** Appena il dito si alza e la scheda cambierà: la barra si aggiorna subito. */
+  onRelease?: (path: string) => void;
 }) {
   // Quando la scheda attiva cambia, togli gli stili provvisori prima del disegno.
   useLayoutEffect(() => {
@@ -112,6 +115,12 @@ export function useTabSwipe({
       // Alla prima e all'ultima scheda il bordo fa resistenza.
       dx = paths[idx + d] ? x : x / 4;
       place(dx, false);
+      // La pillola della barra segue il dito.
+      const pill = document.querySelector<HTMLElement>("[data-nav-pill]");
+      if (pill) {
+        pill.setAttribute("data-dragging", "");
+        pill.style.setProperty("--drag", String(paths[idx + d] ? Math.max(-1, Math.min(1, -dx / root.clientWidth)) : 0));
+      }
     };
     const end = () => {
       if (!tracking || !horizontal) {
@@ -124,6 +133,12 @@ export function useTabSwipe({
       const target = paths[idx + dir];
       const go = !!target && (Math.abs(dx) > w * 0.28 || (v > 0.45 && Math.abs(dx) > 36));
       busy = true;
+      const pill = document.querySelector<HTMLElement>("[data-nav-pill]");
+      if (pill) {
+        pill.removeAttribute("data-dragging");
+        pill.style.removeProperty("--drag");
+      }
+      if (go) onRelease?.(target!);
       place(go ? -dir * w : 0, true);
       const done = () => {
         busy = false;
@@ -157,5 +172,5 @@ export function useTabSwipe({
       root.removeEventListener("touchend", end);
       root.removeEventListener("touchcancel", end);
     };
-  }, [pager, paths, active, onCommit, onPrepare]);
+  }, [pager, paths, active, onCommit, onPrepare, onRelease]);
 }

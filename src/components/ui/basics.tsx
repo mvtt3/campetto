@@ -169,8 +169,8 @@ export function Chips<T extends string>({
   className?: string;
 }) {
   return (
-    // A capo invece di scorrere: tutte le opzioni restano visibili e nessun bordo viene tagliato.
-    <div className={clsx("flex flex-wrap gap-2 pb-0.5 pr-0.5", className)}>
+    // Tessere della stessa larghezza, quattro per riga e centrate: ordinate anche quando vanno a capo.
+    <div className={clsx("flex flex-wrap justify-center gap-2 pb-0.5 pr-0.5", className)}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -180,7 +180,7 @@ export function Chips<T extends string>({
             onChange(o.value);
           }}
           className={clsx(
-            "press h-9 shrink-0 rounded-full px-3.5 text-[14px] font-bold transition-colors",
+            "press h-9 shrink-0 basis-[calc((100%-1.5rem)/4)] rounded-full px-1 text-[13.5px] font-bold transition-colors duration-300",
             o.value === value ? "sticker-sm bg-volt text-volt-ink" : "sticker-sm bg-surface text-muted",
           )}
         >

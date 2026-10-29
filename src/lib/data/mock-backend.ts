@@ -44,6 +44,7 @@ function seedPlayers(): Player[] {
     jerseyNumber: null,
     cardColor: null,
     avatarUrl,
+    character: (["re", "bandana", "occhiali", "cecchino", "coppola", "muscoli", "volo", "collana", "mago"] as const)[i] ?? null,
     userId: i === 0 ? "u1" : null,
     isAdmin: i === 0,
     showcase: [],
@@ -54,19 +55,19 @@ function seedPlayers(): Player[] {
 }
 
 /** Deterministic pseudo-random history for visual checks (?mock=demo). */
-export function demoMatches(players: Player[], now = new Date()): Match[] {
+export function demoMatches(players: Player[], now = new Date(), count = 24): Match[] {
   let s = 7;
   const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   const out: Match[] = [];
   const formats: Format[] = ["2v2", "3v3", "3v3", "1v1", "2v2", "4v4"];
   // Lo storico di prova sta tutto dopo l'apertura dell'app (ottobre 2026).
-  const N = 24;
+  const N = count;
   const span = Math.max(1, Math.floor((now.getTime() - APP_START.getTime()) / 86_400_000));
-  const step = Math.min(2.4, Math.max(0.5, (span - 1) / N));
+  const step = Math.min(2.4, Math.max(0.25, (span - 1) / N));
   for (let i = 0; i < N; i++) {
     const daysAgo = Math.floor(i * step) + 1;
     const d = new Date(now.getTime() - daysAgo * 86_400_000);
-    d.setHours(i % 2 && step < 1 ? 19 : 17, 30, 0, 0);
+    d.setHours(step < 1 ? 15 + (i % 4) * 2 : 17, 30, 0, 0);
     if (d < APP_START) break;
     const format = formats[i % formats.length];
     const n = TEAM_SIZE[format];
@@ -94,6 +95,7 @@ export function demoMatches(players: Player[], now = new Date()): Match[] {
         box.stl = Math.floor(rnd() * 3);
         box.blk = Math.floor(rnd() * 2);
         box.tov = Math.floor(rnd() * 3);
+        box.fouls = Math.floor(rnd() * 4);
       }
       return { matchId: id, playerId: p.id, team, hasStats: withStats, box };
     });
@@ -141,13 +143,21 @@ function demoProposals() {
   ];
 }
 
-function initialState(demo: boolean): MockState {
+/** "pieno": un mese intenso, nomi lunghi e tutte le statistiche, per provare gli spazi. */
+function initialState(demo: boolean, full = false): MockState {
   const players = seedPlayers();
+  if (full) {
+    const long = ["Strings", "Valerio il Mago", "Davide Aquila", "Cande", "Matti", "Mocciaro", "Simone Falco", "Gigi Pyq", "Samu Formigaro"];
+    players.forEach((p, i) => {
+      p.nickname = long[i] ?? p.nickname;
+      p.jerseyNumber = [23, 7, 11, 3, 0, 33, 14, 9, 21][i] ?? null;
+    });
+  }
   return {
     meId: "p1",
     signedIn: false,
     players,
-    matches: demo ? demoMatches(players) : [],
+    matches: demo ? demoMatches(players, new Date(), full ? 90 : 24) : [],
     proposals: demo ? demoProposals() : [],
     private: players.map((p) => ({ playerId: p.id, inviteToken: `tok-${p.id}`, linkEmail: null })),
     pending: [],
@@ -161,9 +171,9 @@ export function createMockBackend(): Backend {
   localStorage.setItem("campetto:use-mock", "1");
   let state: MockState;
   const raw = localStorage.getItem(KEY);
-  if (mode === "reset" || mode === "demo" || !raw) {
-    state = initialState(mode === "demo");
-    if (params.get("signed") === "1" || mode === "demo") state.signedIn = true;
+  if (mode === "reset" || mode === "demo" || mode === "pieno" || !raw) {
+    state = initialState(mode === "demo" || mode === "pieno", mode === "pieno");
+    if (params.get("signed") === "1" || mode === "demo" || mode === "pieno") state.signedIn = true;
     // ?as=p2 entra come un giocatore normale (non amministratore)
     const as = params.get("as");
     if (as && state.players.some((p) => p.id === as)) {
@@ -338,6 +348,10 @@ export function createMockBackend(): Backend {
       save();
     },
     async savePushSubscription() {},
+    async sendFeedback(input) {
+      state.notifications.push({ type: "feedback", ...input });
+      save();
+    },
     async removePushSubscription() {},
     async notify(body) {
       state.notifications.push(body);

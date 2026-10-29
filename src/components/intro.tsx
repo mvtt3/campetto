@@ -30,7 +30,7 @@ const MINE = [
   "Sto cercando il canestro buono",
 ];
 
-const MIN_MS = 2600;
+const MIN_MS = 3100;
 
 function pickCaption(): string {
   let names: string[] = [];
@@ -49,7 +49,7 @@ function pickCaption(): string {
 }
 
 /** Da mettere nel <head>: decide prima del disegno se l'apertura va mostrata. */
-export const introScript = `(function(){try{var q=location.search;var force=q.indexOf('intro=1')>-1;if(!force&&(navigator.webdriver||sessionStorage.getItem('campetto:intro')||q.indexOf('mock=')>-1)){document.documentElement.dataset.intro='off';}else{sessionStorage.setItem('campetto:intro','1');}}catch(e){}})();`;
+export const introScript = `(function(){try{var q=location.search;var m=q.match(/shot=(\\d)/);document.documentElement.dataset.shot=m?m[1]:String(Math.floor(Math.random()*4));var force=q.indexOf('intro=1')>-1;if(!force&&(navigator.webdriver||sessionStorage.getItem('campetto:intro')||q.indexOf('mock=')>-1)){document.documentElement.dataset.intro='off';}else{sessionStorage.setItem('campetto:intro','1');}}catch(e){}})();`;
 
 export function Intro() {
   const { auth } = useData();
@@ -96,6 +96,7 @@ export function Intro() {
       </div>
       <div className="intro-stage" aria-hidden>
         <svg className="intro-hoop" viewBox="0 0 120 150" width="120" height="150">
+          <g className="intro-board">
           <rect x="18" y="4" width="96" height="66" rx="6" fill="#fffaf0" stroke="#1d1a16" strokeWidth="4" />
           <rect x="48" y="28" width="36" height="28" fill="none" stroke="#e5412d" strokeWidth="3.5" />
           <rect x="62" y="70" width="8" height="10" fill="#1d1a16" />
@@ -105,6 +106,7 @@ export function Intro() {
           </g>
           <ellipse cx="66" cy="84" rx="28" ry="6" fill="none" stroke="#1d1a16" strokeWidth="6.5" />
           <ellipse cx="66" cy="84" rx="28" ry="6" fill="none" stroke="#f26a1b" strokeWidth="3.6" />
+          </g>
         </svg>
         <div className="intro-ball-x">
           <div className="intro-ball-y">
@@ -121,8 +123,13 @@ export function Intro() {
           <div className="intro-pose intro-pose-b">
             <Mascot pose="esulta" size={128} animate={false} />
           </div>
+          <div className="intro-pose intro-pose-c">
+            <Mascot pose="boh" size={128} animate={false} />
+          </div>
         </div>
-        <p className="display intro-swish">Ciuff!</p>
+        <p className="display intro-say intro-say-in">Ciuff!</p>
+        <p className="display intro-say intro-say-miss">Ops!</p>
+        <p className="display intro-say intro-say-rim">Sul ferro!</p>
       </div>
       <p className="intro-caption">
         {caption}

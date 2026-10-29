@@ -62,6 +62,8 @@ export interface Player {
   jerseyNumber: number | null;
   cardColor: string | null;
   avatarUrl: string | null;
+  /** Il personaggio a figura intera scelto (id di una figurina), null = quello di base. */
+  character: string | null;
   userId: string | null;
   isAdmin: boolean;
   showcase: string[];

@@ -5,7 +5,7 @@ test("dal login con Google si entra nell'app", async ({ page }) => {
   await page.goto("/?mock=reset");
   await expect(page).toHaveURL(/\/login/);
   await page.getByRole("button", { name: "Entra con Google" }).click();
-  await expect(page.getByRole("heading", { name: /, Matteo\??$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /, (Matteo|MVP)\??$/ })).toBeVisible();
 });
 
 test("app vuota: stati vuoti curati", async ({ page }) => {
@@ -18,7 +18,7 @@ test("app vuota: stati vuoti curati", async ({ page }) => {
 
 test("un giocatore normale guarda soltanto: niente inserimento partite", async ({ page }) => {
   await openApp(page, "demo", "light", "p2");
-  await expect(page.getByRole("heading", { name: /, Valerio\??$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /, (Valerio|MVP)\??$/ })).toBeVisible();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
   await expect(page.getByTestId("match-row").first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Aggiungi partita" })).toHaveCount(0);
@@ -243,9 +243,9 @@ test("cambio scheda immediato, tasto indietro e pagine interne", async ({ page }
   await nav.getByRole("link", { name: "Profilo" }).click();
   await expect(page.getByText("Andamento")).toBeVisible();
   await nav.getByRole("link", { name: "Home" }).click();
-  await expect(page.getByRole("heading", { name: /, Matteo\??$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /, (Matteo|MVP)\??$/ })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { name: /, Matteo\??$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /, (Matteo|MVP)\??$/ })).toBeVisible();
 });
 
 test("il tasto indietro chiude il dettaglio della partita", async ({ page }) => {
@@ -269,10 +269,10 @@ test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({ page })
   await expect(page.getByRole("button", { name: "Avanti" })).toBeDisabled();
   await name.fill("Pluto");
   await page.getByRole("button", { name: "Avanti" }).click();
-  await page.getByRole("radio", { name: "Figurina Bandana" }).click();
-  await expect(page.getByRole("radio", { name: "Figurina Bandana" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("radio", { name: "Figurina Fernando" }).click();
+  await expect(page.getByRole("radio", { name: "Figurina Fernando" })).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Entra in campo" }).click();
-  await expect(page.getByRole("heading", { name: /, Pluto\??$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /, (Pluto|MVP)\??$/ })).toBeVisible();
   // Il nome si cambia dalle impostazioni, sempre senza doppioni.
   await page.goto("/profilo/impostazioni");
   const field = page.getByLabel("Nome nell'app");
@@ -281,7 +281,7 @@ test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({ page })
   await field.blur();
   await expect(page.getByText("Ho salvato il nome")).toBeVisible();
   await page.getByRole("button", { name: "Cambia foto profilo" }).click();
-  await page.getByRole("radio", { name: "Figurina Muscolo" }).click();
+  await page.getByRole("radio", { name: "Figurina Kofi" }).click();
   await expect(page.getByText("Ho cambiato la figurina")).toBeVisible();
   await page.goto("/profilo");
   await expect(page.getByRole("heading", { name: "Pluto Jr" })).toBeVisible();
@@ -354,7 +354,7 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   await expect(page).toHaveURL(/\/partite$/);
   await tour.getByRole("button", { name: "Salta Partite" }).click();
   await expect(page).toHaveURL(/\/profilo$/);
-  for (let i = 0; i < 2; i++) await tour.getByRole("button", { name: "Avanti" }).click();
+  for (let i = 0; i < 3; i++) await tour.getByRole("button", { name: "Avanti" }).click();
   await tour.getByRole("button", { name: "Fine" }).click();
   await expect(page.getByText("Tutto pronto")).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
@@ -366,4 +366,38 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   await page.getByRole("button", { name: "Guida all'app" }).click();
   await page.getByRole("button", { name: /Solo Classifica/ }).click();
   await expect(tour).toContainText("Classifica · 1 di 3");
+});
+
+test("segnala un problema dalle impostazioni", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo/impostazioni");
+  await page.getByRole("button", { name: /Segnala un problema/ }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Invia" })).toBeDisabled();
+  await dialog.getByRole("radio", { name: "Un'idea" }).click();
+  await dialog.getByRole("textbox").fill("Vorrei vedere chi ha fatto più triple questa settimana");
+  await dialog.getByRole("button", { name: "Invia" }).click();
+  await expect(page.getByText("Grazie! Ho segnato la tua idea")).toBeVisible();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("campetto:mock:v1")!).notifications.filter((n: { type: string }) => n.type === "feedback"));
+  expect(saved).toHaveLength(1);
+  expect(saved[0]).toMatchObject({ kind: "idea" });
+});
+
+test("personaggi: scheda, bloccati e scelta", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo/impostazioni");
+  await page.getByRole("button", { name: "Scegli il tuo personaggio" }).click();
+  // Uno speciale ancora bloccato: la scheda spiega cosa serve.
+  await page.getByRole("button", { name: "Leggenda, bloccato" }).click();
+  const card = page.getByRole("dialog", { name: "Leggenda" });
+  await expect(card.getByText("Si sblocca con")).toBeVisible();
+  await expect(card.getByText(/di \d+ badge/)).toBeVisible();
+  await card.getByRole("button", { name: "Ci provo!" }).click();
+  await expect(page.getByRole("dialog", { name: "Leggenda" })).toHaveCount(0);
+  // Uno di base si sceglie subito.
+  await page.getByRole("button", { name: /^Kenji/ }).click();
+  await page.getByRole("button", { name: "Usa Kenji" }).click();
+  await expect(page.getByText("Ora sei Kenji, gran scelta")).toBeVisible();
+  await page.goto("/profilo");
+  await expect(page.getByText("Kenji", { exact: true })).toBeVisible();
 });

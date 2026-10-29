@@ -26,6 +26,13 @@ export function Sheet({
         <Drawer.Content
           className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-lg flex-col rounded-t-[30px] border-[2.5px] border-b-0 border-edge bg-surface outline-none"
           aria-describedby={undefined}
+          // Le schede aperte sopra al pannello (es. il personaggio) non lo chiudono.
+          onInteractOutside={(e) => {
+            if ((e.target as Element | null)?.closest?.("[data-over-sheet]")) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (document.querySelector("[data-over-sheet]")) e.preventDefault();
+          }}
         >
           <div className="mx-auto mt-3 h-1.5 w-11 shrink-0 rounded-full bg-line-strong" />
           <div className="shrink-0 px-6 pb-2 pt-3 text-center">

@@ -17,6 +17,7 @@ import { minGamesFor, MVP_MIN_GAMES, mvpRanking } from "@/lib/stats/awards";
 import { leaderboard, STAT_BY_KEY, type StatKey } from "@/lib/stats/leaderboards";
 import { computePlayerStats } from "@/lib/stats/player";
 import { shortName } from "@/lib/types";
+import { Character, characterOf } from "@/components/character";
 
 type Board = "mvp" | StatKey;
 
@@ -45,7 +46,7 @@ interface Pending {
 
 function boardInfo(board: Board, minGames: number | null): string {
   if (board === "mvp")
-    return `Mescola vittorie, valutazione media, presenza e crescita ELO. Per entrare servono almeno ${minGames ?? 3} partite nel periodo.`;
+    return `Conta soprattutto vincere: 35% vittorie, 20% quanto fai vincere la squadra (+/−), 30% statistiche, 15% presenza. Servono almeno ${minGames ?? 3} partite`;
   if (board === "vittorie") return "Il totale delle vittorie nel periodo: qui conta anche quante volte vieni";
   if (board === "elo") return "Sale quando vinci e scende quando perdi, di più contro chi è più forte. Nel mese e nella stagione vedi quanto è cambiato.";
   const extra = board === "tre" ? " e almeno 5 tiri da tre" : "";
@@ -68,10 +69,11 @@ function Podium({ rows }: { rows: Row[] }) {
         const p = data.players.find((x) => x.id === r.playerId);
         return (
           <Link key={place} href={`/giocatore/${r.playerId}`} className="flex min-w-0 flex-col items-center">
-            <div className="flex flex-col items-center">
+            <div className="flex w-full min-w-0 flex-col items-center">
               {place === 1 && <Crown size={22} className="mb-1 text-gold" aria-hidden />}
-              <Avatar player={p} size={place === 1 ? 64 : 52} href={false} />
-              <p className="title mt-1.5 max-w-full truncate text-[14px]">{shortName(p, data.players)}</p>
+              {/* Sul podio salgono i personaggi. */}
+              {p && <Character id={characterOf(p)} number={p.jerseyNumber} height={place === 1 ? 82 : 68} title={shortName(p, data.players)} />}
+              <p className="title mt-1.5 w-full truncate text-center text-[14px]">{shortName(p, data.players)}</p>
               <p className="num text-[20px]">{r.value}</p>
             </div>
             <motion.div

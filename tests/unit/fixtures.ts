@@ -13,6 +13,7 @@ export function player(id: string, firstName: string, lastName: string | null = 
     jerseyNumber: null,
     cardColor: null,
     avatarUrl: null,
+    character: null,
     userId: null,
     isAdmin: false,
     showcase: [],

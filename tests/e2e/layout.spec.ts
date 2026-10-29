@@ -5,11 +5,12 @@ import { clippedStickers, openApp, pageScrolls, screenProblems, staticContentOve
 // Schermate che devono stare tutte in uno schermo, senza scorrere.
 const STATIC = ["/", "/profilo", "/profilo/notifiche", "/giocatore/p2", "/nuova", "/giocatore/p3", "/classifiche", "/partite", "/organizza", "/video", "/admin", "/classifiche/albo", "/profilo/badge", "/profilo/impostazioni", "/importa"];
 
+// "demo": qualche settimana di partite; "pieno": un mese intenso, 9 giocatori e nomi lunghi.
 for (const vp of VIEWPORTS) {
-  for (const theme of ["dark", "light"] as const) {
-    test(`${vp.name} ${theme}: nessuna pagina scorre e le schermate fisse stanno nello schermo`, async ({ page }) => {
+  for (const [theme, data] of [["dark", "demo"], ["light", "demo"], ["light", "pieno"], ["dark", "pieno"]] as const) {
+    test(`${vp.name} ${theme} ${data}: nessuna pagina scorre e le schermate fisse stanno nello schermo`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await openApp(page, "demo", theme);
+      await openApp(page, data, theme);
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       for (const path of STATIC) {
         await page.goto(path);

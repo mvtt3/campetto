@@ -28,8 +28,17 @@ export interface MePatch {
   jerseyNumber?: number | null;
   cardColor?: string | null;
   avatarUrl?: string | null;
+  character?: string | null;
   showcase?: string[];
   notifyPrefs?: NotifyPrefs;
+}
+
+export interface FeedbackInput {
+  kind: "problema" | "idea" | "altro";
+  message: string;
+  screen: string | null;
+  device: string | null;
+  appVersion: string | null;
 }
 
 export interface PlayerInput {
@@ -102,6 +111,7 @@ export interface Backend {
   savePushSubscription(sub: PushSubscriptionJSON): Promise<void>;
   removePushSubscription(endpoint: string): Promise<void>;
   notify(body: NotifyBody): Promise<void>;
+  sendFeedback(input: FeedbackInput): Promise<void>;
 }
 
 export type { Player };

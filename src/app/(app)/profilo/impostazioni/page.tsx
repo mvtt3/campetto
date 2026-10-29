@@ -3,9 +3,13 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Compass, Download, LogOut, Palette, Shield, Check } from "lucide-react";
+import { Bell, Camera, ChevronRight, Compass, Download, LogOut, MessageSquareWarning, Palette, Shield, Check } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { AVATAR_PRESETS, type AvatarPresetId } from "@/components/avatar-presets";
+import { Character, characterOf } from "@/components/character";
+import { CharacterCard, CharacterGrid } from "@/components/character-card";
+import { FeedbackSheet } from "@/components/feedback-sheet";
 import { SECTION_IDS, sections } from "@/components/tutorial/model";
 import { useTutorial } from "@/components/tutorial/tutorial";
 import { Sheet } from "@/components/ui/sheet";
@@ -35,7 +39,7 @@ function Row({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
 }
 
 export default function SettingsPage() {
-  const { me, data, engine, backend, mutate, reinit } = useData();
+  const { me, data, backend, mutate, reinit } = useData();
   const router = useRouter();
   const toast = useToast();
   const [theme, setTheme] = useState<ThemePref>("light");
@@ -46,6 +50,9 @@ export default function SettingsPage() {
   const [install, setInstall] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(true);
   const [picking, setPicking] = useState(false);
+  const [characters, setCharacters] = useState(false);
+  const [feedback, setFeedback] = useState(false);
+  const [card, setCard] = useState<AvatarPresetId | null>(null);
   const [guide, setGuide] = useState(false);
   const tour = useTutorial();
 
@@ -95,8 +102,23 @@ export default function SettingsPage() {
               </span>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="title block text-[17px]">La tua figurina</span>
-              <span className="block text-[13px] text-muted">Scegline una o metti una tua foto</span>
+              <span className="title block text-[17px]">Foto profilo</span>
+              <span className="block text-[13px] text-muted">Una figurina o una tua foto</span>
+            </span>
+            <ChevronRight size={18} className="text-faint" />
+          </button>
+          <button
+            className="press flex w-full items-center gap-4 border-t border-line px-4 py-3 text-left"
+            onClick={() => setCharacters(true)}
+            aria-label="Scegli il tuo personaggio"
+            data-tour="settings-character"
+          >
+            <span className="grid h-[72px] w-16 place-items-end justify-center">
+              <Character id={characterOf(me)} number={me.jerseyNumber} height={72} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="title block text-[17px]">Il tuo personaggio</span>
+              <span className="block text-[13px] text-muted">Con i badge ne sblocchi di speciali</span>
             </span>
             <ChevronRight size={18} className="text-faint" />
           </button>
@@ -212,6 +234,15 @@ export default function SettingsPage() {
               <ChevronRight size={18} className="ml-auto text-faint" />
             </button>
           </Row>
+          <Row icon={<MessageSquareWarning size={18} />}>
+            <button onClick={() => setFeedback(true)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold">Segnala un problema</span>
+                <span className="block text-[12.5px] text-muted">O suggerisci un&apos;idea</span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-faint" />
+            </button>
+          </Row>
         </Group>
 
         <Group>
@@ -282,15 +313,13 @@ export default function SettingsPage() {
           </div>
         </div>
       </Sheet>
-      <Sheet open={picking} onOpenChange={setPicking} title="La tua figurina" description="Alcune si sbloccano con i badge">
+      <Sheet open={picking} onOpenChange={setPicking} title="Foto profilo" description="Scegli una figurina o una tua foto">
         <div className="pb-2">
           <AvatarPicker
             value={me.avatarUrl}
             uploading={uploading}
             onPreset={(url) => void patchMe({ avatarUrl: url }, "Ho cambiato la figurina")}
             onInitials={() => void patchMe({ avatarUrl: null }, "Ora uso le tue iniziali")}
-            tiers={engine.badges(me.id).states.map((b) => b.tier)}
-            onLocked={(m) => toast(m)}
             onFile={async (f) => {
               setUploading(true);
               try {
@@ -305,6 +334,20 @@ export default function SettingsPage() {
           />
         </div>
       </Sheet>
+      <Sheet open={characters} onOpenChange={setCharacters} title="Il tuo personaggio" description="Compare nelle sfide e nel tuo profilo">
+        <div className="pb-2">
+          <CharacterGrid onOpen={setCard} />
+        </div>
+      </Sheet>
+      <CharacterCard
+        id={card}
+        onClose={() => setCard(null)}
+        onUse={(id) => {
+          void patchMe({ character: id }, `Ora sei ${AVATAR_PRESETS.find((p) => p.id === id)?.name}, gran scelta`);
+          setCard(null);
+        }}
+      />
+      <FeedbackSheet open={feedback} onClose={() => setFeedback(false)} />
     </>
   );
 }

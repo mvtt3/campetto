@@ -12,7 +12,7 @@ export async function skipTour(page: Page) {
   });
 }
 
-export async function openApp(page: Page, mode: "demo" | "empty" = "empty", theme: "dark" | "light" = "light", as?: string, tour = false) {
+export async function openApp(page: Page, mode: "demo" | "empty" | "pieno" = "empty", theme: "dark" | "light" = "light", as?: string, tour = false) {
   if (!tour) await skipTour(page);
   await page.addInitScript((t) => {
     try {
@@ -22,7 +22,7 @@ export async function openApp(page: Page, mode: "demo" | "empty" = "empty", them
     }
   }, theme);
   const who = as ? `&as=${as}` : "";
-  await page.goto(mode === "demo" ? `/?mock=demo${who}` : `/?mock=reset&signed=1${who}`);
+  await page.goto(mode === "empty" ? `/?mock=reset&signed=1${who}` : `/?mock=${mode}${who}`);
   await page.getByRole("navigation", { name: "Navigazione principale" }).waitFor();
 }
 
@@ -145,6 +145,16 @@ export async function popupProblems(page: Page, selector: string): Promise<strin
           return [...range.getClientRects()].some((t) => t.width > 1 && (t.right > box.right + 2 || t.left < box.left - 2));
         });
         if (out1) out.push(`testo che esce: ${el.tagName.toLowerCase()} "${(el.textContent || "").trim().slice(0, 30)}"`);
+      });
+      // Testi tagliati in verticale (le code di g, p, q e y sotto la riga).
+      root.querySelectorAll<HTMLElement>("h1, h2, h3, p, span, a, button").forEach((el) => {
+        if (!el.getClientRects().length || el.closest("svg") || !(el.textContent || "").trim()) return;
+        const cs = getComputedStyle(el);
+        if (cs.overflowY !== "hidden" && cs.overflowY !== "clip" && cs.textOverflow !== "ellipsis") return;
+        // Testi solo per il lettore di schermo (sr-only): nascosti apposta.
+        if (cs.clip !== "auto" || cs.clipPath !== "none" || el.clientWidth <= 1 || el.classList.contains("sr-only")) return;
+        if (el.scrollHeight > el.clientHeight + 1 && el.clientHeight > 0 && el.clientHeight < 80)
+          out.push(`testo tagliato sotto: ${el.tagName.toLowerCase()} "${(el.textContent || "").trim().slice(0, 30)}"`);
       });
       // Controlli sovrapposti.
       const ctrls = [...root.querySelectorAll<HTMLElement>("button, a, input, textarea, [role='slider'], [role='switch']")].filter(
