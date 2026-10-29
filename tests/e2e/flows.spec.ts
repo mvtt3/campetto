@@ -378,7 +378,7 @@ test("segnala un problema dalle impostazioni", async ({ page }) => {
   await dialog.getByRole("textbox").fill("Vorrei vedere chi ha fatto più triple questa settimana");
   await dialog.getByRole("button", { name: "Invia" }).click();
   await expect(page.getByText("Grazie! Ho segnato la tua idea")).toBeVisible();
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("campetto:mock:v1")!).notifications.filter((n: { type: string }) => n.type === "feedback"));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("campetto:mock:v1")!).notifications.filter((n: { type: string; message?: string }) => n.type === "feedback" && n.message));
   expect(saved).toHaveLength(1);
   expect(saved[0]).toMatchObject({ kind: "idea" });
 });
