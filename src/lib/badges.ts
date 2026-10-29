@@ -259,3 +259,22 @@ export function showcaseBadges(states: BadgeState[], chosen: string[]): BadgeSta
     .sort((a, b) => b.tier - a.tier || (b.unlockedAt ?? "").localeCompare(a.unlockedAt ?? ""));
   return [...picked, ...rest].slice(0, 3);
 }
+
+const SINGULAR: Record<string, string> = {
+  partite: "partita",
+  vittorie: "vittoria",
+  mesi: "mese",
+  stagioni: "stagione",
+  punti: "punto",
+  rimbalzi: "rimbalzo",
+  "palle rubate": "palla rubata",
+  stoppate: "stoppata",
+  triple: "tripla",
+  "vittorie di fila": "vittoria di fila",
+  "vittorie in 1v1": "vittoria in 1v1",
+};
+
+/** "1 partita", "3 partite". */
+export function unitFor(def: Pick<BadgeDef, "unit">, n: number): string {
+  return n === 1 ? (SINGULAR[def.unit] ?? def.unit) : def.unit;
+}

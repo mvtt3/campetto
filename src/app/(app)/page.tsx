@@ -8,7 +8,7 @@ import { ProposalCard } from "@/components/proposal-card";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CourtArc, signed } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { BADGE_BY_KEY } from "@/lib/badges";
+import { BADGE_BY_KEY, unitFor } from "@/lib/badges";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
 import { eloDelta, eloOf } from "@/lib/stats/elo";
@@ -62,7 +62,7 @@ export default function HomePage() {
       .badges(me.id)
       .states.filter((s) => s.next && s.def.mode === "total")
       .map((s) => ({ s, missing: s.next! - s.value, ratio: (s.value - s.prev) / (s.next! - s.prev) }))
-      .sort((a, b) => b.ratio - a.ratio || a.missing - b.missing)[0];
+      .sort((a, b) => b.ratio - a.ratio || Number(b.s.def.key === "presenze") - Number(a.s.def.key === "presenze") || a.missing - b.missing)[0];
   }, [me, engine]);
 
   if (!me) return null;
@@ -204,7 +204,7 @@ export default function HomePage() {
                 <div className="min-w-0">
                   <p className="title truncate text-[16px]">{closest.s.def.name}</p>
                   <p className="text-[12.5px] text-muted">
-                    Ancora {closest.missing} {closest.s.def.unit}
+                    Ancora {closest.missing} {unitFor(closest.s.def, closest.missing)}
                   </p>
                 </div>
               </div>
