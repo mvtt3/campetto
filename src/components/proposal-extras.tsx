@@ -2,12 +2,11 @@
 
 import clsx from "clsx";
 import { useState } from "react";
-import { Avatar } from "./ui/avatar";
+import { AvatarStack } from "./ui/avatar";
 import { Button, Segmented } from "./ui/basics";
 import { TimeField } from "./ui/pickers";
 import { useToast } from "./ui/toast";
 import { useData } from "@/lib/data/provider";
-import { altLabel } from "@/lib/proposals";
 import {
   PLACES,
   shortName,
@@ -19,8 +18,8 @@ import { useNow } from "@/lib/use-now";
 import { say } from "@/lib/voice";
 
 /**
- * Chi c'è, chi forse, chi no e chi deve ancora rispondere: tutti i nomi in vista, senza
- * aprire niente, come gli inviti delle app di oggi. Accanto a chi ha un'alternativa, cosa preferisce.
+ * Chi c'è, chi forse, chi no e chi deve ancora rispondere: una riga per gruppo, con le facce e
+ * i nomi, come gli inviti delle app di oggi. Sta tutto nella scheda, senza scorrere.
  */
 export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const { data, me } = useData();
@@ -28,94 +27,85 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const by = (k: "si" | "forse" | "no") =>
     proposal.responses
       .filter((r) => r.response === k)
-      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+      .map((r) => byId.get(r.playerId))
+      .filter((p): p is Player => Boolean(p));
   const answered = new Set(proposal.responses.map((r) => r.playerId));
   const waiting = data.players.filter(
     (p) => !p.archived && !answered.has(p.id),
   );
   const groups: {
     title: string;
-    rows: { player: Player | undefined; hint?: string }[];
+    short: string;
+    players: Player[];
     tone: string;
   }[] = [
     {
       title: "Ci sono",
+      short: "Ci sono",
+      players: by("si"),
       tone: "bg-volt text-volt-ink",
-      rows: by("si").map((r) => ({
-        player: byId.get(r.playerId),
-        hint:
-          r.altStartsAt || r.altPlace
-            ? `preferisce: ${altLabel(proposal, {
-                startsAt: r.altStartsAt ?? proposal.startsAt,
-                place: r.altPlace ?? proposal.place ?? null,
-              }).replace(/^./, (c) => c.toLowerCase())}`
-            : r.playerId === proposal.createdBy
-              ? "ha proposto"
-              : undefined,
-      })),
     },
     {
       title: "Forse",
+      short: "Forse",
+      players: by("forse"),
       tone: "bg-court text-court-ink",
-      rows: by("forse").map((r) => ({ player: byId.get(r.playerId) })),
     },
     {
       title: "Non ci sono",
+      short: "No",
+      players: by("no"),
       tone: "bg-raised text-text",
-      rows: by("no").map((r) => ({ player: byId.get(r.playerId) })),
     },
     {
       title: "Non hanno ancora risposto",
+      short: "In attesa",
+      players: waiting,
       tone: "bg-raised text-muted",
-      rows: waiting.map((p) => ({ player: p })),
     },
   ];
+  const name = (p: Player) =>
+    p.id === me?.id ? "Tu" : shortName(p, data.players);
   return (
     <div
-      className="flex flex-col gap-3 border-t-2 border-dashed border-line-strong pt-3"
+      className="flex flex-col gap-1.5 border-t-2 border-dashed border-line-strong pt-2.5"
       aria-label="Chi c'è"
       role="group"
     >
       {groups
-        .filter((g) => g.rows.length)
+        .filter((g) => g.players.length)
         .map((g) => (
-          <section key={g.title} aria-label={g.title}>
-            <h3 className="mb-1.5 flex items-center gap-2 text-[12.5px] font-bold">
-              <span
-                className={clsx(
-                  "grid h-5 min-w-5 place-items-center rounded-full border-2 border-edge px-1 text-[11px]",
-                  g.tone,
-                )}
-              >
-                {g.rows.length}
-              </span>
-              {g.title}
-            </h3>
-            <ul className="flex flex-wrap gap-1.5">
-              {g.rows.map(({ player, hint }) => (
-                <li
-                  key={player?.id}
-                  className={clsx(
-                    "flex max-w-full items-center gap-1.5 rounded-full border-2 border-line-strong bg-surface py-0.5 pl-0.5 pr-2.5",
-                    player?.id === me?.id && "!border-court bg-court-soft",
-                  )}
-                >
-                  <Avatar player={player} size={24} href={false} ring="none" />
-                  <span className="min-w-0 leading-tight">
-                    <span className="block truncate text-[13px] font-semibold">
-                      {player?.id === me?.id
-                        ? "Tu"
-                        : shortName(player, data.players)}
-                    </span>
-                    {hint && (
-                      <span className="block truncate text-[10.5px] text-muted">
-                        {hint}
-                      </span>
+          <section
+            key={g.title}
+            aria-label={g.title}
+            className="flex min-w-0 items-center gap-2"
+          >
+            <span
+              className={clsx(
+                "flex h-6 w-[86px] shrink-0 items-center justify-between rounded-full border-2 border-edge pl-2 pr-1.5 text-[11.5px] font-bold",
+                g.tone,
+              )}
+            >
+              {g.short}
+              <span className="tnum">{g.players.length}</span>
+            </span>
+            <AvatarStack players={g.players} size={22} max={4} />
+            <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted">
+              {g.players.map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && ", "}
+                  <span
+                    className={clsx(
+                      "font-semibold",
+                      p.id === me?.id ? "text-court" : "text-text",
                     )}
+                  >
+                    {name(p)}
                   </span>
-                </li>
+                </span>
               ))}
-            </ul>
+            </p>
           </section>
         ))}
     </div>

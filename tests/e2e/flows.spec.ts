@@ -212,12 +212,12 @@ test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
   const alts = card.getByRole("list", { name: "Controproposte" });
   await expect(alts).toContainText("al Niche");
   await alts.getByRole("button", { name: "Anch'io" }).click();
-  await expect(alts).toContainText("La preferiscono");
+  await expect(alts).toContainText("la preferiscono");
   await expect(alts.getByRole("button", { name: "Ritira" })).toBeVisible();
   // La propria: stesso giorno, un altro orario.
   await alts.getByRole("button", { name: "Ritira" }).click();
   await card
-    .getByRole("button", { name: "Meglio un altro orario o campetto?" })
+    .getByRole("button", { name: "Proponi un altro orario o campetto" })
     .click();
   // Si apre lì, dentro la scheda: niente finestre.
   const form = card.getByRole("group", { name: "Proponi un'alternativa" });

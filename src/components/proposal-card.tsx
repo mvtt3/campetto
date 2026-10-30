@@ -246,6 +246,14 @@ export function ProposalCard({
     }
   };
 
+  const canTeams = (isToday || full) && yes.length >= 2;
+  const showAlt = !altForm.open && future && (canMove || mine === "si");
+  const altAria = canMove
+    ? "Cambia orario o campetto"
+    : myAltKey
+      ? "Cambia la tua alternativa"
+      : "Proponi un altro orario o campetto";
+
   // Al completo, o in 4 a meno di 12 ore: confermata. Iniziata: in corso, con la cronaca.
   const phase = proposalPhase(proposal, now, needed);
   if (phase === "live")
@@ -255,7 +263,7 @@ export function ProposalCard({
     <div
       data-testid="proposal-card"
       data-phase={phase}
-      className={clsx("flex flex-col", compact ? "gap-3 short:gap-2" : "gap-4")}
+      className={clsx("flex flex-col", compact ? "gap-3 short:gap-2" : "gap-3 short:gap-2.5")}
     >
       {phase === "confirmed" && !compact && (
         <div
@@ -361,7 +369,7 @@ export function ProposalCard({
               aria-pressed={on}
               onClick={() => void respond(proposal, r.value)}
               className={clsx(
-                "sticker-sm press h-11 flex-1 rounded-full text-[14px] font-bold transition-colors",
+                "sticker-sm press h-11 flex-1 rounded-full text-[14px] font-bold transition-colors short:h-10",
                 on
                   ? r.value === "si"
                     ? "bg-volt text-volt-ink"
@@ -388,20 +396,19 @@ export function ProposalCard({
             return (
               <li
                 key={g.key}
-                className="flex items-center gap-2.5 rounded-2xl border-2 border-dashed border-line-strong px-2.5 py-2"
+                className="flex items-center gap-2 rounded-2xl border-2 border-dashed border-line-strong py-1.5 pl-2.5 pr-1.5"
               >
                 <Repeat2 size={18} className="shrink-0 text-ball" aria-hidden />
-                <div className="min-w-0 flex-1 leading-tight">
-                  <p className="truncate text-[14px] font-bold">
-                    {altLabel(proposal, g)}
-                  </p>
-                  <p className="truncate text-[12px] text-muted">
+                <p className="min-w-0 flex-1 truncate text-[13.5px] leading-tight">
+                  <span className="font-bold">{altLabel(proposal, g)}</span>
+                  <span className="text-muted">
+                    {" · "}
                     {g.playerIds.length === 1
-                      ? "La preferisce"
-                      : "La preferiscono"}{" "}
+                      ? "la preferisce"
+                      : "la preferiscono"}{" "}
                     {namesList(names)}
-                  </p>
-                </div>
+                  </span>
+                </p>
                 {canMove ? (
                   <button
                     onClick={() =>
@@ -410,7 +417,7 @@ export function ProposalCard({
                         : setConfirmMove(g.key)
                     }
                     className={clsx(
-                      "sticker-sm press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-bold",
+                      "sticker-sm press h-8 shrink-0 rounded-full px-3 text-[13px] font-bold",
                       confirmMove === g.key
                         ? "bg-ok text-white"
                         : "bg-court text-court-ink",
@@ -423,7 +430,7 @@ export function ProposalCard({
                     onClick={() => void backAlt(g.startsAt, g.place)}
                     aria-pressed={mineToo}
                     className={clsx(
-                      "sticker-sm press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-bold",
+                      "sticker-sm press h-8 shrink-0 rounded-full px-3 text-[13px] font-bold",
                       mineToo
                         ? "bg-surface text-muted"
                         : "bg-volt text-volt-ink",
@@ -457,70 +464,82 @@ export function ProposalCard({
           </motion.div>
         )}
       </AnimatePresence>
-      {!compact && !altForm.open && future && (canMove || mine === "si") && (
-        <button
-          type="button"
-          onClick={() => openAlt(canMove ? "move" : "alt")}
-          className="press -my-1 self-center rounded-full px-3 py-1.5 text-[13px] font-semibold text-court underline decoration-2 underline-offset-4"
-        >
-          {canMove
-            ? "Cambia orario o campetto"
-            : myAltKey
-              ? "Cambia la tua alternativa"
-              : "Meglio un altro orario o campetto?"}
-        </button>
-      )}
-
-      {!compact && (((isToday || full) && yes.length >= 2) || canCancel) && (
+      {/* Una riga sola per le azioni: squadre, orario o campetto, annulla. */}
+      {!compact && (canTeams || showAlt || canCancel) && (
         <div className="flex gap-2">
-          {(isToday || full) && yes.length >= 2 && (
+          {canTeams && !confirmCancel && (
             <button
               onClick={() => setTeamsOpen(true)}
-              className="sticker press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-court text-[14px] font-bold text-court-ink"
+              className="sticker press flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-court text-[14px] font-bold text-court-ink"
             >
-              <Shuffle size={17} /> Fai le squadre
+              <Shuffle size={17} className="shrink-0" /> Fai le squadre
+            </button>
+          )}
+          {showAlt && !confirmCancel && (
+            <button
+              type="button"
+              onClick={() => openAlt(canMove ? "move" : "alt")}
+              aria-label={altAria}
+              className={clsx(
+                "sticker-sm press flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-full bg-surface px-3.5 text-[13.5px] font-bold",
+                !canTeams && "flex-1",
+              )}
+            >
+              <Repeat2 size={16} className="shrink-0 text-ball" aria-hidden />
+              <span className="truncate">
+                {canTeams ? (canMove ? "Sposta" : "Proponi") : altAria}
+              </span>
             </button>
           )}
           {canCancel &&
             (confirmCancel ? (
-              <button
-                className="sticker-sm press h-11 flex-1 rounded-full bg-surface text-[14px] font-bold text-danger"
-                onClick={async () => {
-                  mutate((d) => ({
-                    ...d,
-                    proposals: d.proposals.filter((x) => x.id !== proposal.id),
-                  }));
-                  try {
-                    await backend.cancelProposal(proposal.id);
-                    void backend.notify({
-                      type: "proposal_cancelled",
-                      proposalId: proposal.id,
-                    });
-                    toast(
-                      "Ho annullato la proposta e avvisato chi aveva risposto",
-                    );
-                  } catch (e) {
-                    toast(say(e), "error");
-                  }
-                }}
-              >
-                Annulla la proposta
-              </button>
+              <>
+                <button
+                  className="sticker-sm press h-10 flex-1 rounded-full bg-surface text-[13.5px] font-bold text-muted"
+                  onClick={() => setConfirmCancel(false)}
+                >
+                  Lascia stare
+                </button>
+                <button
+                  className="sticker-sm press h-10 flex-1 rounded-full bg-danger text-[13.5px] font-bold text-white"
+                  onClick={async () => {
+                    mutate((d) => ({
+                      ...d,
+                      proposals: d.proposals.filter(
+                        (x) => x.id !== proposal.id,
+                      ),
+                    }));
+                    try {
+                      await backend.cancelProposal(proposal.id);
+                      void backend.notify({
+                        type: "proposal_cancelled",
+                        proposalId: proposal.id,
+                      });
+                      toast(
+                        "Ho annullato la proposta e avvisato chi aveva risposto",
+                      );
+                    } catch (e) {
+                      toast(say(e), "error");
+                    }
+                  }}
+                >
+                  Annulla la proposta
+                </button>
+              </>
             ) : (
-              // Da sola la X non si capisce: senza "Fai le squadre" accanto ha anche la scritta.
+              // Da sola la X non si capisce: se c'è spazio ha anche la scritta.
               <button
                 aria-label="Annulla la proposta"
                 className={clsx(
-                  "sticker-sm press flex h-11 items-center justify-center gap-1.5 rounded-full bg-surface text-muted",
-                  (isToday || full) && yes.length >= 2
-                    ? "w-11"
-                    : "px-4 text-[13.5px] font-semibold",
+                  "sticker-sm press flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-surface text-muted",
+                  canTeams || showAlt
+                    ? "w-10"
+                    : "flex-1 px-4 text-[13.5px] font-semibold",
                 )}
                 onClick={() => setConfirmCancel(true)}
               >
                 <X size={18} />
-                {!((isToday || full) && yes.length >= 2) &&
-                  "Annulla la proposta"}
+                {!(canTeams || showAlt) && "Annulla la proposta"}
               </button>
             ))}
         </div>
