@@ -42,6 +42,19 @@ const nextConfig: NextConfig = {
           { key: "Service-Worker-Allowed", value: "/" },
         ],
       },
+      {
+        // I video degli highlights hanno un nome unico: il telefono li tiene senza richiederli,
+        // e i motori di ricerca non li indicizzano.
+        source: "/h/:file*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/hl-musica.m4a",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800" }],
+      },
     ];
   },
 };
