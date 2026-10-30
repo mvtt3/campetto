@@ -3,6 +3,8 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useData } from "@/lib/data/provider";
 import { House, Rows3, Trophy, UserRound } from "lucide-react";
 import { haptic } from "./ui/basics";
 import { NewDot } from "./new-dot";
@@ -54,7 +56,19 @@ export function BottomNav({
   onTab?: (href: string) => void;
 }) {
   const routePath = usePathname();
-  const path = current ?? routePath;
+  const raw = current ?? routePath;
+  // Le statistiche avanzate stanno sotto il Profilo se sono le tue, sotto la Classifica se sono di un altro.
+  const { me } = useData();
+  const [statsOf, setStatsOf] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatsOf(new URLSearchParams(window.location.search).get("id"));
+  }, [raw]);
+  const path = raw.startsWith("/statistiche")
+    ? statsOf && statsOf !== me?.id
+      ? "/giocatore"
+      : "/profilo"
+    : raw;
   const index = ITEMS.findIndex((it) => it.match(path));
   // Badge e personaggi nuovi da aprire: il pallino rosso sul Profilo.
   const news = useNewRewards().total;

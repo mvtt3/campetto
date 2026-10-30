@@ -350,10 +350,10 @@ export default function AdminPage() {
               >
                 <Avatar player={p} size={40} href={false} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold">
-                    {adminName(p)}{" "}
+                  <p className="flex items-baseline gap-1.5 text-[15px] font-semibold">
+                    <span className="min-w-0 truncate">{adminName(p)}</span>
                     {p.isAdmin && (
-                      <span className="text-[12px] font-normal text-ball">
+                      <span className="shrink-0 text-[12px] font-normal text-ball">
                         admin
                       </span>
                     )}

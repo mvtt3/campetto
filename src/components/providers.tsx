@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { DataProvider } from "@/lib/data/provider";
 import { ToastProvider } from "./ui/toast";
 import { primeAudio } from "@/lib/sound";
+import { checkForUpdate } from "@/lib/auto-update";
 
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => primeAudio(), []);
@@ -69,6 +70,18 @@ export function Providers({ children }: { children: ReactNode }) {
         .register("/sw.js", { scope: "/" })
         .catch(() => {});
     }
+  }, []);
+  // La versione nuova arriva da sola: all'apertura e quando si torna nell'app.
+  useEffect(() => {
+    void checkForUpdate();
+    const onShow = () =>
+      document.visibilityState === "visible" && void checkForUpdate();
+    document.addEventListener("visibilitychange", onShow);
+    window.addEventListener("pageshow", onShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onShow);
+      window.removeEventListener("pageshow", onShow);
+    };
   }, []);
   return (
     <DataProvider>
