@@ -7,7 +7,14 @@ export interface HourWeather {
   code: number;
 }
 
-export type WeatherKind = "sereno" | "poco-nuvoloso" | "nuvoloso" | "nebbia" | "pioggia" | "neve" | "temporale";
+export type WeatherKind =
+  | "sereno"
+  | "poco-nuvoloso"
+  | "nuvoloso"
+  | "nebbia"
+  | "pioggia"
+  | "neve"
+  | "temporale";
 
 /** WMO weather codes used by Open-Meteo. */
 export function weatherKind(code: number): WeatherKind {
@@ -15,7 +22,8 @@ export function weatherKind(code: number): WeatherKind {
   if (code <= 2) return "poco-nuvoloso";
   if (code === 3) return "nuvoloso";
   if (code === 45 || code === 48) return "nebbia";
-  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return "pioggia";
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))
+    return "pioggia";
   if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "neve";
   if (code >= 95) return "temporale";
   return "nuvoloso";
@@ -33,7 +41,9 @@ export const WEATHER_LABEL: Record<WeatherKind, string> = {
 
 export function rainRisk(w: Pick<HourWeather, "rainProb" | "code">): boolean {
   const k = weatherKind(w.code);
-  return w.rainProb >= 50 || k === "pioggia" || k === "temporale" || k === "neve";
+  return (
+    w.rainProb >= 50 || k === "pioggia" || k === "temporale" || k === "neve"
+  );
 }
 
 export function forecastUrl(): string {
@@ -52,7 +62,12 @@ export interface Forecast {
 }
 
 export function parseForecast(json: {
-  hourly?: { time: string[]; temperature_2m: number[]; precipitation_probability: (number | null)[]; weather_code: number[] };
+  hourly?: {
+    time: string[];
+    temperature_2m: number[];
+    precipitation_probability: (number | null)[];
+    weather_code: number[];
+  };
 }): Forecast {
   const h = json.hourly;
   if (!h) return { hours: [] };

@@ -57,7 +57,10 @@ function pickCaption(): string {
     /* ignore */
   }
   let i = Math.floor(Math.random() * CAPTIONS.length);
-  if (i === last) i = (i + 1 + Math.floor(Math.random() * (CAPTIONS.length - 1))) % CAPTIONS.length;
+  if (i === last)
+    i =
+      (i + 1 + Math.floor(Math.random() * (CAPTIONS.length - 1))) %
+      CAPTIONS.length;
   try {
     localStorage.setItem("campetto:frase", String(i));
   } catch {
@@ -108,24 +111,37 @@ export function Intro() {
       return;
     }
     setCaption(pickCaption());
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const shot = Number(document.documentElement.dataset.shot ?? 1);
-    const t = window.setTimeout(() => setMinDone(true), reduce ? 700 : (MIN_MS[shot] ?? 2700));
+    const t = window.setTimeout(
+      () => setMinDone(true),
+      reduce ? 700 : (MIN_MS[shot] ?? 2700),
+    );
     // Il fischio che apre e il rumore del tiro, a tempo con l'animazione già partita.
     const timers: number[] = [];
     const ball = document.querySelector(".intro-ball-x") as HTMLElement | null;
     const anim = ball?.getAnimations?.()[0];
-    const elapsed = anim && typeof anim.currentTime === "number" ? anim.currentTime / 1000 : 0;
+    const elapsed =
+      anim && typeof anim.currentTime === "number"
+        ? anim.currentTime / 1000
+        : 0;
     const at = (name: SoundName, sec: number) => {
       const wait = sec - elapsed;
-      if (wait > -0.05) timers.push(window.setTimeout(() => play(name), Math.max(0, wait) * 1000));
+      if (wait > -0.05)
+        timers.push(
+          window.setTimeout(() => play(name), Math.max(0, wait) * 1000),
+        );
     };
     // Il fischio arriva appena finisce il tiro di Spicchio (dentro o fuori), un attimo dopo
     // l'ultimo suono della palla. Se in quel momento il telefono non lascia suonare (iPhone
     // appena aperto, prima di un tocco) il fischio si salta: mai più tardi, mentre usi l'app.
     const sounds = reduce ? [] : (SHOT_SOUNDS[shot] ?? []);
     for (const [name, sec] of sounds) at(name, sec);
-    const lastHit = sounds.length ? Math.max(...sounds.map(([, sec]) => sec)) : 0.5;
+    const lastHit = sounds.length
+      ? Math.max(...sounds.map(([, sec]) => sec))
+      : 0.5;
     at("whistle", lastHit + WHISTLE_AFTER);
     stopSounds.current = () => timers.forEach((x) => window.clearTimeout(x));
     return () => {
@@ -149,7 +165,8 @@ export function Intro() {
 
   useEffect(() => {
     if (phase !== "gone") return;
-    if (document.documentElement.dataset.intro !== "off") document.documentElement.dataset.intro = "done";
+    if (document.documentElement.dataset.intro !== "off")
+      document.documentElement.dataset.intro = "done";
     window.dispatchEvent(new Event(DONE_EVENT));
   }, [phase]);
 
@@ -169,24 +186,91 @@ export function Intro() {
         <p className="intro-sub">★ Nichelino ★</p>
       </div>
       <div className="intro-stage" aria-hidden>
-        <svg className="intro-hoop" viewBox="0 0 120 150" width="120" height="150">
+        <svg
+          className="intro-hoop"
+          viewBox="0 0 120 150"
+          width="120"
+          height="150"
+        >
           <g className="intro-board">
-          <rect x="18" y="4" width="96" height="66" rx="6" fill="#fffaf0" stroke="#1d1a16" strokeWidth="4" />
-          <rect x="48" y="28" width="36" height="28" fill="none" stroke="#e5412d" strokeWidth="3.5" />
-          <rect x="62" y="70" width="8" height="10" fill="#1d1a16" />
-          <g className="intro-net">
-            <path d="M40 86 L48 128 M56 86 L58 128 M76 86 L74 128 M92 86 L84 128 M44 100 Q66 106 88 100 M47 116 Q66 121 85 116" stroke="#fffaf0" strokeWidth="2.6" fill="none" strokeLinecap="round" />
-            <path d="M40 86 L48 128 M56 86 L58 128 M76 86 L74 128 M92 86 L84 128" stroke="#1d1a16" strokeWidth="0.8" fill="none" opacity="0.5" />
-          </g>
-          <ellipse cx="66" cy="84" rx="28" ry="6" fill="none" stroke="#1d1a16" strokeWidth="6.5" />
-          <ellipse cx="66" cy="84" rx="28" ry="6" fill="none" stroke="#f26a1b" strokeWidth="3.6" />
+            <rect
+              x="18"
+              y="4"
+              width="96"
+              height="66"
+              rx="6"
+              fill="#fffaf0"
+              stroke="#1d1a16"
+              strokeWidth="4"
+            />
+            <rect
+              x="48"
+              y="28"
+              width="36"
+              height="28"
+              fill="none"
+              stroke="#e5412d"
+              strokeWidth="3.5"
+            />
+            <rect x="62" y="70" width="8" height="10" fill="#1d1a16" />
+            <g className="intro-net">
+              <path
+                d="M40 86 L48 128 M56 86 L58 128 M76 86 L74 128 M92 86 L84 128 M44 100 Q66 106 88 100 M47 116 Q66 121 85 116"
+                stroke="#fffaf0"
+                strokeWidth="2.6"
+                fill="none"
+                strokeLinecap="round"
+              />
+              <path
+                d="M40 86 L48 128 M56 86 L58 128 M76 86 L74 128 M92 86 L84 128"
+                stroke="#1d1a16"
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.5"
+              />
+            </g>
+            <ellipse
+              cx="66"
+              cy="84"
+              rx="28"
+              ry="6"
+              fill="none"
+              stroke="#1d1a16"
+              strokeWidth="6.5"
+            />
+            <ellipse
+              cx="66"
+              cy="84"
+              rx="28"
+              ry="6"
+              fill="none"
+              stroke="#f26a1b"
+              strokeWidth="3.6"
+            />
           </g>
         </svg>
         <div className="intro-ball-x">
           <div className="intro-ball-y">
-            <svg viewBox="0 0 30 30" width="30" height="30" className="intro-ball">
-              <circle cx="15" cy="15" r="13" fill="#f26a1b" stroke="#1d1a16" strokeWidth="2.6" />
-              <path d="M15 2 V28 M2 15 H28 M6 6 Q12 15 6 24 M24 6 Q18 15 24 24" stroke="#1d1a16" strokeWidth="1.8" fill="none" />
+            <svg
+              viewBox="0 0 30 30"
+              width="30"
+              height="30"
+              className="intro-ball"
+            >
+              <circle
+                cx="15"
+                cy="15"
+                r="13"
+                fill="#f26a1b"
+                stroke="#1d1a16"
+                strokeWidth="2.6"
+              />
+              <path
+                d="M15 2 V28 M2 15 H28 M6 6 Q12 15 6 24 M24 6 Q18 15 24 24"
+                stroke="#1d1a16"
+                strokeWidth="1.8"
+                fill="none"
+              />
             </svg>
           </div>
         </div>

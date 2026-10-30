@@ -38,7 +38,11 @@ export function proposalWhen(iso: string, now = new Date()): string {
           diff > 1 && diff < 7
           ? d.toLocaleDateString("it-IT", { weekday: "long" })
           : d
-              .toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })
+              .toLocaleDateString("it-IT", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              })
               .replace(/\./g, "");
   return `${name.charAt(0).toUpperCase()}${name.slice(1)}, ${time}`;
 }

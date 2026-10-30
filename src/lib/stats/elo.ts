@@ -39,10 +39,15 @@ export function playerK(teamSize: number): number {
 
 function avg(ids: string[], ratings: Map<string, number>): number {
   if (!ids.length) return ELO_START;
-  return ids.reduce((s, id) => s + (ratings.get(id) ?? ELO_START), 0) / ids.length;
+  return (
+    ids.reduce((s, id) => s + (ratings.get(id) ?? ELO_START), 0) / ids.length
+  );
 }
 
-export function computeElo(matches: Match[], playerIds: string[] = []): EloResult {
+export function computeElo(
+  matches: Match[],
+  playerIds: string[] = [],
+): EloResult {
   const ratings = new Map<string, number>();
   const history = new Map<string, EloPoint[]>();
   for (const id of playerIds) {
@@ -75,7 +80,9 @@ export function computeElo(matches: Match[], playerIds: string[] = []): EloResul
         const after = before + delta * share;
         ratings.set(id, after);
         if (!history.has(id)) history.set(id, []);
-        history.get(id)!.push({ matchId: m.id, date: m.playedAt, before, after });
+        history
+          .get(id)!
+          .push({ matchId: m.id, date: m.playedAt, before, after });
       }
     }
   }
@@ -87,7 +94,12 @@ export function eloOf(r: EloResult, id: string): number {
 }
 
 /** Sum of rating changes for matches inside [start, end). */
-export function eloDelta(r: EloResult, id: string, start?: Date, end?: Date): number {
+export function eloDelta(
+  r: EloResult,
+  id: string,
+  start?: Date,
+  end?: Date,
+): number {
   const pts = r.history.get(id) ?? [];
   return pts
     .filter((p) => {
@@ -97,17 +109,27 @@ export function eloDelta(r: EloResult, id: string, start?: Date, end?: Date): nu
     .reduce((s, p) => s + (p.after - p.before), 0);
 }
 
-export function winProbability(teamA: string[], teamB: string[], ratings: Map<string, number>): number {
+export function winProbability(
+  teamA: string[],
+  teamB: string[],
+  ratings: Map<string, number>,
+): number {
   return expectedScore(avg(teamA, ratings), avg(teamB, ratings));
 }
 
 /** Ratings at the end of each month (for the trend chart). */
-export function eloByMonth(r: EloResult, id: string): { key: string; value: number }[] {
+export function eloByMonth(
+  r: EloResult,
+  id: string,
+): { key: string; value: number }[] {
   const out = new Map<string, number>();
   for (const p of r.history.get(id) ?? []) {
     const d = new Date(p.date);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     out.set(key, p.after);
   }
-  return [...out.entries()].map(([key, value]) => ({ key, value: Math.round(value) }));
+  return [...out.entries()].map(([key, value]) => ({
+    key,
+    value: Math.round(value),
+  }));
 }

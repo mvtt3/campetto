@@ -56,7 +56,8 @@ export function TrendChart({ playerId }: { playerId: string }) {
   const span = max - min || 1;
   const n = series.length - 1;
   // Con un solo mese il punto sta a sinistra e a destra c'è la spiegazione, così non si toccano.
-  const x = (i: number) => (n <= 0 ? PAD_X + 6 : PAD_X + (i / n) * (W - PAD_X * 2));
+  const x = (i: number) =>
+    n <= 0 ? PAD_X + 6 : PAD_X + (i / n) * (W - PAD_X * 2);
   // Con un solo valore (o tutti uguali) il punto sta a metà altezza, non schiacciato sull'asse.
   const y = (v: number) =>
     max === min ? H / 2 : PAD_Y + (1 - (v - min) / span) * (H - PAD_Y * 2);
@@ -77,8 +78,9 @@ export function TrendChart({ playerId }: { playerId: string }) {
         <h2 className="title flex shrink-0 items-center gap-1.5 text-[16px]">
           Andamento
           <InfoTip label="Cosa mostra il grafico" size={15}>
-            Mese per mese: il voto medio (punti, rimbalzi, assist, rubate e
-            stoppate meno errori e perse), i punti a partita o l&apos;ELO
+            Come vai mese dopo mese. Voto: punti, rimbalzi, assist, rubate e
+            stoppate, meno tiri sbagliati e palle perse. Punti: la media a
+            partita. ELO: il punteggio di forza
           </InfoTip>
         </h2>
         <Segmented

@@ -25,16 +25,28 @@ export function usePush() {
           setOn(true);
           toast("Fatto, ora ti avviso io");
           void backend.notify({ type: "test" });
-        } else if (r === "denied") toast("Il telefono mi blocca: riattiva le notifiche di Campetto nelle impostazioni del telefono", "error");
-        else if (r === "install") toast("Su iPhone prima aggiungimi alla schermata Home, poi ti posso avvisare", "error");
-        else toast("Da questo browser non riesco a mandarti notifiche", "error");
+        } else if (r === "denied")
+          toast(
+            "Il telefono mi blocca: riattiva le notifiche di Campetto nelle impostazioni del telefono",
+            "error",
+          );
+        else if (r === "install")
+          toast(
+            "Su iPhone prima aggiungimi alla schermata Home, poi ti posso avvisare",
+            "error",
+          );
+        else
+          toast("Da questo browser non riesco a mandarti notifiche", "error");
       } else {
         await disablePush(backend);
         setOn(false);
         toast("Ok, niente più notifiche su questo telefono");
       }
     } catch {
-      toast("Non sono riuscito a cambiare le notifiche, riprova tra poco", "error");
+      toast(
+        "Non sono riuscito a cambiare le notifiche, riprova tra poco",
+        "error",
+      );
     } finally {
       setBusy(false);
     }

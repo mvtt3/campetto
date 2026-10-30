@@ -19,7 +19,15 @@ for (const vp of VIEWPORTS) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await openApp(page, "demo", theme);
       await page.evaluate(() => {
-        localStorage.setItem("campetto:tour:p1", JSON.stringify({ version: 1, status: "dismissed", section: null, step: 0 }));
+        localStorage.setItem(
+          "campetto:tour:p1",
+          JSON.stringify({
+            version: 1,
+            status: "dismissed",
+            section: null,
+            step: 0,
+          }),
+        );
         localStorage.removeItem("campetto:seen-badges:p1");
       });
 
@@ -36,7 +44,9 @@ for (const vp of VIEWPORTS) {
       await page.keyboard.press("Escape");
 
       // Fumetto della "i"
-      await page.getByRole("button", { name: "Come funziona questa classifica" }).click();
+      await page
+        .getByRole("button", { name: "Come funziona questa classifica" })
+        .click();
       await check(page, '[role="tooltip"]', "fumetto info");
       await page.mouse.click(5, vp.height / 2);
 
@@ -61,37 +71,69 @@ for (const vp of VIEWPORTS) {
       await page.getByRole("button", { name: /Il tuo personaggio/ }).click();
       await check(page, '[role="dialog"]', "personaggi");
       await page.getByRole("button", { name: "Leggenda, bloccato" }).click();
-      await check(page, "[data-over-sheet] > div:last-child", "scheda del personaggio");
+      await check(
+        page,
+        "[data-over-sheet] > div:last-child",
+        "scheda del personaggio",
+      );
       await page.getByRole("button", { name: "Ci provo!" }).click();
       await page.getByRole("button", { name: /^Jack/ }).click();
-      await check(page, "[data-over-sheet] > div:last-child", "scheda di un personaggio sbloccato");
+      await check(
+        page,
+        "[data-over-sheet] > div:last-child",
+        "scheda di un personaggio sbloccato",
+      );
       await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
 
       // Classifica delle squadre e la sua "i"
       await page.goto("/classifiche");
       await page.getByRole("button", { name: "Squadre" }).click();
-      await page.getByRole("button", { name: "Come funziona la classifica delle squadre" }).click();
+      await page
+        .getByRole("button", {
+          name: "Come funziona la classifica delle squadre",
+        })
+        .click();
       await check(page, '[role="tooltip"]', "fumetto squadre");
       await page.mouse.click(5, vp.height / 2);
 
       // Le feste dopo la partita: risultato e personaggio nuovo.
       await page.evaluate(() => {
-        const ms = JSON.parse(localStorage.getItem("campetto:mock:v1")!).matches as { id: string; playedAt: string; players: { playerId: string }[] }[];
-        const mine = ms.filter((m) => m.players.some((p) => p.playerId === "p1")).sort((x, y) => x.playedAt.localeCompare(y.playedAt));
+        const ms = JSON.parse(localStorage.getItem("campetto:mock:v1")!)
+          .matches as {
+          id: string;
+          playedAt: string;
+          players: { playerId: string }[];
+        }[];
+        const mine = ms
+          .filter((m) => m.players.some((p) => p.playerId === "p1"))
+          .sort((x, y) => x.playedAt.localeCompare(y.playedAt));
         const fresh = mine.slice(-2).map((m) => m.id);
-        localStorage.setItem("campetto:seen-matches:p1", JSON.stringify(ms.map((m) => m.id).filter((id) => !fresh.includes(id))));
+        localStorage.setItem(
+          "campetto:seen-matches:p1",
+          JSON.stringify(
+            ms.map((m) => m.id).filter((id) => !fresh.includes(id)),
+          ),
+        );
         localStorage.setItem("campetto:seen-badges:p1", JSON.stringify(["x"]));
         localStorage.setItem("campetto:personaggi:p1", JSON.stringify([]));
       });
       await page.goto("/");
-      await check(page, '[aria-labelledby="party-title"] > div', "risultato dell'ultima partita");
+      await check(
+        page,
+        '[aria-labelledby="party-title"] > div',
+        "risultato dell'ultima partita",
+      );
       for (let i = 0; i < 8; i++) {
         const party = page.locator('[aria-labelledby="party-title"]');
         if (!(await party.count())) break;
         if (/Nuovo personaggio/.test((await party.textContent()) ?? "")) {
           await page.waitForTimeout(1200);
-          await check(page, '[aria-labelledby="party-title"] > div', "personaggio sbloccato");
+          await check(
+            page,
+            '[aria-labelledby="party-title"] > div',
+            "personaggio sbloccato",
+          );
           await party.getByRole("button", { name: "Dopo" }).click();
           continue;
         }

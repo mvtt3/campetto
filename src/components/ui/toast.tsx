@@ -1,7 +1,13 @@
 "use client";
 
 import clsx from "clsx";
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 import { play } from "@/lib/sound";
 import { SpicchioFace } from "./pull-to-refresh";
 
@@ -12,7 +18,9 @@ interface ToastItem {
   leaving?: boolean;
 }
 
-const ToastCtx = createContext<(text: string, tone?: "ok" | "error") => void>(() => {});
+const ToastCtx = createContext<(text: string, tone?: "ok" | "error") => void>(
+  () => {},
+);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
@@ -20,11 +28,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = Date.now() + Math.random();
     if (tone === "error") play("error");
     // Un messaggio alla volta: quello nuovo prende il posto del vecchio, che svanisce.
-    setItems((xs) => [...xs.filter((x) => !x.leaving).map((x) => ({ ...x, leaving: true })), { id, text, tone }]);
-    setTimeout(() => setItems((xs) => xs.filter((x) => x.id === id || !x.leaving)), 520);
+    setItems((xs) => [
+      ...xs.filter((x) => !x.leaving).map((x) => ({ ...x, leaving: true })),
+      { id, text, tone },
+    ]);
+    setTimeout(
+      () => setItems((xs) => xs.filter((x) => x.id === id || !x.leaving)),
+      520,
+    );
     const stay = tone === "error" ? 5200 : 3000;
-    setTimeout(() => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, leaving: true } : x))), stay);
-    setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), stay + 520);
+    setTimeout(
+      () =>
+        setItems((xs) =>
+          xs.map((x) => (x.id === id ? { ...x, leaving: true } : x)),
+        ),
+      stay,
+    );
+    setTimeout(
+      () => setItems((xs) => xs.filter((x) => x.id !== id)),
+      stay + 520,
+    );
   }, []);
   return (
     <ToastCtx.Provider value={show}>
@@ -43,8 +66,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               t.leaving && "toast-leave",
             )}
           >
-            <span className={clsx("grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16]", t.tone === "error" ? "bg-ball-soft" : "bg-volt")}>
-              <SpicchioFace size={30} pose={t.tone === "error" ? "boh" : "ciao"} />
+            <span
+              className={clsx(
+                "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16]",
+                t.tone === "error" ? "bg-ball-soft" : "bg-volt",
+              )}
+            >
+              <SpicchioFace
+                size={30}
+                pose={t.tone === "error" ? "boh" : "ciao"}
+              />
             </span>
             <span className="min-w-0">{t.text}</span>
           </div>

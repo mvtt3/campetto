@@ -98,7 +98,7 @@ export function Form({ playerId }: { playerId: string }) {
       <span className="title flex items-center gap-1.5 text-[15px]">
         Forma
         <InfoTip label="Cos'è la forma" size={15}>
-          Le ultime 6 partite, la più recente a sinistra: V vinta, S persa
+          Le ultime 6 partite, dalla più recente: V vittoria, S sconfitta
         </InfoTip>
       </span>
       <div

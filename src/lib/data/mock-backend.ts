@@ -140,7 +140,11 @@ export function demoMatches(
         box.fg2a = box.fg2m + Math.floor(rnd() * 5);
         // Da sotto: circa metà dei tiri da 2 (il resto dalla media).
         box.fgra = Math.round(box.fg2a * (0.3 + rnd() * 0.4));
-        box.fgrm = Math.min(box.fgra, box.fg2m, Math.round(box.fgra * (0.4 + rnd() * 0.4)));
+        box.fgrm = Math.min(
+          box.fgra,
+          box.fg2m,
+          Math.round(box.fgra * (0.4 + rnd() * 0.4)),
+        );
         box.fg3a = box.fg3m + Math.floor(rnd() * 4);
         box.pts = box.fg2m * 2 + box.fg3m * 3;
         box.oreb = Math.floor(rnd() * 3);
@@ -209,7 +213,7 @@ function ieriState(): MockState {
   const players = seedPlayers().map((p) => ({
     ...p,
     nickname: p.id === "p1" ? "Springs" : null,
-    character: p.id === "p1" ? "volo" : null,
+    character: null,
     avatarUrl: null,
   }));
   const matches: Match[] = [...IERI].reverse().map((m, j) => {
@@ -366,6 +370,7 @@ export function createMockBackend(): Backend {
         players: state.players,
         matches: state.matches,
         proposals: state.proposals,
+        news: state.news ?? [],
       });
     },
     subscribe(cb) {
@@ -487,9 +492,16 @@ export function createMockBackend(): Backend {
         );
       // Come nel database: dopo il primo nome, un cambio ogni 14 giorni.
       const cur = me();
-      if (patch.nickname !== undefined && patch.nickname !== cur.nickname && cur.nickname) {
+      if (
+        patch.nickname !== undefined &&
+        patch.nickname !== cur.nickname &&
+        cur.nickname
+      ) {
         const until = nameUnlockDate(cur);
-        if (until) throw new Error(`Puoi cambiare nome di nuovo dal ${until.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}`);
+        if (until)
+          throw new Error(
+            `Puoi cambiare nome di nuovo dal ${until.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}`,
+          );
         cur.nicknameChangedAt = new Date().toISOString();
       }
       Object.assign(cur, patch);

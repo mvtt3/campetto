@@ -16,7 +16,9 @@ describe("classifiche eque", () => {
 
   // x gioca 10 partite con medie normali, y solo 2 con medie altissime.
   const ms = [
-    ...Array.from({ length: 10 }, (_, i) => duel(oct(i + 1), "x", "z", 21, 15, [{ pts: 12 }, { pts: 10 }])),
+    ...Array.from({ length: 10 }, (_, i) =>
+      duel(oct(i + 1), "x", "z", 21, 15, [{ pts: 12 }, { pts: 10 }]),
+    ),
     duel(oct(20), "y", "z", 21, 2, [{ pts: 21 }, { pts: 2 }]),
     duel(oct(21), "y", "z", 21, 3, [{ pts: 21 }, { pts: 3 }]),
   ];
@@ -24,7 +26,10 @@ describe("classifiche eque", () => {
 
   it("chi gioca poco resta fuori dalle medie, con le partite che mancano", () => {
     const stats = ids.map((id) => computePlayerStats(id, ms));
-    const lb = leaderboard(STAT_BY_KEY.get("punti")!, stats, { elo: computeElo(ms, ids), allTime: true });
+    const lb = leaderboard(STAT_BY_KEY.get("punti")!, stats, {
+      elo: computeElo(ms, ids),
+      allTime: true,
+    });
     expect(lb.minGames).toBe(5);
     expect(lb.rows.map((r) => r.playerId)).toEqual(["x", "z"]);
     expect(lb.pending).toEqual([{ playerId: "y", value: 21, missing: 3 }]);
@@ -32,7 +37,10 @@ describe("classifiche eque", () => {
 
   it("i totali premiano chi viene", () => {
     const stats = ids.map((id) => computePlayerStats(id, ms));
-    const lb = leaderboard(STAT_BY_KEY.get("vittorie")!, stats, { elo: computeElo(ms, ids), allTime: true });
+    const lb = leaderboard(STAT_BY_KEY.get("vittorie")!, stats, {
+      elo: computeElo(ms, ids),
+      allTime: true,
+    });
     expect(lb.rows[0].playerId).toBe("x");
     expect(lb.pending).toEqual([]);
   });
@@ -52,15 +60,31 @@ describe("MVP: conta far vincere la squadra", () => {
       a: 21,
       b: 17,
       lines: [
-        { id: "g", team: "A", box: { pts: 4, fg2m: 2, fg2a: 4, ast: 5, dreb: 4 } },
-        { id: i % 2 ? "c" : "d", team: "A", box: { pts: 17, fg2m: 7, fg3m: 1, fg2a: 12, fg3a: 3 } },
-        { id: "s", team: "B", box: { pts: 13, fg2m: 5, fg3m: 1, fg2a: 9, fg3a: 2, dreb: 2 } },
+        {
+          id: "g",
+          team: "A",
+          box: { pts: 4, fg2m: 2, fg2a: 4, ast: 5, dreb: 4 },
+        },
+        {
+          id: i % 2 ? "c" : "d",
+          team: "A",
+          box: { pts: 17, fg2m: 7, fg3m: 1, fg2a: 12, fg3a: 3 },
+        },
+        {
+          id: "s",
+          team: "B",
+          box: { pts: 13, fg2m: 5, fg3m: 1, fg2a: 9, fg3a: 2, dreb: 2 },
+        },
         { id: i % 2 ? "d" : "c", team: "B", box: { pts: 4, fg2m: 2, fg2a: 8 } },
       ],
     }),
   );
   it("chi vince sempre batte chi fa più punti ma perde", () => {
-    const rank = mvpRanking(["g", "s", "c", "d"], ms, { kind: "month", year: 2026, month: 9 });
+    const rank = mvpRanking(["g", "s", "c", "d"], ms, {
+      kind: "month",
+      year: 2026,
+      month: 9,
+    });
     const pos = (id: string) => rank.findIndex((r) => r.playerId === id);
     expect(pos("g")).toBeLessThan(pos("s"));
     expect(rank.find((r) => r.playerId === "g")!.plusMinusAvg).toBe(4);

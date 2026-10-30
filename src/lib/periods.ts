@@ -49,7 +49,10 @@ export function monthOf(date: Date | string): { year: number; month: number } {
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
-export function seasonOf(date: Date | string): { year: number; quarter: number } {
+export function seasonOf(date: Date | string): {
+  year: number;
+  quarter: number;
+} {
   const { year, month } = monthOf(date);
   return { year, quarter: Math.floor(month / 3) };
 }
@@ -81,9 +84,15 @@ export function periodLabel(p: Period): string {
 export function periodRange(p: Period): { start: Date; end: Date } | null {
   if (p.kind === "all") return null;
   if (p.kind === "month") {
-    return { start: new Date(p.year, p.month, 1), end: new Date(p.year, p.month + 1, 1) };
+    return {
+      start: new Date(p.year, p.month, 1),
+      end: new Date(p.year, p.month + 1, 1),
+    };
   }
-  return { start: new Date(p.year, p.quarter * 3, 1), end: new Date(p.year, p.quarter * 3 + 3, 1) };
+  return {
+    start: new Date(p.year, p.quarter * 3, 1),
+    end: new Date(p.year, p.quarter * 3 + 3, 1),
+  };
 }
 
 export function inPeriod(dateIso: string, p: Period): boolean {
@@ -109,7 +118,9 @@ export function filterMatches(matches: Match[], f: Partial<Filter>): Match[] {
 
 export function sortChrono(matches: Match[]): Match[] {
   return [...matches].sort(
-    (a, b) => a.playedAt.localeCompare(b.playedAt) || a.createdAt.localeCompare(b.createdAt),
+    (a, b) =>
+      a.playedAt.localeCompare(b.playedAt) ||
+      a.createdAt.localeCompare(b.createdAt),
   );
 }
 
@@ -124,20 +135,28 @@ export function shiftSeason(year: number, quarter: number, delta: number) {
 }
 
 /** All months (oldest first) that contain at least one match. */
-export function monthsWithMatches(matches: Match[]): { year: number; month: number }[] {
+export function monthsWithMatches(
+  matches: Match[],
+): { year: number; month: number }[] {
   const keys = new Map<string, { year: number; month: number }>();
   for (const m of matches) {
     const mo = monthOf(m.playedAt);
     keys.set(monthKey(mo.year, mo.month), mo);
   }
-  return [...keys.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
+  return [...keys.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, v]) => v);
 }
 
-export function seasonsWithMatches(matches: Match[]): { year: number; quarter: number }[] {
+export function seasonsWithMatches(
+  matches: Match[],
+): { year: number; quarter: number }[] {
   const keys = new Map<string, { year: number; quarter: number }>();
   for (const m of matches) {
     const s = seasonOf(m.playedAt);
     keys.set(seasonKey(s.year, s.quarter), s);
   }
-  return [...keys.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
+  return [...keys.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, v]) => v);
 }

@@ -23,15 +23,24 @@ export function chemistry(playerId: string, matches: Match[]): TeammateLine[] {
       if (p.playerId === playerId || p.team !== t) continue;
       const line =
         map.get(p.playerId) ??
-        ({ playerId: p.playerId, games: 0, wins: 0, winPct: 0, assistsTo: 0, assistsFrom: 0 } as TeammateLine);
+        ({
+          playerId: p.playerId,
+          games: 0,
+          wins: 0,
+          winPct: 0,
+          assistsTo: 0,
+          assistsFrom: 0,
+        } as TeammateLine);
       line.games++;
       if (won) line.wins++;
       map.set(p.playerId, line);
     }
     for (const e of m.events) {
       if (e.kind !== "ast" || !e.targetPlayerId) continue;
-      if (e.playerId === playerId && map.has(e.targetPlayerId)) map.get(e.targetPlayerId)!.assistsTo++;
-      if (e.targetPlayerId === playerId && map.has(e.playerId)) map.get(e.playerId)!.assistsFrom++;
+      if (e.playerId === playerId && map.has(e.targetPlayerId))
+        map.get(e.targetPlayerId)!.assistsTo++;
+      if (e.targetPlayerId === playerId && map.has(e.playerId))
+        map.get(e.playerId)!.assistsFrom++;
     }
   }
   const out = [...map.values()];
@@ -53,11 +62,20 @@ export function bestPairs(matches: Match[], minGames = 3): PairLine[] {
   for (const m of matches) {
     const w = winnerOf(m);
     for (const team of ["A", "B"] as const) {
-      const ids = m.players.filter((p) => p.team === team).map((p) => p.playerId).sort();
+      const ids = m.players
+        .filter((p) => p.team === team)
+        .map((p) => p.playerId)
+        .sort();
       for (let i = 0; i < ids.length; i++)
         for (let j = i + 1; j < ids.length; j++) {
           const key = `${ids[i]}|${ids[j]}`;
-          const l = map.get(key) ?? { a: ids[i], b: ids[j], games: 0, wins: 0, winPct: 0 };
+          const l = map.get(key) ?? {
+            a: ids[i],
+            b: ids[j],
+            games: 0,
+            wins: 0,
+            winPct: 0,
+          };
           l.games++;
           if (w === team) l.wins++;
           map.set(key, l);
@@ -124,7 +142,11 @@ export function rivalries(matches: Match[], minGames = 3): Rivalry[] {
   }
   return [...map.values()]
     .filter((r) => r.games >= minGames)
-    .sort((x, y) => y.games - x.games || Math.abs(x.winsA - x.winsB) - Math.abs(y.winsA - y.winsB));
+    .sort(
+      (x, y) =>
+        y.games - x.games ||
+        Math.abs(x.winsA - x.winsB) - Math.abs(y.winsA - y.winsB),
+    );
 }
 
 export interface StreakInfo {
@@ -176,7 +198,11 @@ export const TEAM_MIN_GAMES = 2;
  * 3 contro 3…). Conta solo vinte e perse. Prima chi ha più vittorie che sconfitte,
  * a pari saldo la percentuale migliore, poi chi ha giocato di più.
  */
-export function teamRecords(matches: Match[], format: Match["format"], minGames = TEAM_MIN_GAMES): TeamRecord[] {
+export function teamRecords(
+  matches: Match[],
+  format: Match["format"],
+  minGames = TEAM_MIN_GAMES,
+): TeamRecord[] {
   const map = new Map<string, TeamRecord>();
   for (const m of matches) {
     if (m.format !== format) continue;
@@ -185,11 +211,27 @@ export function teamRecords(matches: Match[], format: Match["format"], minGames 
     for (const team of ["A", "B"] as const) {
       const line = m.players.filter((p) => p.team === team);
       // Con i cambi è un'altra squadra: conta chi c'era, titolari prima.
-      const ids = [...line].sort((x, y) => Number(!!x.sub) - Number(!!y.sub) || x.playerId.localeCompare(y.playerId)).map((p) => p.playerId);
+      const ids = [...line]
+        .sort(
+          (x, y) =>
+            Number(!!x.sub) - Number(!!y.sub) ||
+            x.playerId.localeCompare(y.playerId),
+        )
+        .map((p) => p.playerId);
       if (!ids.length) continue;
       const subs = line.filter((p) => p.sub).map((p) => p.playerId);
-      const key = [...ids].sort().join("|") + (subs.length ? `|cambi:${[...subs].sort().join(",")}` : "");
-      const r = map.get(key) ?? { ids, subs, games: 0, wins: 0, losses: 0, winPct: 0, lastPlayed: m.playedAt };
+      const key =
+        [...ids].sort().join("|") +
+        (subs.length ? `|cambi:${[...subs].sort().join(",")}` : "");
+      const r = map.get(key) ?? {
+        ids,
+        subs,
+        games: 0,
+        wins: 0,
+        losses: 0,
+        winPct: 0,
+        lastPlayed: m.playedAt,
+      };
       r.games++;
       if (w === team) r.wins++;
       else r.losses++;

@@ -2,12 +2,24 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
-export function LegalPage({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
+export function LegalPage({
+  title,
+  updated,
+  children,
+}: {
+  title: string;
+  updated: string;
+  children: ReactNode;
+}) {
   return (
     <div className="mx-auto flex h-dvh max-w-lg flex-col">
       <header className="safe-top shrink-0 px-4">
         <div className="flex h-14 items-center gap-2">
-          <Link href="/" aria-label="Indietro" className="-ml-2 grid h-11 w-11 place-items-center rounded-full">
+          <Link
+            href="/"
+            aria-label="Indietro"
+            className="-ml-2 grid h-11 w-11 place-items-center rounded-full"
+          >
             <ChevronLeft size={24} />
           </Link>
           <h1 className="title text-[24px]">{title}</h1>

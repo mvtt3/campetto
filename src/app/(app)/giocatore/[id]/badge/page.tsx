@@ -7,6 +7,9 @@ import { useEffect } from "react";
 export default function OldPlayerBadgesPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  useEffect(() => router.replace(`/giocatore/badge?id=${encodeURIComponent(id)}`), [id, router]);
+  useEffect(
+    () => router.replace(`/giocatore/badge?id=${encodeURIComponent(id)}`),
+    [id, router],
+  );
   return null;
 }

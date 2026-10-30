@@ -6,8 +6,20 @@ import { haptic } from "@/components/ui/basics";
 /** Evento per far scorrere da sola la scheda verso quella dopo (la guida mostra il gesto). */
 export const SWIPE_DEMO = "campetto:swipe-demo";
 
-const IGNORE = ".scroll-x, [data-no-swipe], input, textarea, select, [role='slider']";
-const STYLE_PROPS = ["display", "flexDirection", "position", "inset", "transform", "transition", "zIndex", "willChange", "contentVisibility", "pointerEvents"] as const;
+const IGNORE =
+  ".scroll-x, [data-no-swipe], input, textarea, select, [role='slider']";
+const STYLE_PROPS = [
+  "display",
+  "flexDirection",
+  "position",
+  "inset",
+  "transform",
+  "transition",
+  "zIndex",
+  "willChange",
+  "contentVisibility",
+  "pointerEvents",
+] as const;
 
 function clear(el: HTMLElement) {
   for (const p of STYLE_PROPS) el.style[p] = "";
@@ -47,7 +59,8 @@ export function useTabSwipe({
     if (!root || !active) return;
     const idx = paths.indexOf(active);
     if (idx < 0) return;
-    const el = (p: string) => root.querySelector<HTMLElement>(`:scope > [data-tab="${p}"]`);
+    const el = (p: string) =>
+      root.querySelector<HTMLElement>(`:scope > [data-tab="${p}"]`);
 
     let sx = 0;
     let sy = 0;
@@ -62,7 +75,9 @@ export function useTabSwipe({
 
     const place = (x: number, animate: boolean | string) => {
       const w = root.clientWidth;
-      const t = animate ? `transform ${animate === true ? "280ms cubic-bezier(0.22, 0.8, 0.3, 1)" : animate}` : "none";
+      const t = animate
+        ? `transform ${animate === true ? "280ms cubic-bezier(0.22, 0.8, 0.3, 1)" : animate}`
+        : "none";
       if (cur) {
         cur.style.transition = t;
         cur.style.transform = `translate3d(${x}px, 0, 0)`;
@@ -123,7 +138,14 @@ export function useTabSwipe({
       const pill = document.querySelector<HTMLElement>("[data-nav-pill]");
       if (pill) {
         pill.setAttribute("data-dragging", "");
-        pill.style.setProperty("--drag", String(paths[idx + d] ? Math.max(-1, Math.min(1, -dx / root.clientWidth)) : 0));
+        pill.style.setProperty(
+          "--drag",
+          String(
+            paths[idx + d]
+              ? Math.max(-1, Math.min(1, -dx / root.clientWidth))
+              : 0,
+          ),
+        );
       }
     };
     const end = () => {
@@ -135,7 +157,9 @@ export function useTabSwipe({
       const w = root.clientWidth;
       const v = Math.abs(dx) / Math.max(1, performance.now() - st);
       const target = paths[idx + dir];
-      const go = !!target && (Math.abs(dx) > w * 0.28 || (v > 0.45 && Math.abs(dx) > 36));
+      const go =
+        !!target &&
+        (Math.abs(dx) > w * 0.28 || (v > 0.45 && Math.abs(dx) > 36));
       busy = true;
       const pill = document.querySelector<HTMLElement>("[data-nav-pill]");
       if (pill) {

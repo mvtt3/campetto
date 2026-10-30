@@ -2,26 +2,45 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
-import { isBeforeStart, periodLabel, shiftMonth, shiftSeason, type FormatFilter, type Period } from "@/lib/periods";
+import {
+  isBeforeStart,
+  periodLabel,
+  shiftMonth,
+  shiftSeason,
+  type FormatFilter,
+  type Period,
+} from "@/lib/periods";
 import { FORMATS } from "@/lib/types";
 import { haptic, Segmented } from "./ui/basics";
 import { Menu } from "./ui/pickers";
 
 export function defaultPeriod(kind: Period["kind"], now = new Date()): Period {
   if (kind === "all") return { kind: "all" };
-  if (kind === "month") return { kind: "month", year: now.getFullYear(), month: now.getMonth() };
-  return { kind: "season", year: now.getFullYear(), quarter: Math.floor(now.getMonth() / 3) };
+  if (kind === "month")
+    return { kind: "month", year: now.getFullYear(), month: now.getMonth() };
+  return {
+    kind: "season",
+    year: now.getFullYear(),
+    quarter: Math.floor(now.getMonth() / 3),
+  };
 }
 
 function shift(p: Period, d: number): Period {
-  if (p.kind === "month") return { kind: "month", ...shiftMonth(p.year, p.month, d) };
-  if (p.kind === "season") return { kind: "season", ...shiftSeason(p.year, p.quarter, d) };
+  if (p.kind === "month")
+    return { kind: "month", ...shiftMonth(p.year, p.month, d) };
+  if (p.kind === "season")
+    return { kind: "season", ...shiftSeason(p.year, p.quarter, d) };
   return p;
 }
 
 function isFuture(p: Period, now = new Date()): boolean {
-  if (p.kind === "month") return p.year * 12 + p.month > now.getFullYear() * 12 + now.getMonth();
-  if (p.kind === "season") return p.year * 4 + p.quarter > now.getFullYear() * 4 + Math.floor(now.getMonth() / 3);
+  if (p.kind === "month")
+    return p.year * 12 + p.month > now.getFullYear() * 12 + now.getMonth();
+  if (p.kind === "season")
+    return (
+      p.year * 4 + p.quarter >
+      now.getFullYear() * 4 + Math.floor(now.getMonth() / 3)
+    );
   return false;
 }
 
@@ -76,7 +95,10 @@ export function PeriodPicker({
             >
               <ChevronLeft size={20} />
             </button>
-            <p className="title min-w-0 flex-1 truncate text-center text-[16px]" aria-live="polite">
+            <p
+              className="title min-w-0 flex-1 truncate text-center text-[16px]"
+              aria-live="polite"
+            >
               {periodLabel(value).replace("Stagione ", "")}
             </p>
             <button
@@ -97,10 +119,16 @@ export function PeriodPicker({
             className="ml-1"
             value={format ?? "all"}
             onChange={onFormat}
-            trigger={<span>{format === "all" || !format ? "Tutti" : format}</span>}
+            trigger={
+              <span>{format === "all" || !format ? "Tutti" : format}</span>
+            }
             options={[
               { value: "all", label: "Tutti i formati" },
-              ...FORMATS.map((f) => ({ value: f as FormatFilter, label: f, hint: `${f[0]} contro ${f[0]}` })),
+              ...FORMATS.map((f) => ({
+                value: f as FormatFilter,
+                label: f,
+                hint: `${f[0]} contro ${f[0]}`,
+              })),
             ]}
           />
         )}

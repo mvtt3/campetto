@@ -114,8 +114,8 @@ export function ProfileHeader({
             <span className="flex items-center gap-1.5 rounded-full bg-[var(--chip)] py-1 pl-2.5 pr-1.5 text-[12.5px] font-semibold">
               ELO <span className="tnum font-bold">{elo}</span>
               <InfoTip label="Cos'è l'ELO" size={15}>
-                È il punteggio di forza: si parte da 1000, sale quando vinci e
-                scende quando perdi, di più se l&apos;avversario è forte
+                Il punteggio di forza. Si parte tutti da 1000: vincendo sale,
+                perdendo scende. Battere chi è più forte vale di più
               </InfoTip>
             </span>
             {isMvp && engine.mvp?.period.kind === "month" && (

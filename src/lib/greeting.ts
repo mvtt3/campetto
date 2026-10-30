@@ -4,7 +4,8 @@
  */
 export function greeting(hour: number): { lead: string; question: boolean } {
   if (hour >= 8 && hour < 13) return { lead: "Buongiorno", question: false };
-  if (hour >= 13 && hour < 18) return { lead: "Buon pomeriggio", question: false };
+  if (hour >= 13 && hour < 18)
+    return { lead: "Buon pomeriggio", question: false };
   if (hour >= 18) return { lead: "Buonasera", question: false };
   return { lead: "Nottambulo oggi", question: true };
 }

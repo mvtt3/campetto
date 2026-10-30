@@ -58,13 +58,13 @@ interface Pending {
 
 function boardInfo(board: Board, minGames: number | null): string {
   if (board === "mvp")
-    return `Conta soprattutto vincere: 35% vittorie, 20% quanto fai vincere la squadra (+/−), 30% statistiche, 15% presenza. Servono almeno ${minGames ?? 3} partite`;
+    return `Conta come giochi e conta vincere: 45% statistiche (punti, poi rimbalzi, assist, rubate e stoppate), 30% vittorie, 15% presenza, 10% impatto sulla squadra. Servono almeno ${minGames ?? 3} partite`;
   if (board === "vittorie")
-    return "Il totale delle vittorie nel periodo: qui conta anche quante volte vieni";
+    return "Le vittorie nel periodo: più giochi, più ne puoi mettere insieme";
   if (board === "elo")
-    return "Sale quando vinci e scende quando perdi, di più contro chi è più forte. Nel mese e nella stagione vedi quanto è cambiato.";
-  const extra = board === "tre" ? " e almeno 5 tiri da tre" : "";
-  return `Media a partita. Per entrare servono almeno ${minGames ?? 2} partite con tabellino${extra}, così chi gioca poco non scavalca chi c'è sempre.`;
+    return "Il punteggio di forza: sale quando vinci, scende quando perdi, di più contro chi è forte. Nel mese e nella stagione vedi di quanto è salito o sceso";
+  const extra = board === "tre" ? " e 5 tiri da tre" : "";
+  return `La media a partita. Per entrare in classifica servono almeno ${minGames ?? 2} partite con il tabellino${extra}: così chi gioca una volta sola non scavalca chi c'è sempre. Chi tira poco compare in fondo`;
 }
 
 function missingLabel(missing: number): string {
@@ -112,7 +112,9 @@ function Podium({ rows }: { rows: Row[] }) {
               </p>
               <p className="num text-[20px]">{r.value}</p>
               {r.value === "—" && r.sub && (
-                <p className="text-[11.5px] font-semibold text-muted">{r.sub}</p>
+                <p className="text-[11.5px] font-semibold text-muted">
+                  {r.sub}
+                </p>
               )}
             </div>
             <motion.div

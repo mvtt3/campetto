@@ -17,13 +17,33 @@ describe("saluto in Home", () => {
 
 describe("la voce di Spicchio", () => {
   it("traduce gli errori in prima persona", () => {
-    expect(say(new Error("Failed to fetch"))).toMatch(/^Ho perso la connessione/);
-    expect(say(new Error('duplicate key value violates unique constraint "players_nickname_key"'))).toMatch(/nome ce l'ha già/);
-    expect(say(new Error("Per il 3v3 servono 3 giocatori per squadra."))).toBe("Per il 3v3 mi servono 3 giocatori per squadra");
-    expect(say(new Error("Il risultato non può essere un pareggio."))).toMatch(/non si pareggia/);
-    expect(say(new Error("boh"))).toBe("Qualcosa non ha funzionato: riprova tra poco");
+    expect(say(new Error("Failed to fetch"))).toMatch(
+      /^Ho perso la connessione/,
+    );
+    expect(
+      say(
+        new Error(
+          'duplicate key value violates unique constraint "players_nickname_key"',
+        ),
+      ),
+    ).toMatch(/nome ce l'ha già/);
+    expect(say(new Error("Per il 3v3 servono 3 giocatori per squadra."))).toBe(
+      "Per il 3v3 mi servono 3 giocatori per squadra",
+    );
+    expect(say(new Error("Il risultato non può essere un pareggio."))).toMatch(
+      /non si pareggia/,
+    );
+    expect(say(new Error("boh"))).toBe(
+      "Qualcosa non ha funzionato: riprova tra poco",
+    );
   });
   it("nessun messaggio finisce con il punto", () => {
-    for (const m of ["Failed to fetch", "JWT expired", "Invito non valido o scaduto.", "x"]) expect(say(new Error(m)).endsWith(".")).toBe(false);
+    for (const m of [
+      "Failed to fetch",
+      "JWT expired",
+      "Invito non valido o scaduto.",
+      "x",
+    ])
+      expect(say(new Error(m)).endsWith(".")).toBe(false);
   });
 });

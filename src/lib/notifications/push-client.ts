@@ -4,7 +4,12 @@ import { VAPID_PUBLIC_KEY } from "../config";
 import type { Backend } from "../data/backend";
 
 export function pushSupported(): boolean {
-  return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  return (
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
 }
 
 export function isStandalone(): boolean {
@@ -19,7 +24,10 @@ export function isStandalone(): boolean {
 
 export function isIos(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return (
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
@@ -37,15 +45,23 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   return (await reg?.pushManager.getSubscription()) ?? null;
 }
 
-export async function enablePush(backend: Backend): Promise<"ok" | "denied" | "unsupported" | "install"> {
-  if (!pushSupported()) return isIos() && !isStandalone() ? "install" : "unsupported";
+export async function enablePush(
+  backend: Backend,
+): Promise<"ok" | "denied" | "unsupported" | "install"> {
+  if (!pushSupported())
+    return isIos() && !isStandalone() ? "install" : "unsupported";
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return "denied";
-  const reg = (await navigator.serviceWorker.getRegistration("/")) ?? (await navigator.serviceWorker.register("/sw.js"));
+  const reg =
+    (await navigator.serviceWorker.getRegistration("/")) ??
+    (await navigator.serviceWorker.register("/sw.js"));
   await navigator.serviceWorker.ready;
   const sub =
     (await reg.pushManager.getSubscription()) ??
-    (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }));
+    (await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    }));
   await backend.savePushSubscription(sub.toJSON());
   return "ok";
 }

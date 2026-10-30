@@ -4,8 +4,20 @@ import clsx from "clsx";
 import { Check, Lock, RotateCw, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AVATAR_PRESETS, CHARACTER_TAGLINE, RARITIES, RARITY, type AvatarPresetId, type Rarity } from "@/components/avatar-presets";
-import { Character, characterProgress, nextCharacter, type GoalStep } from "@/components/character";
+import {
+  AVATAR_PRESETS,
+  CHARACTER_TAGLINE,
+  RARITIES,
+  RARITY,
+  type AvatarPresetId,
+  type Rarity,
+} from "@/components/avatar-presets";
+import {
+  Character,
+  characterProgress,
+  nextCharacter,
+  type GoalStep,
+} from "@/components/character";
 import { Button, haptic } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { play } from "@/lib/sound";
@@ -44,7 +56,9 @@ export function Character3D({
   useEffect(() => {
     // Dopo il primo disegno (un fotogramma, poi subito dopo): non rallenta la risposta al tocco.
     let t = 0;
-    const r = requestAnimationFrame(() => (t = window.setTimeout(() => setThick(true), 0)));
+    const r = requestAnimationFrame(
+      () => (t = window.setTimeout(() => setThick(true), 0)),
+    );
     return () => {
       cancelAnimationFrame(r);
       window.clearTimeout(t);
@@ -59,12 +73,20 @@ export function Character3D({
     const el = inner.current;
     const sway = el?.parentElement;
     if (!el || !sway) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const st = {
       angle: 0,
       vel: 0,
       target: 0,
-      drag: null as null | { x: number; a: number; samples: { t: number; a: number }[]; moved: boolean; t0: number },
+      drag: null as null | {
+        x: number;
+        a: number;
+        samples: { t: number; a: number }[];
+        moved: boolean;
+        t0: number;
+      },
       last: performance.now(),
       touched: false,
       raf: 0,
@@ -72,7 +94,12 @@ export function Character3D({
     const stage = sway.parentElement!;
     el.style.transform = "";
     // L'entrata (un cenno o un giro intero) la fa il browser da solo: fluida anche sui telefoni lenti.
-    const introCls = reduce || intro === "none" ? null : intro === "spin" ? "char3d-spin" : "char3d-peek";
+    const introCls =
+      reduce || intro === "none"
+        ? null
+        : intro === "spin"
+          ? "char3d-spin"
+          : "char3d-peek";
     let introOn = Boolean(introCls);
     const endIntro = (keepAngle: boolean) => {
       if (!introOn) return;
@@ -162,7 +189,13 @@ export function Character3D({
       endIntro(true);
       stopSway();
       st.touched = true;
-      st.drag = { x: e.clientX, a: st.angle, samples: [{ t: e.timeStamp, a: st.angle }], moved: false, t0: e.timeStamp };
+      st.drag = {
+        x: e.clientX,
+        a: st.angle,
+        samples: [{ t: e.timeStamp, a: st.angle }],
+        moved: false,
+        t0: e.timeStamp,
+      };
       st.vel = 0;
       wake();
     };
@@ -173,7 +206,8 @@ export function Character3D({
       if (Math.abs(dx) > 5) d.moved = true;
       st.angle = d.a + dx * 0.75;
       d.samples.push({ t: e.timeStamp, a: st.angle });
-      while (d.samples.length > 2 && e.timeStamp - d.samples[0].t > 90) d.samples.shift();
+      while (d.samples.length > 2 && e.timeStamp - d.samples[0].t > 90)
+        d.samples.shift();
     };
     const up = (e: PointerEvent) => {
       const d = st.drag;
@@ -212,24 +246,57 @@ export function Character3D({
     };
   }, [intro]);
 
-  const slices = Array.from({ length: SLICES }, (_, i) => -depth / 2 + ((i + 1) * depth) / (SLICES + 1));
+  const slices = Array.from(
+    { length: SLICES },
+    (_, i) => -depth / 2 + ((i + 1) * depth) / (SLICES + 1),
+  );
   return (
-    <div className="char3d mx-auto select-none" style={{ width: width + depth * 2, height }} role="img" aria-label="Trascina o tocca per girare il personaggio">
+    <div
+      className="char3d mx-auto select-none"
+      style={{ width: width + depth * 2, height }}
+      role="img"
+      aria-label="Trascina o tocca per girare il personaggio"
+    >
       <div className="char3d-stage">
         <div className="char3d-sway">
-        <div ref={inner} className="char3d-inner" style={{ width, height }}>
-          <div className="char3d-face char3d-back" style={{ transform: `rotateY(180deg) translateZ(${depth / 2}px)` }}>
-            <Character id={id} number={number} height={height} back backName={locked ? undefined : name} idle={!locked && face === "back"} />
-          </div>
-          {thick && slices.map((z) => (
-            <div key={z} className="char3d-slice" style={{ transform: `translateZ(${z.toFixed(1)}px)` }}>
-              <Character id={id} number={null} height={height} noBall />
+          <div ref={inner} className="char3d-inner" style={{ width, height }}>
+            <div
+              className="char3d-face char3d-back"
+              style={{
+                transform: `rotateY(180deg) translateZ(${depth / 2}px)`,
+              }}
+            >
+              <Character
+                id={id}
+                number={number}
+                height={height}
+                back
+                backName={locked ? undefined : name}
+                idle={!locked && face === "back"}
+              />
             </div>
-          ))}
-          <div className="char3d-face" style={{ transform: `translateZ(${depth / 2}px)` }}>
-            <Character id={id} number={number} height={height} idle={!locked && face === "front"} />
+            {thick &&
+              slices.map((z) => (
+                <div
+                  key={z}
+                  className="char3d-slice"
+                  style={{ transform: `translateZ(${z.toFixed(1)}px)` }}
+                >
+                  <Character id={id} number={null} height={height} noBall />
+                </div>
+              ))}
+            <div
+              className="char3d-face"
+              style={{ transform: `translateZ(${depth / 2}px)` }}
+            >
+              <Character
+                id={id}
+                number={number}
+                height={height}
+                idle={!locked && face === "front"}
+              />
+            </div>
           </div>
-        </div>
         </div>
       </div>
     </div>
@@ -241,8 +308,20 @@ function StepBar({ step }: { step: GoalStep }) {
   return (
     <div className="text-left">
       <div className="flex items-baseline justify-between gap-2">
-        <p className={clsx("min-w-0 text-[13.5px] font-bold leading-snug", step.done && "text-ok")}>
-          {step.done && <Check size={13} strokeWidth={3} className="-mt-0.5 mr-1 inline" aria-hidden />}
+        <p
+          className={clsx(
+            "min-w-0 text-[13.5px] font-bold leading-snug",
+            step.done && "text-ok",
+          )}
+        >
+          {step.done && (
+            <Check
+              size={13}
+              strokeWidth={3}
+              className="-mt-0.5 mr-1 inline"
+              aria-hidden
+            />
+          )}
           {step.label}
         </p>
         <p className="tnum shrink-0 text-[12.5px] font-bold text-muted">
@@ -250,7 +329,13 @@ function StepBar({ step }: { step: GoalStep }) {
         </p>
       </div>
       <div className="mt-1 h-2.5 overflow-hidden rounded-full border-2 border-edge bg-surface">
-        <div className={clsx("h-full rounded-full transition-[width] duration-700", step.done ? "bg-ok" : "bg-ball")} style={{ width: `${pct}%` }} />
+        <div
+          className={clsx(
+            "h-full rounded-full transition-[width] duration-700",
+            step.done ? "bg-ok" : "bg-ball",
+          )}
+          style={{ width: `${pct}%` }}
+        />
       </div>
       <p className="mt-0.5 text-[11.5px] text-muted">{step.detail}</p>
     </div>
@@ -300,25 +385,75 @@ export function CharacterCard({
   const shiny = rarity === "mitica" || rarity === "leggendaria";
 
   return createPortal(
-    <div data-over-sheet className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center px-5" role="dialog" aria-modal="true" aria-labelledby="char-title">
-      <div className={clsx("absolute inset-0 bg-[#1d1a16]/55", leaving ? "fade-out" : "fade-in")} onClick={onClose} />
+    <div
+      data-over-sheet
+      className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center px-5"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="char-title"
+    >
       <div
-        className={clsx("relative w-full max-w-[340px] select-none overflow-hidden rounded-[30px] border-[2.5px] border-edge bg-surface text-center", leaving ? "char-card-out" : "char-card-in")}
-        style={{ boxShadow: rarity === "base" ? "6px 6px 0 var(--edge)" : `0 0 0 3px ${RARITY[rarity].ring}, 7px 7px 0 var(--edge)` }}
+        className={clsx(
+          "absolute inset-0 bg-[#1d1a16]/55",
+          leaving ? "fade-out" : "fade-in",
+        )}
+        onClick={onClose}
+      />
+      <div
+        className={clsx(
+          "relative w-full max-w-[340px] select-none overflow-hidden rounded-[30px] border-[2.5px] border-edge bg-surface text-center",
+          leaving ? "char-card-out" : "char-card-in",
+        )}
+        style={{
+          boxShadow:
+            rarity === "base"
+              ? "6px 6px 0 var(--edge)"
+              : `0 0 0 3px ${RARITY[rarity].ring}, 7px 7px 0 var(--edge)`,
+        }}
       >
-        <div className={clsx("halftone relative px-4 pb-2 pt-4", shiny && "rarity-shine")} style={{ background: p.bg }}>
-          <button onClick={onClose} aria-label="Chiudi" className="press absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text">
+        <div
+          className={clsx(
+            "halftone relative px-4 pb-2 pt-4",
+            shiny && "rarity-shine",
+          )}
+          style={{ background: p.bg }}
+        >
+          <button
+            onClick={onClose}
+            aria-label="Chiudi"
+            className="press absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text"
+          >
             <X size={18} />
           </button>
           <span
             className="absolute left-3 top-3 z-10 rounded-full border-2 border-[#1d1a16] px-2.5 py-0.5 text-[11.5px] font-bold text-[#1d1a16]"
-            style={{ background: rarity === "base" ? "#fffaf0" : rarity === "epica" || rarity === "mitica" || rarity === "rara" ? "#fffaf0" : RARITY[rarity].ring }}
+            style={{
+              background:
+                rarity === "base"
+                  ? "#fffaf0"
+                  : rarity === "epica" ||
+                      rarity === "mitica" ||
+                      rarity === "rara"
+                    ? "#fffaf0"
+                    : RARITY[rarity].ring,
+            }}
           >
-            <span className="mr-1 inline-block h-2 w-2 rounded-full border border-[#1d1a16] align-[1px]" style={{ background: RARITY[rarity].ring }} aria-hidden />
+            <span
+              className="mr-1 inline-block h-2 w-2 rounded-full border border-[#1d1a16] align-[1px]"
+              style={{ background: RARITY[rarity].ring }}
+              aria-hidden
+            />
             {RARITY[rarity].one}
           </span>
           <div className={clsx(!prog.unlocked && "opacity-45 grayscale")}>
-            <Character3D id={shown} number={me.jerseyNumber} name={me.nickname ?? me.firstName} height={190} intro={intro} locked={!prog.unlocked} />
+            <Character3D
+              id={shown}
+              number={me.jerseyNumber}
+              name={me.nickname ?? me.firstName}
+              height={190}
+              intro={intro}
+              locked={!prog.unlocked}
+            />
           </div>
           {!prog.unlocked && (
             <span className="pointer-events-none absolute left-1/2 top-[46%] grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[2.5px] border-edge bg-surface text-text">
@@ -333,11 +468,19 @@ export function CharacterCard({
           <h2 id="char-title" className="display text-[28px] leading-[1.1]">
             {p.name}
           </h2>
-          <p className="mt-1 text-[14px] text-muted">{CHARACTER_TAGLINE[shown]}</p>
+          <p className="mt-1 text-[14px] text-muted">
+            {CHARACTER_TAGLINE[shown]}
+          </p>
 
           {rarity !== "base" && (
             <div className="mt-4 rounded-[18px] bg-raised px-4 py-3">
-              <p className="text-[12px] font-semibold text-muted">{prog.unlocked ? "Sbloccato con" : prog.steps.length > 1 ? "Si sblocca con tutti e due" : "Si sblocca con"}</p>
+              <p className="text-[12px] font-semibold text-muted">
+                {prog.unlocked
+                  ? "Sbloccato con"
+                  : prog.steps.length > 1
+                    ? "Si sblocca con tutti e due"
+                    : "Si sblocca con"}
+              </p>
               {prog.unlocked ? (
                 <>
                   <p className="title text-[15.5px]">{prog.goal}</p>
@@ -378,18 +521,33 @@ export function CharacterCard({
 }
 
 /** Tutti i personaggi, divisi per rarità, con il prossimo da sbloccare in cima. */
-export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void }) {
+export function CharacterGrid({
+  onOpen,
+}: {
+  onOpen: (id: AvatarPresetId) => void;
+}) {
   const { me, engine } = useData();
   // I personaggi appena sbloccati: "Nuovo" finché non li apri.
   const rewards = useNewRewards();
-  const states = useMemo(() => (me ? engine.badges(me.id).states : []), [me, engine]);
-  const progress = useMemo(() => new Map(AVATAR_PRESETS.map((p) => [p.id, characterProgress(p.id, states)])), [states]);
+  const states = useMemo(
+    () => (me ? engine.badges(me.id).states : []),
+    [me, engine],
+  );
+  const progress = useMemo(
+    () =>
+      new Map(
+        AVATAR_PRESETS.map((p) => [p.id, characterProgress(p.id, states)]),
+      ),
+    [states],
+  );
   // Al tocco solo il pannello; al fotogramma dopo la parte in alto, il resto appena il
   // pannello ha finito di salire: niente scatti all'apertura.
   const [stage, setStage] = useState(0);
   useEffect(() => {
     let t1 = 0;
-    const r = requestAnimationFrame(() => (t1 = window.setTimeout(() => setStage((s) => Math.max(s, 1)), 0)));
+    const r = requestAnimationFrame(
+      () => (t1 = window.setTimeout(() => setStage((s) => Math.max(s, 1)), 0)),
+    );
     const t = window.setTimeout(() => setStage(2), 420);
     return () => {
       cancelAnimationFrame(r);
@@ -400,20 +558,27 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
   const all = stage >= 2;
   if (!me) return null;
   const total = AVATAR_PRESETS.length;
-  const open = AVATAR_PRESETS.filter((p) => progress.get(p.id)!.unlocked).length;
+  const open = AVATAR_PRESETS.filter(
+    (p) => progress.get(p.id)!.unlocked,
+  ).length;
   const next = nextCharacter(states);
   const nextP = next && AVATAR_PRESETS.find((p) => p.id === next.id)!;
-  const nextStep = next?.progress.steps.find((s) => !s.done) ?? next?.progress.steps[0];
+  const nextStep =
+    next?.progress.steps.find((s) => !s.done) ?? next?.progress.steps[0];
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
         <div className="text-center">
           <p className="text-[13px] font-bold text-muted">
-            Collezione <span className="tnum text-text">{open}</span> di <span className="tnum">{total}</span>
+            Collezione <span className="tnum text-text">{open}</span> di{" "}
+            <span className="tnum">{total}</span>
           </p>
           <div className="mx-auto mt-1.5 h-2.5 max-w-[240px] overflow-hidden rounded-full border-2 border-edge bg-surface">
-            <div className="h-full rounded-full bg-volt" style={{ width: `${Math.round((open / total) * 100)}%` }} />
+            <div
+              className="h-full rounded-full bg-volt"
+              style={{ width: `${Math.round((open / total) * 100)}%` }}
+            />
           </div>
         </div>
         {next && nextP && nextStep && (
@@ -433,10 +598,15 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
               <span className="flex items-center gap-1 text-[12px] font-bold text-court">
                 <Sparkles size={13} aria-hidden /> Il prossimo: {nextP.name}
               </span>
-              <span className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-tight">{nextStep.label}</span>
+              <span className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-tight">
+                {nextStep.label}
+              </span>
               <span className="mt-1 flex items-center gap-2">
                 <span className="h-2 flex-1 overflow-hidden rounded-full border-[1.5px] border-edge bg-raised">
-                  <span className="block h-full rounded-full bg-ball" style={{ width: `${Math.round(next.progress.pct * 100)}%` }} />
+                  <span
+                    className="block h-full rounded-full bg-ball"
+                    style={{ width: `${Math.round(next.progress.pct * 100)}%` }}
+                  />
                 </span>
                 <span className="tnum shrink-0 text-[12px] font-bold text-muted">
                   {nextStep.have}/{nextStep.need}
@@ -450,17 +620,33 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
       {RARITIES.map((g, gi) => {
         const items = AVATAR_PRESETS.filter((p) => p.rarity === g);
         const got = items.filter((p) => progress.get(p.id)!.unlocked).length;
-        if ((gi > 1 && !all) || stage === 0) return <div key={g} style={{ height: Math.ceil(items.length / 4) * 112 + 60 }} aria-hidden />;
+        if ((gi > 1 && !all) || stage === 0)
+          return (
+            <div
+              key={g}
+              style={{ height: Math.ceil(items.length / 4) * 112 + 60 }}
+              aria-hidden
+            />
+          );
         return (
-          <section key={g} className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]">
+          <section
+            key={g}
+            className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]"
+          >
             <h3 className="mb-1 flex items-center justify-center gap-2 text-[13.5px] font-bold">
-              <span className="h-3 w-3 rounded-full border-2 border-edge" style={{ background: RARITY[g].ring }} aria-hidden />
+              <span
+                className="h-3 w-3 rounded-full border-2 border-edge"
+                style={{ background: RARITY[g].ring }}
+                aria-hidden
+              />
               {RARITY[g].label}
               <span className="tnum font-semibold text-muted">
                 {got}/{items.length}
               </span>
             </h3>
-            <p className="mb-2.5 text-center text-[12px] text-muted">{RARITY[g].rule}</p>
+            <p className="mb-2.5 text-center text-[12px] text-muted">
+              {RARITY[g].rule}
+            </p>
             <div className="grid grid-cols-4 gap-2">
               {items.map((p) => {
                 const prog = progress.get(p.id)!;
@@ -483,10 +669,24 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
                       on ? "sticker bg-volt" : "bg-surface",
                       fresh && "!border-danger ring-2 ring-danger/40",
                     )}
-                    style={g !== "base" && !on ? { boxShadow: `inset 0 -4px 0 ${RARITY[g].ring}` } : undefined}
+                    style={
+                      g !== "base" && !on
+                        ? { boxShadow: `inset 0 -4px 0 ${RARITY[g].ring}` }
+                        : undefined
+                    }
                   >
-                    <span className={clsx("block", !prog.unlocked && "opacity-30 grayscale dark:opacity-50")}>
-                      <Character id={p.id} number={me.jerseyNumber} height={70} />
+                    <span
+                      className={clsx(
+                        "block",
+                        !prog.unlocked &&
+                          "opacity-30 grayscale dark:opacity-50",
+                      )}
+                    >
+                      <Character
+                        id={p.id}
+                        number={me.jerseyNumber}
+                        height={70}
+                      />
                     </span>
                     {!prog.unlocked && (
                       <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-edge bg-surface">
@@ -494,8 +694,14 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
                       </span>
                     )}
                     {!prog.unlocked && prog.pct > 0 && (
-                      <span className="absolute inset-x-2.5 bottom-[23px] h-1.5 overflow-hidden rounded-full border border-edge bg-surface" aria-hidden>
-                        <span className="block h-full bg-ball" style={{ width: `${Math.round(prog.pct * 100)}%` }} />
+                      <span
+                        className="absolute inset-x-2.5 bottom-[23px] h-1.5 overflow-hidden rounded-full border border-edge bg-surface"
+                        aria-hidden
+                      >
+                        <span
+                          className="block h-full bg-ball"
+                          style={{ width: `${Math.round(prog.pct * 100)}%` }}
+                        />
                       </span>
                     )}
                     {fresh && <NewTag className="left-0.5 top-0.5" />}
@@ -504,7 +710,14 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
                         <Check size={11} strokeWidth={3} />
                       </span>
                     )}
-                    <span className={clsx("mt-1 w-full truncate px-0.5 text-[11.5px] font-bold", on && "text-volt-ink")}>{p.name}</span>
+                    <span
+                      className={clsx(
+                        "mt-1 w-full truncate px-0.5 text-[11.5px] font-bold",
+                        on && "text-volt-ink",
+                      )}
+                    >
+                      {p.name}
+                    </span>
                   </button>
                 );
               })}

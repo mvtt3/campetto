@@ -9,7 +9,8 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { NewsButton, NewsPanel, useNews } from "@/components/news-panel";
 import { Logo, Mascot } from "@/components/mascot";
 import { ProposalCard } from "@/components/proposal-card";
 import { markMatchOpenedFromElsewhere } from "@/components/screens/matches-screen";
@@ -46,6 +47,20 @@ export function HomeScreen() {
   const { data, me, engine } = useData();
   const now = useNow();
   const router = useNav();
+  const news = useNews();
+  const [newsOpen, setNewsOpen] = useState(false);
+  // Dalla notifica di una notizia: la Home si apre con il pannello già aperto.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("notizie") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNewsOpen(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+  const openNews = () => {
+    setNewsOpen(true);
+    news.markSeen();
+  };
 
   const next = useMemo(
     () =>
@@ -114,8 +129,16 @@ export function HomeScreen() {
               </span>
             </h1>
           </div>
-          <Avatar player={me} size={44} />
+          <div className="flex shrink-0 items-center gap-2">
+            <NewsButton unseen={news.unseen} onOpen={openNews} />
+            <Avatar player={me} size={44} />
+          </div>
         </div>
+        <NewsPanel
+          open={newsOpen}
+          onClose={() => setNewsOpen(false)}
+          stories={news.stories}
+        />
       </header>
 
       <PullToRefresh scroll={false} className="px-5 pb-2 pt-2">
@@ -162,15 +185,18 @@ export function HomeScreen() {
                     {/* Il % piccolo in alto: "100%" a grandezza piena usciva dall'anello. */}
                     <span className="num whitespace-nowrap text-[13px] leading-none">
                       {Math.round(mine.winPct * 100)}
-                      <span className="ml-px align-[0.3em] text-[8.5px]">%</span>
+                      <span className="ml-px align-[0.3em] text-[8.5px]">
+                        %
+                      </span>
                     </span>
                   </Ring>
                   <div className="text-[13px] leading-tight">
                     <p className="flex items-center gap-1 text-white/75">
                       ELO
                       <InfoTip label="Cos'è l'ELO" size={15}>
-                        Il tuo punteggio di forza: parte da 1000, sale quando
-                        vinci e scende quando perdi, di più contro chi è forte
+                        Il tuo punteggio di forza. Si parte tutti da 1000:
+                        vincendo sale, perdendo scende. Battere chi è più forte
+                        vale di più
                       </InfoTip>
                     </p>
                     <p className="flex items-center gap-1.5">
@@ -342,7 +368,9 @@ export function HomeScreen() {
                       // Si adatta alla larghezza: con le cifre doppie "22–10" a 40 px usciva dal riquadro.
                       className={clsx(
                         "score whitespace-nowrap",
-                        String(last.scoreA).length + String(last.scoreB).length > 3
+                        String(last.scoreA).length +
+                          String(last.scoreB).length >
+                          3
                           ? "text-[clamp(24px,8.4vw,36px)] short:text-[26px]"
                           : "text-[40px] short:text-[30px]",
                       )}

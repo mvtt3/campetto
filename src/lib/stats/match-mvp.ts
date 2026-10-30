@@ -22,6 +22,12 @@ export function matchMvp(m: Match): MatchMvp | null {
     const b = normalizeBox(p.box);
     return { playerId: p.playerId, eff: efficiency(b), pts: b.pts, tov: b.tov };
   });
-  rated.sort((x, y) => y.eff - x.eff || y.pts - x.pts || x.tov - y.tov || x.playerId.localeCompare(y.playerId));
+  rated.sort(
+    (x, y) =>
+      y.eff - x.eff ||
+      y.pts - x.pts ||
+      x.tov - y.tov ||
+      x.playerId.localeCompare(y.playerId),
+  );
   return { playerId: rated[0].playerId, eff: rated[0].eff };
 }

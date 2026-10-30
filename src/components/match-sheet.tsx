@@ -23,6 +23,7 @@ import { InfoTip } from "@/components/ui/info";
 import { MvpMatchInfo } from "@/components/mvp-info";
 import { say } from "@/lib/voice";
 import { Character, characterOf } from "./character";
+import { BoxTable } from "./box-table";
 
 export const SOURCE_LABEL: Record<StatsSource, string> = {
   solo_risultato: "Solo risultato",
@@ -121,7 +122,6 @@ export function MatchSheet({
     ? players.find((p) => p.id === mvp.playerId)
     : undefined;
   // I falli si mostrano solo se quel giorno si contavano.
-  const foulsTracked = withStats.some((l) => normalizeBox(l.box).fouls > 0);
   const mvpLine = mvp
     ? normalizeBox(m!.players.find((l) => l.playerId === mvp.playerId)!.box)
     : null;
@@ -275,109 +275,11 @@ export function MatchSheet({
           {m.notes && <p className="text-[14px] text-muted">{m.notes}</p>}
 
           {withStats.length > 0 && (
-            <div>
-              <h3 className="title mb-1 flex items-center gap-1.5 text-[15px]">
-                Tabellino
-                <InfoTip label="Cosa vogliono dire le colonne" size={15}>
-                  Pt punti · Tiri e Da3: segnati su tentati · Rim rimbalzi · Ass
-                  assist · Rub palle rubate · Stp stoppate · Per palle perse
-                  {foulsTracked ? " · Fal falli" : ""} · la corona è l&apos;MVP
-                  della partita
-                </InfoTip>
-              </h3>
-              <div className="scroll-x -mx-5 px-5">
-                <table className="tnum w-full text-[12.5px]">
-                  <thead>
-                    <tr className="text-left text-[11px] text-muted">
-                      <th className="py-1 pr-1 font-semibold">Giocatore</th>
-                      {[
-                        "Pt",
-                        "Tiri",
-                        "Da3",
-                        "Rim",
-                        "Ass",
-                        "Rub",
-                        "Stp",
-                        "Per",
-                        ...(foulsTracked ? ["Fal"] : []),
-                      ].map((h) => (
-                        <th
-                          key={h}
-                          className="px-[3px] py-1 text-right font-semibold"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(["A", "B"] as const).flatMap((t) =>
-                      withStats
-                        .filter((l) => l.team === t)
-                        .map((l) => {
-                          const b = normalizeBox(l.box);
-                          return (
-                            <tr
-                              key={l.playerId}
-                              className="border-t border-line"
-                            >
-                              <td className="max-w-[84px] truncate py-1.5 pr-1 font-semibold">
-                                <span
-                                  className={clsx(
-                                    "mr-1.5 inline-block h-2.5 w-2.5 rounded-full",
-                                    t === "A" ? "bg-court" : "bg-ball",
-                                  )}
-                                />
-                                {shortName(
-                                  players.find((p) => p.id === l.playerId),
-                                  players,
-                                )}
-                                {l.sub && (
-                                  <RefreshCw
-                                    size={11}
-                                    className="ml-1 inline align-[-1px] text-muted"
-                                    aria-label="cambio"
-                                  />
-                                )}
-                                {mvp?.playerId === l.playerId && (
-                                  <Crown
-                                    size={12}
-                                    className="ml-1 inline align-[-1px] text-gold"
-                                    aria-label="MVP della partita"
-                                  />
-                                )}
-                              </td>
-                              <td className="px-[3px] text-right font-bold">
-                                {b.pts}
-                              </td>
-                              <td className="px-[3px] text-right text-muted">
-                                {b.fg2a + b.fg3a
-                                  ? `${b.fg2m + b.fg3m}/${b.fg2a + b.fg3a}`
-                                  : "—"}
-                              </td>
-                              <td className="px-[3px] text-right text-muted">
-                                {b.fg3a ? `${b.fg3m}/${b.fg3a}` : "—"}
-                              </td>
-                              <td className="px-[3px] text-right">
-                                {b.oreb + b.dreb}
-                              </td>
-                              <td className="px-[3px] text-right">{b.ast}</td>
-                              <td className="px-[3px] text-right">{b.stl}</td>
-                              <td className="px-[3px] text-right">{b.blk}</td>
-                              <td className="px-[3px] text-right">{b.tov}</td>
-                              {foulsTracked && (
-                                <td className="px-[3px] text-right">
-                                  {b.fouls}
-                                </td>
-                              )}
-                            </tr>
-                          );
-                        }),
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <BoxTable
+              match={m}
+              players={players}
+              mvpId={mvp?.playerId ?? null}
+            />
           )}
         </div>
       )}

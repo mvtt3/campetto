@@ -19,8 +19,19 @@ export interface SaveMatchInput {
   scoreB: number;
   statsSource: StatsSource;
   notes?: string | null;
-  players: { playerId: string; team: Team; hasStats: boolean; box: Box; sub?: boolean }[];
-  events: { playerId: string; kind: EventKind; targetPlayerId: string | null; videoTs: number | null }[];
+  players: {
+    playerId: string;
+    team: Team;
+    hasStats: boolean;
+    box: Box;
+    sub?: boolean;
+  }[];
+  events: {
+    playerId: string;
+    kind: EventKind;
+    targetPlayerId: string | null;
+    videoTs: number | null;
+  }[];
 }
 
 export interface MePatch {
@@ -94,7 +105,11 @@ export interface Backend {
   deleteMatch(id: string): Promise<void>;
   confirmMatch(id: string): Promise<void>;
 
-  createProposal(input: { startsAt: string; format: Format | null; note: string | null }): Promise<string>;
+  createProposal(input: {
+    startsAt: string;
+    format: Format | null;
+    note: string | null;
+  }): Promise<string>;
   cancelProposal(id: string): Promise<void>;
   respond(proposalId: string, response: ResponseKind | null): Promise<void>;
 

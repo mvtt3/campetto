@@ -29,6 +29,7 @@ import {
   HandGrab,
   ShieldBan,
   Layers2,
+  Layers3,
   Focus,
   Handshake,
   Award,
@@ -36,7 +37,12 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { TIER_NAMES, type BadgeIcon, type BadgeState, type Tier } from "@/lib/badges";
+import {
+  TIER_NAMES,
+  type BadgeIcon,
+  type BadgeState,
+  type Tier,
+} from "@/lib/badges";
 
 const ICONS: Record<BadgeIcon, LucideIcon> = {
   points: Target,
@@ -65,6 +71,7 @@ const ICONS: Record<BadgeIcon, LucideIcon> = {
   thief: HandGrab,
   swat: ShieldBan,
   double: Layers2,
+  triple: Layers3,
   aim: Focus,
   fair: Handshake,
   star: Award,
@@ -72,8 +79,16 @@ const ICONS: Record<BadgeIcon, LucideIcon> = {
 };
 
 /** Fill (two stops) and ink for each tier. */
-export const TIER_STYLE: Record<Tier, { a: string; b: string; ink: string; label: string }> = {
-  0: { a: "var(--raised)", b: "var(--raised)", ink: "var(--faint)", label: TIER_NAMES[0] },
+export const TIER_STYLE: Record<
+  Tier,
+  { a: string; b: string; ink: string; label: string }
+> = {
+  0: {
+    a: "var(--raised)",
+    b: "var(--raised)",
+    ink: "var(--faint)",
+    label: TIER_NAMES[0],
+  },
   1: { a: "#d6996b", b: "#8f5631", ink: "#2a160a", label: TIER_NAMES[1] },
   2: { a: "#e4e8ec", b: "#8d98a3", ink: "#1d232a", label: TIER_NAMES[2] },
   3: { a: "#f7dc87", b: "#c18d26", ink: "#2b1d03", label: TIER_NAMES[3] },
@@ -100,12 +115,25 @@ export function BadgeMedal({
   const id = `g-${useId().replace(/:/g, "")}`;
   return (
     <span
-      className={clsx("relative inline-grid shrink-0 place-items-center overflow-hidden", className)}
-      style={{ width: size, height: size * 1.08, animation: animate ? "badge-reveal 700ms cubic-bezier(.2,.9,.3,1.2)" : undefined }}
+      className={clsx(
+        "relative inline-grid shrink-0 place-items-center overflow-hidden",
+        className,
+      )}
+      style={{
+        width: size,
+        height: size * 1.08,
+        animation: animate
+          ? "badge-reveal 700ms cubic-bezier(.2,.9,.3,1.2)"
+          : undefined,
+      }}
       role="img"
       aria-label={`${s.label}`}
     >
-      <svg viewBox="0 0 100 108" className="absolute inset-0 h-full w-full" aria-hidden>
+      <svg
+        viewBox="0 0 100 108"
+        className="absolute inset-0 h-full w-full"
+        aria-hidden
+      >
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0.6" y2="1">
             <stop offset="0" stopColor={s.a} />
@@ -121,10 +149,21 @@ export function BadgeMedal({
           strokeDasharray={tier === 0 ? "5 4" : undefined}
         />
         {tier >= 4 && (
-          <path d="M50 12 L84 28 L84 70 L50 92 L16 70 L16 28 Z" fill="none" stroke="rgb(255 255 255 / 0.4)" strokeWidth="1.2" />
+          <path
+            d="M50 12 L84 28 L84 70 L50 92 L16 70 L16 28 Z"
+            fill="none"
+            stroke="rgb(255 255 255 / 0.4)"
+            strokeWidth="1.2"
+          />
         )}
       </svg>
-      <Icon size={size * 0.42} color={s.ink} strokeWidth={2.2} className="relative" aria-hidden />
+      <Icon
+        size={size * 0.42}
+        color={s.ink}
+        strokeWidth={2.2}
+        className="relative"
+        aria-hidden
+      />
       {animate && (
         <span
           className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/40"
@@ -165,13 +204,23 @@ export function BadgeTile({
     >
       {fresh && <NewTag className="-left-1 -top-1.5" />}
       <BadgeMedal icon={def.icon} tier={tier} size={44} />
-      <span className={clsx("mt-2 line-clamp-2 text-[12px] font-semibold leading-tight", tier === 0 && "text-muted")}>
+      <span
+        className={clsx(
+          "mt-2 line-clamp-2 text-[12px] font-semibold leading-tight",
+          tier === 0 && "text-muted",
+        )}
+      >
         {def.name}
       </span>
-      <span className="mt-0.5 text-[11px] text-muted">{TIER_STYLE[tier].label}</span>
+      <span className="mt-0.5 text-[11px] text-muted">
+        {TIER_STYLE[tier].label}
+      </span>
       {next && (
         <span className="mt-1.5 h-1 w-10/12 overflow-hidden rounded-full bg-raised">
-          <span className="block h-full rounded-full bg-ball" style={{ width: `${progress * 100}%` }} />
+          <span
+            className="block h-full rounded-full bg-ball"
+            style={{ width: `${progress * 100}%` }}
+          />
         </span>
       )}
     </button>

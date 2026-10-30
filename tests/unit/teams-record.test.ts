@@ -4,7 +4,13 @@ import { balanceTeams, rankSplits } from "@/lib/stats/teams";
 import { withSubs } from "@/lib/types";
 import { duel, match } from "./fixtures";
 
-const two = (date: string, a: [string, string], b: [string, string], sa: number, sb: number) =>
+const two = (
+  date: string,
+  a: [string, string],
+  b: [string, string],
+  sa: number,
+  sb: number,
+) =>
   match({
     date,
     format: "2v2",
@@ -28,7 +34,12 @@ describe("teamRecords", () => {
       duel("2026-10-05T18:00:00Z", "m", "s", 11, 4),
     ];
     const r = teamRecords(ms, "2v2");
-    expect(r[0]).toMatchObject({ ids: ["m", "s"], games: 4, wins: 3, losses: 1 });
+    expect(r[0]).toMatchObject({
+      ids: ["m", "s"],
+      games: 4,
+      wins: 3,
+      losses: 1,
+    });
     expect(r[1]).toMatchObject({ ids: ["d", "v"], wins: 1, losses: 2 });
     // c+d ha giocato una volta sola: fuori.
     expect(r.find((x) => x.ids.includes("c"))).toBeUndefined();
@@ -68,7 +79,10 @@ describe("cambi", () => {
     const noSubs = balanceTeams(["a", "b", "c", "d", "e"], r, 2)!;
     expect(noSubs.teamA.length + noSubs.teamB.length).toBe(4);
     // Al massimo due cambi a testa: in nove per un 2v2 ne restano fuori uno.
-    expect(rankSplits(["a", "b", "c", "d", "e", "f", "g", "h", "i"], r, 2, 2)[0].teamA.length).toBe(4);
+    expect(
+      rankSplits(["a", "b", "c", "d", "e", "f", "g", "h", "i"], r, 2, 2)[0]
+        .teamA.length,
+    ).toBe(4);
   });
 
   it("chi va oltre il formato, nell'ordine, è il cambio", () => {
@@ -112,11 +126,23 @@ describe("cambi", () => {
       x.players[2].sub = true;
       return x;
     };
-    const r = teamRecords([base, { ...base, id: "x2" }, withSub("2026-10-02T18:00:00Z"), withSub("2026-10-03T18:00:00Z")], "2v2");
+    const r = teamRecords(
+      [
+        base,
+        { ...base, id: "x2" },
+        withSub("2026-10-02T18:00:00Z"),
+        withSub("2026-10-03T18:00:00Z"),
+      ],
+      "2v2",
+    );
     const plain = r.find((t) => t.ids.length === 2 && t.ids.includes("m"))!;
     const rotating = r.find((t) => t.subs.length === 1)!;
     expect(plain).toMatchObject({ wins: 2, games: 2 });
-    expect(rotating).toMatchObject({ ids: ["m", "s", "c"], subs: ["c"], wins: 2 });
+    expect(rotating).toMatchObject({
+      ids: ["m", "s", "c"],
+      subs: ["c"],
+      wins: 2,
+    });
   });
 });
 

@@ -9,6 +9,9 @@ export default function OldPlayerPage() {
   const { id } = useParams<{ id: string }>();
   const preview = useSearchParams().get("anteprima") === "1";
   const router = useRouter();
-  useEffect(() => router.replace(playerHref(id, preview)), [id, preview, router]);
+  useEffect(
+    () => router.replace(playerHref(id, preview)),
+    [id, preview, router],
+  );
   return null;
 }

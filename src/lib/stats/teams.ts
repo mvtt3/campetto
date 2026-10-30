@@ -34,12 +34,22 @@ function combinations<T>(items: T[], k: number): T[][] {
  * the last arrived sit out. Within each team the order follows the pool, so the
  * last arrived are the substitutes.
  */
-export function rankSplits(playerIds: string[], ratings: Map<string, number>, teamSize: number, maxSubs = 0): Split[] {
+export function rankSplits(
+  playerIds: string[],
+  ratings: Map<string, number>,
+  teamSize: number,
+  maxSubs = 0,
+): Split[] {
   const pool = playerIds.slice(0, (teamSize + maxSubs) * 2);
   if (pool.length < 2) return [];
   const size = Math.min(teamSize, Math.floor(pool.length / 2));
-  const used = maxSubs > 0 && pool.length > size * 2 && size === teamSize ? pool : pool.slice(0, size * 2);
-  const ks = [...new Set([Math.floor(used.length / 2), Math.ceil(used.length / 2)])];
+  const used =
+    maxSubs > 0 && pool.length > size * 2 && size === teamSize
+      ? pool
+      : pool.slice(0, size * 2);
+  const ks = [
+    ...new Set([Math.floor(used.length / 2), Math.ceil(used.length / 2)]),
+  ];
   const first = used[0];
   const seen = new Set<string>();
   const splits: Split[] = [];
@@ -76,6 +86,8 @@ export function balanceTeams(
   if (!ranked.length) return null;
   if (!shuffle) return ranked[0];
   const best = ranked[0].imbalance;
-  const candidates = ranked.filter((s) => s.imbalance <= best + 0.06).slice(0, 6);
+  const candidates = ranked
+    .filter((s) => s.imbalance <= best + 0.06)
+    .slice(0, 6);
   return candidates[Math.floor(random() * candidates.length)] ?? ranked[0];
 }

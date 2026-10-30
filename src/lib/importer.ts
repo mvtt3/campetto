@@ -1,4 +1,10 @@
-import { emptyBox, type Box, type BoxKey, type Player, type Team } from "./types";
+import {
+  emptyBox,
+  type Box,
+  type BoxKey,
+  type Player,
+  type Team,
+} from "./types";
 
 export interface ImportRow {
   rawName: string;
@@ -14,7 +20,10 @@ export interface ImportResult {
   scoreB: number | null;
 }
 
-const ALIASES: Record<string, BoxKey | "name" | "team" | "reb" | "fgm" | "fga"> = {
+const ALIASES: Record<
+  string,
+  BoxKey | "name" | "team" | "reb" | "fgm" | "fga"
+> = {
   nome: "name",
   giocatore: "name",
   player: "name",
@@ -75,11 +84,18 @@ export function normalizeName(s: string): string {
 }
 
 export function levenshtein(a: string, b: string): number {
-  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [
+    i,
+    ...Array(b.length).fill(0),
+  ]);
   for (let j = 1; j <= b.length; j++) dp[0][j] = j;
   for (let i = 1; i <= a.length; i++)
     for (let j = 1; j <= b.length; j++)
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
   return dp[a.length][b.length];
 }
 
@@ -88,7 +104,11 @@ export function matchPlayer(raw: string, players: Player[]): string | null {
   const n = normalizeName(raw);
   if (!n) return null;
   // A bare first name shared by two players is ambiguous.
-  if (players.filter((p) => normalizeName(p.firstName) === n && !p.nickname).length > 1) return null;
+  if (
+    players.filter((p) => normalizeName(p.firstName) === n && !p.nickname)
+      .length > 1
+  )
+    return null;
   let best: { id: string; score: number } | null = null;
   for (const p of players) {
     const candidates = [
@@ -103,14 +123,17 @@ export function matchPlayer(raw: string, players: Player[]): string | null {
       if (c === n) score = 0;
       else if (c.startsWith(n) || n.startsWith(c)) score = 1;
       else score = levenshtein(c, n) + 1;
-      if (score <= 3 && (!best || score < best.score)) best = { id: p.id, score };
+      if (score <= 3 && (!best || score < best.score))
+        best = { id: p.id, score };
     }
   }
   return best?.id ?? null;
 }
 
 function parseTeam(v: unknown): Team | null {
-  const s = String(v ?? "").trim().toUpperCase();
+  const s = String(v ?? "")
+    .trim()
+    .toUpperCase();
   if (["A", "1", "BIANCHI", "CASA", "HOME"].includes(s)) return "A";
   if (["B", "2", "NERI", "OSPITI", "AWAY"].includes(s)) return "B";
   return null;
@@ -121,7 +144,10 @@ function num(v: unknown): number {
   return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
 }
 
-function rowFromRecord(rec: Record<string, unknown>, players: Player[]): ImportRow | null {
+function rowFromRecord(
+  rec: Record<string, unknown>,
+  players: Player[],
+): ImportRow | null {
   const box = emptyBox();
   let name = "";
   let team: Team | null = null;
@@ -193,7 +219,11 @@ export function parseImport(text: string, players: Player[]): ImportResult {
     }
   } else {
     const lines = t.split(/\r?\n/).filter((l) => l.trim());
-    const sep = lines[0].includes("\t") ? "\t" : lines[0].split(";").length > lines[0].split(",").length ? ";" : ",";
+    const sep = lines[0].includes("\t")
+      ? "\t"
+      : lines[0].split(";").length > lines[0].split(",").length
+        ? ";"
+        : ",";
     const header = splitCsvLine(lines[0], sep);
     for (const line of lines.slice(1)) {
       const cells = splitCsvLine(line, sep);
@@ -209,6 +239,10 @@ export function parseImport(text: string, players: Player[]): ImportResult {
     if (!row) errors.push(`Riga ${i + 1}: manca il nome del giocatore.`);
     else rows.push(row);
   });
-  for (const r of rows) if (!r.playerId) errors.push(`"${r.rawName}" non corrisponde a nessun giocatore: sceglilo a mano.`);
+  for (const r of rows)
+    if (!r.playerId)
+      errors.push(
+        `"${r.rawName}" non corrisponde a nessun giocatore: sceglilo a mano.`,
+      );
   return { rows, errors, scoreA, scoreB };
 }

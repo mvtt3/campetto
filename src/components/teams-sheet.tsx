@@ -14,20 +14,49 @@ import { Sheet } from "./ui/sheet";
 import { InfoTip } from "@/components/ui/info";
 
 /** Squadre equilibrate per chi ha detto "ci sono", in base all'ELO. Solo da guardare. */
-export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]; format: Format | null; onClose: () => void }) {
+export function TeamsSheet({
+  playerIds,
+  format,
+  onClose,
+}: {
+  playerIds: string[];
+  format: Format | null;
+  onClose: () => void;
+}) {
   const { data, engine, me } = useData();
-  const size = format && playerIds.length >= TEAM_SIZE[format] * 2 ? TEAM_SIZE[format] : Math.min(4, Math.floor(playerIds.length / 2));
+  const size =
+    format && playerIds.length >= TEAM_SIZE[format] * 2
+      ? TEAM_SIZE[format]
+      : Math.min(4, Math.floor(playerIds.length / 2));
   const [round, setRound] = useState(0);
   // Chi è in più entra come cambio (fino a due per squadra), tranne nell'1 contro 1.
   const subsAllowed = size > 1 ? MAX_SUBS : 0;
   const split = useMemo(
-    () => (size ? balanceTeams(playerIds, engine.elo.ratings, size, round ? 1 : 0, Math.random, subsAllowed) : null),
+    () =>
+      size
+        ? balanceTeams(
+            playerIds,
+            engine.elo.ratings,
+            size,
+            round ? 1 : 0,
+            Math.random,
+            subsAllowed,
+          )
+        : null,
     // round cambia per rimescolare
     [playerIds, engine.elo.ratings, size, round, subsAllowed],
   );
-  const name = (id: string) => shortName(data.players.find((p) => p.id === id), data.players);
+  const name = (id: string) =>
+    shortName(
+      data.players.find((p) => p.id === id),
+      data.players,
+    );
   const fmt = `${size}v${size}` as Format;
-  const resting = split ? playerIds.filter((id) => !split.teamA.includes(id) && !split.teamB.includes(id)) : [];
+  const resting = split
+    ? playerIds.filter(
+        (id) => !split.teamA.includes(id) && !split.teamB.includes(id),
+      )
+    : [];
 
   return (
     <Sheet
@@ -41,7 +70,11 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
       }
       footer={
         <div className="flex gap-2">
-          <Button className="flex-1" sound="shuffle" onClick={() => setRound((r) => r + 1)}>
+          <Button
+            className="flex-1"
+            sound="shuffle"
+            onClick={() => setRound((r) => r + 1)}
+          >
             <Shuffle size={17} /> Rimescola
           </Button>
           {me?.isAdmin && split && (
@@ -66,14 +99,37 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
               className="grid grid-cols-2 gap-3"
             >
               {(["A", "B"] as const).map((t) => (
-                <div key={t} className={clsx("sticker halftone rounded-3xl p-4", t === "A" ? "bg-court text-court-ink" : "bg-ball text-ball-ink")}>
-                  <p className="text-[13px] font-semibold opacity-85">Squadra {t}</p>
+                <div
+                  key={t}
+                  className={clsx(
+                    "sticker halftone rounded-3xl p-4",
+                    t === "A"
+                      ? "bg-court text-court-ink"
+                      : "bg-ball text-ball-ink",
+                  )}
+                >
+                  <p className="text-[13px] font-semibold opacity-85">
+                    Squadra {t}
+                  </p>
                   <ul className="mt-3 flex flex-col gap-2.5">
                     {(t === "A" ? split.teamA : split.teamB).map((id, i) => (
-                      <li key={id} className={clsx("flex items-center gap-2", i >= size && "opacity-90")}>
-                        <Avatar player={data.players.find((p) => p.id === id)} size={30} href={false} ring="none" />
+                      <li
+                        key={id}
+                        className={clsx(
+                          "flex items-center gap-2",
+                          i >= size && "opacity-90",
+                        )}
+                      >
+                        <Avatar
+                          player={data.players.find((p) => p.id === id)}
+                          size={30}
+                          href={false}
+                          ring="none"
+                        />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[15px] font-semibold">{name(id)}</span>
+                          <span className="block truncate text-[15px] font-semibold">
+                            {name(id)}
+                          </span>
                           {i >= size && (
                             <span className="flex items-center gap-1 text-[11.5px] font-bold opacity-85">
                               <RefreshCw size={11} aria-hidden /> cambio
@@ -89,20 +145,34 @@ export function TeamsSheet({ playerIds, format, onClose }: { playerIds: string[]
           </AnimatePresence>
           <div>
             <div className="mb-1.5 flex justify-between text-[13px] font-semibold">
-              <span className="text-court">A {Math.round(split.probA * 100)}%</span>
+              <span className="text-court">
+                A {Math.round(split.probA * 100)}%
+              </span>
               <span className="flex items-center gap-1 text-muted">
                 Chi vince?
                 <InfoTip label="Come si calcola chi vince" size={14}>
-                  Una stima dall&apos;ELO di chi gioca: le squadre sono divise per avvicinarsi al 50%
+                  La probabilità di vincere, stimata dall&apos;ELO dei
+                  giocatori. Le squadre sono fatte per arrivare il più vicino
+                  possibile al 50%
                 </InfoTip>
               </span>
-              <span className="text-ball">B {Math.round((1 - split.probA) * 100)}%</span>
+              <span className="text-ball">
+                B {Math.round((1 - split.probA) * 100)}%
+              </span>
             </div>
             <div className="flex h-4 overflow-hidden rounded-full border-2 border-edge bg-ball">
-              <motion.div className="h-full bg-court" animate={{ width: `${split.probA * 100}%` }} transition={{ type: "spring", stiffness: 160, damping: 22 }} />
+              <motion.div
+                className="h-full bg-court"
+                animate={{ width: `${split.probA * 100}%` }}
+                transition={{ type: "spring", stiffness: 160, damping: 22 }}
+              />
             </div>
           </div>
-          {resting.length > 0 && <p className="text-[13.5px] text-muted">Riposano: {resting.map(name).join(", ")}</p>}
+          {resting.length > 0 && (
+            <p className="text-[13.5px] text-muted">
+              Riposano: {resting.map(name).join(", ")}
+            </p>
+          )}
         </div>
       )}
     </Sheet>

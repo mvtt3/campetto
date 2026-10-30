@@ -1,12 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { computeElo, eloOf, expectedScore, marginMultiplier, playerK, winProbability, ELO_START } from "@/lib/stats/elo";
+import {
+  computeElo,
+  eloOf,
+  expectedScore,
+  marginMultiplier,
+  playerK,
+  winProbability,
+  ELO_START,
+} from "@/lib/stats/elo";
 import { balanceTeams, rankSplits } from "@/lib/stats/teams";
-import { categoryKings, currentMvp, monthlyHistory, mvpRanking, seasonHistory, trophiesOf } from "@/lib/stats/awards";
+import {
+  categoryKings,
+  currentMvp,
+  monthlyHistory,
+  mvpRanking,
+  seasonHistory,
+  trophiesOf,
+} from "@/lib/stats/awards";
 import { duel, match } from "./fixtures";
 
 describe("elo", () => {
   it("starts at 1000 and is zero-sum in 1v1", () => {
-    const r = computeElo([duel("2026-10-01T10:00:00Z", "x", "y", 21, 15)], ["x", "y", "z"]);
+    const r = computeElo(
+      [duel("2026-10-01T10:00:00Z", "x", "y", 21, 15)],
+      ["x", "y", "z"],
+    );
     expect(eloOf(r, "z")).toBe(ELO_START);
     const x = r.ratings.get("x")!;
     const y = r.ratings.get("y")!;
@@ -98,8 +116,12 @@ describe("mvp and awards", () => {
   });
 
   it("finds the MVP in charge, falling back to the previous month", () => {
-    expect(currentMvp(ids, ms, new Date("2026-10-20T10:00:00Z"))?.entry.playerId).toBe("x");
-    expect(currentMvp(ids, ms, new Date("2026-11-05T10:00:00Z"))?.period).toEqual({ kind: "month", year: 2026, month: 9 });
+    expect(
+      currentMvp(ids, ms, new Date("2026-10-20T10:00:00Z"))?.entry.playerId,
+    ).toBe("x");
+    expect(
+      currentMvp(ids, ms, new Date("2026-11-05T10:00:00Z"))?.period,
+    ).toEqual({ kind: "month", year: 2026, month: 9 });
     expect(currentMvp(ids, ms, new Date("2026-12-05T10:00:00Z"))).toBeNull();
   });
 
@@ -109,7 +131,11 @@ describe("mvp and awards", () => {
   });
 
   it("names category kings", () => {
-    const kings = categoryKings(ids, ms, { kind: "month", year: 2026, month: 9 });
+    const kings = categoryKings(ids, ms, {
+      kind: "month",
+      year: 2026,
+      month: 9,
+    });
     expect(kings.find((k) => k.category === "punti")?.playerId).toBe("x");
     expect(kings.find((k) => k.category === "assist")?.playerId).toBe("x");
   });
@@ -117,14 +143,32 @@ describe("mvp and awards", () => {
   it("builds monthly and season history with trophies only for closed seasons", () => {
     const months = monthlyHistory(ids, ms, new Date("2027-01-10T00:00:00Z"));
     expect(months[0]).toMatchObject({ year: 2026, month: 9, closed: true });
-    const seasonsOpen = seasonHistory(ids, ms, new Date("2026-11-01T00:00:00Z"));
+    const seasonsOpen = seasonHistory(
+      ids,
+      ms,
+      new Date("2026-11-01T00:00:00Z"),
+    );
     expect(trophiesOf("x", seasonsOpen)).toHaveLength(0);
-    const seasonsClosed = seasonHistory(ids, ms, new Date("2027-01-10T00:00:00Z"));
+    const seasonsClosed = seasonHistory(
+      ids,
+      ms,
+      new Date("2027-01-10T00:00:00Z"),
+    );
     expect(trophiesOf("x", seasonsClosed)).toHaveLength(1);
   });
 
   it("ignores team games for nobody's advantage", () => {
-    const m = match({ date: oct(5), format: "2v2", a: 21, b: 20, lines: [{ id: "x", team: "A" }, { id: "z", team: "A" }, { id: "y", team: "B" }] });
+    const m = match({
+      date: oct(5),
+      format: "2v2",
+      a: 21,
+      b: 20,
+      lines: [
+        { id: "x", team: "A" },
+        { id: "z", team: "A" },
+        { id: "y", team: "B" },
+      ],
+    });
     expect(computeElo([m], ids).ratings.get("x")).toBeGreaterThan(ELO_START);
   });
 });

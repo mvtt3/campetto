@@ -27,7 +27,10 @@ export function PlayerPage() {
   const self = me?.id === id;
   const player = data.players.find((p) => p.id === id);
   const [tab, setTab] = useState<"panoramica" | "numeri">("panoramica");
-  const h = useMemo(() => (me ? headToHead(me.id, id, data.matches) : null), [me, id, data.matches]);
+  const h = useMemo(
+    () => (me ? headToHead(me.id, id, data.matches) : null),
+    [me, id, data.matches],
+  );
 
   useEffect(() => {
     if (self && !preview) router.replace("/profilo");
@@ -37,16 +40,30 @@ export function PlayerPage() {
     return (
       <>
         <ScreenHeader title="Giocatore" back="/classifiche" />
-        <EmptyState title="Giocatore non trovato" text="Forse è stato tolto dal gruppo" />
+        <EmptyState
+          title="Giocatore non trovato"
+          text="Forse è stato tolto dal gruppo"
+        />
       </>
     );
   }
   const name = shortName(player, data.players);
-  const lead = h && h.games ? (h.winsA > h.winsB ? "me" : h.winsA < h.winsB ? "lui" : "pari") : null;
+  const lead =
+    h && h.games
+      ? h.winsA > h.winsB
+        ? "me"
+        : h.winsA < h.winsB
+          ? "lui"
+          : "pari"
+      : null;
 
   return (
     <>
-      <ScreenHeader title={self ? "Come ti vedono" : name} subtitle={self ? "Il tuo profilo, visto dagli altri" : undefined} back={() => router.back()} />
+      <ScreenHeader
+        title={self ? "Come ti vedono" : name}
+        subtitle={self ? "Il tuo profilo, visto dagli altri" : undefined}
+        back={() => router.back()}
+      />
       <div className="shrink-0 px-5">
         <ProfileHeader player={player} />
         <Segmented
@@ -65,20 +82,39 @@ export function PlayerPage() {
             <KeyRings playerId={player.id} />
             {me && h && !self && (
               <div className="card flex items-center gap-3 px-4 py-3 short:py-1.5">
-                <Character id={characterOf(me)} number={me.jerseyNumber} height={64} className="short:h-10 short:w-auto" />
+                <Character
+                  id={characterOf(me)}
+                  number={me.jerseyNumber}
+                  height={64}
+                  className="short:h-10 short:w-auto"
+                />
                 <div className="min-w-0 flex-1 text-center">
-                  <p className="text-[12.5px] font-semibold text-muted">Testa a testa</p>
+                  <p className="text-[12.5px] font-semibold text-muted">
+                    Testa a testa
+                  </p>
                   {h.games ? (
-                    <p className="score text-[36px] short:text-[28px]" aria-label={`Tu ${h.winsA}, ${name} ${h.winsB}`}>
-                      <span className={clsx(lead === "me" && "text-court")}>{h.winsA}</span>
+                    <p
+                      className="score text-[36px] short:text-[28px]"
+                      aria-label={`Tu ${h.winsA}, ${name} ${h.winsB}`}
+                    >
+                      <span className={clsx(lead === "me" && "text-court")}>
+                        {h.winsA}
+                      </span>
                       <span className="text-faint">–</span>
-                      <span className={clsx(lead === "lui" && "text-ball")}>{h.winsB}</span>
+                      <span className={clsx(lead === "lui" && "text-ball")}>
+                        {h.winsB}
+                      </span>
                     </p>
                   ) : (
                     <p className="text-[14px]">Non vi siete ancora sfidati</p>
                   )}
                 </div>
-                <Character id={characterOf(player)} number={player.jerseyNumber} height={64} className="short:h-10 short:w-auto" />
+                <Character
+                  id={characterOf(player)}
+                  number={player.jerseyNumber}
+                  height={64}
+                  className="short:h-10 short:w-auto"
+                />
               </div>
             )}
             <Form playerId={player.id} />

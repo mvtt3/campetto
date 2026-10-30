@@ -33,8 +33,15 @@ const MatchRow = memo(function MatchRow({
   // I cambi in fondo, con il "+": "Matteo, Simone + Cande".
   const names = (t: "A" | "B") => {
     const line = m.players.filter((p) => p.team === t);
-    const nm = (id: string) => shortName(data.players.find((x) => x.id === id), data.players);
-    const base = line.filter((p) => !p.sub).map((p) => nm(p.playerId)).join(", ");
+    const nm = (id: string) =>
+      shortName(
+        data.players.find((x) => x.id === id),
+        data.players,
+      );
+    const base = line
+      .filter((p) => !p.sub)
+      .map((p) => nm(p.playerId))
+      .join(", ");
     const subs = line.filter((p) => p.sub).map((p) => nm(p.playerId));
     return subs.length ? `${base} + ${subs.join(", ")}` : base;
   };
@@ -97,7 +104,16 @@ const MatchRow = memo(function MatchRow({
             {mvp ? (
               <>
                 {" · "}
-                <Crown size={11} className="inline align-[-1px] text-gold" aria-hidden /> MVP {shortName(data.players.find((x) => x.id === mvp.playerId), data.players)}
+                <Crown
+                  size={11}
+                  className="inline align-[-1px] text-gold"
+                  aria-hidden
+                />{" "}
+                MVP{" "}
+                {shortName(
+                  data.players.find((x) => x.id === mvp.playerId),
+                  data.players,
+                )}
               </>
             ) : m.players.some((p) => p.hasStats) ? (
               ", con statistiche"

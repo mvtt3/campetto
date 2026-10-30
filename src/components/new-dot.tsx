@@ -3,14 +3,22 @@
 import clsx from "clsx";
 
 /** Il pallino rosso delle novità (come nei giochi): con il numero, o solo il punto. */
-export function NewDot({ count, className }: { count?: number; className?: string }) {
+export function NewDot({
+  count,
+  className,
+}: {
+  count?: number;
+  className?: string;
+}) {
   if (count !== undefined && count <= 0) return null;
   return (
     <span
       aria-hidden
       className={clsx(
         "new-dot pointer-events-none grid place-items-center rounded-full border-2 border-[#1d1a16] bg-danger font-bold leading-none text-white",
-        count === undefined ? "h-3.5 w-3.5" : "h-[19px] min-w-[19px] px-1 text-[11px] tnum",
+        count === undefined
+          ? "h-3.5 w-3.5"
+          : "h-[19px] min-w-[19px] px-1 text-[11px] tnum",
         className,
       )}
     >

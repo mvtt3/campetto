@@ -3,10 +3,25 @@
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ClipboardPaste, Copy, Link2, Plus, Share2, UserCheck, UserX, Video } from "lucide-react";
+import {
+  ClipboardPaste,
+  Copy,
+  Link2,
+  Plus,
+  Share2,
+  UserCheck,
+  UserX,
+  Video,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
-import { Button, EmptyState, ScreenHeader, Segmented, Toggle } from "@/components/ui/basics";
+import {
+  Button,
+  EmptyState,
+  ScreenHeader,
+  Segmented,
+  Toggle,
+} from "@/components/ui/basics";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import type { PendingUser, PlayerPrivate } from "@/lib/data/backend";
@@ -37,14 +52,23 @@ function PlayerSheet({
   const [archived, setArchived] = useState(p?.archived ?? false);
   const [email, setEmail] = useState(priv?.linkEmail ?? "");
   const [busy, setBusy] = useState(false);
-  const link = priv ? `${typeof window !== "undefined" ? window.location.origin : ""}/invito/${priv.inviteToken}` : "";
+  const link = priv
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/invito/${priv.inviteToken}`
+    : "";
 
   const save = async () => {
     if (!first.trim()) return toast("Mi serve almeno il nome", "error");
     setBusy(true);
     try {
-      const id = await backend.upsertPlayer({ id: p?.id, firstName: first, lastName: last || null, roles, archived });
-      if ((priv?.linkEmail ?? "") !== email.trim().toLowerCase()) await backend.setLinkEmail(id, email || null);
+      const id = await backend.upsertPlayer({
+        id: p?.id,
+        firstName: first,
+        lastName: last || null,
+        roles,
+        archived,
+      });
+      if ((priv?.linkEmail ?? "") !== email.trim().toLowerCase())
+        await backend.setLinkEmail(id, email || null);
       await refresh();
       onChanged();
       toast(isNew ? "Ho aggiunto il giocatore" : "Ho aggiornato il giocatore");
@@ -61,7 +85,13 @@ function PlayerSheet({
       open={Boolean(player)}
       onOpenChange={(o) => !o && onClose()}
       title={isNew ? "Nuovo giocatore" : playerName(p)}
-      description={p ? (p.userId ? "Account collegato" : "Non ha ancora fatto l'accesso") : "Poi mandagli il suo link d'invito"}
+      description={
+        p
+          ? p.userId
+            ? "Account collegato"
+            : "Non ha ancora fatto l'accesso"
+          : "Poi mandagli il suo link d'invito"
+      }
       footer={
         <Button variant="primary" block onClick={save} disabled={busy}>
           {isNew ? "Aggiungi giocatore" : "Salva"}
@@ -92,8 +122,15 @@ function PlayerSheet({
               <button
                 key={r}
                 aria-pressed={roles.includes(r)}
-                onClick={() => setRoles((xs) => (xs.includes(r) ? xs.filter((x) => x !== r) : [...xs, r]))}
-                className={clsx("h-9 rounded-full px-3.5 text-[14px] font-semibold", roles.includes(r) ? "bg-court text-court-ink" : "bg-raised")}
+                onClick={() =>
+                  setRoles((xs) =>
+                    xs.includes(r) ? xs.filter((x) => x !== r) : [...xs, r],
+                  )
+                }
+                className={clsx(
+                  "h-9 rounded-full px-3.5 text-[14px] font-semibold",
+                  roles.includes(r) ? "bg-court text-court-ink" : "bg-raised",
+                )}
               >
                 {r}
               </button>
@@ -101,7 +138,10 @@ function PlayerSheet({
           </div>
         </div>
         <div>
-          <label htmlFor="link-email" className="mb-2 block text-[13px] font-semibold text-muted">
+          <label
+            htmlFor="link-email"
+            className="mb-2 block text-[13px] font-semibold text-muted"
+          >
             Email Google, per collegarlo da solo al primo accesso
           </label>
           <input
@@ -116,7 +156,9 @@ function PlayerSheet({
         </div>
         {priv && !p?.userId && (
           <div className="rounded-2xl bg-raised p-3.5">
-            <p className="text-[13px] font-semibold text-muted">Link d&apos;invito personale</p>
+            <p className="text-[13px] font-semibold text-muted">
+              Link d&apos;invito personale
+            </p>
             <p className="mt-1 break-all font-mono text-[12px]">{link}</p>
             <div className="mt-3 flex gap-2">
               <Button
@@ -133,7 +175,15 @@ function PlayerSheet({
                 <Button
                   size="sm"
                   className="flex-1"
-                  onClick={() => void navigator.share({ title: "Campetto", text: `Ciao ${p?.firstName}, entra nel Campetto:`, url: link }).catch(() => {})}
+                  onClick={() =>
+                    void navigator
+                      .share({
+                        title: "Campetto",
+                        text: `Ciao ${p?.firstName}, entra nel Campetto:`,
+                        url: link,
+                      })
+                      .catch(() => {})
+                  }
                 >
                   <Share2 size={15} /> Condividi
                 </Button>
@@ -156,9 +206,15 @@ function PlayerSheet({
           <div className="flex items-center justify-between rounded-2xl bg-raised px-3.5 py-3">
             <div>
               <p className="text-[15px] font-semibold">Archiviato</p>
-              <p className="text-[12.5px] text-muted">Non compare più nelle squadre; le sue partite restano</p>
+              <p className="text-[12.5px] text-muted">
+                Non compare più nelle squadre; le sue partite restano
+              </p>
             </div>
-            <Toggle label="Archiviato" checked={archived} onChange={setArchived} />
+            <Toggle
+              label="Archiviato"
+              checked={archived}
+              onChange={setArchived}
+            />
           </div>
         )}
         {p?.userId && p.id !== me?.id && (
@@ -196,7 +252,10 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     try {
-      const [a, b] = await Promise.all([backend.listPrivate(), backend.listPending()]);
+      const [a, b] = await Promise.all([
+        backend.listPrivate(),
+        backend.listPending(),
+      ]);
       setPriv(a);
       setPending(b);
     } catch (e) {
@@ -220,7 +279,11 @@ export default function AdminPage() {
         back="/profilo/impostazioni"
         action={
           tab === "giocatori" ? (
-            <button onClick={() => setOpen("new")} aria-label="Aggiungi giocatore" className="press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface sticker-sm">
+            <button
+              onClick={() => setOpen("new")}
+              aria-label="Aggiungi giocatore"
+              className="press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface sticker-sm"
+            >
               <Plus size={20} strokeWidth={2.6} />
             </button>
           ) : undefined
@@ -228,11 +291,33 @@ export default function AdminPage() {
       />
       <div className="grid shrink-0 grid-cols-3 gap-2 px-5 pb-3">
         {[
-          { href: "/nuova", label: "Aggiungi partita", icon: Plus, cls: "bg-ball text-ball-ink" },
-          { href: "/importa", label: "Importa statistiche", icon: ClipboardPaste, cls: "bg-court text-court-ink" },
-          { href: "/video", label: "Segna dal video", icon: Video, cls: "bg-text text-bg" },
+          {
+            href: "/nuova",
+            label: "Aggiungi partita",
+            icon: Plus,
+            cls: "bg-ball text-ball-ink",
+          },
+          {
+            href: "/importa",
+            label: "Importa statistiche",
+            icon: ClipboardPaste,
+            cls: "bg-court text-court-ink",
+          },
+          {
+            href: "/video",
+            label: "Segna dal video",
+            icon: Video,
+            cls: "bg-text text-bg",
+          },
         ].map(({ href, label, icon: Icon, cls }) => (
-          <Link key={href} href={href} className={clsx("press flex h-[84px] flex-col justify-between rounded-3xl p-3 text-[13px] font-semibold leading-tight", cls)}>
+          <Link
+            key={href}
+            href={href}
+            className={clsx(
+              "press flex h-[84px] flex-col justify-between rounded-3xl p-3 text-[13px] font-semibold leading-tight",
+              cls,
+            )}
+          >
             <Icon size={20} />
             {label}
           </Link>
@@ -244,7 +329,10 @@ export default function AdminPage() {
           onChange={setTab}
           options={[
             { value: "giocatori", label: "Giocatori" },
-            { value: "attesa", label: `In attesa${pending.length ? ` (${pending.length})` : ""}` },
+            {
+              value: "attesa",
+              label: `In attesa${pending.length ? ` (${pending.length})` : ""}`,
+            },
           ]}
         />
       </div>
@@ -255,31 +343,60 @@ export default function AdminPage() {
               <button
                 key={p.id}
                 onClick={() => setOpen(p)}
-                className={clsx("card press flex items-center gap-3 px-3 py-2.5 text-left", p.archived && "opacity-50")}
+                className={clsx(
+                  "card press flex items-center gap-3 px-3 py-2.5 text-left",
+                  p.archived && "opacity-50",
+                )}
               >
                 <Avatar player={p} size={40} href={false} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">
-                    {adminName(p)} {p.isAdmin && <span className="text-[12px] font-normal text-ball">admin</span>}
+                    {adminName(p)}{" "}
+                    {p.isAdmin && (
+                      <span className="text-[12px] font-normal text-ball">
+                        admin
+                      </span>
+                    )}
                   </p>
-                  <p className="truncate text-[12.5px] text-muted">{p.roles.join(", ") || "Nessun ruolo"}</p>
+                  <p className="truncate text-[12.5px] text-muted">
+                    {p.roles.join(", ") || "Nessun ruolo"}
+                  </p>
                 </div>
-                <span className={clsx("shrink-0 text-[12px] font-semibold", p.userId ? "text-ok" : "text-muted")}>
-                  {p.archived ? "Archiviato" : p.userId ? "Collegato" : "Da invitare"}
+                <span
+                  className={clsx(
+                    "shrink-0 text-[12px] font-semibold",
+                    p.userId ? "text-ok" : "text-muted",
+                  )}
+                >
+                  {p.archived
+                    ? "Archiviato"
+                    : p.userId
+                      ? "Collegato"
+                      : "Da invitare"}
                 </span>
               </button>
             ))}
           </div>
         ) : pending.length === 0 ? (
-          <EmptyState title="Nessuno in attesa" text="Chi entra con Google senza invito compare qui: lo colleghi a un giocatore con un tocco" />
+          <EmptyState
+            title="Nessuno in attesa"
+            text="Chi entra con Google senza invito compare qui: lo colleghi a un giocatore con un tocco"
+          />
         ) : (
           <div className="flex flex-col gap-2">
             {pending.map((u) => (
               <div key={u.userId} className="card px-4 py-3">
-                <p className="truncate text-[15px] font-semibold">{u.fullName ?? u.email}</p>
+                <p className="truncate text-[15px] font-semibold">
+                  {u.fullName ?? u.email}
+                </p>
                 <p className="truncate text-[12.5px] text-muted">{u.email}</p>
                 <div className="mt-3 flex gap-2">
-                  <Button size="sm" variant="primary" className="flex-1" onClick={() => setLinking(u)}>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    className="flex-1"
+                    onClick={() => setLinking(u)}
+                  >
                     <UserCheck size={15} /> Collega a un giocatore
                   </Button>
                   <Button
@@ -303,14 +420,28 @@ export default function AdminPage() {
         <PlayerSheet
           key={open === "new" ? "new" : open.id}
           player={open}
-          priv={open !== "new" ? priv.find((x) => x.playerId === open.id) : undefined}
+          priv={
+            open !== "new"
+              ? priv.find((x) => x.playerId === open.id)
+              : undefined
+          }
           onClose={() => setOpen(null)}
           onChanged={() => void load()}
         />
       )}
-      <Sheet open={Boolean(linking)} onOpenChange={(o) => !o && setLinking(null)} title="Chi è?" description={linking?.email ?? undefined}>
+      <Sheet
+        open={Boolean(linking)}
+        onOpenChange={(o) => !o && setLinking(null)}
+        title="Chi è?"
+        description={linking?.email ?? undefined}
+      >
         <div className="flex flex-col gap-2 pb-2">
-          {unlinked.length === 0 && <p className="text-[14px] text-muted">Tutti i giocatori hanno già un account. Aggiungi prima un nuovo giocatore.</p>}
+          {unlinked.length === 0 && (
+            <p className="text-[14px] text-muted">
+              Tutti i giocatori hanno già un account. Aggiungi prima un nuovo
+              giocatore.
+            </p>
+          )}
           {unlinked.map((p) => (
             <button
               key={p.id}

@@ -1,6 +1,6 @@
 import { periodRange, seasonKey, seasonOf, sortChrono } from "./periods";
 import { matchMvp } from "./stats/match-mvp";
-import { normalizeBox, teamOf } from "./stats/player";
+import { doubleDigits, normalizeBox, teamOf } from "./stats/player";
 import { comebackSize } from "./stats/records";
 import { winnerOf, type Match } from "./types";
 import type { MonthAward, SeasonAward } from "./stats/awards";
@@ -44,6 +44,7 @@ export type BadgeIcon =
   | "thief"
   | "swat"
   | "double"
+  | "triple"
   | "aim"
   | "fair"
   | "star"
@@ -238,10 +239,21 @@ export const BADGES: BadgeDef[] = [
     name: "Doppia doppia",
     unit: "partite",
     description:
-      "Partite con almeno 10 in due voci tra punti, rimbalzi e assist",
+      "Partite con almeno 10 in due tra punti, rimbalzi, assist, rubate e stoppate",
     category: "partita",
     icon: "double",
     thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "tripla-doppia",
+    name: "Tripla doppia",
+    unit: "partite",
+    description:
+      "Partite con almeno 10 in tre tra punti, rimbalzi, assist, rubate e stoppate: rarissima",
+    category: "partita",
+    icon: "triple",
+    thresholds: [1, 3, 6, 12, 25],
     mode: "total",
   },
   {
@@ -268,7 +280,7 @@ export const BADGES: BadgeDef[] = [
     key: "pulito",
     name: "Zero sbavature",
     unit: "partite",
-    description: "Partite con tabellino e nessuna palla persa",
+    description: "Partite con il tabellino e senza palle perse",
     category: "partita",
     icon: "clean",
     thresholds: [10, 30, 75, 150, 300],
@@ -309,7 +321,8 @@ export const BADGES: BadgeDef[] = [
     key: "rimonta",
     name: "Rimonta",
     unit: "vittorie",
-    description: "Vittorie da sotto di almeno 5 punti (dal video)",
+    description:
+      "Vittorie in rimonta da almeno 5 punti sotto (serve la cronaca della partita)",
     category: "speciali",
     icon: "comeback",
     thresholds: [2, 5, 12, 25, 50],
@@ -329,7 +342,7 @@ export const BADGES: BadgeDef[] = [
     key: "costanza",
     name: "Settimana dopo settimana",
     unit: "mesi",
-    description: "Mesi in cui hai giocato ogni settimana",
+    description: "Mesi in cui hai giocato tutte le settimane",
     category: "speciali",
     icon: "calendar",
     thresholds: [1, 3, 6, 12, 24],
@@ -359,7 +372,7 @@ export const BADGES: BadgeDef[] = [
     key: "apripista",
     name: "Apripista",
     unit: "stagioni",
-    description: "Presente alla prima partita della stagione",
+    description: "Stagioni in cui c'eri alla prima partita",
     category: "speciali",
     icon: "opener",
     thresholds: [1, 3, 6, 10, 16],
@@ -369,7 +382,7 @@ export const BADGES: BadgeDef[] = [
     key: "mvp-partita",
     name: "MVP della partita",
     unit: "partite da MVP",
-    description: "Partite vinte da migliore in campo della tua squadra",
+    description: "Partite vinte da MVP della partita",
     category: "speciali",
     icon: "star",
     thresholds: [5, 20, 50, 120, 250],
@@ -514,8 +527,9 @@ export function computeBadges(
       bump("rimbalzi-off", b.oreb, "total", d, m.id);
       if (b.stl >= 3) bump("partita-rubate", 1, "total", d, m.id);
       if (b.blk >= 2) bump("partita-stoppate", 1, "total", d, m.id);
-      if ([b.pts, reb, b.ast].filter((v) => v >= 10).length >= 2)
-        bump("doppia-doppia", 1, "total", d, m.id);
+      const tens = doubleDigits(b).length;
+      if (tens >= 2) bump("doppia-doppia", 1, "total", d, m.id);
+      if (tens >= 3) bump("tripla-doppia", 1, "total", d, m.id);
       const fga = b.fg2a + b.fg3a;
       if (fga >= 6 && (b.fg2m + b.fg3m) / fga >= 0.6)
         bump("mira", 1, "total", d, m.id);

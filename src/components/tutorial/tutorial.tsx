@@ -1,6 +1,6 @@
 "use client";
 
-import { MoveHorizontal, X } from "lucide-react";
+import { MoveDown, MoveHorizontal, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -127,7 +127,8 @@ export function TutorialProvider({
   const introDone = useIntroDone();
   // Al primo ingresso: il benvenuto, appena non c'è altro sullo schermo (né l'apertura, né una festa).
   useEffect(() => {
-    if (state.status !== "new" || active || !TABS.includes(path) || !introDone) return;
+    if (state.status !== "new" || active || !TABS.includes(path) || !introDone)
+      return;
     const t = window.setInterval(() => {
       if (document.querySelector('[role="dialog"]') || document.hidden) return;
       window.clearInterval(t);
@@ -177,20 +178,35 @@ export function TutorialProvider({
     // Dalla Home alla Classifica la guida mostra il gesto: la scheda scorre da sola, un attimo.
     if (active.section === "home" && nextId === "classifica") {
       setActive(null);
-      await showSwipe();
-      if (window.location.pathname !== sections(false)[nextId].path) await go(nextId);
+      // Prima il gesto per aggiornare (tira giù), poi quello per cambiare scheda.
+      await showHint("pull");
+      await showHint("swipe");
+      if (window.location.pathname !== sections(false)[nextId].path)
+        await go(nextId);
     } else await go(nextId);
     setActive({ ...active, section: nextId, step: 0 });
   };
 
-  const [swipeHint, setSwipeHint] = useState(false);
-  const showSwipe = async () => {
-    setSwipeHint(true);
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [hint, setHint] = useState<"swipe" | "pull" | null>(null);
+  const showHint = async (kind: "swipe" | "pull") => {
+    setHint(kind);
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     await new Promise((r) => setTimeout(r, 240));
-    if (!reduce) window.dispatchEvent(new Event(SWIPE_DEMO));
+    if (!reduce) {
+      if (kind === "swipe") window.dispatchEvent(new Event(SWIPE_DEMO));
+      else {
+        // La schermata scende un attimo e torna su, come quando la tiri giù col dito.
+        const page = document.querySelector<HTMLElement>(
+          ".tab-page:not(.tab-off)",
+        );
+        page?.classList.add("pull-demo");
+        window.setTimeout(() => page?.classList.remove("pull-demo"), 1150);
+      }
+    }
     await new Promise((r) => setTimeout(r, 1100));
-    setSwipeHint(false);
+    setHint(null);
   };
 
   const prev = async () => {
@@ -221,7 +237,7 @@ export function TutorialProvider({
           onStart={() => void start(SECTION_IDS, "home")}
         />
       )}
-      {swipeHint && <SwipeHint />}
+      {hint && <GestureHint kind={hint} />}
       {done !== null && (
         <Completion
           key={done}
@@ -287,7 +303,13 @@ function Coach({
       const below = hole.y + hole.h + 14 + h <= vh - 12;
       const above = hole.y - 14 - h >= 12;
       // Senza spazio né sopra né sotto, la scheda va dal lato opposto e copre il punto il meno possibile.
-      const top = below ? hole.y + hole.h + 14 : above ? hole.y - 14 - h : hole.y + hole.h / 2 < vh / 2 ? vh - h - 12 : 12;
+      const top = below
+        ? hole.y + hole.h + 14
+        : above
+          ? hole.y - 14 - h
+          : hole.y + hole.h / 2 < vh / 2
+            ? vh - h - 12
+            : 12;
       setGeo({ card: { left, top, width }, hole });
     };
     void (async () => {
@@ -471,16 +493,38 @@ function Coach({
 }
 
 /**
- * Un attimo solo: un dito che scorre e una scritta, mentre la scheda passa a quella
- * dopo da sola. Durante il gesto i tocchi aspettano.
+ * Un attimo solo: un dito che fa il gesto e una scritta. "swipe": scorre di lato mentre la
+ * scheda passa a quella dopo; "pull": scende dall'alto mentre la schermata si abbassa e
+ * torna su, come quando si aggiorna. Durante il gesto i tocchi aspettano.
  */
-function SwipeHint() {
+function GestureHint({ kind }: { kind: "swipe" | "pull" }) {
   return createPortal(
-    <div className="fixed inset-0 z-[80]" onPointerDown={(e) => e.preventDefault()}>
-      <span className="swipe-finger" aria-hidden />
-      <div className="pointer-events-none absolute inset-x-0 bottom-[112px] flex justify-center px-4" role="status">
-        <p className="swipe-pill flex items-center gap-2 rounded-full border-[2.5px] border-edge bg-volt py-2 pl-3 pr-4 text-[14.5px] font-bold text-volt-ink" style={{ boxShadow: "3px 3px 0 #1d1a16" }}>
-          <MoveHorizontal size={18} aria-hidden /> Scorri di lato per cambiare scheda
+    <div
+      className="fixed inset-0 z-[80]"
+      onPointerDown={(e) => e.preventDefault()}
+    >
+      <span
+        className={kind === "swipe" ? "swipe-finger" : "pull-finger"}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-[112px] flex justify-center px-4"
+        role="status"
+      >
+        <p
+          className="swipe-pill flex items-center gap-2 rounded-full border-[2.5px] border-edge bg-volt py-2 pl-3 pr-4 text-[14.5px] font-bold text-volt-ink"
+          style={{ boxShadow: "3px 3px 0 #1d1a16" }}
+        >
+          {kind === "swipe" ? (
+            <>
+              <MoveHorizontal size={18} aria-hidden /> Scorri di lato per
+              cambiare scheda
+            </>
+          ) : (
+            <>
+              <MoveDown size={18} aria-hidden /> Tira giù per aggiornare
+            </>
+          )}
         </p>
       </div>
     </div>,

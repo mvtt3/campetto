@@ -38,9 +38,11 @@ function normalizer(values: number[]) {
 }
 
 /**
- * MVP del periodo: conta soprattutto far vincere la squadra, non solo i numeri.
- * 35% vittorie, 20% impatto (+/− medio: di quanto vince la tua squadra quando ci sei),
- * 30% valutazione media (statistiche), 15% presenza.
+ * MVP del periodo: vincere conta, ma conta di più come giochi. Chi segna e produce tanto in
+ * una squadra che perde non deve finire dietro a chi vince senza incidere.
+ * 45% statistiche (metà punti a partita, metà valutazione: rimbalzi, assist, rubate e
+ * stoppate meno tiri sbagliati e palle perse), 30% vittorie, 15% presenza,
+ * 10% impatto (+/− medio: di quanto vince la tua squadra quando ci sei).
  * Per entrare servono almeno 3 partite e almeno il 40% delle partite di chi ha giocato di più:
  * chi viene due volte con una bella media non scavalca chi c'è sempre.
  * Senza tabellini nel periodo: 50% vittorie, 25% presenza, 25% ELO.
@@ -57,7 +59,10 @@ export function mvpRanking(
   const elo = opts.elo ?? computeElo(matches, playerIds);
   const range = periodRange(period);
 
-  const all = playerIds.map((id) => ({ id, s: computePlayerStats(id, scoped) }));
+  const all = playerIds.map((id) => ({
+    id,
+    s: computePlayerStats(id, scoped),
+  }));
   const maxGames = Math.max(0, ...all.map((r) => r.s.games));
   const need = opts.minGames ?? minGamesFor(maxGames, minGames);
   const rows = all
@@ -67,14 +72,21 @@ export function mvpRanking(
       games: r.s.games,
       winPct: r.s.winPct,
       effAvg: r.s.effAvg,
+      ptsAvg: r.s.statGames ? r.s.avg.pts : null,
       plusMinusAvg: r.s.plusMinusAvg,
       eloDelta: eloDelta(elo, r.id, range?.start, range?.end),
     }));
   if (!rows.length) return [];
 
   const nWin = normalizer(rows.map((r) => r.winPct));
-  const effs = rows.filter((r) => r.effAvg !== null).map((r) => r.effAvg as number);
+  const effs = rows
+    .filter((r) => r.effAvg !== null)
+    .map((r) => r.effAvg as number);
   const nEff = effs.length ? normalizer(effs) : null;
+  const pts = rows
+    .filter((r) => r.ptsAvg !== null)
+    .map((r) => r.ptsAvg as number);
+  const nPts = pts.length ? normalizer(pts) : null;
   const nImpact = normalizer(rows.map((r) => r.plusMinusAvg));
 
   return rows
@@ -83,10 +95,19 @@ export function mvpRanking(
       const i = nImpact(r.plusMinusAvg);
       const p = r.games / maxGames;
       const score =
-        nEff && r.effAvg !== null ? 0.35 * w + 0.2 * i + 0.3 * nEff(r.effAvg) + 0.15 * p : 0.5 * w + 0.3 * i + 0.2 * p;
+        nEff && r.effAvg !== null
+          ? 0.3 * w +
+            0.1 * i +
+            0.45 *
+              (0.5 * nEff(r.effAvg) +
+                0.5 * (nPts && r.ptsAvg !== null ? nPts(r.ptsAvg) : 0)) +
+            0.15 * p
+          : 0.5 * w + 0.3 * i + 0.2 * p;
       return { ...r, score };
     })
-    .sort((a, b) => b.score - a.score || b.winPct - a.winPct || b.games - a.games);
+    .sort(
+      (a, b) => b.score - a.score || b.winPct - a.winPct || b.games - a.games,
+    );
 }
 
 export function mvpOf(
@@ -111,7 +132,11 @@ export function currentMvp(
 ): { entry: MvpEntry; period: Period } | null {
   const e = elo ?? computeElo(matches, playerIds);
   for (let back = 0; back <= 1; back++) {
-    const { year, month } = shiftMonth(now.getFullYear(), now.getMonth(), -back);
+    const { year, month } = shiftMonth(
+      now.getFullYear(),
+      now.getMonth(),
+      -back,
+    );
     const period: Period = { kind: "month", year, month };
     const top = mvpOf(playerIds, matches, period, "all", e);
     if (top) return { entry: top, period };
@@ -137,23 +162,55 @@ export const KING_LABELS: Record<KingCategory, string> = {
 };
 
 /** Category kings: per-game averages, minimum 2 games with stats (3PT: min 5 attempts). */
-export function categoryKings(playerIds: string[], matches: Match[], period: Period): KingEntry[] {
+export function categoryKings(
+  playerIds: string[],
+  matches: Match[],
+  period: Period,
+): KingEntry[] {
   const scoped = filterMatches(matches, { period });
-  const stats = playerIds.map((id) => computePlayerStats(id, scoped)).filter((s) => s.statGames >= 2);
+  const stats = playerIds
+    .map((id) => computePlayerStats(id, scoped))
+    .filter((s) => s.statGames >= 2);
   const out: KingEntry[] = [];
-  const pick = (category: KingCategory, value: (s: PlayerStats) => number | null, fmt: (v: number) => string) => {
+  const pick = (
+    category: KingCategory,
+    value: (s: PlayerStats) => number | null,
+    fmt: (v: number) => string,
+  ) => {
     let best: { s: PlayerStats; v: number } | null = null;
     for (const s of stats) {
       const v = value(s);
       if (v === null || v <= 0) continue;
       if (!best || v > best.v) best = { s, v };
     }
-    if (best) out.push({ category, playerId: best.s.playerId, value: best.v, label: fmt(best.v) });
+    if (best)
+      out.push({
+        category,
+        playerId: best.s.playerId,
+        value: best.v,
+        label: fmt(best.v),
+      });
   };
-  pick("punti", (s) => s.avg.pts, (v) => `${v.toFixed(1)} punti a partita`);
-  pick("assist", (s) => s.avg.ast, (v) => `${v.toFixed(1)} assist a partita`);
-  pick("rimbalzi", (s) => s.rebAvg, (v) => `${v.toFixed(1)} rimbalzi a partita`);
-  pick("difesa", (s) => s.avg.stl + s.avg.blk, (v) => `${v.toFixed(1)} rubate + stoppate`);
+  pick(
+    "punti",
+    (s) => s.avg.pts,
+    (v) => `${v.toFixed(1)} punti a partita`,
+  );
+  pick(
+    "assist",
+    (s) => s.avg.ast,
+    (v) => `${v.toFixed(1)} assist a partita`,
+  );
+  pick(
+    "rimbalzi",
+    (s) => s.rebAvg,
+    (v) => `${v.toFixed(1)} rimbalzi a partita`,
+  );
+  pick(
+    "difesa",
+    (s) => s.avg.stl + s.avg.blk,
+    (v) => `${v.toFixed(1)} rubate + stoppate`,
+  );
   pick(
     "tiro3",
     (s) => (s.totals.fg3a >= 5 ? s.fg3Pct : null),
@@ -170,7 +227,11 @@ export interface MonthAward {
   closed: boolean;
 }
 
-export function monthlyHistory(playerIds: string[], matches: Match[], now = new Date()): MonthAward[] {
+export function monthlyHistory(
+  playerIds: string[],
+  matches: Match[],
+  now = new Date(),
+): MonthAward[] {
   const elo = computeElo(matches, playerIds);
   return monthsWithMatches(matches)
     .map(({ year, month }) => {
@@ -193,7 +254,11 @@ export interface SeasonAward {
   closed: boolean;
 }
 
-export function seasonHistory(playerIds: string[], matches: Match[], now = new Date()): SeasonAward[] {
+export function seasonHistory(
+  playerIds: string[],
+  matches: Match[],
+  now = new Date(),
+): SeasonAward[] {
   const elo = computeElo(matches, playerIds);
   return seasonsWithMatches(matches)
     .map(({ year, quarter }) => {
@@ -209,11 +274,17 @@ export function seasonHistory(playerIds: string[], matches: Match[], now = new D
 }
 
 /** Closed seasons won by the player: their permanent trophies. */
-export function trophiesOf(playerId: string, seasons: SeasonAward[]): SeasonAward[] {
+export function trophiesOf(
+  playerId: string,
+  seasons: SeasonAward[],
+): SeasonAward[] {
   return seasons.filter((s) => s.closed && s.ranking[0]?.playerId === playerId);
 }
 
 /** Closed months won by the player. */
-export function mvpMonthsOf(playerId: string, months: MonthAward[]): MonthAward[] {
+export function mvpMonthsOf(
+  playerId: string,
+  months: MonthAward[],
+): MonthAward[] {
   return months.filter((m) => m.closed && m.mvp?.playerId === playerId);
 }

@@ -1328,8 +1328,56 @@ html[data-shot="3"] .intro-ball-x {
     transform: translateY(6px);
   }
 }
+/* La guida mostra il "tira giù per aggiornare": il dito scende dall'alto, la schermata lo segue e torna su. */
+.pull-finger {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 9999px;
+  background: rgb(255 250 240 / 0.85);
+  border: 2.5px solid #1d1a16;
+  box-shadow: 0 0 0 7px rgb(255 250 240 / 0.3);
+  animation: pull-finger 1.25s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes pull-finger {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.7);
+  }
+  14% {
+    opacity: 1;
+    transform: translateY(-40px) scale(1);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(110px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(120px) scale(0.85);
+  }
+}
+.pull-demo {
+  animation: pull-demo 1.1s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes pull-demo {
+  0%,
+  12% {
+    transform: none;
+  }
+  58% {
+    transform: translateY(64px);
+  }
+  100% {
+    transform: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .swipe-finger {
+  .swipe-finger,
+  .pull-finger {
     display: none;
   }
 }

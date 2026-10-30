@@ -9,14 +9,35 @@ import { NewDot } from "./new-dot";
 import { useNewRewards } from "./rewards";
 
 const ITEMS = [
-  { href: "/", label: "Home", icon: House, match: (p: string) => p === "/" || p.startsWith("/organizza") },
-  { href: "/classifiche", label: "Classifica", icon: Trophy, match: (p: string) => p.startsWith("/classifiche") || p.startsWith("/giocatore") },
-  { href: "/partite", label: "Partite", icon: Rows3, match: (p: string) => p.startsWith("/partite") },
+  {
+    href: "/",
+    label: "Home",
+    icon: House,
+    match: (p: string) => p === "/" || p.startsWith("/organizza"),
+  },
+  {
+    href: "/classifiche",
+    label: "Classifica",
+    icon: Trophy,
+    match: (p: string) =>
+      p.startsWith("/classifiche") || p.startsWith("/giocatore"),
+  },
+  {
+    href: "/partite",
+    label: "Partite",
+    icon: Rows3,
+    match: (p: string) => p.startsWith("/partite"),
+  },
   {
     href: "/profilo",
     label: "Profilo",
     icon: UserRound,
-    match: (p: string) => p.startsWith("/profilo") || p.startsWith("/admin") || p.startsWith("/nuova") || p.startsWith("/video") || p.startsWith("/importa"),
+    match: (p: string) =>
+      p.startsWith("/profilo") ||
+      p.startsWith("/admin") ||
+      p.startsWith("/nuova") ||
+      p.startsWith("/video") ||
+      p.startsWith("/importa"),
   },
 ];
 
@@ -25,14 +46,24 @@ const ITEMS = [
  * La scheda attiva cambia solo colore (niente animazioni di layout: più leggera sui telefoni economici).
  * Il cambio scheda aggiorna solo l'indirizzo: le schermate restano montate nel layout dell'app.
  */
-export function BottomNav({ current, onTab }: { current?: string; onTab?: (href: string) => void }) {
+export function BottomNav({
+  current,
+  onTab,
+}: {
+  current?: string;
+  onTab?: (href: string) => void;
+}) {
   const routePath = usePathname();
   const path = current ?? routePath;
   const index = ITEMS.findIndex((it) => it.match(path));
   // Badge e personaggi nuovi da aprire: il pallino rosso sul Profilo.
   const news = useNewRewards().total;
   return (
-    <nav aria-label="Navigazione principale" data-tour="nav" className="safe-bottom shrink-0 px-4 pb-3 pt-1">
+    <nav
+      aria-label="Navigazione principale"
+      data-tour="nav"
+      className="safe-bottom shrink-0 px-4 pb-3 pt-1"
+    >
       <ul className="sticker relative mx-auto grid h-[66px] max-w-md grid-cols-4 gap-1 rounded-[24px] bg-surface p-1.5">
         {/* La pillola blu scorre da una scheda all'altra (e segue il dito durante lo swipe). */}
         {index >= 0 && (
@@ -61,7 +92,11 @@ export function BottomNav({ current, onTab }: { current?: string; onTab?: (href:
                   if (onTab) onTab(href);
                   else window.history.pushState(null, "", href);
                 }}
-                aria-label={href === "/profilo" && news ? `${label}, ${news === 1 ? "una novità" : `${news} novità`}` : label}
+                aria-label={
+                  href === "/profilo" && news
+                    ? `${label}, ${news === 1 ? "una novità" : `${news} novità`}`
+                    : label
+                }
                 aria-current={active ? "page" : undefined}
                 className={clsx(
                   "flex w-full flex-col items-center justify-center gap-0.5 rounded-[18px] text-[11.5px] font-bold transition-colors duration-300",
@@ -70,7 +105,9 @@ export function BottomNav({ current, onTab }: { current?: string; onTab?: (href:
               >
                 <span className="relative">
                   <Icon size={21} strokeWidth={active ? 2.4 : 2} aria-hidden />
-                  {href === "/profilo" && <NewDot count={news} className="absolute -right-3 -top-2" />}
+                  {href === "/profilo" && (
+                    <NewDot count={news} className="absolute -right-3 -top-2" />
+                  )}
                 </span>
                 <span>{label}</span>
               </Link>

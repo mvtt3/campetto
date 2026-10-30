@@ -5,7 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
-import { Button, Card, EmptyState, ScreenHeader, Segmented } from "@/components/ui/basics";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ScreenHeader,
+  Segmented,
+} from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { DayStrip, dayLabel, TimeField } from "@/components/ui/pickers";
 import { Sheet } from "@/components/ui/sheet";
@@ -25,10 +31,24 @@ const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const localIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClose: () => void; initialDay: Date }) {
+function NewProposalSheet({
+  open,
+  onClose,
+  initialDay,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialDay: Date;
+}) {
   const { backend, refresh, mutate, me } = useData();
   const toast = useToast();
-  const [day, setDay] = useState(() => localIso(initialDay < new Date(new Date().setHours(0, 0, 0, 0)) ? new Date() : initialDay));
+  const [day, setDay] = useState(() =>
+    localIso(
+      initialDay < new Date(new Date().setHours(0, 0, 0, 0))
+        ? new Date()
+        : initialDay,
+    ),
+  );
   const [time, setTime] = useState("18:00");
   const [format, setFormat] = useState<Format | "any">("any");
   const [note, setNote] = useState("");
@@ -37,19 +57,38 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
   // Da oggi a sei settimane avanti (o oltre il giorno scelto nel calendario).
   const days = useMemo(() => {
     const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const span = Math.max(42, Math.round((initialDay.getTime() - start.getTime()) / 86_400_000) + 14);
-    return Array.from({ length: span }, (_, i) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
+    const start = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const span = Math.max(
+      42,
+      Math.round((initialDay.getTime() - start.getTime()) / 86_400_000) + 14,
+    );
+    return Array.from(
+      { length: span },
+      (_, i) =>
+        new Date(today.getFullYear(), today.getMonth(), today.getDate() + i),
+    );
   }, [initialDay]);
 
   const submit = async () => {
     const [h, m] = time.split(":").map(Number);
     const [y, mo, d] = day.split("-").map(Number);
     const startsAt = new Date(y, mo - 1, d, h, m);
-    if (startsAt.getTime() < Date.now() - 60 * 60_000) return toast("Questo orario è già passato: scegline uno più avanti", "error");
+    if (startsAt.getTime() < Date.now() - 60 * 60_000)
+      return toast(
+        "Questo orario è già passato: scegline uno più avanti",
+        "error",
+      );
     setBusy(true);
     try {
-      const input = { startsAt: startsAt.toISOString(), format: format === "any" ? null : format, note: note.trim() || null };
+      const input = {
+        startsAt: startsAt.toISOString(),
+        format: format === "any" ? null : format,
+        note: note.trim() || null,
+      };
       const id = await backend.createProposal(input);
       void backend.notify({ type: "proposal_new", proposalId: id });
       // Compare subito nel calendario: i dati del server arrivano dopo, senza farti aspettare.
@@ -58,7 +97,22 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
         mutate((d) =>
           d.proposals.some((p) => p.id === id)
             ? d
-            : { ...d, proposals: [...d.proposals, { id, ...input, createdBy: me.id, status: "aperta", createdAt: now, responses: [{ playerId: me.id, response: "si", updatedAt: now }] }] },
+            : {
+                ...d,
+                proposals: [
+                  ...d.proposals,
+                  {
+                    id,
+                    ...input,
+                    createdBy: me.id,
+                    status: "aperta",
+                    createdAt: now,
+                    responses: [
+                      { playerId: me.id, response: "si", updatedAt: now },
+                    ],
+                  },
+                ],
+              },
         );
       }
       void refresh();
@@ -86,9 +140,18 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
       <div className="flex flex-col gap-5 pb-2">
         <section>
           <h3 className="mb-2 flex items-baseline justify-between text-[13px] font-semibold text-muted">
-            Giorno <span className="text-[14px] font-bold text-text">{dayLabel(day)}</span>
+            Giorno{" "}
+            <span className="text-[14px] font-bold text-text">
+              {dayLabel(day)}
+            </span>
           </h3>
-          <DayStrip value={day} onChange={setDay} min={days[0]} max={days[days.length - 1]} newestFirst={false} />
+          <DayStrip
+            value={day}
+            onChange={setDay}
+            min={days[0]}
+            max={days[days.length - 1]}
+            newestFirst={false}
+          />
         </section>
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Ora</h3>
@@ -99,11 +162,17 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
           <Segmented
             value={format}
             onChange={setFormat}
-            options={[{ value: "any" as const, label: "Libero" }, ...FORMATS.map((f) => ({ value: f, label: f }))]}
+            options={[
+              { value: "any" as const, label: "Libero" },
+              ...FORMATS.map((f) => ({ value: f, label: f })),
+            ]}
           />
         </section>
         <section>
-          <label htmlFor="note" className="mb-2 block text-[13px] font-semibold text-muted">
+          <label
+            htmlFor="note"
+            className="mb-2 block text-[13px] font-semibold text-muted"
+          >
             Nota
           </label>
           <input
@@ -129,7 +198,9 @@ function OrganizeInner() {
     const g = params.get("giorno")?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return g ? new Date(+g[1], +g[2] - 1, +g[3]) : null;
   });
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(selected ?? new Date()));
+  const [weekStart, setWeekStart] = useState(() =>
+    startOfWeek(selected ?? new Date()),
+  );
   const creating = params.get("nuova") === "1";
   const respond = useRespond();
   const handled = useRef(false);
@@ -138,7 +209,8 @@ function OrganizeInner() {
   useEffect(() => {
     const pid = params.get("p");
     const r = params.get("r");
-    if (handled.current || !pid || !r || !["si", "forse", "no"].includes(r)) return;
+    if (handled.current || !pid || !r || !["si", "forse", "no"].includes(r))
+      return;
     const prop = data.proposals.find((x) => x.id === pid);
     if (!prop) return;
     handled.current = true;
@@ -147,8 +219,20 @@ function OrganizeInner() {
   }, [params, data.proposals, respond, router]);
 
   const open = data.proposals.filter((p) => p.status === "aperta");
-  const days = Array.from({ length: 7 }, (_, i) => new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i));
-  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+  const days = Array.from(
+    { length: 7 },
+    (_, i) =>
+      new Date(
+        weekStart.getFullYear(),
+        weekStart.getMonth(),
+        weekStart.getDate() + i,
+      ),
+  );
+  const weekEnd = new Date(
+    weekStart.getFullYear(),
+    weekStart.getMonth(),
+    weekStart.getDate() + 7,
+  );
   const today = useNow();
   const thisWeek = sameDay(weekStart, startOfWeek(today));
 
@@ -156,7 +240,11 @@ function OrganizeInner() {
     .filter((p) => {
       const d = new Date(p.startsAt);
       if (selected) return sameDay(d, selected);
-      return d >= weekStart && d < weekEnd && d.getTime() > today.getTime() - 3 * 3_600_000;
+      return (
+        d >= weekStart &&
+        d < weekEnd &&
+        d.getTime() > today.getTime() - 3 * 3_600_000
+      );
     })
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
@@ -182,14 +270,22 @@ function OrganizeInner() {
             disabled={thisWeek}
             onClick={() => {
               setSelected(null);
-              setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() - 7));
+              setWeekStart(
+                new Date(
+                  weekStart.getFullYear(),
+                  weekStart.getMonth(),
+                  weekStart.getDate() - 7,
+                ),
+              );
             }}
             className="grid h-10 w-10 place-items-center rounded-full active:bg-raised disabled:opacity-25"
           >
             <ChevronLeft size={20} />
           </button>
           <p className="title text-[17px]">
-            {thisWeek ? "Questa settimana" : `Dal ${days[0].toLocaleDateString("it-IT", { day: "numeric", month: "long" })}`}
+            {thisWeek
+              ? "Questa settimana"
+              : `Dal ${days[0].toLocaleDateString("it-IT", { day: "numeric", month: "long" })}`}
           </p>
           <button
             aria-label="Settimana successiva"
@@ -204,9 +300,13 @@ function OrganizeInner() {
         </div>
         <div className="grid grid-cols-7 gap-1.5">
           {days.map((d) => {
-            const count = open.filter((p) => sameDay(new Date(p.startsAt), d)).length;
+            const count = open.filter((p) =>
+              sameDay(new Date(p.startsAt), d),
+            ).length;
             const isSel = selected && sameDay(selected, d);
-            const past = d < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const past =
+              d <
+              new Date(today.getFullYear(), today.getMonth(), today.getDate());
             return (
               <button
                 key={d.toISOString()}
@@ -214,21 +314,38 @@ function OrganizeInner() {
                 aria-pressed={Boolean(isSel)}
                 className={clsx(
                   "flex h-[62px] flex-col items-center justify-center rounded-2xl",
-                  isSel ? "bg-text text-bg" : sameDay(d, today) ? "bg-ball-soft ring-1 ring-ball/40 ring-inset" : "card",
+                  isSel
+                    ? "bg-text text-bg"
+                    : sameDay(d, today)
+                      ? "bg-ball-soft ring-1 ring-ball/40 ring-inset"
+                      : "card",
                   past && !isSel && "opacity-45",
                 )}
               >
                 <span className="sr-only">
-                  {d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric" })}
-                  {count ? `, ${count} ${count === 1 ? "proposta" : "proposte"}` : ""}
+                  {d.toLocaleDateString("it-IT", {
+                    weekday: "long",
+                    day: "numeric",
+                  })}
+                  {count
+                    ? `, ${count} ${count === 1 ? "proposta" : "proposte"}`
+                    : ""}
                 </span>
-                <span className="text-[11px] font-semibold opacity-70" aria-hidden>
+                <span
+                  className="text-[11px] font-semibold opacity-70"
+                  aria-hidden
+                >
                   {d.toLocaleDateString("it-IT", { weekday: "narrow" })}
                 </span>
                 <span className="num text-[20px]" aria-hidden>
                   {d.getDate()}
                 </span>
-                <span className={clsx("mt-0.5 h-1.5 w-1.5 rounded-full", count ? (isSel ? "bg-bg" : "bg-ball") : "bg-transparent")} />
+                <span
+                  className={clsx(
+                    "mt-0.5 h-1.5 w-1.5 rounded-full",
+                    count ? (isSel ? "bg-bg" : "bg-ball") : "bg-transparent",
+                  )}
+                />
               </button>
             );
           })}
@@ -237,10 +354,17 @@ function OrganizeInner() {
       <PullToRefresh className="px-4 pb-4">
         {list.length === 0 ? (
           <EmptyState
-            title={selected ? "Nessuna partita in questo giorno" : "Nessuna partita in programma"}
+            title={
+              selected
+                ? "Nessuna partita in questo giorno"
+                : "Nessuna partita in programma"
+            }
             text="Proponi un giorno e un orario: arriva una notifica a tutti"
             action={
-              <Button variant="primary" onClick={() => router.push("/organizza?nuova=1")}>
+              <Button
+                variant="primary"
+                onClick={() => router.push("/organizza?nuova=1")}
+              >
                 Proponi una partita
               </Button>
             }
@@ -255,7 +379,13 @@ function OrganizeInner() {
           </div>
         )}
       </PullToRefresh>
-      {creating && <NewProposalSheet open onClose={() => router.replace("/organizza")} initialDay={selected ?? today} />}
+      {creating && (
+        <NewProposalSheet
+          open
+          onClose={() => router.replace("/organizza")}
+          initialDay={selected ?? today}
+        />
+      )}
     </>
   );
 }

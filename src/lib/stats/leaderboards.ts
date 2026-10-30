@@ -24,7 +24,10 @@ export interface StatDef {
   label: string;
   short: string;
   /** Returns null when the player doesn't qualify (minimum games/attempts). */
-  value: (s: PlayerStats, ctx: { elo: EloResult; start?: Date; end?: Date; allTime: boolean }) => number | null;
+  value: (
+    s: PlayerStats,
+    ctx: { elo: EloResult; start?: Date; end?: Date; allTime: boolean },
+  ) => number | null;
   format: (v: number) => string;
   note?: string;
   /**
@@ -41,18 +44,79 @@ export interface StatDef {
 
 const avg = (v: number) => v.toFixed(1);
 const pctFmt = (v: number) => `${Math.round(v * 100)}%`;
-const signedFmt = (v: number) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1).replace("-", "−"));
+const signedFmt = (v: number) =>
+  v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1).replace("-", "−");
 
 export const STATS: StatDef[] = [
-  { key: "vittorie", label: "Vittorie", short: "Vittorie", value: (s) => (s.games ? s.wins : null), format: String },
-  { key: "winPct", label: "% vittorie", short: "% vitt.", value: (s) => (s.games ? s.winPct : null), format: pctFmt, qualify: { by: "games", min: 3 } },
-  { key: "partite", label: "Partite giocate", short: "Partite", value: (s) => (s.games ? s.games : null), format: String },
-  { key: "punti", label: "Punti a partita", short: "Punti", value: (s) => (s.statGames ? s.avg.pts : null), format: avg, qualify: { by: "statGames", min: 2 } },
-  { key: "assist", label: "Assist a partita", short: "Assist", value: (s) => (s.statGames ? s.avg.ast : null), format: avg, qualify: { by: "statGames", min: 2 } },
-  { key: "rimbalzi", label: "Rimbalzi a partita", short: "Rimbalzi", value: (s) => (s.statGames ? s.rebAvg : null), format: avg, qualify: { by: "statGames", min: 2 } },
-  { key: "rubate", label: "Rubate a partita", short: "Rubate", value: (s) => (s.statGames ? s.avg.stl : null), format: avg, qualify: { by: "statGames", min: 2 } },
-  { key: "stoppate", label: "Stoppate a partita", short: "Stoppate", value: (s) => (s.statGames ? s.avg.blk : null), format: avg, qualify: { by: "statGames", min: 2 } },
-  { key: "triple", label: "Triple segnate", short: "Triple", value: (s) => (s.statGames ? s.totals.fg3m : null), format: String },
+  {
+    key: "vittorie",
+    label: "Vittorie",
+    short: "Vittorie",
+    value: (s) => (s.games ? s.wins : null),
+    format: String,
+  },
+  {
+    key: "winPct",
+    label: "% vittorie",
+    short: "% vitt.",
+    value: (s) => (s.games ? s.winPct : null),
+    format: pctFmt,
+    qualify: { by: "games", min: 3 },
+  },
+  {
+    key: "partite",
+    label: "Partite giocate",
+    short: "Partite",
+    value: (s) => (s.games ? s.games : null),
+    format: String,
+  },
+  {
+    key: "punti",
+    label: "Punti a partita",
+    short: "Punti",
+    value: (s) => (s.statGames ? s.avg.pts : null),
+    format: avg,
+    qualify: { by: "statGames", min: 2 },
+  },
+  {
+    key: "assist",
+    label: "Assist a partita",
+    short: "Assist",
+    value: (s) => (s.statGames ? s.avg.ast : null),
+    format: avg,
+    qualify: { by: "statGames", min: 2 },
+  },
+  {
+    key: "rimbalzi",
+    label: "Rimbalzi a partita",
+    short: "Rimbalzi",
+    value: (s) => (s.statGames ? s.rebAvg : null),
+    format: avg,
+    qualify: { by: "statGames", min: 2 },
+  },
+  {
+    key: "rubate",
+    label: "Rubate a partita",
+    short: "Rubate",
+    value: (s) => (s.statGames ? s.avg.stl : null),
+    format: avg,
+    qualify: { by: "statGames", min: 2 },
+  },
+  {
+    key: "stoppate",
+    label: "Stoppate a partita",
+    short: "Stoppate",
+    value: (s) => (s.statGames ? s.avg.blk : null),
+    format: avg,
+    qualify: { by: "statGames", min: 2 },
+  },
+  {
+    key: "triple",
+    label: "Triple segnate",
+    short: "Triple",
+    value: (s) => (s.statGames ? s.totals.fg3m : null),
+    format: String,
+  },
   {
     key: "tre",
     label: "% da tre",
@@ -63,7 +127,12 @@ export const STATS: StatDef[] = [
     qualify: { by: "statGames", min: 2 },
     loose: (s) =>
       s.statGames && s.totals.fg3a < 5
-        ? { value: s.totals.fg3a ? s.totals.fg3m / s.totals.fg3a : 0, note: s.totals.fg3a ? `solo ${s.totals.fg3a} ${s.totals.fg3a === 1 ? "tiro" : "tiri"} da tre` : "nessun tiro da tre" }
+        ? {
+            value: s.totals.fg3a ? s.totals.fg3m / s.totals.fg3a : 0,
+            note: s.totals.fg3a
+              ? `solo ${s.totals.fg3a} ${s.totals.fg3a === 1 ? "tiro" : "tiri"} da tre`
+              : "nessun tiro da tre",
+          }
         : null,
   },
   {
@@ -74,10 +143,34 @@ export const STATS: StatDef[] = [
     format: pctFmt,
     note: "Servono almeno 10 tiri",
     qualify: { by: "statGames", min: 2 },
-    loose: (s) => (s.statGames && s.fga < 10 ? { value: s.fga ? (s.fgPct ?? 0) : 0, note: s.fga ? `solo ${s.fga} ${s.fga === 1 ? "tiro" : "tiri"}` : "nessun tiro" } : null),
+    loose: (s) =>
+      s.statGames && s.fga < 10
+        ? {
+            value: s.fga ? (s.fgPct ?? 0) : 0,
+            note: s.fga
+              ? `solo ${s.fga} ${s.fga === 1 ? "tiro" : "tiri"}`
+              : "nessun tiro",
+          }
+        : null,
   },
-  { key: "valutazione", label: "Valutazione media", short: "Valutaz.", value: (s) => (s.statGames && s.effAvg !== null ? s.effAvg : null), format: avg, note: "Punti, rimbalzi, assist, rubate e stoppate, meno tiri sbagliati e palle perse", qualify: { by: "statGames", min: 2 } },
-  { key: "plusminus", label: "Plus/minus medio", short: "+/−", value: (s) => (s.games ? s.plusMinusAvg : null), format: signedFmt, note: "Differenza punti della squadra quando giochi", qualify: { by: "games", min: 3 } },
+  {
+    key: "valutazione",
+    label: "Valutazione media",
+    short: "Valutaz.",
+    value: (s) => (s.statGames && s.effAvg !== null ? s.effAvg : null),
+    format: avg,
+    note: "Punti, rimbalzi, assist, rubate e stoppate, meno tiri sbagliati e palle perse",
+    qualify: { by: "statGames", min: 2 },
+  },
+  {
+    key: "plusminus",
+    label: "Plus/minus medio",
+    short: "+/−",
+    value: (s) => (s.games ? s.plusMinusAvg : null),
+    format: signedFmt,
+    note: "Differenza punti della squadra quando giochi",
+    qualify: { by: "games", min: 3 },
+  },
   {
     key: "elo",
     label: "ELO",
@@ -132,16 +225,25 @@ export function leaderboard(
     .map((s) => ({ s, value: stat.value(s, ctx) }))
     .filter((r): r is { s: PlayerStats; value: number } => r.value !== null);
   const q = stat.qualify;
-  const games = (s: PlayerStats) => (q?.by === "statGames" ? s.statGames : s.games);
-  const minGames = q ? minGamesFor(Math.max(0, ...stats.map(games)), q.min) : null;
-  const ok = valued.filter((r) => minGames === null || games(r.s) >= minGames).sort((a, b) => b.value - a.value);
+  const games = (s: PlayerStats) =>
+    q?.by === "statGames" ? s.statGames : s.games;
+  const minGames = q
+    ? minGamesFor(Math.max(0, ...stats.map(games)), q.min)
+    : null;
+  const ok = valued
+    .filter((r) => minGames === null || games(r.s) >= minGames)
+    .sort((a, b) => b.value - a.value);
   const pending =
     minGames === null
       ? []
       : valued
           .filter((r) => games(r.s) < minGames)
           .sort((a, b) => games(b.s) - games(a.s) || b.value - a.value)
-          .map((r) => ({ playerId: r.s.playerId, value: r.value, missing: minGames - games(r.s) }));
+          .map((r) => ({
+            playerId: r.s.playerId,
+            value: r.value,
+            missing: minGames - games(r.s),
+          }));
   let rank = 0;
   let prev: number | null = null;
   const rows = ok.map((r, i) => {
@@ -155,9 +257,16 @@ export function leaderboard(
     ? stats
         .filter((s) => !inRows.has(s.playerId) && !inPending.has(s.playerId))
         .map((s) => ({ playerId: s.playerId, l: stat.loose!(s) }))
-        .filter((r): r is { playerId: string; l: { value: number; note: string } } => r.l !== null)
+        .filter(
+          (r): r is { playerId: string; l: { value: number; note: string } } =>
+            r.l !== null,
+        )
         .sort((a, b) => b.l.value - a.l.value)
-        .map((r) => ({ playerId: r.playerId, value: r.l.value, note: r.l.note }))
+        .map((r) => ({
+          playerId: r.playerId,
+          value: r.l.value,
+          note: r.l.note,
+        }))
     : [];
   return { rows, loose, pending, minGames };
 }

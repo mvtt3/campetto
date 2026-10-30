@@ -1,4 +1,11 @@
-import { BOX_KEYS, emptyBox, winnerOf, type Box, type Match, type MatchPlayer } from "../types";
+import {
+  BOX_KEYS,
+  emptyBox,
+  winnerOf,
+  type Box,
+  type Match,
+  type MatchPlayer,
+} from "../types";
 
 export interface PlayerStats {
   playerId: string;
@@ -58,7 +65,10 @@ export function ratio(num: number, den: number): number | null {
   return den > 0 ? num / den : null;
 }
 
-export function playerLine(m: Match, playerId: string): MatchPlayer | undefined {
+export function playerLine(
+  m: Match,
+  playerId: string,
+): MatchPlayer | undefined {
   return m.players.find((p) => p.playerId === playerId);
 }
 
@@ -74,7 +84,10 @@ export function didWin(m: Match, playerId: string): boolean | null {
   return w === t;
 }
 
-export function computePlayerStats(playerId: string, matches: Match[]): PlayerStats {
+export function computePlayerStats(
+  playerId: string,
+  matches: Match[],
+): PlayerStats {
   const totals = emptyBox();
   let games = 0;
   let wins = 0;
@@ -139,20 +152,31 @@ export function computePlayerStats(playerId: string, matches: Match[]): PlayerSt
     plusMinusAvg: games ? plusMinus / games : 0,
     eff,
     effAvg: statGames ? eff / statGames : null,
-    astTov: totals.tov > 0 ? totals.ast / totals.tov : totals.ast > 0 ? totals.ast : null,
+    astTov:
+      totals.tov > 0
+        ? totals.ast / totals.tov
+        : totals.ast > 0
+          ? totals.ast
+          : null,
     pointsFor,
     pointsAgainst,
   };
 }
 
-export function computeAllStats(playerIds: string[], matches: Match[]): Map<string, PlayerStats> {
+export function computeAllStats(
+  playerIds: string[],
+  matches: Match[],
+): Map<string, PlayerStats> {
   const map = new Map<string, PlayerStats>();
   for (const id of playerIds) map.set(id, computePlayerStats(id, matches));
   return map;
 }
 
 /** Sum of the team's points from box scores, used to sanity-check the final score. */
-export function teamBoxPoints(m: Pick<Match, "players">, team: "A" | "B"): number | null {
+export function teamBoxPoints(
+  m: Pick<Match, "players">,
+  team: "A" | "B",
+): number | null {
   const lines = m.players.filter((p) => p.team === team);
   if (!lines.length || lines.some((l) => !l.hasStats)) return null;
   return lines.reduce((s, l) => s + normalizeBox(l.box).pts, 0);
@@ -163,7 +187,9 @@ export function boxesFromEvents(
   events: { playerId: string; kind: import("../types").EventKind }[],
   playerIds: string[],
 ): Record<string, Box> {
-  const out: Record<string, Box> = Object.fromEntries(playerIds.map((id) => [id, emptyBox()]));
+  const out: Record<string, Box> = Object.fromEntries(
+    playerIds.map((id) => [id, emptyBox()]),
+  );
   for (const e of events) {
     const b = out[e.playerId];
     if (!b) continue;
@@ -208,4 +234,20 @@ export function boxesFromEvents(
     }
   }
   return out;
+}
+
+/** Le voci che contano per doppia e tripla doppia (come nell'NBA). */
+export const DOUBLE_KEYS = ["pts", "reb", "ast", "stl", "blk"] as const;
+
+/** In quante voci tra punti, rimbalzi, assist, rubate e stoppate è arrivato ad almeno 10. */
+export function doubleDigits(b: Box): (typeof DOUBLE_KEYS)[number][] {
+  const n = normalizeBox(b);
+  const v = {
+    pts: n.pts,
+    reb: n.oreb + n.dreb,
+    ast: n.ast,
+    stl: n.stl,
+    blk: n.blk,
+  };
+  return DOUBLE_KEYS.filter((k) => v[k] >= 10);
 }

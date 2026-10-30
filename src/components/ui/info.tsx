@@ -2,7 +2,14 @@
 
 import clsx from "clsx";
 import { X } from "lucide-react";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { haptic } from "./basics";
 
@@ -26,7 +33,12 @@ export function InfoTip({
   const btn = useRef<HTMLButtonElement>(null);
   const tip = useRef<HTMLDivElement>(null);
   const id = useId();
-  const [pos, setPos] = useState<{ left: number; top: number; arrow: number; below: boolean } | null>(null);
+  const [pos, setPos] = useState<{
+    left: number;
+    top: number;
+    arrow: number;
+    below: boolean;
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
@@ -35,9 +47,18 @@ export function InfoTip({
       const w = Math.min(272, window.innerWidth - 24);
       const h = tip.current?.offsetHeight ?? 90;
       const cx = r.left + r.width / 2;
-      const left = Math.min(Math.max(12, cx - w / 2), window.innerWidth - w - 12);
-      const below = r.bottom + 10 + h < window.innerHeight - 12 || r.top - h - 10 < 12;
-      setPos({ left, top: below ? r.bottom + 10 : r.top - h - 10, arrow: cx - left, below });
+      const left = Math.min(
+        Math.max(12, cx - w / 2),
+        window.innerWidth - w - 12,
+      );
+      const below =
+        r.bottom + 10 + h < window.innerHeight - 12 || r.top - h - 10 < 12;
+      setPos({
+        left,
+        top: below ? r.bottom + 10 : r.top - h - 10,
+        arrow: cx - left,
+        below,
+      });
     };
     place();
     const raf = requestAnimationFrame(place);
@@ -99,17 +120,32 @@ export function InfoTip({
             style={{
               left: pos?.left ?? -999,
               top: pos?.top ?? -999,
-              width: Math.min(272, typeof window !== "undefined" ? window.innerWidth - 24 : 272),
+              width: Math.min(
+                272,
+                typeof window !== "undefined" ? window.innerWidth - 24 : 272,
+              ),
               boxShadow: "3px 3px 0 var(--edge)",
-              transformOrigin: pos ? `${pos.arrow}px ${pos.below ? "0" : "100%"}` : undefined,
+              transformOrigin: pos
+                ? `${pos.arrow}px ${pos.below ? "0" : "100%"}`
+                : undefined,
             }}
           >
             <span
               aria-hidden
-              className={clsx("absolute h-3 w-3 rotate-45 border-edge bg-surface", pos?.below ? "-top-[7.5px] border-l-[2.5px] border-t-[2.5px]" : "-bottom-[7.5px] border-b-[2.5px] border-r-[2.5px]")}
+              className={clsx(
+                "absolute h-3 w-3 rotate-45 border-edge bg-surface",
+                pos?.below
+                  ? "-top-[7.5px] border-l-[2.5px] border-t-[2.5px]"
+                  : "-bottom-[7.5px] border-b-[2.5px] border-r-[2.5px]",
+              )}
               style={{ left: (pos?.arrow ?? 20) - 6 }}
             />
-            <button type="button" aria-label="Chiudi" onClick={() => setOpen(false)} className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full text-muted">
+            <button
+              type="button"
+              aria-label="Chiudi"
+              onClick={() => setOpen(false)}
+              className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full text-muted"
+            >
               <X size={15} />
             </button>
             {children}

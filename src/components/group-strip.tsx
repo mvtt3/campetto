@@ -17,7 +17,9 @@ export function GroupStrip({ title = "Il gruppo" }: { title?: string }) {
           <li key={p.id} className="w-[64px]">
             <span className="flex flex-col items-center gap-1">
               <Avatar player={p} size={44} />
-              <span className="w-full truncate text-center text-[12px] font-semibold">{shortName(p, data.players)}</span>
+              <span className="w-full truncate text-center text-[12px] font-semibold">
+                {shortName(p, data.players)}
+              </span>
             </span>
           </li>
         ))}

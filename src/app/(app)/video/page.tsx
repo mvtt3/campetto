@@ -4,13 +4,31 @@ import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { FileVideo, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { teamIds, TeamPicker, teamsReady, type Assignment } from "@/components/team-picker";
+import {
+  teamIds,
+  TeamPicker,
+  teamsReady,
+  type Assignment,
+} from "@/components/team-picker";
 import { Avatar } from "@/components/ui/avatar";
-import { Button, haptic, ScreenHeader, Segmented, Stepper } from "@/components/ui/basics";
+import {
+  Button,
+  haptic,
+  ScreenHeader,
+  Segmented,
+  Stepper,
+} from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { boxesFromEvents } from "@/lib/stats/player";
-import { FORMATS, shortName, TEAM_SIZE, withSubs, type EventKind, type Format } from "@/lib/types";
+import {
+  FORMATS,
+  shortName,
+  TEAM_SIZE,
+  withSubs,
+  type EventKind,
+  type Format,
+} from "@/lib/types";
 import { say } from "@/lib/voice";
 
 interface TagEvent {
@@ -78,7 +96,9 @@ export default function VideoPage() {
         setAssign(d.assign);
         setEvents(d.events);
         /* eslint-enable react-hooks/set-state-in-effect */
-        toast("Ho ripreso le azioni che avevi segnato: riapri il video per continuare");
+        toast(
+          "Ho ripreso le azioni che avevi segnato: riapri il video per continuare",
+        );
       }
     } catch {
       /* ignore */
@@ -88,15 +108,19 @@ export default function VideoPage() {
 
   useEffect(() => {
     try {
-      if (events.length) localStorage.setItem(DRAFT, JSON.stringify({ format, assign, events }));
+      if (events.length)
+        localStorage.setItem(DRAFT, JSON.stringify({ format, assign, events }));
     } catch {
       /* ignore */
     }
   }, [events, format, assign]);
 
-  useEffect(() => () => {
-    if (file) URL.revokeObjectURL(file.url);
-  }, [file]);
+  useEffect(
+    () => () => {
+      if (file) URL.revokeObjectURL(file.url);
+    },
+    [file],
+  );
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = Number(speed);
@@ -117,23 +141,35 @@ export default function VideoPage() {
     }
     return { a: sa, b: sb };
   }, [events, assign]);
-  const name = (id: string) => shortName(data.players.find((p) => p.id === id), data.players);
+  const name = (id: string) =>
+    shortName(
+      data.players.find((p) => p.id === id),
+      data.players,
+    );
 
   const add = (kind: EventKind) => {
     if (!current) return toast("Dimmi prima chi ha fatto l'azione", "error");
     if (kind === "ast") {
-      const mates = ids.filter((id) => id !== current && assign[id] === assign[current]);
+      const mates = ids.filter(
+        (id) => id !== current && assign[id] === assign[current],
+      );
       if (!mates.length) {
         toast("Nel 1v1 non ci sono assist da segnare", "error");
         return;
       }
     }
     haptic(10);
-    const ev: TagEvent = { playerId: current, kind, targetPlayerId: null, videoTs: videoRef.current?.currentTime ?? null };
+    const ev: TagEvent = {
+      playerId: current,
+      kind,
+      targetPlayerId: null,
+      videoTs: videoRef.current?.currentTime ?? null,
+    };
     setEvents((xs) => [...xs, ev]);
     setFlash((f) => f + 1);
     // Dopo un canestro chiedi chi ha fatto l'assist.
-    if ((kind === "2pt" || kind === "3pt") && size > 1) setAssistFor(events.length);
+    if ((kind === "2pt" || kind === "3pt") && size > 1)
+      setAssistFor(events.length);
     else setAssistFor(null);
   };
 
@@ -141,12 +177,24 @@ export default function VideoPage() {
     if (assistFor === null) return;
     const scored = events[assistFor];
     haptic(8);
-    setEvents((xs) => [...xs, { playerId: from, kind: "ast", targetPlayerId: scored.playerId, videoTs: scored.videoTs }]);
+    setEvents((xs) => [
+      ...xs,
+      {
+        playerId: from,
+        kind: "ast",
+        targetPlayerId: scored.playerId,
+        videoTs: scored.videoTs,
+      },
+    ]);
     setAssistFor(null);
   };
 
   const save = async () => {
-    if (scoreA === scoreB) return toast("Al campetto non si pareggia: controlla il punteggio", "error");
+    if (scoreA === scoreB)
+      return toast(
+        "Al campetto non si pareggia: controlla il punteggio",
+        "error",
+      );
     setBusy(true);
     const boxes = boxesFromEvents(events, ids);
     try {
@@ -159,7 +207,12 @@ export default function VideoPage() {
         statsSource: "video",
         players: withSubs(
           format,
-          ids.map((pid) => ({ playerId: pid, team: assign[pid], hasStats: true, box: boxes[pid] })),
+          ids.map((pid) => ({
+            playerId: pid,
+            team: assign[pid],
+            hasStats: true,
+            box: boxes[pid],
+          })),
         ),
         events,
       });
@@ -177,13 +230,21 @@ export default function VideoPage() {
   if (stage === "setup") {
     return (
       <>
-        <ScreenHeader title="Segna dal video" back="/partite" subtitle="Il video resta sul telefono, non viene caricato" />
+        <ScreenHeader
+          title="Segna dal video"
+          back="/partite"
+          subtitle="Il video resta sul telefono, non viene caricato"
+        />
         <main className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-3">
           <label className="flex h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl bg-surface px-4">
             <FileVideo size={24} className="shrink-0 text-ball" />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[15px] font-semibold">{file ? file.name : "Scegli il video della partita"}</span>
-              <span className="block text-[12.5px] text-muted">{file ? "Tocca per cambiarlo" : "Dalla galleria del telefono"}</span>
+              <span className="block truncate text-[15px] font-semibold">
+                {file ? file.name : "Scegli il video della partita"}
+              </span>
+              <span className="block text-[12.5px] text-muted">
+                {file ? "Tocca per cambiarlo" : "Dalla galleria del telefono"}
+              </span>
             </span>
             <input
               type="file"
@@ -211,8 +272,15 @@ export default function VideoPage() {
           </div>
         </main>
         <footer className="shrink-0 border-t border-line px-4 py-3">
-          <Button variant="primary" block disabled={!file || !teamsOk} onClick={() => setStage("tag")}>
-            {events.length ? `Continua (${events.length} azioni)` : "Inizia a segnare"}
+          <Button
+            variant="primary"
+            block
+            disabled={!file || !teamsOk}
+            onClick={() => setStage("tag")}
+          >
+            {events.length
+              ? `Continua (${events.length} azioni)`
+              : "Inizia a segnare"}
           </Button>
         </footer>
       </>
@@ -223,21 +291,40 @@ export default function VideoPage() {
     const boxes = boxesFromEvents(events, ids);
     return (
       <>
-        <ScreenHeader title="Risultato finale" back={() => setStage("tag")} subtitle="Controlla il punteggio, poi salva" />
+        <ScreenHeader
+          title="Risultato finale"
+          back={() => setStage("tag")}
+          subtitle="Controlla il punteggio, poi salva"
+        />
         <main className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-3">
           <div className="grid shrink-0 grid-cols-2 gap-3">
             <div>
-              <p className="mb-1.5 truncate text-[13px] font-semibold">A: {a.map(name).join(", ")}</p>
-              <Stepper value={scoreA} onChange={setScoreA} label="punti" max={200} />
+              <p className="mb-1.5 truncate text-[13px] font-semibold">
+                A: {a.map(name).join(", ")}
+              </p>
+              <Stepper
+                value={scoreA}
+                onChange={setScoreA}
+                label="punti"
+                max={200}
+              />
             </div>
             <div>
-              <p className="mb-1.5 truncate text-[13px] font-semibold">B: {b.map(name).join(", ")}</p>
-              <Stepper value={scoreB} onChange={setScoreB} label="punti" max={200} />
+              <p className="mb-1.5 truncate text-[13px] font-semibold">
+                B: {b.map(name).join(", ")}
+              </p>
+              <Stepper
+                value={scoreB}
+                onChange={setScoreB}
+                label="punti"
+                max={200}
+              />
             </div>
           </div>
           {(scoreA !== live.a || scoreB !== live.b) && (
             <p className="text-[13px] text-muted">
-              Dalle azioni segnate risulta {live.a}–{live.b}: va bene anche diverso, se qualche canestro è fuori dal video
+              Dalle azioni segnate risulta {live.a}–{live.b}: va bene anche
+              diverso, se qualche canestro è fuori dal video
             </p>
           )}
           <div className="scroll-area min-h-0 flex-1">
@@ -245,19 +332,27 @@ export default function VideoPage() {
               <thead>
                 <tr className="text-left text-[11.5px] text-muted">
                   <th className="py-1.5 font-semibold">Giocatore</th>
-                  {["Punti", "Rimb.", "Ass.", "Rub.", "Stop.", "Perse"].map((h) => (
-                    <th key={h} className="px-1 text-right font-semibold">
-                      {h}
-                    </th>
-                  ))}
+                  {["Punti", "Rimb.", "Ass.", "Rub.", "Stop.", "Perse"].map(
+                    (h) => (
+                      <th key={h} className="px-1 text-right font-semibold">
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {ids.map((id) => (
                   <tr key={id} className="border-t border-line">
-                    <td className="max-w-[110px] truncate py-2 font-semibold">{name(id)}</td>
-                    <td className="px-1 text-right font-bold">{boxes[id].pts}</td>
-                    <td className="px-1 text-right">{boxes[id].oreb + boxes[id].dreb}</td>
+                    <td className="max-w-[110px] truncate py-2 font-semibold">
+                      {name(id)}
+                    </td>
+                    <td className="px-1 text-right font-bold">
+                      {boxes[id].pts}
+                    </td>
+                    <td className="px-1 text-right">
+                      {boxes[id].oreb + boxes[id].dreb}
+                    </td>
                     <td className="px-1 text-right">{boxes[id].ast}</td>
                     <td className="px-1 text-right">{boxes[id].stl}</td>
                     <td className="px-1 text-right">{boxes[id].blk}</td>
@@ -269,7 +364,12 @@ export default function VideoPage() {
           </div>
         </main>
         <footer className="shrink-0 border-t border-line px-4 py-3">
-          <Button variant="primary" block onClick={save} disabled={busy || scoreA === scoreB}>
+          <Button
+            variant="primary"
+            block
+            onClick={save}
+            disabled={busy || scoreA === scoreB}
+          >
             {busy ? "Salvataggio…" : "Salva partita"}
           </Button>
         </footer>
@@ -278,12 +378,25 @@ export default function VideoPage() {
   }
 
   const last = events[events.length - 1];
-  const mates = assistFor !== null ? ids.filter((id) => id !== events[assistFor].playerId && assign[id] === assign[events[assistFor].playerId]) : [];
+  const mates =
+    assistFor !== null
+      ? ids.filter(
+          (id) =>
+            id !== events[assistFor].playerId &&
+            assign[id] === assign[events[assistFor].playerId],
+        )
+      : [];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="safe-top shrink-0 bg-black">
-        <video ref={videoRef} src={file?.url} controls playsInline className="mx-auto max-h-[34dvh] w-full" />
+        <video
+          ref={videoRef}
+          src={file?.url}
+          controls
+          playsInline
+          className="mx-auto max-h-[34dvh] w-full"
+        />
       </div>
       <div className="flex shrink-0 items-center gap-2 px-4 py-2">
         <Segmented
@@ -298,7 +411,10 @@ export default function VideoPage() {
           ]}
         />
         <p className="num flex-1 text-center text-[26px]" aria-live="polite">
-          <span key={`a${flash}`} className="inline-block animate-pop text-ball">
+          <span
+            key={`a${flash}`}
+            className="inline-block animate-pop text-ball"
+          >
             {live.a}
           </span>
           <span className="text-faint">–</span>
@@ -319,8 +435,13 @@ export default function VideoPage() {
           <Undo2 size={18} />
         </button>
       </div>
-      <p className="shrink-0 truncate px-4 text-[12.5px] text-muted" aria-live="polite">
-        {last ? `Ultima: ${LABEL[last.kind]} di ${name(last.playerId)}${last.targetPlayerId ? ` per ${name(last.targetPlayerId)}` : ""}` : "Scegli un giocatore e tocca l'azione"}
+      <p
+        className="shrink-0 truncate px-4 text-[12.5px] text-muted"
+        aria-live="polite"
+      >
+        {last
+          ? `Ultima: ${LABEL[last.kind]} di ${name(last.playerId)}${last.targetPlayerId ? ` per ${name(last.targetPlayerId)}` : ""}`
+          : "Scegli un giocatore e tocca l'azione"}
       </p>
 
       <div className="scroll-x flex shrink-0 gap-2 px-4 py-2">
@@ -334,10 +455,19 @@ export default function VideoPage() {
             aria-pressed={current === id}
             className={clsx(
               "flex h-11 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-3 text-[13.5px] font-semibold",
-              current === id ? (assign[id] === "A" ? "bg-ball text-ball-ink" : "bg-text text-bg") : "bg-raised",
+              current === id
+                ? assign[id] === "A"
+                  ? "bg-ball text-ball-ink"
+                  : "bg-text text-bg"
+                : "bg-raised",
             )}
           >
-            <Avatar player={data.players.find((p) => p.id === id)} size={32} href={false} ring="none" />
+            <Avatar
+              player={data.players.find((p) => p.id === id)}
+              size={32}
+              href={false}
+              ring="none"
+            />
             {name(id)}
           </button>
         ))}
@@ -348,11 +478,18 @@ export default function VideoPage() {
           <span className="text-[13px] font-semibold text-ball">Assist di</span>
           <div className="scroll-x flex flex-1 gap-1.5">
             {mates.map((id) => (
-              <button key={id} onClick={() => giveAssist(id)} className="h-9 shrink-0 rounded-full bg-surface px-3 text-[13px] font-semibold ring-1 ring-line">
+              <button
+                key={id}
+                onClick={() => giveAssist(id)}
+                className="h-9 shrink-0 rounded-full bg-surface px-3 text-[13px] font-semibold ring-1 ring-line"
+              >
                 {name(id)}
               </button>
             ))}
-            <button onClick={() => setAssistFor(null)} className="h-9 shrink-0 rounded-full px-3 text-[13px] text-muted">
+            <button
+              onClick={() => setAssistFor(null)}
+              className="h-9 shrink-0 rounded-full px-3 text-[13px] text-muted"
+            >
               Nessuno
             </button>
           </div>
@@ -366,7 +503,9 @@ export default function VideoPage() {
             onClick={() => add(x.kind)}
             className={clsx(
               "rounded-2xl px-1 text-center font-semibold leading-tight active:scale-95",
-              x.strong ? "num col-span-2 bg-ball text-[30px] text-ball-ink" : "bg-raised text-[12.5px]",
+              x.strong
+                ? "num col-span-2 bg-ball text-[30px] text-ball-ink"
+                : "bg-raised text-[12.5px]",
             )}
           >
             {x.label}

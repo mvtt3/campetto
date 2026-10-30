@@ -7,6 +7,24 @@ import { primeAudio } from "@/lib/sound";
 
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => primeAudio(), []);
+  // Schermo intero vero su Android, come i giochi: nell'app installata la barra in alto
+  // (ora, batteria, notifiche) sparisce al primo tocco. Se si esce (tasto indietro, app in
+  // secondo piano), al tocco dopo torna a schermo intero. Su iPhone Apple non lo permette.
+  useEffect(() => {
+    const android = /Android/i.test(navigator.userAgent);
+    const installed = window.matchMedia(
+      "(display-mode: standalone), (display-mode: fullscreen)",
+    ).matches;
+    if (!android || !installed || !document.fullscreenEnabled) return;
+    const go = () => {
+      if (document.fullscreenElement) return;
+      void document.documentElement
+        .requestFullscreen({ navigationUI: "hide" })
+        .catch(() => undefined);
+    };
+    window.addEventListener("pointerup", go, { passive: true });
+    return () => window.removeEventListener("pointerup", go);
+  }, []);
   // Niente zoom, mai. Ogni browser ha la sua strada, quindi le chiudiamo tutte:
   // - Safari: i gesti del pizzico (gesturestart/change/end);
   // - Chrome e Samsung Internet: due dita sullo schermo, fermate appena si appoggia la seconda;
@@ -16,13 +34,17 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stop = (e: Event) => e.cancelable && e.preventDefault();
     const wheel = (e: WheelEvent) => e.ctrlKey && e.preventDefault();
-    const twoFingers = (e: TouchEvent) => e.touches.length > 1 && e.cancelable && e.preventDefault();
+    const twoFingers = (e: TouchEvent) =>
+      e.touches.length > 1 && e.cancelable && e.preventDefault();
     const opts = { passive: false, capture: true } as const;
-    for (const t of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(t, stop, opts);
+    for (const t of ["gesturestart", "gesturechange", "gestureend"])
+      document.addEventListener(t, stop, opts);
     window.addEventListener("touchstart", twoFingers, opts);
     window.addEventListener("touchmove", twoFingers, opts);
     window.addEventListener("wheel", wheel, { passive: false });
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    const meta = document.querySelector<HTMLMetaElement>(
+      'meta[name="viewport"]',
+    );
     const vv = window.visualViewport;
     const reset = () => {
       if (!vv || !meta || vv.scale <= 1.01) return;
@@ -33,7 +55,8 @@ export function Providers({ children }: { children: ReactNode }) {
     };
     vv?.addEventListener("resize", reset);
     return () => {
-      for (const t of ["gesturestart", "gesturechange", "gestureend"]) document.removeEventListener(t, stop, opts);
+      for (const t of ["gesturestart", "gesturechange", "gestureend"])
+        document.removeEventListener(t, stop, opts);
       window.removeEventListener("touchstart", twoFingers, opts);
       window.removeEventListener("touchmove", twoFingers, opts);
       window.removeEventListener("wheel", wheel);
@@ -42,7 +65,9 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .catch(() => {});
     }
   }, []);
   return (

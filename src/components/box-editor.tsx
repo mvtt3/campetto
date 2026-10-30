@@ -5,9 +5,21 @@ import type { Box, BoxKey } from "@/lib/types";
 import { Stepper } from "./ui/basics";
 
 /** I tiri per zona del campo (come nella mappa di tiro), poi il resto. */
-type Field = "rimM" | "rimA" | "midM" | "midA" | "fg3m" | "fg3a" | Exclude<BoxKey, "pts" | "fg2m" | "fg2a" | "fg3m" | "fg3a">;
+type Field =
+  | "rimM"
+  | "rimA"
+  | "midM"
+  | "midA"
+  | "fg3m"
+  | "fg3a"
+  | Exclude<BoxKey, "pts" | "fg2m" | "fg2a" | "fg3m" | "fg3a">;
 
-const FIELDS: { key: Field; label: string; pairOf?: Field; attemptOf?: Field }[] = [
+const FIELDS: {
+  key: Field;
+  label: string;
+  pairOf?: Field;
+  attemptOf?: Field;
+}[] = [
   { key: "rimM", label: "Da sotto segnati", pairOf: "rimA" },
   { key: "rimA", label: "Da sotto tentati", attemptOf: "rimM" },
   { key: "midM", label: "Dalla media segnati", pairOf: "midA" },
@@ -46,7 +58,13 @@ function flatten(b: Box): Flat {
 }
 
 /** Il tabellino di un giocatore: i punti vengono dai tiri, i tentati non scendono mai sotto i segnati. */
-export function BoxEditor({ box, onChange }: { box: Box; onChange: (b: Box) => void }) {
+export function BoxEditor({
+  box,
+  onChange,
+}: {
+  box: Box;
+  onChange: (b: Box) => void;
+}) {
   const flat = flatten(box);
   const set = (key: Field, v: number) => {
     const next: Flat = { ...flat, [key]: v };
@@ -76,7 +94,13 @@ export function BoxEditor({ box, onChange }: { box: Box; onChange: (b: Box) => v
   return (
     <div className="grid grid-cols-2 gap-2">
       {FIELDS.map((f) => (
-        <Stepper key={f.key} compact label={f.label} value={flat[f.key]} onChange={(v) => set(f.key, v)} />
+        <Stepper
+          key={f.key}
+          compact
+          label={f.label}
+          value={flat[f.key]}
+          onChange={(v) => set(f.key, v)}
+        />
       ))}
       <div className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-ball-soft text-ball">
         <span className="num text-[24px]" data-testid="box-points">

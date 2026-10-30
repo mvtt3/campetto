@@ -58,11 +58,16 @@ let noiseBuf: AudioBuffer | null = null;
 function engine(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (ctx) return ctx;
-  const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const AC =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
   if (!AC) return null;
   try {
     // Su iPhone: suoni "ambiente", si mescolano alla musica e rispettano il silenzioso.
-    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    const session = (
+      navigator as unknown as { audioSession?: { type: string } }
+    ).audioSession;
     if (session) session.type = "ambient";
   } catch {
     /* non supportato */
@@ -90,7 +95,8 @@ function wire(c: BaseAudioContext) {
   const ir = c.createBuffer(2, len, c.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
     const d = ir.getChannelData(ch);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+    for (let i = 0; i < len; i++)
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
   }
   conv.buffer = ir;
   wet = c.createGain();
@@ -113,8 +119,12 @@ export function primeAudio() {
     const c = engine();
     if (c && c.state !== "running") void c.resume().catch(() => undefined);
   };
-  window.addEventListener("pointerdown", unlock, { capture: true, passive: true });
-  for (const t of ["touchend", "click", "keydown"]) window.addEventListener(t, gesture, { capture: true, passive: true });
+  window.addEventListener("pointerdown", unlock, {
+    capture: true,
+    passive: true,
+  });
+  for (const t of ["touchend", "click", "keydown"])
+    window.addEventListener(t, gesture, { capture: true, passive: true });
   // Nella app installata il browser di solito permette l'audio anche prima del tocco.
   unlock();
 }
@@ -130,7 +140,20 @@ interface Tone {
   reverb?: number;
 }
 
-function tone(c: BaseAudioContext, t0: number, { f, to, type = "sine", at = 0, dur, gain, attack = 0.004, reverb = 0.2 }: Tone) {
+function tone(
+  c: BaseAudioContext,
+  t0: number,
+  {
+    f,
+    to,
+    type = "sine",
+    at = 0,
+    dur,
+    gain,
+    attack = 0.004,
+    reverb = 0.2,
+  }: Tone,
+) {
   const o = c.createOscillator();
   const g = c.createGain();
   const t = t0 + at;
@@ -154,10 +177,32 @@ function tone(c: BaseAudioContext, t0: number, { f, to, type = "sine", at = 0, d
 }
 
 /** Nota "a marimba": la fondamentale più due armoniche che si spengono prima. */
-function mallet(c: BaseAudioContext, t0: number, f: number, at: number, gain: number, dur = 0.42, reverb = 0.25) {
+function mallet(
+  c: BaseAudioContext,
+  t0: number,
+  f: number,
+  at: number,
+  gain: number,
+  dur = 0.42,
+  reverb = 0.25,
+) {
   tone(c, t0, { f, at, dur, gain, attack: 0.003, reverb });
-  tone(c, t0, { f: f * 4, at, dur: dur * 0.3, gain: gain * 0.25, attack: 0.002, reverb });
-  tone(c, t0, { f: f * 2.01, at, dur: dur * 0.5, gain: gain * 0.18, attack: 0.002, reverb });
+  tone(c, t0, {
+    f: f * 4,
+    at,
+    dur: dur * 0.3,
+    gain: gain * 0.25,
+    attack: 0.002,
+    reverb,
+  });
+  tone(c, t0, {
+    f: f * 2.01,
+    at,
+    dur: dur * 0.5,
+    gain: gain * 0.18,
+    attack: 0.002,
+    reverb,
+  });
 }
 
 interface Noise {
@@ -172,7 +217,21 @@ interface Noise {
   reverb?: number;
 }
 
-function noise(c: BaseAudioContext, t0: number, { at = 0, dur, gain, filter, f, to, q = 1, attack = 0.005, reverb = 0.1 }: Noise) {
+function noise(
+  c: BaseAudioContext,
+  t0: number,
+  {
+    at = 0,
+    dur,
+    gain,
+    filter,
+    f,
+    to,
+    q = 1,
+    attack = 0.005,
+    reverb = 0.1,
+  }: Noise,
+) {
   const src = c.createBufferSource();
   src.buffer = noiseBuf;
   const bq = c.createBiquadFilter();
@@ -188,7 +247,10 @@ function noise(c: BaseAudioContext, t0: number, { at = 0, dur, gain, filter, f, 
   g.gain.exponentialRampToValueAtTime(gain, t + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   // Prima il volume, poi il filtro: niente scatti quando il rumore parte.
-  src.connect(g).connect(bq).connect(bus ?? master!);
+  src
+    .connect(g)
+    .connect(bq)
+    .connect(bus ?? master!);
   if (reverb && wet) {
     const s = c.createGain();
     s.gain.value = reverb;
@@ -201,11 +263,26 @@ function noise(c: BaseAudioContext, t0: number, { at = 0, dur, gain, filter, f, 
 const RECIPES: Record<SoundName, (c: BaseAudioContext, t: number) => void> = {
   // Un "tic" morbido per i tasti importanti.
   tap: (c, t) => {
-    tone(c, t, { f: 1500, to: 1100, dur: 0.05, gain: 0.11, attack: 0.002, reverb: 0.05 });
-    noise(c, t, { dur: 0.012, gain: 0.025, filter: "highpass", f: 4000, attack: 0.001, reverb: 0 });
+    tone(c, t, {
+      f: 1500,
+      to: 1100,
+      dur: 0.05,
+      gain: 0.11,
+      attack: 0.002,
+      reverb: 0.05,
+    });
+    noise(c, t, {
+      dur: 0.012,
+      gain: 0.025,
+      filter: "highpass",
+      f: 4000,
+      attack: 0.001,
+      reverb: 0,
+    });
   },
   // Una bollicina che sale: hai scelto qualcosa.
-  select: (c, t) => tone(c, t, { f: 520, to: 980, dur: 0.11, gain: 0.16, attack: 0.004 }),
+  select: (c, t) =>
+    tone(c, t, { f: 520, to: 980, dur: 0.11, gain: 0.16, attack: 0.004 }),
   toggleOn: (c, t) => {
     tone(c, t, { f: 760, dur: 0.05, gain: 0.1, reverb: 0.05 });
     tone(c, t, { f: 1140, at: 0.06, dur: 0.07, gain: 0.1, reverb: 0.1 });
@@ -240,12 +317,14 @@ const RECIPES: Record<SoundName, (c: BaseAudioContext, t: number) => void> = {
     lfo.connect(amp).connect(trem.gain);
     trem.gain.value = 0.65;
     // Parte da zero anche prima di t: il primo campione non deve scattare.
-  g.gain.value = 0.0001;
-  g.gain.setValueAtTime(0.0001, t);
+    g.gain.value = 0.0001;
+    g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.07, t + 0.03);
     g.gain.setValueAtTime(0.07, t + 0.3);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
-    o.connect(trem).connect(g).connect(bus ?? master!);
+    o.connect(trem)
+      .connect(g)
+      .connect(bus ?? master!);
     const s = c.createGain();
     s.gain.value = 0.2;
     g.connect(s).connect(wet!);
@@ -253,12 +332,36 @@ const RECIPES: Record<SoundName, (c: BaseAudioContext, t: number) => void> = {
     lfo.start(t);
     o.stop(t + 0.46);
     lfo.stop(t + 0.46);
-    noise(c, t, { dur: 0.4, gain: 0.02, filter: "bandpass", f: 2650, q: 6, attack: 0.03 });
+    noise(c, t, {
+      dur: 0.4,
+      gain: 0.02,
+      filter: "bandpass",
+      f: 2650,
+      q: 6,
+      attack: 0.03,
+    });
   },
   // La retina: un fruscio che sale.
   swish: (c, t) => {
-    noise(c, t, { dur: 0.32, gain: 0.16, filter: "bandpass", f: 2200, to: 6500, q: 1.1, attack: 0.012, reverb: 0.15 });
-    noise(c, t, { at: 0.04, dur: 0.22, gain: 0.05, filter: "highpass", f: 6000, attack: 0.02, reverb: 0 });
+    noise(c, t, {
+      dur: 0.32,
+      gain: 0.16,
+      filter: "bandpass",
+      f: 2200,
+      to: 6500,
+      q: 1.1,
+      attack: 0.012,
+      reverb: 0.15,
+    });
+    noise(c, t, {
+      at: 0.04,
+      dur: 0.22,
+      gain: 0.05,
+      filter: "highpass",
+      f: 6000,
+      attack: 0.02,
+      reverb: 0,
+    });
   },
   // Il ferro: un "ding" metallico con armoniche storte.
   rim: (c, t) => {
@@ -267,40 +370,113 @@ const RECIPES: Record<SoundName, (c: BaseAudioContext, t: number) => void> = {
       [1243, 0.05],
       [1997, 0.035],
       [2931, 0.02],
-    ].forEach(([f, g]) => tone(c, t, { f, dur: 0.6, gain: g, attack: 0.002, reverb: 0.25 }));
-    noise(c, t, { dur: 0.02, gain: 0.05, filter: "highpass", f: 2000, attack: 0.001, reverb: 0 });
+    ].forEach(([f, g]) =>
+      tone(c, t, { f, dur: 0.6, gain: g, attack: 0.002, reverb: 0.25 }),
+    );
+    noise(c, t, {
+      dur: 0.02,
+      gain: 0.05,
+      filter: "highpass",
+      f: 2000,
+      attack: 0.001,
+      reverb: 0,
+    });
   },
   // Il tabellone: un colpo sordo.
   board: (c, t) => {
-    tone(c, t, { f: 170, to: 80, dur: 0.16, gain: 0.22, attack: 0.002, reverb: 0.1 });
-    noise(c, t, { dur: 0.04, gain: 0.06, filter: "lowpass", f: 1200, attack: 0.001, reverb: 0 });
+    tone(c, t, {
+      f: 170,
+      to: 80,
+      dur: 0.16,
+      gain: 0.22,
+      attack: 0.002,
+      reverb: 0.1,
+    });
+    noise(c, t, {
+      dur: 0.04,
+      gain: 0.06,
+      filter: "lowpass",
+      f: 1200,
+      attack: 0.001,
+      reverb: 0,
+    });
   },
   // Il pallone sul cemento.
   bounce: (c, t) => {
-    tone(c, t, { f: 110, to: 52, dur: 0.12, gain: 0.26, attack: 0.002, reverb: 0.05 });
-    noise(c, t, { dur: 0.03, gain: 0.05, filter: "lowpass", f: 700, attack: 0.001, reverb: 0 });
+    tone(c, t, {
+      f: 110,
+      to: 52,
+      dur: 0.12,
+      gain: 0.26,
+      attack: 0.002,
+      reverb: 0.05,
+    });
+    noise(c, t, {
+      dur: 0.03,
+      gain: 0.05,
+      filter: "lowpass",
+      f: 700,
+      attack: 0.001,
+      reverb: 0,
+    });
   },
   // Vittoria: un arpeggio allegro che finisce in alto con un luccichio.
   win: (c, t) => {
-    [523.3, 659.3, 784, 1046.5].forEach((f, i) => mallet(c, t, f, i * 0.085, 0.12, i === 3 ? 0.8 : 0.35, 0.3));
+    [523.3, 659.3, 784, 1046.5].forEach((f, i) =>
+      mallet(c, t, f, i * 0.085, 0.12, i === 3 ? 0.8 : 0.35, 0.3),
+    );
     tone(c, t, { f: 2093, at: 0.34, dur: 0.5, gain: 0.03, reverb: 0.5 });
     tone(c, t, { f: 2637, at: 0.4, dur: 0.5, gain: 0.025, reverb: 0.5 });
   },
   // Sconfitta: tre note che scendono, gentili.
   loss: (c, t) => {
-    [392, 329.6, 261.6].forEach((f, i) => mallet(c, t, f, i * 0.16, 0.11, i === 2 ? 0.7 : 0.32, 0.35));
+    [392, 329.6, 261.6].forEach((f, i) =>
+      mallet(c, t, f, i * 0.16, 0.11, i === 2 ? 0.7 : 0.32, 0.35),
+    );
   },
   // Sblocco: una pioggia di campanelle che sale.
   unlock: (c, t) => {
-    [1046.5, 1318.5, 1568, 2093, 2349, 2637].forEach((f, i) => mallet(c, t, f, i * 0.055, 0.06, 0.5, 0.45));
-    noise(c, t, { dur: 0.45, gain: 0.03, filter: "bandpass", f: 3000, to: 8000, q: 0.8, attack: 0.1, reverb: 0.3 });
+    [1046.5, 1318.5, 1568, 2093, 2349, 2637].forEach((f, i) =>
+      mallet(c, t, f, i * 0.055, 0.06, 0.5, 0.45),
+    );
+    noise(c, t, {
+      dur: 0.45,
+      gain: 0.03,
+      filter: "bandpass",
+      f: 3000,
+      to: 8000,
+      q: 0.8,
+      attack: 0.1,
+      reverb: 0.3,
+    });
   },
   // Lo scatto del personaggio quando si ferma.
-  tick: (c, t) => tone(c, t, { f: 2300, dur: 0.03, gain: 0.05, attack: 0.001, reverb: 0 }),
-  whoosh: (c, t) => noise(c, t, { dur: 0.28, gain: 0.05, filter: "bandpass", f: 500, to: 1800, q: 0.9, attack: 0.05, reverb: 0.05 }),
+  tick: (c, t) =>
+    tone(c, t, { f: 2300, dur: 0.03, gain: 0.05, attack: 0.001, reverb: 0 }),
+  whoosh: (c, t) =>
+    noise(c, t, {
+      dur: 0.28,
+      gain: 0.05,
+      filter: "bandpass",
+      f: 500,
+      to: 1800,
+      q: 0.9,
+      attack: 0.05,
+      reverb: 0.05,
+    }),
   // Le squadre si mescolano: un mazzo di carte.
   shuffle: (c, t) => {
-    for (let i = 0; i < 6; i++) noise(c, t, { at: i * 0.035 + (i % 2) * 0.006, dur: 0.024, gain: 0.04, filter: "bandpass", f: 3600 + i * 180, q: 0.8, attack: 0.004, reverb: 0 });
+    for (let i = 0; i < 6; i++)
+      noise(c, t, {
+        at: i * 0.035 + (i % 2) * 0.006,
+        dur: 0.024,
+        gain: 0.04,
+        filter: "bandpass",
+        f: 3600 + i * 180,
+        q: 0.8,
+        attack: 0.004,
+        reverb: 0,
+      });
   },
   refresh: (c, t) => {
     tone(c, t, { f: 620, to: 1040, dur: 0.1, gain: 0.1 });
@@ -381,7 +557,10 @@ export function playAt(name: SoundName, delay: number) {
  * Per i controlli: disegna un suono senza suonarlo e ne restituisce il campione.
  * Il motore dal vivo non viene toccato.
  */
-export async function renderSound(name: SoundName, seconds = 1.6): Promise<Float32Array> {
+export async function renderSound(
+  name: SoundName,
+  seconds = 1.6,
+): Promise<Float32Array> {
   const keep = { master, wet, noiseBuf };
   const off = new OfflineAudioContext(1, Math.floor(44100 * seconds), 44100);
   wire(off);

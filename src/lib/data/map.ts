@@ -30,7 +30,10 @@ export function mapPlayer(r: any): Player {
     userId: r.user_id,
     isAdmin: r.is_admin,
     showcase: r.showcase ?? [],
-    notifyPrefs: { ...DEFAULT_NOTIFY_PREFS, ...(r.notify_prefs as Partial<NotifyPrefs>) },
+    notifyPrefs: {
+      ...DEFAULT_NOTIFY_PREFS,
+      ...(r.notify_prefs as Partial<NotifyPrefs>),
+    },
     archived: r.archived,
     createdAt: r.created_at,
   };

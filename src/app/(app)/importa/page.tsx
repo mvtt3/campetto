@@ -7,7 +7,14 @@ import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { parseImport, type ImportRow } from "@/lib/importer";
 import { normalizeBox } from "@/lib/stats/player";
-import { FORMATS, adminName, maxPerTeam, withSubs, type Format, type Team } from "@/lib/types";
+import {
+  FORMATS,
+  adminName,
+  maxPerTeam,
+  withSubs,
+  type Format,
+  type Team,
+} from "@/lib/types";
 import { DateTimeField, Menu } from "@/components/ui/pickers";
 import { APP_START } from "@/lib/periods";
 import { say } from "@/lib/voice";
@@ -19,7 +26,9 @@ Simone Falbo;B;10;0;7;1;0;2;1
 Matteo Mocciaro;B;8;0;6;2;1;1;0`;
 
 function toLocalInput(d: Date): string {
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
 }
 
 export default function ImportPage() {
@@ -40,8 +49,12 @@ export default function ImportPage() {
     const res = parseImport(text, active);
     setRows(res.rows);
     setErrors(res.errors);
-    const ptsA = res.rows.filter((r) => r.team === "A").reduce((s, r) => s + normalizeBox(r.box).pts, 0);
-    const ptsB = res.rows.filter((r) => r.team === "B").reduce((s, r) => s + normalizeBox(r.box).pts, 0);
+    const ptsA = res.rows
+      .filter((r) => r.team === "A")
+      .reduce((s, r) => s + normalizeBox(r.box).pts, 0);
+    const ptsB = res.rows
+      .filter((r) => r.team === "B")
+      .reduce((s, r) => s + normalizeBox(r.box).pts, 0);
     setScoreA(res.scoreA ?? ptsA);
     setScoreB(res.scoreB ?? ptsB);
   };
@@ -54,14 +67,18 @@ export default function ImportPage() {
     const n = Math.min(a.length, b.length);
     if (!n) return null;
     const f = `${n}v${n}` as Format;
-    if (!FORMATS.includes(f) || Math.max(a.length, b.length) > maxPerTeam(f)) return null;
+    if (!FORMATS.includes(f) || Math.max(a.length, b.length) > maxPerTeam(f))
+      return null;
     return f;
   }, [a.length, b.length]);
   const subCount = format ? a.length + b.length - Number(format[0]) * 2 : 0;
-  const allMatched = ready.every((r) => r.playerId) && new Set(ready.map((r) => r.playerId)).size === ready.length;
+  const allMatched =
+    ready.every((r) => r.playerId) &&
+    new Set(ready.map((r) => r.playerId)).size === ready.length;
   const canSave = ready.length > 0 && allMatched && format && scoreA !== scoreB;
 
-  const update = (i: number, patch: Partial<ImportRow>) => setRows((rs) => rs!.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+  const update = (i: number, patch: Partial<ImportRow>) =>
+    setRows((rs) => rs!.map((r, k) => (k === i ? { ...r, ...patch } : r)));
 
   const save = async () => {
     if (!canSave || !format) return;
@@ -76,7 +93,12 @@ export default function ImportPage() {
         statsSource: "importata",
         players: withSubs(
           format,
-          ready.map((r) => ({ playerId: r.playerId!, team: r.team!, hasStats: true, box: normalizeBox(r.box) })),
+          ready.map((r) => ({
+            playerId: r.playerId!,
+            team: r.team!,
+            hasStats: true,
+            box: normalizeBox(r.box),
+          })),
         ),
         events: [],
       });
@@ -92,12 +114,18 @@ export default function ImportPage() {
 
   return (
     <>
-      <ScreenHeader title="Importa" back="/partite" subtitle="Statistiche da un'app video o da un foglio" />
+      <ScreenHeader
+        title="Importa"
+        back="/partite"
+        subtitle="Statistiche da un'app video o da un foglio"
+      />
       <main className="scroll-area min-h-0 flex-1 px-4 pb-4">
         {!rows ? (
           <div className="flex flex-col gap-3">
             <p className="text-[14px] text-muted">
-              Incolla una tabella (CSV, separata da virgole, punti e virgola o tab) oppure un JSON. Servono il nome del giocatore e la squadra, A o B; le altre colonne sono facoltative.
+              Incolla una tabella (CSV, separata da virgole, punti e virgola o
+              tab) oppure un JSON. Servono il nome del giocatore e la squadra, A
+              o B; le altre colonne sono facoltative.
             </p>
             <textarea
               value={text}
@@ -111,7 +139,12 @@ export default function ImportPage() {
               <Button className="flex-1" onClick={() => setText(EXAMPLE)}>
                 Usa un esempio
               </Button>
-              <Button variant="primary" className="flex-1" onClick={analyze} disabled={!text.trim()}>
+              <Button
+                variant="primary"
+                className="flex-1"
+                onClick={analyze}
+                disabled={!text.trim()}
+              >
                 Controlla
               </Button>
             </div>
@@ -127,7 +160,10 @@ export default function ImportPage() {
             )}
             <div className="flex flex-col gap-2">
               {ready.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-2xl card px-3 py-2.5">
+                <div
+                  key={i}
+                  className="flex items-center gap-2 rounded-2xl card px-3 py-2.5"
+                >
                   <div className="min-w-0 flex-1">
                     <Menu
                       label={`Giocatore per ${r.rawName}`}
@@ -135,14 +171,31 @@ export default function ImportPage() {
                       className="w-full max-w-full justify-between"
                       value={r.playerId ?? ""}
                       onChange={(v) => update(i, { playerId: v || null })}
-                      trigger={<span className="min-w-0 flex-1 truncate text-left">{r.playerId ? adminName(active.find((p) => p.id === r.playerId)) : `Scegli per “${r.rawName}”`}</span>}
-                      options={[{ value: "", label: `Nessuno` }, ...active.map((p) => ({ value: p.id, label: adminName(p) }))]}
+                      trigger={
+                        <span className="min-w-0 flex-1 truncate text-left">
+                          {r.playerId
+                            ? adminName(active.find((p) => p.id === r.playerId))
+                            : `Scegli per “${r.rawName}”`}
+                        </span>
+                      }
+                      options={[
+                        { value: "", label: `Nessuno` },
+                        ...active.map((p) => ({
+                          value: p.id,
+                          label: adminName(p),
+                        })),
+                      ]}
                     />
                     <p className="tnum mt-1 truncate text-[12px] text-muted">
-                      {normalizeBox(r.box).pts} pt, {r.box.oreb + r.box.dreb} rimb, {r.box.ast} ass, {r.box.stl} rub, {r.box.blk} stop
+                      {normalizeBox(r.box).pts} pt, {r.box.oreb + r.box.dreb}{" "}
+                      rimb, {r.box.ast} ass, {r.box.stl} rub, {r.box.blk} stop
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-1" role="group" aria-label="Squadra">
+                  <div
+                    className="flex shrink-0 gap-1"
+                    role="group"
+                    aria-label="Squadra"
+                  >
                     {(["A", "B"] as Team[]).map((t) => (
                       <button
                         key={t}
@@ -160,14 +213,30 @@ export default function ImportPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="mb-1.5 text-[13px] font-semibold">Squadra A</p>
-                <Stepper value={scoreA} onChange={setScoreA} label="punti" max={200} />
+                <Stepper
+                  value={scoreA}
+                  onChange={setScoreA}
+                  label="punti"
+                  max={200}
+                />
               </div>
               <div>
                 <p className="mb-1.5 text-[13px] font-semibold">Squadra B</p>
-                <Stepper value={scoreB} onChange={setScoreB} label="punti" max={200} />
+                <Stepper
+                  value={scoreB}
+                  onChange={setScoreB}
+                  label="punti"
+                  max={200}
+                />
               </div>
             </div>
-            <DateTimeField value={playedAt} onChange={setPlayedAt} min={APP_START} max={new Date()} label="Data della partita" />
+            <DateTimeField
+              value={playedAt}
+              onChange={setPlayedAt}
+              min={APP_START}
+              max={new Date()}
+              label="Data della partita"
+            />
             <p className="text-[13px] text-muted">
               {[
                 format
@@ -188,7 +257,12 @@ export default function ImportPage() {
             <Button className="flex-1" onClick={() => setRows(null)}>
               Modifica testo
             </Button>
-            <Button variant="primary" className="flex-1" onClick={save} disabled={!canSave || busy}>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={save}
+              disabled={!canSave || busy}
+            >
               {busy ? "Salvataggio…" : "Salva partita"}
             </Button>
           </div>

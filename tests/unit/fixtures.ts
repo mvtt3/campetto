@@ -1,9 +1,22 @@
-import { emptyBox, DEFAULT_NOTIFY_PREFS, type Box, type Format, type Match, type MatchEvent, type Player, type Team } from "@/lib/types";
+import {
+  emptyBox,
+  DEFAULT_NOTIFY_PREFS,
+  type Box,
+  type Format,
+  type Match,
+  type MatchEvent,
+  type Player,
+  type Team,
+} from "@/lib/types";
 
 let counter = 0;
 export const uid = (p = "id") => `${p}-${++counter}`;
 
-export function player(id: string, firstName: string, lastName: string | null = null): Player {
+export function player(
+  id: string,
+  firstName: string,
+  lastName: string | null = null,
+): Player {
   return {
     id,
     firstName,
@@ -63,12 +76,24 @@ export function match(opts: {
       hasStats: Boolean(l.box),
       box: box(l.box ?? {}),
     })),
-    events: (opts.events ?? []).map((e, i) => ({ ...e, id: uid("e"), matchId: id, seq: i })),
+    events: (opts.events ?? []).map((e, i) => ({
+      ...e,
+      id: uid("e"),
+      matchId: id,
+      seq: i,
+    })),
   };
 }
 
 /** 1v1 between x (team A) and y (team B). */
-export function duel(date: string, x: string, y: string, a: number, b: number, boxes?: [Partial<Box>, Partial<Box>]): Match {
+export function duel(
+  date: string,
+  x: string,
+  y: string,
+  a: number,
+  b: number,
+  boxes?: [Partial<Box>, Partial<Box>],
+): Match {
   return match({
     date,
     format: "1v1",

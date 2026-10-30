@@ -26,8 +26,12 @@ export function matchRecap(m: Match, players: Player[]): string {
   const name = (id: string) => shortName(byId.get(id), players);
   const w = winnerOf(m);
   if (!w) return `Pareggio ${m.scoreA}–${m.scoreB}.`;
-  const winners = m.players.filter((p) => p.team === w).map((p) => name(p.playerId));
-  const losers = m.players.filter((p) => p.team !== w).map((p) => name(p.playerId));
+  const winners = m.players
+    .filter((p) => p.team === w)
+    .map((p) => name(p.playerId));
+  const losers = m.players
+    .filter((p) => p.team !== w)
+    .map((p) => name(p.playerId));
   const hi = Math.max(m.scoreA, m.scoreB);
   const lo = Math.min(m.scoreA, m.scoreB);
   const margin = hi - lo;
@@ -59,12 +63,18 @@ export function matchRecap(m: Match, players: Player[]): string {
     );
   } else if (margin >= 12) {
     first = pick(
-      [`${W} ${verbDom} ${hi}–${lo} contro ${L}.`, `Partita a senso unico: ${W} ${verb} ${hi}–${lo}.`],
+      [
+        `${W} ${verbDom} ${hi}–${lo} contro ${L}.`,
+        `Partita a senso unico: ${W} ${verb} ${hi}–${lo}.`,
+      ],
       seed,
     );
   } else {
     first = pick(
-      [`${W} ${verb} ${hi}–${lo} contro ${L}.`, `${hi}–${lo} per ${W} contro ${L}.`],
+      [
+        `${W} ${verb} ${hi}–${lo} contro ${L}.`,
+        `${hi}–${lo} per ${W} contro ${L}.`,
+      ],
       seed,
     );
   }
@@ -72,7 +82,9 @@ export function matchRecap(m: Match, players: Player[]): string {
   const withStats = m.players.filter((p) => p.hasStats);
   if (!withStats.length) return first.replace(/\.\./g, ".");
 
-  const best = [...withStats].sort((a, b) => efficiency(normalizeBox(b.box)) - efficiency(normalizeBox(a.box)))[0];
+  const best = [...withStats].sort(
+    (a, b) => efficiency(normalizeBox(b.box)) - efficiency(normalizeBox(a.box)),
+  )[0];
   const b = normalizeBox(best.box);
   const reb = b.oreb + b.dreb;
   const n = name(best.playerId);
@@ -86,7 +98,20 @@ export function matchRecap(m: Match, players: Player[]): string {
   const line = joinNames(parts.slice(0, 3));
   const isWinner = best.team === w;
   const second = isWinner
-    ? pick([`Trascina la squadra ${n} con ${line}.`, `Il migliore è ${n}: ${line}.`, `${n} firma ${line}.`], seed >> 3)
-    : pick([`A ${n} non bastano ${line}.`, `${n} ci prova con ${line}, ma non basta.`], seed >> 3);
+    ? pick(
+        [
+          `Trascina la squadra ${n} con ${line}.`,
+          `Il migliore è ${n}: ${line}.`,
+          `${n} firma ${line}.`,
+        ],
+        seed >> 3,
+      )
+    : pick(
+        [
+          `A ${n} non bastano ${line}.`,
+          `${n} ci prova con ${line}, ma non basta.`,
+        ],
+        seed >> 3,
+      );
   return `${first} ${second}`.replace(/\.\./g, ".");
 }

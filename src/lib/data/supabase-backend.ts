@@ -2,8 +2,20 @@
 
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { accessToken, signInWithGoogle, supabase } from "../supabase/client";
-import { MATCH_SELECT, PROPOSAL_SELECT, mapMatch, mapPlayer, mapProposal } from "./map";
-import type { AuthState, Backend, NotifyBody, PendingUser, PlayerPrivate } from "./backend";
+import {
+  MATCH_SELECT,
+  PROPOSAL_SELECT,
+  mapMatch,
+  mapPlayer,
+  mapProposal,
+} from "./map";
+import type {
+  AuthState,
+  Backend,
+  NotifyBody,
+  PendingUser,
+  PlayerPrivate,
+} from "./backend";
 import { say } from "../voice";
 
 function fail(error: { message: string } | null): void {
@@ -25,13 +37,17 @@ export function createSupabaseBackend(): Backend {
     async init(inviteToken) {
       const { data, error: sessionError } = await sb.auth.getSession();
       // Senza rete la sessione non si rinnova: non vuol dire che sei uscito.
-      if (sessionError && isAuthRetryableFetchError(sessionError)) return { status: "error", message: say(sessionError) };
+      if (sessionError && isAuthRetryableFetchError(sessionError))
+        return { status: "error", message: say(sessionError) };
       const session = data.session;
       if (!session) return { status: "signed-out" } satisfies AuthState;
       try {
         if (inviteToken) {
-          const { data: claimed, error } = await sb.rpc("claim_invite", { p_token: inviteToken });
-          if (error) return { status: "error", message: friendly(error.message) };
+          const { data: claimed, error } = await sb.rpc("claim_invite", {
+            p_token: inviteToken,
+          });
+          if (error)
+            return { status: "error", message: friendly(error.message) };
           meId = claimed as string;
         }
         if (!meId) {
@@ -58,10 +74,22 @@ export function createSupabaseBackend(): Backend {
 
     async loadAll() {
       const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
-      const [p, m, pr] = await Promise.all([
+      const [p, m, pr, nw] = await Promise.all([
         sb.from("players").select("*").order("created_at"),
-        sb.from("matches").select(MATCH_SELECT).order("played_at", { ascending: false }),
-        sb.from("proposals").select(PROPOSAL_SELECT).gte("starts_at", since).order("starts_at"),
+        sb
+          .from("matches")
+          .select(MATCH_SELECT)
+          .order("played_at", { ascending: false }),
+        sb
+          .from("proposals")
+          .select(PROPOSAL_SELECT)
+          .gte("starts_at", since)
+          .order("starts_at"),
+        sb
+          .from("news")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(30),
       ]);
       fail(p.error);
       fail(m.error);
@@ -70,13 +98,33 @@ export function createSupabaseBackend(): Backend {
         players: (p.data ?? []).map(mapPlayer),
         matches: (m.data ?? []).map(mapMatch),
         proposals: (pr.data ?? []).map(mapProposal),
+        // Le notizie non devono mai bloccare l'app: se non arrivano, se ne fa a meno.
+        news: nw.error
+          ? []
+          : (nw.data ?? []).map((r) => ({
+              id: r.id,
+              title: r.title,
+              body: r.body,
+              kind: r.kind,
+              createdAt: r.created_at,
+            })),
       };
     },
 
     subscribe(onChange) {
       const channel = sb.channel("campetto-db");
-      for (const table of ["players", "matches", "match_players", "proposals", "proposal_responses"]) {
-        channel.on("postgres_changes", { event: "*", schema: "public", table }, () => onChange());
+      for (const table of [
+        "players",
+        "matches",
+        "match_players",
+        "proposals",
+        "proposal_responses",
+      ]) {
+        channel.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table },
+          () => onChange(),
+        );
       }
       channel.subscribe();
       return () => {
@@ -134,22 +182,47 @@ export function createSupabaseBackend(): Backend {
     async createProposal(input) {
       const { data, error } = await sb
         .from("proposals")
-        .insert({ starts_at: input.startsAt, format: input.format, note: input.note, created_by: meId })
+        .insert({
+          starts_at: input.startsAt,
+          format: input.format,
+          note: input.note,
+          created_by: meId,
+        })
         .select("id")
         .single();
       fail(error);
       // Chi propone ci va: risponde subito "sì".
-      await sb.from("proposal_responses").upsert({ proposal_id: data!.id, player_id: meId, response: "si", notified: true });
+      await sb.from("proposal_responses").upsert({
+        proposal_id: data!.id,
+        player_id: meId,
+        response: "si",
+        notified: true,
+      });
       return data!.id as string;
     },
 
     async cancelProposal(id) {
-      fail((await sb.from("proposals").update({ status: "annullata" }).eq("id", id)).error);
+      fail(
+        (
+          await sb
+            .from("proposals")
+            .update({ status: "annullata" })
+            .eq("id", id)
+        ).error,
+      );
     },
 
     async respond(proposalId, response) {
       if (!response) {
-        fail((await sb.from("proposal_responses").delete().eq("proposal_id", proposalId).eq("player_id", meId!)).error);
+        fail(
+          (
+            await sb
+              .from("proposal_responses")
+              .delete()
+              .eq("proposal_id", proposalId)
+              .eq("player_id", meId!)
+          ).error,
+        );
         return;
       }
       fail(
@@ -179,7 +252,9 @@ export function createSupabaseBackend(): Backend {
 
     async uploadAvatar(file) {
       const path = `${meId}/avatar-${Date.now()}.webp`;
-      const { error } = await sb.storage.from("avatars").upload(path, file, { contentType: "image/webp", upsert: true });
+      const { error } = await sb.storage
+        .from("avatars")
+        .upload(path, file, { contentType: "image/webp", upsert: true });
       fail(error);
       return sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
     },
@@ -196,7 +271,11 @@ export function createSupabaseBackend(): Backend {
         fail((await sb.from("players").update(row).eq("id", input.id)).error);
         return input.id;
       }
-      const { data, error } = await sb.from("players").insert(row).select("id").single();
+      const { data, error } = await sb
+        .from("players")
+        .insert(row)
+        .select("id")
+        .single();
       fail(error);
       return data!.id as string;
     },
@@ -204,20 +283,28 @@ export function createSupabaseBackend(): Backend {
     async listPrivate() {
       const { data, error } = await sb.from("player_private").select("*");
       fail(error);
-      return (data ?? []).map(
-        (r): PlayerPrivate => ({ playerId: r.player_id, inviteToken: r.invite_token, linkEmail: r.link_email }),
-      );
+      return (data ?? []).map((r): PlayerPrivate => ({
+        playerId: r.player_id,
+        inviteToken: r.invite_token,
+        linkEmail: r.link_email,
+      }));
     },
 
     async setLinkEmail(playerId, email) {
       fail(
-        (await sb.from("player_private").update({ link_email: email?.trim().toLowerCase() || null }).eq("player_id", playerId))
-          .error,
+        (
+          await sb
+            .from("player_private")
+            .update({ link_email: email?.trim().toLowerCase() || null })
+            .eq("player_id", playerId)
+        ).error,
       );
     },
 
     async regenerateInvite(playerId) {
-      const { data, error } = await sb.rpc("regenerate_invite", { p_player: playerId });
+      const { data, error } = await sb.rpc("regenerate_invite", {
+        p_player: playerId,
+      });
       fail(error);
       return data as string;
     },
@@ -227,21 +314,29 @@ export function createSupabaseBackend(): Backend {
     },
 
     async listPending() {
-      const { data, error } = await sb.from("pending_users").select("*").order("created_at");
+      const { data, error } = await sb
+        .from("pending_users")
+        .select("*")
+        .order("created_at");
       fail(error);
-      return (data ?? []).map(
-        (r): PendingUser => ({
-          userId: r.user_id,
-          email: r.email,
-          fullName: r.full_name,
-          avatarUrl: r.avatar_url,
-          createdAt: r.created_at,
-        }),
-      );
+      return (data ?? []).map((r): PendingUser => ({
+        userId: r.user_id,
+        email: r.email,
+        fullName: r.full_name,
+        avatarUrl: r.avatar_url,
+        createdAt: r.created_at,
+      }));
     },
 
     async resolvePending(userId, playerId) {
-      fail((await sb.rpc("admin_resolve_pending", { p_user: userId, p_player: playerId })).error);
+      fail(
+        (
+          await sb.rpc("admin_resolve_pending", {
+            p_user: userId,
+            p_player: playerId,
+          })
+        ).error,
+      );
     },
 
     async sendFeedback(input) {
@@ -273,7 +368,10 @@ export function createSupabaseBackend(): Backend {
     },
 
     async removePushSubscription(endpoint) {
-      fail((await sb.from("push_subscriptions").delete().eq("endpoint", endpoint)).error);
+      fail(
+        (await sb.from("push_subscriptions").delete().eq("endpoint", endpoint))
+          .error,
+      );
     },
 
     async notify(body: NotifyBody) {
@@ -282,7 +380,10 @@ export function createSupabaseBackend(): Backend {
       try {
         await fetch("/api/notify", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(body),
           keepalive: true,
         });

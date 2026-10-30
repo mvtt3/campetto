@@ -1,9 +1,25 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { computeBadges, type BadgeState, type BadgeUnlock } from "../badges";
 import { computeElo, type EloResult } from "../stats/elo";
-import { currentMvp, monthlyHistory, seasonHistory, type MonthAward, type MvpEntry, type SeasonAward } from "../stats/awards";
+import {
+  currentMvp,
+  monthlyHistory,
+  seasonHistory,
+  type MonthAward,
+  type MvpEntry,
+  type SeasonAward,
+} from "../stats/awards";
 import { sinceStart, type Period } from "../periods";
 import type { Dataset, Player } from "../types";
 import type { AuthState, Backend } from "./backend";
@@ -55,7 +71,10 @@ function buildEngine(data: Dataset): Engine {
   const months = monthlyHistory(playerIds, data.matches, now);
   const seasons = seasonHistory(playerIds, data.matches, now);
   const mvp = currentMvp(playerIds, data.matches, now, elo);
-  const cache = new Map<string, { states: BadgeState[]; unlocks: BadgeUnlock[] }>();
+  const cache = new Map<
+    string,
+    { states: BadgeState[]; unlocks: BadgeUnlock[] }
+  >();
   return {
     playerIds,
     elo,
@@ -63,7 +82,11 @@ function buildEngine(data: Dataset): Engine {
     seasons,
     mvp,
     badges(id) {
-      if (!cache.has(id)) cache.set(id, computeBadges(id, data.matches, { months, seasons, now }));
+      if (!cache.has(id))
+        cache.set(
+          id,
+          computeBadges(id, data.matches, { months, seasons, now }),
+        );
       return cache.get(id)!;
     },
   };
@@ -86,7 +109,9 @@ function readFastStart(): { meId: string; raw: string } | null {
     const meId = localStorage.getItem(ME_KEY);
     const raw = localStorage.getItem(CACHE_KEY);
     // Serve anche la sessione salvata da Supabase: senza, si passa dall'accesso.
-    const signed = Object.keys(localStorage).some((k) => k.startsWith("sb-") && k.endsWith("-auth-token"));
+    const signed = Object.keys(localStorage).some(
+      (k) => k.startsWith("sb-") && k.endsWith("-auth-token"),
+    );
     // Con un invito da usare si passa dal controllo normale, che lo registra.
     const invite = localStorage.getItem(INVITE_KEY);
     return meId && raw && signed && !invite ? { meId, raw } : null;
@@ -97,7 +122,9 @@ function readFastStart(): { meId: string; raw: string } | null {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [backend] = useState<Backend>(() =>
-    typeof window !== "undefined" && mockAllowed() ? createMockBackend() : createSupabaseBackend(),
+    typeof window !== "undefined" && mockAllowed()
+      ? createMockBackend()
+      : createSupabaseBackend(),
   );
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
   const [data, setData] = useState<Dataset>(EMPTY);
@@ -157,7 +184,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     // Stesso stato di prima (di solito, dopo l'apertura veloce): niente ridisegni inutili.
     setAuth((prev) => {
-      if (prev.status === "ready" && state.status === "ready" && prev.meId === state.meId) return prev;
+      if (
+        prev.status === "ready" &&
+        state.status === "ready" &&
+        prev.meId === state.meId
+      )
+        return prev;
       // Senza rete il controllo non riesce: si resta dentro con i dati salvati (in alto compare "Sei offline").
       if (prev.status === "ready" && state.status === "error") return prev;
       return state;
@@ -251,7 +283,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => void refresh(), 400);
     });
-    const onFocus = () => document.visibilityState === "visible" && void refresh();
+    const onFocus = () =>
+      document.visibilityState === "visible" && void refresh();
     document.addEventListener("visibilitychange", onFocus);
     return () => {
       off();
@@ -273,7 +306,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const engine = useMemo(() => buildEngine(data), [data]);
   const realMe = useMemo(
-    () => (auth.status === "ready" ? (data.players.find((p) => p.id === auth.meId) ?? null) : null),
+    () =>
+      auth.status === "ready"
+        ? (data.players.find((p) => p.id === auth.meId) ?? null)
+        : null,
     [auth, data.players],
   );
   const [viewOn, setViewOn] = useState(false);
@@ -295,8 +331,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setViewOn(on);
   }, []);
   const available = Boolean(realMe?.isAdmin);
-  const me = useMemo(() => (realMe && available && viewOn ? { ...realMe, isAdmin: false } : realMe), [realMe, available, viewOn]);
-  const playerView = useMemo(() => ({ on: available && viewOn, available, set: setView }), [available, viewOn, setView]);
+  const me = useMemo(
+    () =>
+      realMe && available && viewOn ? { ...realMe, isAdmin: false } : realMe,
+    [realMe, available, viewOn],
+  );
+  const playerView = useMemo(
+    () => ({ on: available && viewOn, available, set: setView }),
+    [available, viewOn, setView],
+  );
   const mutate = useCallback((fn: (d: Dataset) => Dataset) => {
     // Dopo una modifica locale, i dati del server vanno sempre riapplicati (anche se uguali a prima).
     shown.current = null;
@@ -304,8 +347,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Ctx>(
-    () => ({ backend, auth, data, me, engine, loading, online, lastError, refresh, reinit, mutate, playerView }),
-    [backend, auth, data, me, engine, loading, online, lastError, refresh, reinit, mutate, playerView],
+    () => ({
+      backend,
+      auth,
+      data,
+      me,
+      engine,
+      loading,
+      online,
+      lastError,
+      refresh,
+      reinit,
+      mutate,
+      playerView,
+    }),
+    [
+      backend,
+      auth,
+      data,
+      me,
+      engine,
+      loading,
+      online,
+      lastError,
+      refresh,
+      reinit,
+      mutate,
+      playerView,
+    ],
   );
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
@@ -318,5 +387,8 @@ export function useData(): Ctx {
 
 export function usePlayer(id: string | null | undefined): Player | undefined {
   const { data } = useData();
-  return useMemo(() => data.players.find((p) => p.id === id), [data.players, id]);
+  return useMemo(
+    () => data.players.find((p) => p.id === id),
+    [data.players, id],
+  );
 }

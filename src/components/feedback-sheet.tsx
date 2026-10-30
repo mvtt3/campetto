@@ -11,10 +11,30 @@ import { play } from "@/lib/sound";
 import { say } from "@/lib/voice";
 
 type Kind = "problema" | "idea" | "altro";
-const KINDS: { value: Kind; label: string; icon: typeof Bug; placeholder: string }[] = [
-  { value: "problema", label: "Qualcosa non va", icon: Bug, placeholder: "Cosa stavi facendo e cosa è successo?" },
-  { value: "idea", label: "Un'idea", icon: Lightbulb, placeholder: "Cosa ti piacerebbe trovare nell'app?" },
-  { value: "altro", label: "Altro", icon: MessageCircle, placeholder: "Scrivimi pure" },
+const KINDS: {
+  value: Kind;
+  label: string;
+  icon: typeof Bug;
+  placeholder: string;
+}[] = [
+  {
+    value: "problema",
+    label: "Qualcosa non va",
+    icon: Bug,
+    placeholder: "Cosa stavi facendo e cosa è successo?",
+  },
+  {
+    value: "idea",
+    label: "Un'idea",
+    icon: Lightbulb,
+    placeholder: "Cosa ti piacerebbe trovare nell'app?",
+  },
+  {
+    value: "altro",
+    label: "Altro",
+    icon: MessageCircle,
+    placeholder: "Scrivimi pure",
+  },
 ];
 
 /** L'ultima schermata vista prima delle impostazioni, per capire dove è successo. */
@@ -22,12 +42,26 @@ export const LAST_SCREEN_KEY = "campetto:ultima-schermata";
 
 function deviceInfo(): string {
   const ua = navigator.userAgent;
-  const model = ua.match(/\(([^)]+)\)/)?.[1]?.split(";").slice(0, 3).join(";") ?? "";
-  return `${model} · ${window.innerWidth}×${window.innerHeight} · ${document.documentElement.dataset.theme ?? ""}`.slice(0, 200);
+  const model =
+    ua
+      .match(/\(([^)]+)\)/)?.[1]
+      ?.split(";")
+      .slice(0, 3)
+      .join(";") ?? "";
+  return `${model} · ${window.innerWidth}×${window.innerHeight} · ${document.documentElement.dataset.theme ?? ""}`.slice(
+    0,
+    200,
+  );
 }
 
 /** Segnala un problema o suggerisci un'idea: arriva a chi aggiusta l'app. */
-export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function FeedbackSheet({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const { backend } = useData();
   const toast = useToast();
   const [kind, setKind] = useState<Kind>("problema");
@@ -46,11 +80,21 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
       } catch {
         /* nessuna schermata */
       }
-      await backend.sendFeedback({ kind, message: text, screen, device: deviceInfo(), appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? null });
+      await backend.sendFeedback({
+        kind,
+        message: text,
+        screen,
+        device: deviceInfo(),
+        appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? null,
+      });
       void backend.notify({ type: "feedback", kind });
       haptic(12);
       play("success");
-      toast(kind === "idea" ? "Grazie! Ho segnato la tua idea" : "Grazie! L'ho passato a chi aggiusta l'app");
+      toast(
+        kind === "idea"
+          ? "Grazie! Ho segnato la tua idea"
+          : "Grazie! L'ho passato a chi aggiusta l'app",
+      );
       setText("");
       onClose();
     } catch (e) {
@@ -73,7 +117,11 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
       }
     >
       <div className="flex flex-col gap-4 pb-2">
-        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Di cosa si tratta">
+        <div
+          className="grid grid-cols-3 gap-2"
+          role="radiogroup"
+          aria-label="Di cosa si tratta"
+        >
           {KINDS.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
@@ -85,7 +133,9 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
               }}
               className={clsx(
                 "press flex flex-col items-center justify-center gap-1 rounded-[18px] border-2 border-edge px-1 py-2.5 text-center text-[12.5px] font-bold transition-colors duration-300",
-                kind === value ? "sticker-sm bg-volt text-volt-ink" : "bg-surface text-muted",
+                kind === value
+                  ? "sticker-sm bg-volt text-volt-ink"
+                  : "bg-surface text-muted",
               )}
             >
               <Icon size={19} aria-hidden />
@@ -103,7 +153,10 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
             className="block w-full resize-none rounded-[18px] border-2 border-edge bg-surface px-4 py-3 text-[15px] leading-snug outline-none placeholder:text-faint focus:ring-4 focus:ring-court/25"
           />
         </label>
-        <p className="text-center text-[12.5px] text-muted">Insieme al messaggio mando il modello del telefono e la schermata in cui eri</p>
+        <p className="text-center text-[12.5px] text-muted">
+          Insieme al messaggio mando il modello del telefono e la schermata in
+          cui eri
+        </p>
       </div>
     </Sheet>
   );

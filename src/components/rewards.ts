@@ -49,15 +49,22 @@ const WEEKS_3 = 21 * 86_400_000;
  * trova tutto da scoprire; chi c'è da tempo e cambia telefono non si ritrova
  * decine di novità vecchie.
  */
-export function isNewcomer(playerId: string, matches: Match[], now = Date.now()): boolean {
+export function isNewcomer(
+  playerId: string,
+  matches: Match[],
+  now = Date.now(),
+): boolean {
   // Nei test e nell'anteprima locale (dati di prova) il telefono nuovo conta come "c'è da tempo",
   // a meno di chiederlo apposta (?telefono=nuovo: come chi entra per la prima volta).
   try {
-    if (localStorage.getItem("campetto:use-mock") === "1") return localStorage.getItem("campetto:mock:telefono-nuovo") === "1";
+    if (localStorage.getItem("campetto:use-mock") === "1")
+      return localStorage.getItem("campetto:mock:telefono-nuovo") === "1";
   } catch {
     /* ignore */
   }
-  const mine = matches.filter((m) => m.players.some((p) => p.playerId === playerId));
+  const mine = matches.filter((m) =>
+    m.players.some((p) => p.playerId === playerId),
+  );
   if (!mine.length) return true;
   const first = Math.min(...mine.map((m) => new Date(m.playedAt).getTime()));
   return now - first < WEEKS_3;
@@ -75,18 +82,30 @@ export interface NewRewards {
   claimCharacter: (id: AvatarPresetId) => void;
 }
 
-const NONE: NewRewards = { badges: new Set(), characters: new Set(), total: 0, claimBadge: () => {}, claimCharacter: () => {} };
+const NONE: NewRewards = {
+  badges: new Set(),
+  characters: new Set(),
+  total: 0,
+  claimBadge: () => {},
+  claimCharacter: () => {},
+};
 
 export function useNewRewards(): NewRewards {
   const { me, engine, data, loading } = useData();
-  const v = useSyncExternalStore(subscribe, () => version, () => 0);
+  const v = useSyncExternalStore(
+    subscribe,
+    () => version,
+    () => 0,
+  );
   return useMemo(() => {
     // Il numero non cambia mentre gioca la festa: si legge e basta.
     void v;
     if (!me || loading) return NONE;
     const states = engine.badges(me.id).states;
     const got = states.filter((s) => s.tier > 0);
-    const openChars = AVATAR_PRESETS.filter((p) => p.rarity !== "base" && characterProgress(p.id, states).unlocked).map((p) => p.id as AvatarPresetId);
+    const openChars = AVATAR_PRESETS.filter(
+      (p) => p.rarity !== "base" && characterProgress(p.id, states).unlocked,
+    ).map((p) => p.id as AvatarPresetId);
 
     const bKey = `campetto:badge-riscattati:${me.id}`;
     const cKey = `campetto:personaggi-riscattati:${me.id}`;
@@ -97,7 +116,9 @@ export function useNewRewards(): NewRewards {
       if (bSeen === null) write(bKey, (bSeen = fresh ? [] : got.map(badgeId)));
       if (cSeen === null) write(cKey, (cSeen = fresh ? [] : openChars));
     }
-    const badges = new Set(got.filter((s) => !bSeen!.includes(badgeId(s))).map((s) => s.def.key));
+    const badges = new Set(
+      got.filter((s) => !bSeen!.includes(badgeId(s))).map((s) => s.def.key),
+    );
     const characters = new Set(openChars.filter((id) => !cSeen!.includes(id)));
     return {
       badges,
@@ -107,7 +128,10 @@ export function useNewRewards(): NewRewards {
         const s = got.find((x) => x.def.key === key);
         if (!s || !badges.has(key)) return;
         const list = read(bKey) ?? [];
-        write(bKey, [...list.filter((x) => !x.startsWith(`${key}:`)), badgeId(s)]);
+        write(bKey, [
+          ...list.filter((x) => !x.startsWith(`${key}:`)),
+          badgeId(s),
+        ]);
         bump();
       },
       claimCharacter(id) {

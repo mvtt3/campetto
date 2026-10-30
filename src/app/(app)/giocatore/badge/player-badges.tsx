@@ -13,7 +13,10 @@ export function PlayerBadgesPage() {
   const p = data.players.find((x) => x.id === id);
   return (
     <>
-      <ScreenHeader title={`Badge di ${shortName(p, data.players)}`} back={playerHref(id)} />
+      <ScreenHeader
+        title={`Badge di ${shortName(p, data.players)}`}
+        back={playerHref(id)}
+      />
       <PullToRefresh className="px-4 pb-4">
         <BadgeCollection playerId={id} />
       </PullToRefresh>

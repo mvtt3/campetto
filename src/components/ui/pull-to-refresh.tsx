@@ -14,9 +14,21 @@ const REST = 64;
 type Phase = "idle" | "pull" | "ready" | "loading" | "done";
 
 /** La faccia di Spicchio, ritagliata dalla mascotte. */
-export function SpicchioFace({ size = 34, pose = "ciao" }: { size?: number; pose?: "ciao" | "boh" }) {
+export function SpicchioFace({
+  size = 34,
+  pose = "ciao",
+}: {
+  size?: number;
+  pose?: "ciao" | "boh";
+}) {
   return (
-    <svg viewBox="31 33 98 98" width={size} height={size} aria-hidden className="overflow-hidden rounded-full">
+    <svg
+      viewBox="31 33 98 98"
+      width={size}
+      height={size}
+      aria-hidden
+      className="overflow-hidden rounded-full"
+    >
       <Mascot pose={pose} size={160} animate={false} />
     </svg>
   );
@@ -73,7 +85,9 @@ export function PullToRefresh({
       const i = ind.current!;
       c.style.transition = animate ? `transform 320ms ${ease}` : "none";
       c.style.transform = d ? `translate3d(0, ${d}px, 0)` : "";
-      i.style.transition = animate ? `transform 320ms ${ease}, opacity 200ms` : "none";
+      i.style.transition = animate
+        ? `transform 320ms ${ease}, opacity 200ms`
+        : "none";
       i.style.transform = `translate3d(-50%, ${d - 60}px, 0)`;
       i.style.opacity = d > 6 ? "1" : "0";
       if (phaseRef.current !== "loading") {
@@ -83,7 +97,12 @@ export function PullToRefresh({
     };
 
     const start = (e: TouchEvent) => {
-      if (phaseRef.current === "loading" || el.scrollTop > 0 || e.touches.length > 1) return;
+      if (
+        phaseRef.current === "loading" ||
+        el.scrollTop > 0 ||
+        e.touches.length > 1
+      )
+        return;
       sx = e.touches[0].clientX;
       sy = e.touches[0].clientY;
       tracking = true;
@@ -125,10 +144,15 @@ export function PullToRefresh({
       setPhase("loading");
       paint(REST, true);
       ball.current!.style.transform = "";
-      await Promise.all([refreshRef.current().catch(() => {}), new Promise((r) => setTimeout(r, 700))]);
+      await Promise.all([
+        refreshRef.current().catch(() => {}),
+        new Promise((r) => setTimeout(r, 700)),
+      ]);
       const now = new Date();
       play("refresh");
-      setStamp(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+      setStamp(
+        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+      );
       setPhase("done");
       paint(0, true);
       doneTimer = window.setTimeout(() => setPhase("idle"), 2200);
@@ -151,7 +175,11 @@ export function PullToRefresh({
     <main
       ref={box}
       data-testid="scroll-container"
-      className={clsx("relative min-h-0 flex-1", scroll ? "scroll-area" : "overflow-hidden", className)}
+      className={clsx(
+        "relative min-h-0 flex-1",
+        scroll ? "scroll-area" : "overflow-hidden",
+        className,
+      )}
     >
       <div
         ref={ind}
@@ -159,8 +187,17 @@ export function PullToRefresh({
         style={{ transform: "translate3d(-50%, -60px, 0)", opacity: 0 }}
         aria-hidden
       >
-        <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-[2.5px] border-edge bg-volt" style={{ boxShadow: "2px 2px 0 var(--edge)" }}>
-          <span ref={ball} className={clsx("grid place-items-center", phase === "loading" && "ptr-spin")}>
+        <span
+          className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-[2.5px] border-edge bg-volt"
+          style={{ boxShadow: "2px 2px 0 var(--edge)" }}
+        >
+          <span
+            ref={ball}
+            className={clsx(
+              "grid place-items-center",
+              phase === "loading" && "ptr-spin",
+            )}
+          >
             <SpicchioFace size={40} />
           </span>
         </span>
@@ -174,8 +211,14 @@ export function PullToRefresh({
         </span>
       </div>
       {phase === "done" && (
-        <div className="pointer-events-none absolute inset-x-0 top-1 z-20 flex justify-center" role="status">
-          <span className="ptr-done flex items-center gap-2 rounded-full border-[2.5px] border-edge bg-volt py-1 pl-1 pr-3.5 text-[13px] font-bold text-volt-ink" style={{ boxShadow: "3px 3px 0 var(--edge)" }}>
+        <div
+          className="pointer-events-none absolute inset-x-0 top-1 z-20 flex justify-center"
+          role="status"
+        >
+          <span
+            className="ptr-done flex items-center gap-2 rounded-full border-[2.5px] border-edge bg-volt py-1 pl-1 pr-3.5 text-[13px] font-bold text-volt-ink"
+            style={{ boxShadow: "3px 3px 0 var(--edge)" }}
+          >
             <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16] bg-court">
               <SpicchioFace size={24} />
             </span>

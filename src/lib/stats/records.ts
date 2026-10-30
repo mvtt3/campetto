@@ -116,7 +116,9 @@ export function groupRecords(matches: Match[]): GroupRecord[] {
   for (const m of chrono) {
     const w = winnerOf(m);
     if (!w) continue;
-    const winners = m.players.filter((p) => p.team === w).map((p) => p.playerId);
+    const winners = m.players
+      .filter((p) => p.team === w)
+      .map((p) => p.playerId);
     const c = comebackSize(m);
     if (c >= 3 && (!comeback || c > comeback.value))
       comeback = {
@@ -161,7 +163,10 @@ export function groupRecords(matches: Match[]): GroupRecord[] {
     const { year, month } = monthOf(m.playedAt);
     const k = monthKey(year, month);
     if (!perMonth.has(k)) perMonth.set(k, new Map());
-    for (const p of m.players) perMonth.get(k)!.set(p.playerId, (perMonth.get(k)!.get(p.playerId) ?? 0) + 1);
+    for (const p of m.players)
+      perMonth
+        .get(k)!
+        .set(p.playerId, (perMonth.get(k)!.get(p.playerId) ?? 0) + 1);
   }
   let busiest: GroupRecord | null = null;
   for (const [k, counts] of perMonth)

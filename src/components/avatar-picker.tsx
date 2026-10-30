@@ -3,7 +3,12 @@
 import clsx from "clsx";
 import { Check, ImagePlus } from "lucide-react";
 import { useRef } from "react";
-import { AVATAR_PRESETS, PresetAvatar, presetOf, presetUrl } from "@/components/avatar-presets";
+import {
+  AVATAR_PRESETS,
+  PresetAvatar,
+  presetOf,
+  presetUrl,
+} from "@/components/avatar-presets";
 import { haptic, Spinner } from "@/components/ui/basics";
 
 /**
@@ -33,7 +38,11 @@ export function AvatarPicker({
   const items = AVATAR_PRESETS.filter((p) => p.rarity === "base");
   return (
     <div>
-      <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Figurine">
+      <div
+        className="grid grid-cols-3 gap-3"
+        role="radiogroup"
+        aria-label="Figurine"
+      >
         {items.map((p) => {
           const on = current === p.id;
           return (
@@ -58,7 +67,12 @@ export function AvatarPicker({
                   <PresetAvatar id={p.id} />
                 </span>
               </span>
-              <span className={clsx("flex items-center gap-1 text-[12.5px] font-bold", on ? "text-text" : "text-muted")}>
+              <span
+                className={clsx(
+                  "flex items-center gap-1 text-[12.5px] font-bold",
+                  on ? "text-text" : "text-muted",
+                )}
+              >
                 {on && <Check size={13} strokeWidth={3} className="text-ok" />}
                 {p.name}
               </span>
@@ -88,7 +102,9 @@ export function AvatarPicker({
             aria-pressed={!value}
             className={clsx(
               "press h-12 shrink-0 rounded-full px-4 text-[14.5px] font-bold",
-              !value ? "sticker bg-volt text-volt-ink" : "sticker-sm bg-surface",
+              !value
+                ? "sticker bg-volt text-volt-ink"
+                : "sticker-sm bg-surface",
             )}
           >
             {initialsLabel ?? "Iniziali"}

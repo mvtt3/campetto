@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 
 interface Nav {
@@ -19,7 +26,10 @@ export function NavProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     ref.current = router;
   }, [router]);
-  const value = useMemo<Nav>(() => ({ push: (href) => ref.current.push(href) }), []);
+  const value = useMemo<Nav>(
+    () => ({ push: (href) => ref.current.push(href) }),
+    [],
+  );
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;
 }
 

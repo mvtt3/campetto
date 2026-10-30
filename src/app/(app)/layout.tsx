@@ -113,8 +113,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const flushed = useRef(false);
   const adminOnly = ADMIN_ONLY.some((p) => path.startsWith(p));
   // Il cambio scheda si vede subito: non aspetta che il router aggiorni l'indirizzo.
-  const [pending, setPending] = useState<{ from: string; to: string } | null>(null);
-  const activeTab = pending && pending.from === path ? pending.to : TABS.some((t) => t.path === path) ? path : null;
+  const [pending, setPending] = useState<{ from: string; to: string } | null>(
+    null,
+  );
+  const activeTab =
+    pending && pending.from === path
+      ? pending.to
+      : TABS.some((t) => t.path === path)
+        ? path
+        : null;
   const pathRef = useRef(path);
   useEffect(() => {
     // Per le segnalazioni: l'ultima schermata vista prima delle impostazioni.
@@ -149,7 +156,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       const el = root.querySelector<HTMLElement>(`:scope > [data-tab="${p}"]`);
       if (!el || !el.classList.contains("tab-off")) continue;
       el.classList.add("tab-warm");
-      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("tab-warm")));
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => el.classList.remove("tab-warm")),
+      );
     }
   }, [kept]);
   // Da dove arriva il cambio scheda: dal tocco sulla barra entra con una dissolvenza.
@@ -157,7 +166,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const goTab = useCallback((p: string, how: "tap" | "swipe" = "swipe") => {
     if (p === pathRef.current) return;
     const from = TAB_PATHS.indexOf(pathRef.current);
-    enter.current = how === "tap" && from >= 0 ? { to: p, dir: TAB_PATHS.indexOf(p) > from ? 1 : -1 } : null;
+    enter.current =
+      how === "tap" && from >= 0
+        ? { to: p, dir: TAB_PATHS.indexOf(p) > from ? 1 : -1 }
+        : null;
     flushSync(() => setPending({ from: pathRef.current, to: p }));
     window.history.pushState(null, "", p);
   }, []);
@@ -172,7 +184,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     const e = enter.current;
     if (!e || e.to !== activeTab) return;
     enter.current = null;
-    const el = pager.current?.querySelector<HTMLElement>(`:scope > [data-tab="${e.to}"]`);
+    const el = pager.current?.querySelector<HTMLElement>(
+      `:scope > [data-tab="${e.to}"]`,
+    );
     if (!el) return;
     const cls = e.dir > 0 ? "tab-enter-right" : "tab-enter-left";
     el.classList.add(cls);
@@ -214,6 +228,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       "/profilo/notifiche",
       "/giocatore",
       "/giocatore/badge",
+      "/statistiche",
     ];
     const t = setTimeout(() => pages.forEach((p) => router.prefetch(p)), 600);
     return () => clearTimeout(t);
@@ -244,7 +259,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         title="Quasi dentro"
         text={
           <>
-            Ti ho riconosciuto{auth.email ? ` come ${auth.email}` : ""}, ma non so ancora chi sei in campo. Chiedi a Matteo il tuo link
+            Ti ho riconosciuto{auth.email ? ` come ${auth.email}` : ""}, ma non
+            so ancora chi sei in campo. Chiedi a Matteo il tuo link
             d&apos;invito e aprilo da qui
           </>
         }
@@ -271,56 +287,69 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (!me || (adminOnly && !me.isAdmin)) return <Splash />;
   if (!me.nickname) return <Onboarding me={me} />;
   // "Come ti vedono gli altri" è il tuo profilo: in basso resta acceso "Profilo".
-  const selfPreview = path === "/giocatore" && new URLSearchParams(window.location.search).get("id") === me.id;
+  const selfPreview =
+    path === "/giocatore" &&
+    new URLSearchParams(window.location.search).get("id") === me.id;
 
   return (
     <NavProvider>
-    <TutorialProvider me={me}>
-      <div className="mx-auto flex h-dvh max-w-lg flex-col">
-        {playerView.on && (
-          <div className="safe-top flex items-center justify-center gap-2 bg-court px-3 py-1.5 text-[12.5px] font-semibold text-court-ink" role="status">
-            <Eye size={14} aria-hidden /> Stai vedendo l&apos;app come gli altri
-            <button onClick={() => playerView.set(false)} className="press rounded-full bg-white/20 px-2.5 py-0.5 text-[12.5px] font-bold">
-              Esci
-            </button>
-          </div>
-        )}
-        {!online && (
-          <div className="safe-top flex items-center justify-center gap-2 bg-ball px-4 py-1.5 text-[12.5px] font-semibold text-ball-ink">
-            <WifiOff size={14} /> Sei offline: ti mostro gli ultimi dati che ho salvato
-          </div>
-        )}
-        <div
-          ref={pager}
-          className={
-            activeTab
-              ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
-              : "hidden"
-          }
-        >
-          {TABS.filter((t) => kept.includes(t.path)).map(
-            ({ path: p, Screen }) => (
-              <div
-                key={p}
-                data-tab={p}
-                // Le schede nascoste restano impaginate (content-visibility): tornarci non ricalcola niente.
-                className={clsx("tab-page", activeTab !== p && "tab-off")}
+      <TutorialProvider me={me}>
+        <div className="mx-auto flex h-dvh max-w-lg flex-col">
+          {playerView.on && (
+            <div
+              className="safe-top flex items-center justify-center gap-2 bg-court px-3 py-1.5 text-[12.5px] font-semibold text-court-ink"
+              role="status"
+            >
+              <Eye size={14} aria-hidden /> Stai vedendo l&apos;app come gli
+              altri
+              <button
+                onClick={() => playerView.set(false)}
+                className="press rounded-full bg-white/20 px-2.5 py-0.5 text-[12.5px] font-bold"
               >
-                <Screen />
-              </div>
-            ),
+                Esci
+              </button>
+            </div>
           )}
-        </div>
-        {!activeTab && (
-          <div key={path} className="page-enter flex min-h-0 flex-1 flex-col">
-            {children}
+          {!online && (
+            <div className="safe-top flex items-center justify-center gap-2 bg-ball px-4 py-1.5 text-[12.5px] font-semibold text-ball-ink">
+              <WifiOff size={14} /> Sei offline: ti mostro gli ultimi dati che
+              ho salvato
+            </div>
+          )}
+          <div
+            ref={pager}
+            className={
+              activeTab
+                ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
+                : "hidden"
+            }
+          >
+            {TABS.filter((t) => kept.includes(t.path)).map(
+              ({ path: p, Screen }) => (
+                <div
+                  key={p}
+                  data-tab={p}
+                  // Le schede nascoste restano impaginate (content-visibility): tornarci non ricalcola niente.
+                  className={clsx("tab-page", activeTab !== p && "tab-off")}
+                >
+                  <Screen />
+                </div>
+              ),
+            )}
           </div>
-        )}
-        {/* Il proprio profilo visto dagli altri resta sotto "Profilo". */}
-        <BottomNav current={navHint ?? activeTab ?? (selfPreview ? "/profilo" : path)} onTab={tapTab} />
-        <BadgeCelebration />
-      </div>
-    </TutorialProvider>
+          {!activeTab && (
+            <div key={path} className="page-enter flex min-h-0 flex-1 flex-col">
+              {children}
+            </div>
+          )}
+          {/* Il proprio profilo visto dagli altri resta sotto "Profilo". */}
+          <BottomNav
+            current={navHint ?? activeTab ?? (selfPreview ? "/profilo" : path)}
+            onTab={tapTab}
+          />
+          <BadgeCelebration />
+        </div>
+      </TutorialProvider>
     </NavProvider>
   );
 }

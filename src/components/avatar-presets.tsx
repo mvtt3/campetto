@@ -140,7 +140,7 @@ export const CHARACTER_TAGLINE: Record<AvatarPresetId, string> = {
   muro: "Qui non si passa",
   lampo: "Il più veloce in contropiede",
   rimbalzo: "Ogni pallone è suo",
-  jolly: "Fa un po' di tutto",
+  jolly: "Arriva a 10 in due voci: doppia doppia",
   bomber: "Vive per fare canestro",
   postino: "Non salta una partita, con ogni tempo",
   gentiluomo: "Zero falli, tanta classe",
@@ -194,7 +194,7 @@ export const GOALS: Partial<Record<AvatarPresetId, CharacterGoal>> = {
   muro: { badge: "stoppate", tier: 1 },
   lampo: { badge: "rubate", tier: 1 },
   rimbalzo: { badge: "rimbalzi", tier: 1 },
-  jolly: { badge: "tuttofare", tier: 1 },
+  jolly: { badge: "doppia-doppia", tier: 1 },
   bomber: { badge: "punti", tier: 1 },
   postino: { badge: "presenze", tier: 2 },
   gentiluomo: { badge: "fairplay", tier: 2 },
@@ -308,7 +308,7 @@ export const GOALS: Partial<Record<AvatarPresetId, CharacterGoal>> = {
   astronauta: {
     all: [
       { badge: "mvp-partita", tier: 4 },
-      { badge: "vittorie", tier: 3 },
+      { badge: "tripla-doppia", tier: 3 },
     ],
   },
   sole: {

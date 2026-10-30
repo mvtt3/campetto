@@ -1,8 +1,24 @@
 "use client";
 
 import clsx from "clsx";
-import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Snowflake, Sun, type LucideIcon } from "lucide-react";
-import { rainRisk, WEATHER_LABEL, weatherAt, weatherKind, type WeatherKind } from "@/lib/weather";
+import {
+  Cloud,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSun,
+  Snowflake,
+  Sun,
+  type LucideIcon,
+  Droplets,
+} from "lucide-react";
+import {
+  rainRisk,
+  WEATHER_LABEL,
+  weatherAt,
+  weatherKind,
+  type WeatherKind,
+} from "@/lib/weather";
 import { useForecast } from "@/lib/use-weather";
 
 const ICON: Record<WeatherKind, LucideIcon> = {
@@ -15,7 +31,13 @@ const ICON: Record<WeatherKind, LucideIcon> = {
   temporale: CloudLightning,
 };
 
-export function WeatherChip({ at, className }: { at: string; className?: string }) {
+export function WeatherChip({
+  at,
+  className,
+}: {
+  at: string;
+  className?: string;
+}) {
   const f = useForecast();
   const w = f ? weatherAt(f, at) : null;
   if (!w) return null;
@@ -33,7 +55,16 @@ export function WeatherChip({ at, className }: { at: string; className?: string 
     >
       <Icon size={15} aria-hidden />
       <span className="tnum">{Math.round(w.temp)}°</span>
-      {risk ? <span>Rischio pioggia {w.rainProb}%</span> : <span className="sr-only">{WEATHER_LABEL[kind]}</span>}
+      {risk ? (
+        // Compatto: una goccia e la percentuale, così il giorno della partita resta leggibile.
+        <span className="inline-flex items-center gap-0.5">
+          <Droplets size={13} aria-hidden />
+          <span className="tnum">{w.rainProb}%</span>
+          <span className="sr-only">di rischio pioggia</span>
+        </span>
+      ) : (
+        <span className="sr-only">{WEATHER_LABEL[kind]}</span>
+      )}
     </span>
   );
 }

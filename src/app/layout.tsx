@@ -25,7 +25,11 @@ export const metadata: Metadata = {
   description: "Partite, statistiche e classifiche del nostro campetto",
   applicationName: "Campetto",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Campetto", statusBarStyle: "black-translucent" },
+  appleWebApp: {
+    capable: true,
+    title: "Campetto",
+    statusBarStyle: "black-translucent",
+  },
   formatDetection: { telephone: false },
   icons: {
     icon: [
@@ -52,9 +56,16 @@ export const viewport: Viewport = {
 // Applica il tema prima del primo disegno, così non c'è il lampo di colore sbagliato.
 const themeScript = `(function(){try{var t=localStorage.getItem('campetto:theme')||'light';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="it" className={`${archivo.variable} ${ultra.variable}`} data-theme="light" suppressHydrationWarning>
+    <html
+      lang="it"
+      className={`${archivo.variable} ${ultra.variable}`}
+      data-theme="light"
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: introScript }} />

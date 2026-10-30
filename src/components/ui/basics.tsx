@@ -5,7 +5,15 @@ import clsx from "clsx";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { animate, motion, useReducedMotion } from "motion/react";
-import { startTransition, useEffect, useOptimistic, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  startTransition,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
 import { Mascot, type MascotPose } from "../mascot";
 
 export function haptic(ms = 8) {
@@ -33,7 +41,12 @@ export function Button({
   /** Il suono al tocco: i tasti principali fanno un "tic" morbido, gli altri niente. */
   sound?: SoundName | false;
 }) {
-  const tone = sound === undefined ? (variant === "court" || variant === "primary" ? "tap" : false) : sound;
+  const tone =
+    sound === undefined
+      ? variant === "court" || variant === "primary"
+        ? "tap"
+        : false
+      : sound;
   return (
     <button
       {...rest}
@@ -51,7 +64,8 @@ export function Button({
         variant === "primary" && "bg-ball text-ball-ink",
         variant === "court" && "bg-court text-court-ink",
         variant === "secondary" && "bg-surface text-text",
-        variant === "ghost" && "text-text active:!shadow-none active:!translate-x-0 active:!translate-y-0",
+        variant === "ghost" &&
+          "text-text active:!shadow-none active:!translate-x-0 active:!translate-y-0",
         variant === "danger" && "bg-surface text-danger",
         // Su superfici blu: bianco, il colore del testo lo decide chi lo usa.
         variant === "light" && "bg-white",
@@ -64,7 +78,11 @@ export function Button({
   );
 }
 
-export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
+export function Card({
+  className,
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div {...rest} className={clsx("card", className)}>
       {children}
@@ -83,7 +101,8 @@ export function ScreenHeader({
   action?: ReactNode;
   subtitle?: ReactNode;
 }) {
-  const backCls = "sticker-sm press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface";
+  const backCls =
+    "sticker-sm press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface";
   return (
     <header className="safe-top shrink-0 px-5">
       <div className="flex min-h-16 items-center gap-3 pt-2">
@@ -98,8 +117,17 @@ export function ScreenHeader({
             </button>
           ))}
         <div className="min-w-0 flex-1">
-          <h1 className={clsx("display truncate pb-0.5", back ? "text-[24px]" : "text-[31px]")}>{title}</h1>
-          {subtitle && <p className="mt-0.5 truncate text-[13px] text-muted">{subtitle}</p>}
+          <h1
+            className={clsx(
+              "display truncate pb-0.5",
+              back ? "text-[24px]" : "text-[31px]",
+            )}
+          >
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-0.5 truncate text-[13px] text-muted">{subtitle}</p>
+          )}
         </div>
         {action}
       </div>
@@ -132,7 +160,10 @@ export function Segmented<T extends string>({
       onChange(v);
     });
   };
-  const index = Math.max(0, options.findIndex((o) => o.value === shown));
+  const index = Math.max(
+    0,
+    options.findIndex((o) => o.value === shown),
+  );
   return (
     <div
       role="tablist"
@@ -149,7 +180,10 @@ export function Segmented<T extends string>({
           "absolute inset-y-1 left-1 rounded-full border-2 border-edge transition-transform duration-200 ease-out",
           tone === "court" ? "bg-white" : "bg-court",
         )}
-        style={{ width: `calc((100% - 0.5rem) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
+        style={{
+          width: `calc((100% - 0.5rem) / ${options.length})`,
+          transform: `translateX(${index * 100}%)`,
+        }}
       />
       {options.map((o) => {
         const active = o.value === shown;
@@ -162,7 +196,13 @@ export function Segmented<T extends string>({
             className={clsx(
               "relative min-w-0 flex-1 truncate rounded-full px-2 font-semibold transition-colors",
               size === "md" ? "h-10 text-[14px]" : "h-8 text-[13px]",
-              active ? (tone === "court" ? "text-court" : "text-court-ink") : tone === "court" ? "text-white/80" : "text-muted",
+              active
+                ? tone === "court"
+                  ? "text-court"
+                  : "text-court-ink"
+                : tone === "court"
+                  ? "text-white/80"
+                  : "text-muted",
             )}
           >
             <span className="relative">{o.label}</span>
@@ -188,7 +228,12 @@ export function Chips<T extends string>({
   const [shown, setShown] = useOptimistic(value);
   return (
     // Tessere della stessa larghezza, quattro per riga e centrate: ordinate anche quando vanno a capo.
-    <div className={clsx("flex flex-wrap justify-center gap-2 pb-0.5 pr-0.5", className)}>
+    <div
+      className={clsx(
+        "flex flex-wrap justify-center gap-2 pb-0.5 pr-0.5",
+        className,
+      )}
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -202,7 +247,9 @@ export function Chips<T extends string>({
           }}
           className={clsx(
             "press h-9 shrink-0 basis-[calc((100%-1.5rem)/4)] rounded-full px-1 text-[13.5px] font-bold transition-colors duration-300",
-            o.value === shown ? "sticker-sm bg-volt text-volt-ink" : "sticker-sm bg-surface text-muted",
+            o.value === shown
+              ? "sticker-sm bg-volt text-volt-ink"
+              : "sticker-sm bg-surface text-muted",
           )}
         >
           {o.label}
@@ -215,25 +262,56 @@ export function Chips<T extends string>({
 /** Caricamento: una palla che rimbalza. */
 export function Spinner({ size = 22 }: { size?: number }) {
   return (
-    <span role="status" aria-label="Caricamento" className="inline-flex flex-col items-center" style={{ height: size * 2 }}>
+    <span
+      role="status"
+      aria-label="Caricamento"
+      className="inline-flex flex-col items-center"
+      style={{ height: size * 2 }}
+    >
       <svg
         viewBox="0 0 40 40"
         width={size}
         height={size}
-        style={{ animation: "bounce-ball 0.8s cubic-bezier(0.3, 0.7, 0.4, 1) infinite", transformOrigin: "50% 100%" }}
+        style={{
+          animation: "bounce-ball 0.8s cubic-bezier(0.3, 0.7, 0.4, 1) infinite",
+          transformOrigin: "50% 100%",
+        }}
         className="mt-auto"
       >
-        <circle cx="20" cy="20" r="18" fill="#F26A1B" stroke="#1D1A16" strokeWidth="3" />
-        <path d="M20 2 V38 M2 20 H38 M8 7 Q20 20 8 33 M32 7 Q20 20 32 33" stroke="#1D1A16" strokeWidth="2.4" fill="none" />
+        <circle
+          cx="20"
+          cy="20"
+          r="18"
+          fill="#F26A1B"
+          stroke="#1D1A16"
+          strokeWidth="3"
+        />
+        <path
+          d="M20 2 V38 M2 20 H38 M8 7 Q20 20 8 33 M32 7 Q20 20 32 33"
+          stroke="#1D1A16"
+          strokeWidth="2.4"
+          fill="none"
+        />
       </svg>
     </span>
   );
 }
 
 /** Linee del campo (arco dei tre punti, area, lunetta) per le superfici blu. */
-export function CourtLines({ className, draw }: { className?: string; draw?: boolean }) {
+export function CourtLines({
+  className,
+  draw,
+}: {
+  className?: string;
+  draw?: boolean;
+}) {
   return (
-    <svg viewBox="0 0 360 220" preserveAspectRatio="xMidYMax slice" className={clsx("court-lines", draw && "draw", className)} aria-hidden>
+    <svg
+      viewBox="0 0 360 220"
+      preserveAspectRatio="xMidYMax slice"
+      className={clsx("court-lines", draw && "draw", className)}
+      aria-hidden
+    >
       <path d="M24 220 V150 A156 156 0 0 1 336 150 V220" />
       <rect x="120" y="128" width="120" height="92" />
       <path d="M140 128 A40 40 0 0 1 220 128" />
@@ -260,21 +338,36 @@ export function EmptyState({
     <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
       <Mascot pose={pose} size={size} />
       <p className="title mt-3 text-[19px]">{title}</p>
-      {text && <p className="mt-1.5 max-w-[30ch] text-[14.5px] text-muted">{text}</p>}
+      {text && (
+        <p className="mt-1.5 max-w-[30ch] text-[14.5px] text-muted">{text}</p>
+      )}
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
 
 /** Numero che conta fino al valore la prima volta che compare. */
-export function CountUp({ value, decimals = 0, className, suffix = "" }: { value: number; decimals?: number; className?: string; suffix?: string }) {
+export function CountUp({
+  value,
+  decimals = 0,
+  className,
+  suffix = "",
+}: {
+  value: number;
+  decimals?: number;
+  className?: string;
+  suffix?: string;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   const reduce = useReducedMotion();
   const last = useRef(0);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const fmtv = (v: number) => (decimals ? v.toFixed(decimals).replace(".", ",") : String(Math.round(v))) + suffix;
+    const fmtv = (v: number) =>
+      (decimals
+        ? v.toFixed(decimals).replace(".", ",")
+        : String(Math.round(v))) + suffix;
     if (reduce) {
       el.textContent = fmtv(value);
       return;
@@ -288,7 +381,11 @@ export function CountUp({ value, decimals = 0, className, suffix = "" }: { value
     return () => c.stop();
   }, [value, decimals, reduce, suffix]);
   return (
-    <span ref={ref} className={className} aria-label={`${decimals ? value.toFixed(decimals) : value}${suffix}`}>
+    <span
+      ref={ref}
+      className={className}
+      aria-label={`${decimals ? value.toFixed(decimals) : value}${suffix}`}
+    >
       {decimals ? (0).toFixed(decimals) : "0"}
       {suffix}
     </span>
@@ -317,9 +414,21 @@ export function Ring({
   const c = 2 * Math.PI * r;
   const v = Math.max(0, Math.min(1, value));
   return (
-    <span className="relative inline-grid shrink-0 place-items-center" style={{ width: size, height: size }} aria-label={label} role={label ? "img" : undefined}>
+    <span
+      className="relative inline-grid shrink-0 place-items-center"
+      style={{ width: size, height: size }}
+      aria-label={label}
+      role={label ? "img" : undefined}
+    >
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track} strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={track}
+          strokeWidth={stroke}
+        />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
@@ -334,7 +443,9 @@ export function Ring({
           transition={{ duration: 1.1, ease: [0.2, 0.8, 0.2, 1], delay: 0.2 }}
         />
       </svg>
-      <span className="absolute inset-0 grid place-items-center">{children}</span>
+      <span className="absolute inset-0 grid place-items-center">
+        {children}
+      </span>
     </span>
   );
 }
@@ -352,13 +463,23 @@ export function StatBlock({
 }) {
   return (
     <div className={clsx("min-w-0", className)}>
-      <div className={clsx("num", big ? "text-[40px]" : "text-[28px]")}>{value}</div>
+      <div className={clsx("num", big ? "text-[40px]" : "text-[28px]")}>
+        {value}
+      </div>
       <div className="mt-1 truncate text-[12.5px] text-muted">{label}</div>
     </div>
   );
 }
 
-export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+export function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
   return (
     <button
       role="switch"
@@ -369,7 +490,10 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
         play(checked ? "toggleOff" : "toggleOn");
         onChange(!checked);
       }}
-      className={clsx("relative h-8 w-[54px] shrink-0 rounded-full border-2 border-edge transition-colors", checked ? "bg-ok" : "bg-raised")}
+      className={clsx(
+        "relative h-8 w-[54px] shrink-0 rounded-full border-2 border-edge transition-colors",
+        checked ? "bg-ok" : "bg-raised",
+      )}
     >
       <motion.span
         className="absolute left-[2px] top-[2px] h-6 w-6 rounded-full border-2 border-edge bg-surface"
@@ -396,7 +520,12 @@ export function Stepper({
   compact?: boolean;
 }) {
   return (
-    <div className={clsx("sticker-sm flex items-center rounded-2xl bg-surface", compact ? "h-12" : "h-14")}>
+    <div
+      className={clsx(
+        "sticker-sm flex items-center rounded-2xl bg-surface",
+        compact ? "h-12" : "h-14",
+      )}
+    >
       <button
         aria-label={`Togli ${label}`}
         onClick={() => {
@@ -411,7 +540,9 @@ export function Stepper({
         <div className="num text-[22px]" aria-live="polite">
           {value}
         </div>
-        <div className="truncate text-[10.5px] leading-tight text-muted">{label}</div>
+        <div className="truncate text-[10.5px] leading-tight text-muted">
+          {label}
+        </div>
       </div>
       <button
         aria-label={`Aggiungi ${label}`}
@@ -440,7 +571,9 @@ export function pct(v: number | null | undefined, digits = 0): string {
 
 export function fmt(v: number | null | undefined, digits = 1): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
-  return (Number.isInteger(v) && digits <= 1 ? String(v) : v.toFixed(digits)).replace(".", ",");
+  return (
+    Number.isInteger(v) && digits <= 1 ? String(v) : v.toFixed(digits)
+  ).replace(".", ",");
 }
 
 export function signed(v: number, digits = 0): string {

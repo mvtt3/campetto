@@ -19,11 +19,15 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (auth.status === "ready" || auth.status === "pending") router.replace(next);
+    if (auth.status === "ready" || auth.status === "pending")
+      router.replace(next);
   }, [auth.status, router, next]);
 
   return (
-    <Welcome title="Campetto" text="Le nostre partite a Nichelino: risultati, statistiche, classifiche e chi viene a giocare">
+    <Welcome
+      title="Campetto"
+      text="Le nostre partite a Nichelino: risultati, statistiche, classifiche e chi viene a giocare"
+    >
       <GoogleButton onClick={() => backend.signIn(next)} />
       <p className="mt-4 text-center text-[12.5px] text-[#3d342a]">
         Entrando accetti i{" "}
