@@ -50,7 +50,7 @@ export async function staticContentOverflows(page: Page): Promise<string[]> {
       root.querySelectorAll<HTMLElement>("*").forEach((el) => {
         const cs = getComputedStyle(el);
         if (cs.position === "absolute" || cs.position === "fixed" || el.closest("[aria-hidden='true']")) return;
-        if (!el.getClientRects().length || el.closest("svg")) return;
+        if (!(el.getClientRects().length && el.checkVisibility() && !el.closest(".tab-off")) || el.closest("svg")) return;
         let p = el.parentElement;
         while (p && p !== root.parentElement && !clips(p)) p = p.parentElement;
         if (!p) return;
@@ -77,7 +77,7 @@ export async function clippedStickers(page: Page): Promise<string[]> {
     const out: string[] = [];
     const els = document.querySelectorAll<HTMLElement>(".sticker, .sticker-sm, .card, .court");
     els.forEach((el) => {
-      if (!el.getClientRects().length) return;
+      if (!(el.getClientRects().length && el.checkVisibility() && !el.closest(".tab-off"))) return;
       if (el.closest('[role="dialog"], [aria-hidden="true"]')) return;
       const cs = getComputedStyle(el);
       const m = cs.boxShadow.match(/(-?\d+(?:\.\d+)?)px (-?\d+(?:\.\d+)?)px/);
@@ -106,7 +106,7 @@ export async function clippedStickers(page: Page): Promise<string[]> {
 export async function truncatedTitles(page: Page): Promise<string[]> {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("h1, h2, button, a")]
-      .filter((el) => el.getClientRects().length && getComputedStyle(el).textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1)
+      .filter((el) => el.getClientRects().length && el.checkVisibility() && !el.closest(".tab-off") && getComputedStyle(el).textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1)
       .filter((el) => el.tagName === "H1" || el.closest("header") || el.closest("nav"))
       .map((el) => `${el.tagName.toLowerCase()} "${el.textContent?.trim()}"`),
   );
@@ -119,7 +119,7 @@ export async function truncatedTitles(page: Page): Promise<string[]> {
 export async function popupProblems(page: Page, selector: string): Promise<string[]> {
   return page.evaluate((sel) => {
     const out: string[] = [];
-    const roots = [...document.querySelectorAll<HTMLElement>(sel)].filter((el) => el.getClientRects().length);
+    const roots = [...document.querySelectorAll<HTMLElement>(sel)].filter((el) => el.getClientRects().length && el.checkVisibility() && !el.closest(".tab-off"));
     if (!roots.length) return [`nessun popup "${sel}"`];
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -129,7 +129,7 @@ export async function popupProblems(page: Page, selector: string): Promise<strin
         out.push(`popup fuori schermo (${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)})`);
       // Testi più larghi del loro contenitore (escluse le ellissi volute).
       root.querySelectorAll<HTMLElement>("button, a, h1, h2, h3, p, label, span").forEach((el) => {
-        if (!el.getClientRects().length || el.closest("svg")) return;
+        if (!(el.getClientRects().length && el.checkVisibility() && !el.closest(".tab-off")) || el.closest("svg")) return;
         const cs = getComputedStyle(el);
         if (cs.textOverflow === "ellipsis" || cs.overflowX === "auto" || cs.overflowX === "scroll" || cs.display === "inline") return;
         // Le icone piccole (la "i" in corsivo) sporgono di un pixel per natura: non contano.
@@ -148,7 +148,7 @@ export async function popupProblems(page: Page, selector: string): Promise<strin
       });
       // Testi tagliati in verticale (le code di g, p, q e y sotto la riga).
       root.querySelectorAll<HTMLElement>("h1, h2, h3, p, span, a, button").forEach((el) => {
-        if (!el.getClientRects().length || el.closest("svg") || !(el.textContent || "").trim()) return;
+        if (!(el.getClientRects().length && el.checkVisibility() && !el.closest(".tab-off")) || el.closest("svg") || !(el.textContent || "").trim()) return;
         const cs = getComputedStyle(el);
         if (cs.overflowY !== "hidden" && cs.overflowY !== "clip" && cs.textOverflow !== "ellipsis") return;
         // Testi solo per il lettore di schermo (sr-only): nascosti apposta.
@@ -158,7 +158,7 @@ export async function popupProblems(page: Page, selector: string): Promise<strin
       });
       // Controlli sovrapposti.
       const ctrls = [...root.querySelectorAll<HTMLElement>("button, a, input, textarea, [role='slider'], [role='switch']")].filter(
-        (el) => el.getClientRects().length && !el.closest("[aria-hidden='true']"),
+        (el) => el.getClientRects().length && el.checkVisibility() && !el.closest(".tab-off") && !el.closest("[aria-hidden='true']"),
       );
       // Rettangolo davvero visibile: tagliato dai contenitori che scorrono o nascondono.
       const visible = (el: HTMLElement) => {

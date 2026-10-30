@@ -37,6 +37,17 @@ export function Character3D({
   locked?: boolean;
 }) {
   const inner = useRef<HTMLDivElement>(null);
+  // Lo spessore (gli strati interni) arriva al fotogramma dopo: la scheda si apre subito al tocco.
+  const [thick, setThick] = useState(false);
+  useEffect(() => {
+    // Dopo il primo disegno (un fotogramma, poi subito dopo): non rallenta la risposta al tocco.
+    let t = 0;
+    const r = requestAnimationFrame(() => (t = window.setTimeout(() => setThick(true), 0)));
+    return () => {
+      cancelAnimationFrame(r);
+      window.clearTimeout(t);
+    };
+  }, []);
   // Respira solo il lato che si vede: gli strati interni e il lato nascosto stanno fermi (meno lavoro al telefono).
   const [face, setFace] = useState<"front" | "back">("front");
   const width = Math.round((height * 100) / 185);
@@ -44,25 +55,75 @@ export function Character3D({
 
   useEffect(() => {
     const el = inner.current;
-    if (!el) return;
+    const sway = el?.parentElement;
+    if (!el || !sway) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const st = {
-      angle: intro === "spin" && !reduce ? -540 : intro === "peek" && !reduce ? 38 : 0,
+      angle: 0,
       vel: 0,
       target: 0,
       drag: null as null | { x: number; a: number; samples: { t: number; a: number }[]; moved: boolean; t0: number },
-      settledAt: performance.now() + (intro === "spin" ? 900 : 300),
-      swayFrom: 0,
       last: performance.now(),
-      wasSettled: false,
       touched: false,
       raf: 0,
     };
-    const stage = el.parentElement!.parentElement!;
+    const stage = sway.parentElement!;
+    el.style.transform = "";
+    // L'entrata (un cenno o un giro intero) la fa il browser da solo: fluida anche sui telefoni lenti.
+    const introCls = reduce || intro === "none" ? null : intro === "spin" ? "char3d-spin" : "char3d-peek";
+    let introOn = Boolean(introCls);
+    const endIntro = (keepAngle: boolean) => {
+      if (!introOn) return;
+      introOn = false;
+      if (keepAngle) {
+        try {
+          const t = getComputedStyle(el).transform;
+          if (t && t !== "none") {
+            const m = new DOMMatrixReadOnly(t);
+            st.angle = (Math.atan2(m.m31, m.m11) * 180) / Math.PI;
+          }
+        } catch {
+          /* ignora */
+        }
+      }
+      el.classList.remove(introCls!);
+      el.style.transform = `rotateY(${st.angle.toFixed(2)}deg)`;
+    };
+    const onIntroEnd = (e: AnimationEvent) => {
+      if (e.target !== el || !introOn) return;
+      endIntro(false);
+      setFace("front");
+      startSway();
+    };
+    if (introCls) {
+      el.classList.add(introCls);
+      el.addEventListener("animationend", onIntroEnd);
+    }
+
+    // Da fermo dondola piano: lo fa il browser da solo (animazione CSS), senza lavoro a ogni fotogramma.
+    const startSway = () => {
+      if (!reduce) sway.classList.add("char3d-swaying");
+    };
+    // Al tocco il dondolio si ferma dov'è: il suo angolo passa al personaggio, senza scatti.
+    const stopSway = () => {
+      if (!sway.classList.contains("char3d-swaying")) return;
+      try {
+        const t = getComputedStyle(sway).transform;
+        if (t && t !== "none") {
+          const m = new DOMMatrixReadOnly(t);
+          st.angle += (Math.atan2(m.m31, m.m11) * 180) / Math.PI;
+        }
+      } catch {
+        /* browser vecchio: riparte da dov'era prima del dondolio */
+      }
+      sway.classList.remove("char3d-swaying");
+      el.style.transform = `rotateY(${st.angle.toFixed(2)}deg)`;
+    };
 
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - st.last) / 1000);
       st.last = now;
+      st.raf = 0;
       if (!st.drag) {
         // Molla verso la faccia più vicina (leggermente elastica, non dura).
         const k = 90;
@@ -70,38 +131,38 @@ export function Character3D({
         const acc = -k * (st.angle - st.target) - c * st.vel;
         st.vel += acc * dt;
         st.angle += st.vel * dt;
-        const settled = Math.abs(st.angle - st.target) < 0.25 && Math.abs(st.vel) < 4;
-        if (settled && !st.wasSettled) {
-          st.wasSettled = true;
-          st.settledAt = now;
-          // Riporta l'angolo tra 0 e 360 senza che si veda.
+        if (Math.abs(st.angle - st.target) < 0.25 && Math.abs(st.vel) < 4) {
+          // Fermo: l'angolo torna tra 0 e 360 senza che si veda, e il ciclo si spegne.
           const norm = ((st.target % 360) + 360) % 360;
-          st.angle += norm - st.target;
+          st.angle = norm;
           st.target = norm;
+          st.vel = 0;
+          el.style.transform = `rotateY(${norm}deg)`;
           setFace(norm === 180 ? "back" : "front");
           if (st.touched) play("tick");
+          startSway();
+          return;
         }
-        // Da fermo dondola piano, entrando in punta di piedi.
-        let sway = 0;
-        if (st.wasSettled && !reduce) {
-          const since = (now - st.settledAt) / 1000;
-          const ramp = Math.min(1, Math.max(0, (since - 1.2) / 1.5));
-          sway = Math.sin((since - 1.2) * 1.25) * 11 * ramp;
-        }
-        el.style.transform = `rotateY(${(st.angle + sway).toFixed(2)}deg)`;
-      } else {
-        el.style.transform = `rotateY(${st.angle.toFixed(2)}deg)`;
       }
+      el.style.transform = `rotateY(${st.angle.toFixed(2)}deg)`;
       st.raf = requestAnimationFrame(frame);
     };
-    st.raf = requestAnimationFrame(frame);
+    const wake = () => {
+      if (st.raf) return;
+      st.last = performance.now();
+      st.raf = requestAnimationFrame(frame);
+    };
+    // Senza entrata animata: fermo subito, poi il dondolio.
+    const t0 = introCls ? 0 : window.setTimeout(wake, 60);
 
     const down = (e: PointerEvent) => {
       stage.setPointerCapture(e.pointerId);
+      endIntro(true);
+      stopSway();
       st.touched = true;
       st.drag = { x: e.clientX, a: st.angle, samples: [{ t: e.timeStamp, a: st.angle }], moved: false, t0: e.timeStamp };
       st.vel = 0;
-      st.wasSettled = false;
+      wake();
     };
     const move = (e: PointerEvent) => {
       const d = st.drag;
@@ -116,6 +177,7 @@ export function Character3D({
       const d = st.drag;
       if (!d) return;
       st.drag = null;
+      wake();
       if (!d.moved && e.timeStamp - d.t0 < 350) {
         // Un tocco: mezzo giro.
         st.target = Math.round(st.angle / 180) * 180 + 180;
@@ -138,6 +200,8 @@ export function Character3D({
     stage.addEventListener("pointerup", up);
     stage.addEventListener("pointercancel", up);
     return () => {
+      window.clearTimeout(t0);
+      el.removeEventListener("animationend", onIntroEnd);
       cancelAnimationFrame(st.raf);
       stage.removeEventListener("pointerdown", down);
       stage.removeEventListener("pointermove", move);
@@ -150,11 +214,12 @@ export function Character3D({
   return (
     <div className="char3d mx-auto select-none" style={{ width: width + depth * 2, height }} role="img" aria-label="Trascina o tocca per girare il personaggio">
       <div className="char3d-stage">
+        <div className="char3d-sway">
         <div ref={inner} className="char3d-inner" style={{ width, height }}>
           <div className="char3d-face char3d-back" style={{ transform: `rotateY(180deg) translateZ(${depth / 2}px)` }}>
             <Character id={id} number={number} height={height} back backName={locked ? undefined : name} idle={!locked && face === "back"} />
           </div>
-          {slices.map((z) => (
+          {thick && slices.map((z) => (
             <div key={z} className="char3d-slice" style={{ transform: `translateZ(${z.toFixed(1)}px)` }}>
               <Character id={id} number={null} height={height} noBall />
             </div>
@@ -162,6 +227,7 @@ export function Character3D({
           <div className="char3d-face" style={{ transform: `translateZ(${depth / 2}px)` }}>
             <Character id={id} number={number} height={height} idle={!locked && face === "front"} />
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -314,12 +380,20 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
   const { me, engine } = useData();
   const states = useMemo(() => (me ? engine.badges(me.id).states : []), [me, engine]);
   const progress = useMemo(() => new Map(AVATAR_PRESETS.map((p) => [p.id, characterProgress(p.id, states)])), [states]);
-  // Prima la parte in alto, il resto appena il pannello ha finito di salire: niente scatti all'apertura.
-  const [all, setAll] = useState(false);
+  // Al tocco solo il pannello; al fotogramma dopo la parte in alto, il resto appena il
+  // pannello ha finito di salire: niente scatti all'apertura.
+  const [stage, setStage] = useState(0);
   useEffect(() => {
-    const t = window.setTimeout(() => setAll(true), 420);
-    return () => window.clearTimeout(t);
+    let t1 = 0;
+    const r = requestAnimationFrame(() => (t1 = window.setTimeout(() => setStage((s) => Math.max(s, 1)), 0)));
+    const t = window.setTimeout(() => setStage(2), 420);
+    return () => {
+      cancelAnimationFrame(r);
+      window.clearTimeout(t1);
+      window.clearTimeout(t);
+    };
   }, []);
+  const all = stage >= 2;
   if (!me) return null;
   const total = AVATAR_PRESETS.length;
   const open = AVATAR_PRESETS.filter((p) => progress.get(p.id)!.unlocked).length;
@@ -372,7 +446,7 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
       {RARITIES.map((g, gi) => {
         const items = AVATAR_PRESETS.filter((p) => p.rarity === g);
         const got = items.filter((p) => progress.get(p.id)!.unlocked).length;
-        if (gi > 1 && !all) return <div key={g} style={{ height: Math.ceil(items.length / 4) * 112 + 60 }} aria-hidden />;
+        if ((gi > 1 && !all) || stage === 0) return <div key={g} style={{ height: Math.ceil(items.length / 4) * 112 + 60 }} aria-hidden />;
         return (
           <section key={g} className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]">
             <h3 className="mb-1 flex items-center justify-center gap-2 text-[13.5px] font-bold">

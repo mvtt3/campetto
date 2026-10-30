@@ -1,6 +1,10 @@
-/* Campetto service worker: offline di base e notifiche push. */
-const VERSION = "campetto-v1";
+/* Campetto service worker: apertura veloce anche con poca rete, offline di base e notifiche push. */
+const VERSION = "campetto-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+/** Con la rete lenta (al campetto, una tacca) non si aspetta più di così: si apre l'ultima versione salvata. */
+const NAV_TIMEOUT = 1500;
+/** File salvati al massimo: quelli vecchi delle versioni precedenti se ne vanno da soli. */
+const MAX_STATIC = 220;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -21,6 +25,12 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+async function trim(cache) {
+  const keys = (await cache.keys()).filter((r) => new URL(r.url).pathname.startsWith("/_next/static/"));
+  // Le chiavi sono in ordine di inserimento: si tolgono le più vecchie.
+  for (const r of keys.slice(0, Math.max(0, keys.length - MAX_STATIC))) await cache.delete(r);
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -28,15 +38,22 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
 
-  // File statici con hash: dalla cache, poi rete.
+  // File statici con hash (non cambiano mai): dalla cache, altrimenti dalla rete e si salvano.
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
     event.respondWith(
       caches.match(req).then(
         (hit) =>
           hit ||
           fetch(req).then((res) => {
-            const copy = res.clone();
-            caches.open(VERSION).then((c) => c.put(req, copy));
+            if (res.ok) {
+              const copy = res.clone();
+              event.waitUntil(
+                caches.open(VERSION).then(async (c) => {
+                  await c.put(req, copy);
+                  if (Math.random() < 0.1) await trim(c);
+                }),
+              );
+            }
             return res;
           }),
       ),
@@ -44,16 +61,28 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Pagine: prima la rete, se offline l'ultima versione salvata.
+  // Pagine: la versione nuova dalla rete, ma se tarda si apre subito l'ultima salvata
+  // (e quella nuova si salva lo stesso per la prossima volta). Offline: l'ultima salvata.
   if (req.mode === "navigate") {
+    const net = fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        return caches
+          .open(VERSION)
+          .then((c) => c.put(req, copy))
+          .then(() => res);
+      }
+      return res;
+    });
+    event.waitUntil(net.catch(() => {}));
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(VERSION).then((c) => c.put(req, copy));
-          return res;
-        })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match("/"))),
+      (async () => {
+        const cached = await caches.match(req);
+        if (!cached) return net.catch(async () => (await caches.match("/")) || Response.error());
+        const late = new Promise((r) => setTimeout(() => r(null), NAV_TIMEOUT));
+        const fresh = await Promise.race([net.catch(() => null), late]);
+        return fresh || cached;
+      })(),
     );
   }
 });

@@ -8,11 +8,13 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useIntroDone } from "@/components/intro";
 import { Mascot } from "@/components/mascot";
 import { Button, haptic } from "@/components/ui/basics";
 import { displayName, type Player } from "@/lib/types";
@@ -110,16 +112,21 @@ export function TutorialProvider({
     [go, update],
   );
 
-  const api: TourApi = {
-    state,
-    begin: (section) =>
-      void (section ? start([section], section) : start(SECTION_IDS, "home")),
-    restart: () => void start(SECTION_IDS, "home"),
-  };
+  // Sempre lo stesso finché la guida non cambia: chi la usa non si ridisegna a ogni cambio di pagina.
+  const api = useMemo<TourApi>(
+    () => ({
+      state,
+      begin: (section) =>
+        void (section ? start([section], section) : start(SECTION_IDS, "home")),
+      restart: () => void start(SECTION_IDS, "home"),
+    }),
+    [state, start],
+  );
 
-  // Al primo ingresso: il benvenuto, appena non c'è altro sullo schermo.
+  const introDone = useIntroDone();
+  // Al primo ingresso: il benvenuto, appena non c'è altro sullo schermo (né l'apertura, né una festa).
   useEffect(() => {
-    if (state.status !== "new" || active || !TABS.includes(path)) return;
+    if (state.status !== "new" || active || !TABS.includes(path) || !introDone) return;
     const t = window.setInterval(() => {
       if (document.querySelector('[role="dialog"]') || document.hidden) return;
       window.clearInterval(t);
@@ -131,7 +138,7 @@ export function TutorialProvider({
       });
     }, 900);
     return () => window.clearInterval(t);
-  }, [state.status, active, path]);
+  }, [state.status, active, path, introDone]);
 
   // Il tasto indietro del telefono chiude la guida.
   useEffect(() => {

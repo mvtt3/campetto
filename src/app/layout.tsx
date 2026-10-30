@@ -4,9 +4,10 @@ import "./globals.css";
 import { Intro, introScript } from "@/components/intro";
 import { Providers } from "@/components/providers";
 
+// Solo l'alfabeto latino (le lettere accentate italiane ci sono) e solo lo spessore:
+// la larghezza variabile non la usiamo. Al primo avvio si scaricano 130 KB in meno.
 const archivo = Archivo({
-  subsets: ["latin", "latin-ext"],
-  axes: ["wdth"],
+  subsets: ["latin"],
   variable: "--font-archivo",
   display: "swap",
 });

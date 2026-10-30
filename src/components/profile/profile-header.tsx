@@ -38,7 +38,7 @@ export function ProfileHeader({
   const tint = playerColor(player);
   const light = isLightColor(tint);
   const charId = characterOf(player);
-  const badgesHref = self ? "/profilo/badge" : `/giocatore/${player.id}/badge`;
+  const badgesHref = self ? "/profilo/badge" : `/giocatore/badge?id=${encodeURIComponent(player.id)}`;
 
   return (
     <div

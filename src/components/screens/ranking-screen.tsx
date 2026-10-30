@@ -16,7 +16,7 @@ import { filterMatches, periodRange, type FormatFilter, type Period } from "@/li
 import { minGamesFor, MVP_MIN_GAMES, mvpRanking } from "@/lib/stats/awards";
 import { leaderboard, STAT_BY_KEY, type StatKey } from "@/lib/stats/leaderboards";
 import { computePlayerStats } from "@/lib/stats/player";
-import { shortName } from "@/lib/types";
+import { playerHref, shortName } from "@/lib/types";
 import { Character, characterOf } from "@/components/character";
 import { TeamBoard } from "@/components/team-board";
 
@@ -70,7 +70,7 @@ function Podium({ rows }: { rows: Row[] }) {
         if (!r) return <div key={place} />;
         const p = data.players.find((x) => x.id === r.playerId);
         return (
-          <Link key={place} href={`/giocatore/${r.playerId}`} className="flex min-w-0 flex-col items-center">
+          <Link key={place} href={playerHref(r.playerId)} className="flex min-w-0 flex-col items-center">
             <div className="flex w-full min-w-0 flex-col items-center">
               {place === 1 && <Crown size={22} className="mb-1 text-gold" aria-hidden />}
               {/* Sul podio salgono i personaggi. */}
@@ -186,7 +186,7 @@ export function RankingScreen() {
                 return (
                   <li key={r.playerId}>
                     <Link
-                      href={mine ? "/profilo" : `/giocatore/${r.playerId}`}
+                      href={mine ? "/profilo" : playerHref(r.playerId)}
                       className={clsx("press card flex items-center gap-3 px-3 py-2.5", mine && "!bg-court-soft")}
                     >
                       <span className="num w-6 text-center text-[18px] text-muted">{r.rank}</span>

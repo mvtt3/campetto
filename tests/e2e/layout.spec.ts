@@ -3,7 +3,7 @@ import { VIEWPORTS } from "../../playwright.config";
 import { clippedStickers, openApp, pageScrolls, screenProblems, staticContentOverflows, truncatedTitles } from "./helpers";
 
 // Schermate che devono stare tutte in uno schermo, senza scorrere.
-const STATIC = ["/", "/profilo", "/profilo/notifiche", "/giocatore/p2", "/giocatore/p1?anteprima=1", "/nuova", "/giocatore/p3", "/classifiche", "/partite", "/organizza", "/video", "/admin", "/classifiche/albo", "/profilo/badge", "/profilo/impostazioni", "/importa"];
+const STATIC = ["/", "/profilo", "/profilo/notifiche", "/giocatore?id=p2", "/giocatore?id=p1&anteprima=1", "/nuova", "/giocatore?id=p3", "/classifiche", "/partite", "/organizza", "/video", "/admin", "/classifiche/albo", "/profilo/badge", "/profilo/impostazioni", "/importa"];
 
 // "demo": qualche settimana di partite; "pieno": un mese intenso, 9 giocatori e nomi lunghi.
 for (const vp of VIEWPORTS) {

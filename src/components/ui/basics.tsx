@@ -5,7 +5,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { animate, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { startTransition, useEffect, useOptimistic, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Mascot, type MascotPose } from "../mascot";
 
 export function haptic(ms = 8) {
@@ -123,7 +123,16 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
   tone?: "default" | "court";
 }) {
-  const index = Math.max(0, options.findIndex((o) => o.value === value));
+  // Si accende subito sotto il dito; quello che cambia sotto arriva un attimo dopo, senza bloccare il tocco.
+  const [shown, setShown] = useOptimistic(value);
+  const pick = (v: T) => {
+    haptic(5);
+    startTransition(() => {
+      setShown(v);
+      onChange(v);
+    });
+  };
+  const index = Math.max(0, options.findIndex((o) => o.value === shown));
   return (
     <div
       role="tablist"
@@ -143,16 +152,13 @@ export function Segmented<T extends string>({
         style={{ width: `calc((100% - 0.5rem) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
       />
       {options.map((o) => {
-        const active = o.value === value;
+        const active = o.value === shown;
         return (
           <button
             key={o.value}
             role="tab"
             aria-selected={active}
-            onClick={() => {
-              haptic(5);
-              onChange(o.value);
-            }}
+            onClick={() => pick(o.value)}
             className={clsx(
               "relative min-w-0 flex-1 truncate rounded-full px-2 font-semibold transition-colors",
               size === "md" ? "h-10 text-[14px]" : "h-8 text-[13px]",
@@ -178,20 +184,25 @@ export function Chips<T extends string>({
   onChange: (v: T) => void;
   className?: string;
 }) {
+  // Come Segmented: la tessera si accende subito, la classifica si ridisegna subito dopo.
+  const [shown, setShown] = useOptimistic(value);
   return (
     // Tessere della stessa larghezza, quattro per riga e centrate: ordinate anche quando vanno a capo.
     <div className={clsx("flex flex-wrap justify-center gap-2 pb-0.5 pr-0.5", className)}>
       {options.map((o) => (
         <button
           key={o.value}
-          aria-pressed={o.value === value}
+          aria-pressed={o.value === shown}
           onClick={() => {
             haptic(5);
-            onChange(o.value);
+            startTransition(() => {
+              setShown(o.value);
+              onChange(o.value);
+            });
           }}
           className={clsx(
             "press h-9 shrink-0 basis-[calc((100%-1.5rem)/4)] rounded-full px-1 text-[13.5px] font-bold transition-colors duration-300",
-            o.value === value ? "sticker-sm bg-volt text-volt-ink" : "sticker-sm bg-surface text-muted",
+            o.value === shown ? "sticker-sm bg-volt text-volt-ink" : "sticker-sm bg-surface text-muted",
           )}
         >
           {o.label}

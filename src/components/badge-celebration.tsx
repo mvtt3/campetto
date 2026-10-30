@@ -15,6 +15,7 @@ import { AVATAR_PRESETS, RARITY, type AvatarPresetId, type Rarity } from "./avat
 import { BadgeMedal, TIER_STYLE } from "./badge-medal";
 import { characterProgress } from "./character";
 import { Character3D } from "./character-card";
+import { useIntroDone } from "./intro";
 import { Mascot } from "./mascot";
 import { Button, CourtLines } from "./ui/basics";
 import { useToast } from "./ui/toast";
@@ -58,9 +59,11 @@ export function BadgeCelebration() {
   const toast = useToast();
   const [queue, setQueue] = useState<Item[]>([]);
   const badges = useMemo(() => (me ? engine.badges(me.id) : null), [me, engine]);
+  // Prima finisce l'apertura con Spicchio, poi la festa (e il suo suono).
+  const introDone = useIntroDone();
 
   useEffect(() => {
-    if (!me || loading || !badges) return;
+    if (!me || loading || !badges || !introDone) return;
     const items: Item[] = [];
 
     // 1. Com'è andata: le partite giocate che non hai ancora visto.
@@ -122,7 +125,7 @@ export function BadgeCelebration() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setQueue((q) => [...q, ...items.filter((i) => !q.some((x) => x.id === i.id))]);
     }
-  }, [me, badges, loading, data.matches, engine.elo]);
+  }, [me, badges, loading, data.matches, engine.elo, introDone]);
 
   const current = queue[0];
 

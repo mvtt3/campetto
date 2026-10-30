@@ -16,6 +16,12 @@ import { shortName, winnerOf, type Match } from "@/lib/types";
 
 const WEEKDAY = new Intl.DateTimeFormat("it-IT", { weekday: "short" });
 
+/** Aperta da un'altra schermata (la Home): chiudendo si torna lì, non nella lista. */
+const openedFromElsewhere = { current: false };
+export function markMatchOpenedFromElsewhere() {
+  openedFromElsewhere.current = true;
+}
+
 const MatchRow = memo(function MatchRow({
   m,
   onOpen,
@@ -40,7 +46,8 @@ const MatchRow = memo(function MatchRow({
     <button
       onClick={() => onOpen(m.id)}
       data-testid="match-row"
-      className="card press flex w-full items-stretch gap-3 overflow-hidden p-0 text-left"
+      // Le righe fuori dallo schermo non si impaginano finché non ci arrivi: la lista resta leggera anche con centinaia di partite.
+      className="card press flex w-full items-stretch gap-3 overflow-hidden p-0 text-left [contain-intrinsic-size:auto_86px] [content-visibility:auto]"
     >
       <div
         className={clsx(
@@ -142,8 +149,9 @@ function MatchesInner() {
       pushed.current = false;
       return;
     }
-    if (pushed.current) {
+    if (pushed.current || openedFromElsewhere.current) {
       pushed.current = false;
+      openedFromElsewhere.current = false;
       router.back();
     } else router.replace("/partite", { scroll: false });
   }, [router]);

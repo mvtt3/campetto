@@ -51,3 +51,13 @@
 49. **Dal profilo al personaggio** (29/10): toccando il proprio personaggio (o il suo nome) si arriva alle impostazioni con la collezione già aperta.
 50. **Partite restano** (29/10): la scheda Partite resta, perché è lo storico di tutti (risultati, MVP, tabellino, cambi). Il tasto "Aggiungi" resta solo all'amministratore come riserva; il modo principale per inserire le partite è dettarle a Claude in chat.
 51. **Vista da giocatore** (29/10): in Impostazioni l'amministratore può usare l'app come un giocatore qualsiasi (spariscono "Aggiungi", modifica ed elimina, gestione del gruppo); una striscia blu in alto ricorda la modalità e "Esci" la spegne. Vale finché non la spegne o chiude l'app. Per tutti c'è "Come ti vedono gli altri": il proprio profilo nella versione pubblica.
+52. **Leggerezza e velocità** (30/10), misurate su un telefono economico simulato (processore 4-6 volte più lento, rete 4G lenta):
+    - **Apertura veloce**: se sul telefono ci sono già i dati e l'accesso, l'app si apre subito con quelli; il controllo dell'accesso e i dati nuovi arrivano dopo. Se dal server arriva la stessa cosa, non si ricalcola niente.
+    - **Rete debole**: con una tacca l'app non aspetta più di un secondo e mezzo, poi si apre l'ultima versione salvata (quella nuova si salva per la volta dopo).
+    - **Caratteri**: solo l'alfabeto latino e solo lo spessore, 130 KB in meno al primo avvio.
+    - **Profilo di un giocatore**: ora è /giocatore?id=…, una pagina sola già pronta sul telefono; prima ogni profilo chiedeva al server e con poca rete ci voleva un secondo o due. I vecchi indirizzi portano a quelli nuovi.
+    - **Schede**: quelle nascoste restano impaginate e ricordano dove eri arrivato a scorrere; tornarci è immediato. Le partite fuori dallo schermo non si impaginano finché non ci arrivi, così la lista resta leggera anche con centinaia di partite.
+    - **Tocchi**: tessere e selettori (classifiche, periodo, formato) si accendono subito sotto il dito, la classifica si ridisegna un attimo dopo senza bloccare.
+    - **Personaggio 3D**: da fermo il dondolio lo fa il browser da solo, senza lavoro a ogni fotogramma.
+53. **Apertura e feste** (30/10): l'apertura dura un po' meno (2,5–2,9 secondi, a seconda del tiro). Le feste dopo la partita e la guida aspettano che l'apertura sia finita, così non compaiono e non suonano sotto Spicchio. Su iPhone il telefono non lascia suonare niente prima di un tocco: il fischio d'inizio arriva al primo tocco dei primi secondi. Con l'iPhone in silenzioso i suoni non si sentono (come nei giochi).
+54. **Piccole cose** (30/10): la proposta nuova compare subito nel calendario; la partita aperta dalla Home, chiudendola, torna alla Home.

@@ -17,6 +17,9 @@ const ROUTES = [
   "/profilo/badge",
   "/profilo/impostazioni",
   "/profilo/notifiche",
+  "/giocatore?id=p2",
+  "/giocatore/badge?id=p3",
+  // I vecchi indirizzi portano a quelli nuovi.
   "/giocatore/p2",
   "/giocatore/p3/badge",
   "/organizza",
@@ -47,6 +50,7 @@ function watch(page: Page) {
 
 for (const [mode, as] of [["empty", undefined], ["demo", undefined], ["pieno", undefined], ["demo", "p2"]] as const) {
   test(`nessun errore in nessuna schermata: ${mode}${as ? ` come ${as}` : ""}`, async ({ page }) => {
+    test.setTimeout(120_000);
     const problems = watch(page);
     await openApp(page, mode, "light", as);
     for (const r of ROUTES) {
@@ -87,7 +91,7 @@ for (const theme of ["light", "dark"] as const) {
   test(`accessibilità ${theme}: niente problemi gravi`, async ({ page }) => {
     await openApp(page, "pieno", theme);
     const serious: string[] = [];
-    for (const r of ["/", "/classifiche", "/partite", "/profilo", "/profilo/impostazioni", "/giocatore/p2", "/classifiche/albo", "/organizza", "/nuova"]) {
+    for (const r of ["/", "/classifiche", "/partite", "/profilo", "/profilo/impostazioni", "/giocatore?id=p2", "/classifiche/albo", "/organizza", "/nuova"]) {
       await page.goto(r);
       await page.waitForTimeout(700);
       // Lo zoom è tolto per scelta (l'app si usa come un'app): la regola sul viewport non si applica.

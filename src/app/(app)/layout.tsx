@@ -11,6 +11,7 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
+import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { Eye, WifiOff } from "lucide-react";
@@ -26,6 +27,7 @@ import { useTabSwipe } from "@/components/tab-swipe";
 import { TutorialProvider } from "@/components/tutorial/tutorial";
 import { Button, Spinner } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
+import { NavProvider } from "@/lib/nav";
 
 /** Pagine riservate all'amministratore: inserire, importare, segnare dal video, gestire il gruppo. */
 const ADMIN_ONLY = ["/admin", "/nuova", "/importa", "/video"];
@@ -135,6 +137,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     auth.status === "ready" && !!me?.nickname && !(adminOnly && !me.isAdmin);
   const [kept, ensureTabs] = useKeptTabs(activeTab, appReady);
   const pager = useRef<HTMLDivElement>(null);
+  // Una scheda appena preparata in sottofondo si impagina subito, invisibile: la prima
+  // volta che la apri resta solo da disegnarla.
+  const warmed = useRef(new Set<string>());
+  useEffect(() => {
+    const root = pager.current;
+    if (!root) return;
+    for (const p of kept) {
+      if (warmed.current.has(p)) continue;
+      warmed.current.add(p);
+      const el = root.querySelector<HTMLElement>(`:scope > [data-tab="${p}"]`);
+      if (!el || !el.classList.contains("tab-off")) continue;
+      el.classList.add("tab-warm");
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("tab-warm")));
+    }
+  }, [kept]);
   // Da dove arriva il cambio scheda: dal tocco sulla barra entra con una dissolvenza.
   const enter = useRef<{ to: string; dir: number } | null>(null);
   const goTab = useCallback((p: string, how: "tap" | "swipe" = "swipe") => {
@@ -195,6 +212,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       "/profilo/badge",
       "/profilo/impostazioni",
       "/profilo/notifiche",
+      "/giocatore",
+      "/giocatore/badge",
     ];
     const t = setTimeout(() => pages.forEach((p) => router.prefetch(p)), 600);
     return () => clearTimeout(t);
@@ -251,8 +270,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   if (!me || (adminOnly && !me.isAdmin)) return <Splash />;
   if (!me.nickname) return <Onboarding me={me} />;
+  // "Come ti vedono gli altri" è il tuo profilo: in basso resta acceso "Profilo".
+  const selfPreview = path === "/giocatore" && new URLSearchParams(window.location.search).get("id") === me.id;
 
   return (
+    <NavProvider>
     <TutorialProvider me={me}>
       <div className="mx-auto flex h-dvh max-w-lg flex-col">
         {playerView.on && (
@@ -281,9 +303,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <div
                 key={p}
                 data-tab={p}
-                className={
-                  activeTab === p ? "flex min-h-0 flex-1 flex-col" : "hidden"
-                }
+                // Le schede nascoste restano impaginate (content-visibility): tornarci non ricalcola niente.
+                className={clsx("tab-page", activeTab !== p && "tab-off")}
               >
                 <Screen />
               </div>
@@ -296,9 +317,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         )}
         {/* Il proprio profilo visto dagli altri resta sotto "Profilo". */}
-        <BottomNav current={navHint ?? activeTab ?? (path === `/giocatore/${me.id}` ? "/profilo" : path)} onTab={tapTab} />
+        <BottomNav current={navHint ?? activeTab ?? (selfPreview ? "/profilo" : path)} onTab={tapTab} />
         <BadgeCelebration />
       </div>
     </TutorialProvider>
+    </NavProvider>
   );
 }

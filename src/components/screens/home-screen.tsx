@@ -2,11 +2,11 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CalendarDays, Crown, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { Logo, Mascot } from "@/components/mascot";
 import { ProposalCard } from "@/components/proposal-card";
+import { markMatchOpenedFromElsewhere } from "@/components/screens/matches-screen";
 import { Avatar } from "@/components/ui/avatar";
 import { CountUp, CourtLines, Ring } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -20,6 +20,7 @@ import { shortName, winnerOf } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { InfoTip } from "@/components/ui/info";
 import { greeting } from "@/lib/greeting";
+import { useNav } from "@/lib/nav";
 
 function relativeDay(iso: string, now: Date): string {
   const d = new Date(iso);
@@ -35,7 +36,7 @@ function relativeDay(iso: string, now: Date): string {
 export function HomeScreen() {
   const { data, me, engine } = useData();
   const now = useNow();
-  const router = useRouter();
+  const router = useNav();
 
   const next = useMemo(
     () =>
@@ -201,7 +202,7 @@ export function HomeScreen() {
             </div>
 
             <div className="min-h-0">
-              <Link href={last ? `/partite?m=${last.id}` : "/partite"} className="card flex h-full flex-col overflow-hidden p-4 short:p-3.5">
+              <Link href={last ? `/partite?m=${last.id}` : "/partite"} onClick={() => last && markMatchOpenedFromElsewhere()} className="card flex h-full flex-col overflow-hidden p-4 short:p-3.5">
                 <h2 className="text-[13.5px] font-semibold text-muted">Ultima partita</h2>
                 {lastMvpPlayer && (
                   <div className="mt-1.5 flex min-w-0 items-end gap-1.5">

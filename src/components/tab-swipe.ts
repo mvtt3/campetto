@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, type RefObject } from "react";
 import { haptic } from "@/components/ui/basics";
 
 const IGNORE = ".scroll-x, [data-no-swipe], input, textarea, select, [role='slider']";
-const STYLE_PROPS = ["display", "flexDirection", "position", "inset", "transform", "transition", "zIndex", "willChange"] as const;
+const STYLE_PROPS = ["display", "flexDirection", "position", "inset", "transform", "transition", "zIndex", "willChange", "contentVisibility", "pointerEvents"] as const;
 
 function clear(el: HTMLElement) {
   for (const p of STYLE_PROPS) el.style[p] = "";
@@ -67,6 +67,7 @@ export function useTabSwipe({
       }
       if (neighbor) {
         // Stessa impaginazione della scheda attiva (colonna), altrimenti entrerebbe storta.
+        neighbor.style.contentVisibility = "visible";
         neighbor.style.display = "flex";
         neighbor.style.flexDirection = "column";
         neighbor.style.position = "absolute";

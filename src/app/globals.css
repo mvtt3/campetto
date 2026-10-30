@@ -919,6 +919,29 @@ html[data-shot="3"] .intro-ball-x { animation: shot-3 1.50s 0.85s linear both; }
   padding-bottom: 0.08em;
 }
 
+/* Le quattro schede principali, una sopra l'altra. Quelle nascoste non si disegnano
+   ma restano impaginate (e ricordano dove eri arrivato a scorrere): tornarci è immediato. */
+.tab-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tab-off {
+  content-visibility: hidden;
+  pointer-events: none;
+}
+/* Per due fotogrammi, appena preparata: si impagina ma non si vede. */
+.tab-off.tab-warm {
+  content-visibility: visible;
+  opacity: 0;
+}
+@supports not (content-visibility: hidden) {
+  .tab-off {
+    display: none;
+  }
+}
+
 /* Pillola della barra in basso: larga un quarto (meno gli spazi), scorre con calma. */
 .nav-pill {
   width: calc((100% - 0.75rem - 0.75rem) / 4);
@@ -978,6 +1001,72 @@ html[data-shot="3"] .intro-ball-x { animation: shot-3 1.50s 0.85s linear both; }
   position: relative;
   transform-style: preserve-3d;
   will-change: transform;
+}
+/* L'entrata: un cenno (si gira un po' e torna, con un rimbalzo) o un giro intero (sblocco). */
+.char3d-peek {
+  animation: char3d-peek 1.05s 0.26s both;
+}
+@keyframes char3d-peek {
+  0% {
+    transform: rotateY(38deg);
+    animation-timing-function: cubic-bezier(0.33, 0, 0.3, 1);
+  }
+  58% {
+    transform: rotateY(-4deg);
+    animation-timing-function: ease-in-out;
+  }
+  82% {
+    transform: rotateY(1deg);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+.char3d-spin {
+  animation: char3d-spin 1.25s 0.12s both;
+}
+@keyframes char3d-spin {
+  0% {
+    transform: rotateY(-540deg);
+    animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+  70% {
+    transform: rotateY(8deg);
+    animation-timing-function: ease-in-out;
+  }
+  88% {
+    transform: rotateY(-2deg);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+/* Il dondolio da fermo: va e viene piano, entrando dolce. */
+.char3d-sway {
+  transform-style: preserve-3d;
+}
+.char3d-swaying {
+  animation:
+    char3d-sway-in 1.25s 1.2s ease-in-out both,
+    char3d-sway 2.5s 2.45s ease-in-out infinite alternate;
+}
+@keyframes char3d-sway-in {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(11deg);
+  }
+}
+@keyframes char3d-sway {
+  from {
+    transform: rotateY(11deg);
+  }
+  to {
+    transform: rotateY(-11deg);
+  }
 }
 .char3d-face,
 .char3d-slice {
@@ -1054,7 +1143,10 @@ html[data-shot="3"] .intro-ball-x { animation: shot-3 1.50s 0.85s linear both; }
 @media (prefers-reduced-motion: reduce) {
   .character-idle .character-body,
   .character-idle .character-ball,
-  .rarity-shine::after {
+  .rarity-shine::after,
+  .char3d-swaying,
+  .char3d-peek,
+  .char3d-spin {
     animation: none;
   }
 }

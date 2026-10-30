@@ -4,7 +4,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useData } from "@/lib/data/provider";
 import { PresetAvatar, presetOf } from "@/components/avatar-presets";
-import { initials, shortName, type Player } from "@/lib/types";
+import { initials, playerHref, shortName, type Player } from "@/lib/types";
 
 const PALETTE = ["#2D5BE3", "#F26A1B", "#2E9E5B", "#7C4DCC", "#E5412D", "#1597A6", "#D99A00", "#C93B78"];
 
@@ -83,7 +83,7 @@ export function Avatar({
     </span>
   );
   if (href === false) return inner;
-  const target = href ?? (me?.id === player.id ? "/profilo" : `/giocatore/${player.id}`);
+  const target = href ?? (me?.id === player.id ? "/profilo" : playerHref(player.id));
   return (
     <Link href={target} className="shrink-0 rounded-full">
       <span className="sr-only">Profilo di {name}</span>

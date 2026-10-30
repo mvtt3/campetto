@@ -191,6 +191,11 @@ export interface Dataset {
   proposals: Proposal[];
 }
 
+/** Il profilo di un giocatore: una pagina sola per tutti, già pronta sul telefono. */
+export function playerHref(id: string, preview = false): string {
+  return `/giocatore?id=${encodeURIComponent(id)}${preview ? "&anteprima=1" : ""}`;
+}
+
 export function playerName(p: Pick<Player, "firstName" | "lastName"> | undefined | null): string {
   if (!p) return "—";
   return p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName;

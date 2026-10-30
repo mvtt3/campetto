@@ -26,7 +26,7 @@ const localIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClose: () => void; initialDay: Date }) {
-  const { backend, refresh } = useData();
+  const { backend, refresh, mutate, me } = useData();
   const toast = useToast();
   const [day, setDay] = useState(() => localIso(initialDay < new Date(new Date().setHours(0, 0, 0, 0)) ? new Date() : initialDay));
   const [time, setTime] = useState("18:00");
@@ -49,9 +49,19 @@ function NewProposalSheet({ open, onClose, initialDay }: { open: boolean; onClos
     if (startsAt.getTime() < Date.now() - 60 * 60_000) return toast("Questo orario è già passato: scegline uno più avanti", "error");
     setBusy(true);
     try {
-      const id = await backend.createProposal({ startsAt: startsAt.toISOString(), format: format === "any" ? null : format, note: note.trim() || null });
+      const input = { startsAt: startsAt.toISOString(), format: format === "any" ? null : format, note: note.trim() || null };
+      const id = await backend.createProposal(input);
       void backend.notify({ type: "proposal_new", proposalId: id });
-      await refresh();
+      // Compare subito nel calendario: i dati del server arrivano dopo, senza farti aspettare.
+      if (me) {
+        const now = new Date().toISOString();
+        mutate((d) =>
+          d.proposals.some((p) => p.id === id)
+            ? d
+            : { ...d, proposals: [...d.proposals, { id, ...input, createdBy: me.id, status: "aperta", createdAt: now, responses: [{ playerId: me.id, response: "si", updatedAt: now }] }] },
+        );
+      }
+      void refresh();
       toast("Fatto, ho avvisato tutti");
       onClose();
     } catch (e) {

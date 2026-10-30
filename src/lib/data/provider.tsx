@@ -69,10 +69,26 @@ function buildEngine(data: Dataset): Engine {
   };
 }
 
-function readCache(): Dataset | null {
+function readCacheRaw(): string | null {
   try {
+    return localStorage.getItem(CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Chi eri all'ultima apertura: con i dati salvati, l'app si apre subito senza aspettare la rete. */
+const ME_KEY = "campetto:me:v1";
+
+function readFastStart(): { meId: string; raw: string } | null {
+  try {
+    const meId = localStorage.getItem(ME_KEY);
     const raw = localStorage.getItem(CACHE_KEY);
-    return raw ? (JSON.parse(raw) as Dataset) : null;
+    // Serve anche la sessione salvata da Supabase: senza, si passa dall'accesso.
+    const signed = Object.keys(localStorage).some((k) => k.startsWith("sb-") && k.endsWith("-auth-token"));
+    // Con un invito da usare si passa dal controllo normale, che lo registra.
+    const invite = localStorage.getItem(INVITE_KEY);
+    return meId && raw && signed && !invite ? { meId, raw } : null;
   } catch {
     return null;
   }
@@ -88,16 +104,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(true);
   const [lastError, setLastError] = useState<string | null>(null);
   const refreshing = useRef<Promise<void> | null>(null);
+  // Gli ultimi dati mostrati: se dal server arriva la stessa cosa, non si ricalcola niente
+  // (succede quasi sempre tornando nell'app, ed evita un piccolo scatto proprio mentre tocchi).
+  const shown = useRef<string | null>(null);
+  const fastStarted = useRef(false);
+
+  const show = useCallback((raw: string, d: Dataset) => {
+    if (raw === shown.current) return;
+    shown.current = raw;
+    setData({ ...d, matches: sinceStart(d.matches) });
+  }, []);
 
   const refresh = useCallback(async () => {
     if (refreshing.current) return refreshing.current;
     const run = (async () => {
       try {
         const d = await backend.loadAll();
-        setData({ ...d, matches: sinceStart(d.matches) });
+        const raw = JSON.stringify(d);
+        show(raw, d);
         setLastError(null);
         try {
-          if (backend.kind === "supabase") localStorage.setItem(CACHE_KEY, JSON.stringify(d));
+          if (backend.kind === "supabase") localStorage.setItem(CACHE_KEY, raw);
         } catch {
           /* spazio pieno: la cache è facoltativa */
         }
@@ -110,7 +137,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     })();
     refreshing.current = run;
     return run;
-  }, [backend]);
+  }, [backend, show]);
 
   const reinit = useCallback(async () => {
     let invite: string | null = null;
@@ -127,24 +154,61 @@ export function DataProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
     }
-    setAuth(state);
+    // Stesso stato di prima (di solito, dopo l'apertura veloce): niente ridisegni inutili.
+    setAuth((prev) => {
+      if (prev.status === "ready" && state.status === "ready" && prev.meId === state.meId) return prev;
+      // Senza rete il controllo non riesce: si resta dentro con i dati salvati (in alto compare "Sei offline").
+      if (prev.status === "ready" && state.status === "error") return prev;
+      return state;
+    });
+    if (backend.kind === "supabase") {
+      try {
+        if (state.status === "ready") localStorage.setItem(ME_KEY, state.meId);
+        else if (state.status !== "error") localStorage.removeItem(ME_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
     if (state.status === "ready") {
-      if (backend.kind === "supabase") {
-        const cached = readCache();
-        if (cached) {
-          setData({ ...cached, matches: sinceStart(cached.matches) });
-          setLoading(false);
+      if (backend.kind === "supabase" && !fastStarted.current) {
+        const raw = readCacheRaw();
+        if (raw) {
+          try {
+            show(raw, JSON.parse(raw) as Dataset);
+            setLoading(false);
+          } catch {
+            /* cache rovinata: si aspetta il server */
+          }
         }
       }
+      fastStarted.current = false;
       await refresh();
     } else {
+      fastStarted.current = false;
       setLoading(false);
     }
-  }, [backend, refresh]);
+  }, [backend, refresh, show]);
 
   useEffect(() => {
+    // Apertura veloce: se sul telefono ci sono già i dati e la sessione, l'app si
+    // apre subito con quelli; il controllo dell'accesso e i dati nuovi arrivano dopo.
+    if (backend.kind === "supabase") {
+      const fast = readFastStart();
+      if (fast) {
+        try {
+          const d = JSON.parse(fast.raw) as Dataset;
+          fastStarted.current = true;
+          shown.current = fast.raw;
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setData({ ...d, matches: sinceStart(d.matches) });
+          setAuth({ status: "ready", meId: fast.meId });
+          setLoading(false);
+        } catch {
+          /* cache rovinata: si parte dal controllo normale */
+        }
+      }
+    }
     // Initial session check; state updates happen after the awaited backend call.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void reinit();
     const off = backend.onAuthChange(() => void reinit());
     return off;
@@ -203,7 +267,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const available = Boolean(realMe?.isAdmin);
   const me = useMemo(() => (realMe && available && viewOn ? { ...realMe, isAdmin: false } : realMe), [realMe, available, viewOn]);
   const playerView = useMemo(() => ({ on: available && viewOn, available, set: setView }), [available, viewOn, setView]);
-  const mutate = useCallback((fn: (d: Dataset) => Dataset) => setData((d) => fn(d)), []);
+  const mutate = useCallback((fn: (d: Dataset) => Dataset) => {
+    // Dopo una modifica locale, i dati del server vanno sempre riapplicati (anche se uguali a prima).
+    shown.current = null;
+    setData((d) => fn(d));
+  }, []);
 
   const value = useMemo<Ctx>(
     () => ({ backend, auth, data, me, engine, loading, online, lastError, refresh, reinit, mutate, playerView }),

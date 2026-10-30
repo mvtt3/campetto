@@ -13,7 +13,7 @@ import { FeedbackSheet } from "@/components/feedback-sheet";
 import { SECTION_IDS, sections } from "@/components/tutorial/model";
 import { useTutorial } from "@/components/tutorial/tutorial";
 import { Sheet } from "@/components/ui/sheet";
-import { NAME_MAX, nameError } from "@/lib/types";
+import { NAME_MAX, nameError, playerHref } from "@/lib/types";
 import { Avatar, CARD_COLORS, isLightColor, playerColor } from "@/components/ui/avatar";
 import { Button, ScreenHeader, Segmented, Spinner, Toggle } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
@@ -197,7 +197,7 @@ export default function SettingsPage() {
             />
           </Row>
           <Row icon={<Eye size={18} />}>
-            <Link href={`/giocatore/${me.id}?anteprima=1`} className="flex min-w-0 flex-1 items-center gap-2">
+            <Link href={playerHref(me.id, true)} className="flex min-w-0 flex-1 items-center gap-2">
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">Come ti vedono gli altri</span>
                 <span className="block text-[12.5px] text-muted">Il tuo profilo, nella versione per il gruppo</span>

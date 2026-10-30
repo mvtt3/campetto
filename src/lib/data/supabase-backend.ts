@@ -1,5 +1,6 @@
 "use client";
 
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { accessToken, signInWithGoogle, supabase } from "../supabase/client";
 import { MATCH_SELECT, PROPOSAL_SELECT, mapMatch, mapPlayer, mapProposal } from "./map";
 import type { AuthState, Backend, NotifyBody, PendingUser, PlayerPrivate } from "./backend";
@@ -22,7 +23,9 @@ export function createSupabaseBackend(): Backend {
     kind: "supabase",
 
     async init(inviteToken) {
-      const { data } = await sb.auth.getSession();
+      const { data, error: sessionError } = await sb.auth.getSession();
+      // Senza rete la sessione non si rinnova: non vuol dire che sei uscito.
+      if (sessionError && isAuthRetryableFetchError(sessionError)) return { status: "error", message: say(sessionError) };
       const session = data.session;
       if (!session) return { status: "signed-out" } satisfies AuthState;
       try {

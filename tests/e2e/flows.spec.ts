@@ -197,9 +197,30 @@ test("MVP con cornice d'oro e profilo di un altro giocatore", async ({ page }) =
   await expect(page.getByRole("button", { name: "Assist" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("link", { name: "Albo" }).click();
   await expect(page.getByText("Più punti in una partita")).toBeVisible();
-  await page.goto("/giocatore/p3");
+  await page.goto("/giocatore?id=p3");
   await expect(page.getByText("Testa a testa")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Vedi tutti i badge" })).toBeVisible();
+  await page.getByRole("link", { name: "Vedi tutti i badge" }).click();
+  await expect(page).toHaveURL(/\/giocatore\/badge\?id=p3/);
+  await expect(page.getByRole("heading", { name: /^Badge di / })).toBeVisible();
+  // I vecchi indirizzi portano a quelli nuovi.
+  await page.goto("/giocatore/p4");
+  await expect(page).toHaveURL(/\/giocatore\?id=p4$/);
+  await expect(page.getByText("Testa a testa")).toBeVisible();
+});
+
+test("dalla classifica al giocatore senza chiedere niente al server", async ({ page }) => {
+  await openApp(page, "pieno");
+  await page.getByRole("link", { name: "Classifica" }).click();
+  await expect(page.getByLabel("Podio")).toBeVisible();
+  await page.waitForTimeout(1500);
+  const asked: string[] = [];
+  page.on("request", (r) => {
+    const u = new URL(r.url());
+    if (u.pathname.startsWith("/giocatore")) asked.push(u.pathname + u.search);
+  });
+  await page.getByLabel("Podio").locator('a:not([href*="id=p1"])').first().click();
+  await expect(page.getByText("Testa a testa")).toBeVisible();
+  expect(asked).toEqual([]);
 });
 
 test("animazione del badge sbloccato", async ({ page }) => {
@@ -538,6 +559,53 @@ test("dopo la partita: com'è andata, poi i personaggi nuovi", async ({ page }) 
   }
 });
 
+test("prima l'apertura con Spicchio, poi la festa", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.evaluate(() => {
+    const ms = JSON.parse(localStorage.getItem("campetto:mock:v1")!).matches as { id: string; playedAt: string; players: { playerId: string }[] }[];
+    const mine = ms.filter((m) => m.players.some((p) => p.playerId === "p1")).sort((x, y) => x.playedAt.localeCompare(y.playedAt));
+    const last = mine[mine.length - 1].id;
+    localStorage.setItem("campetto:seen-matches:p1", JSON.stringify(ms.map((m) => m.id).filter((id) => id !== last)));
+    sessionStorage.removeItem("campetto:intro");
+  });
+  await page.goto("/?mock=keep&intro=1");
+  const intro = page.getByRole("status", { name: "Campetto si sta aprendo" });
+  const party = page.locator('[aria-labelledby="party-title"]');
+  await expect(intro).toBeVisible();
+  // Sotto l'apertura non compare niente (e non suona niente).
+  await page.waitForTimeout(1200);
+  await expect(party).toHaveCount(0);
+  await expect(intro).toBeHidden({ timeout: 6000 });
+  await expect(party).toContainText(/\d+–\d+/);
+});
+
+test("cambiando scheda e tornando, la lista resta dov'era", async ({ page }) => {
+  await openApp(page, "pieno");
+  const nav = page.getByRole("navigation", { name: "Navigazione principale" });
+  await nav.getByRole("link", { name: "Partite", exact: true }).click();
+  const list = page.getByTestId("scroll-container").filter({ has: page.getByTestId("match-row") });
+  await list.evaluate((el) => (el.scrollTop = 900));
+  await nav.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Prossima partita" })).toBeVisible();
+  await nav.getByRole("link", { name: "Partite", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Partite" })).toBeVisible();
+  expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(800);
+  // Le partite si aprono ancora con un tocco.
+  await page.getByTestId("match-row").first().scrollIntoViewIfNeeded();
+  await page.getByTestId("match-row").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
+test("la partita aperta dalla Home, chiusa, torna alla Home", async ({ page }) => {
+  await openApp(page, "demo");
+  await page.getByRole("link", { name: /Ultima partita/ }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page).toHaveURL(/localhost:\d+\/(\?|$)/);
+  await expect(page.getByRole("heading", { name: "Prossima partita" })).toBeVisible();
+});
+
 test("dal profilo, il personaggio apre la collezione", async ({ page }) => {
   await openApp(page, "demo");
   await page.goto("/profilo");
@@ -574,7 +642,7 @@ test("come ti vedono gli altri: il proprio profilo nella versione pubblica", asy
   await openApp(page, "demo");
   await page.goto("/profilo/impostazioni");
   await page.getByRole("link", { name: /Come ti vedono gli altri/ }).click();
-  await expect(page).toHaveURL(/\/giocatore\/p1\?anteprima=1/);
+  await expect(page).toHaveURL(/\/giocatore\?id=p1&anteprima=1/);
   await expect(page.getByRole("heading", { name: "Come ti vedono" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Numeri" })).toBeVisible();
   await expect(page.getByText("Testa a testa")).toHaveCount(0);

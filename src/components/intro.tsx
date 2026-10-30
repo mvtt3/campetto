@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mascot } from "@/components/mascot";
 import { useData } from "@/lib/data/provider";
-import { play, type SoundName } from "@/lib/sound";
+import { play, playOrDefer, type SoundName } from "@/lib/sound";
 
 /**
  * L'apertura dell'app: Spicchio tira a canestro e sotto compare una frase sul
@@ -31,7 +31,8 @@ const MINE = [
   "Sto cercando il canestro buono",
 ];
 
-const MIN_MS = 3100;
+/** Quanto resta l'apertura, per ogni tiro: il tempo di vedere com'è andata e leggere la frase. */
+const MIN_MS: Record<number, number> = { 0: 2600, 1: 2550, 2: 2650, 3: 2900 };
 
 /** I suoni dei quattro tiri, in secondi dall'inizio dell'animazione (allineati alle parabole). */
 const SHOT_SOUNDS: Record<number, [SoundName, number][]> = {
@@ -64,6 +65,31 @@ function pickCaption(): string {
   return MINE[Math.floor(Math.random() * MINE.length)];
 }
 
+const DONE_EVENT = "campetto:intro-done";
+
+function introGone(): boolean {
+  if (typeof document === "undefined") return false;
+  const v = document.documentElement.dataset.intro;
+  return v === "off" || v === "done";
+}
+
+/**
+ * true quando l'apertura non c'è più: le feste e la guida aspettano lei, così non
+ * compaiono (e non suonano) sotto Spicchio che tira.
+ */
+export function useIntroDone(): boolean {
+  const [done, setDone] = useState(introGone);
+  useEffect(() => {
+    if (done) return;
+    const on = () => setDone(true);
+    window.addEventListener(DONE_EVENT, on);
+    // Già finita tra il primo disegno e adesso.
+    if (introGone()) on();
+    return () => window.removeEventListener(DONE_EVENT, on);
+  }, [done]);
+  return done;
+}
+
 /** Da mettere nel <head>: decide prima del disegno se l'apertura va mostrata. */
 export const introScript = `(function(){try{var q=location.search;var m=q.match(/shot=(\\d)/);document.documentElement.dataset.shot=m?m[1]:String(Math.floor(Math.random()*4));var force=q.indexOf('intro=1')>-1;if(!force&&(navigator.webdriver||sessionStorage.getItem('campetto:intro')||q.indexOf('mock=')>-1)){document.documentElement.dataset.intro='off';}else{sessionStorage.setItem('campetto:intro','1');}}catch(e){}})();`;
 
@@ -82,7 +108,8 @@ export function Intro() {
     }
     setCaption(pickCaption());
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const t = window.setTimeout(() => setMinDone(true), reduce ? 700 : MIN_MS);
+    const shot = Number(document.documentElement.dataset.shot ?? 1);
+    const t = window.setTimeout(() => setMinDone(true), reduce ? 700 : (MIN_MS[shot] ?? 2700));
     // Il fischio che apre e il rumore del tiro, a tempo con l'animazione già partita.
     const timers: number[] = [];
     const ball = document.querySelector(".intro-ball-x") as HTMLElement | null;
@@ -92,8 +119,9 @@ export function Intro() {
       const wait = sec - elapsed;
       if (wait > -0.05) timers.push(window.setTimeout(() => play(name), Math.max(0, wait) * 1000));
     };
-    if (elapsed < 0.8) at("whistle", Math.max(elapsed, 0.12));
-    if (!reduce) for (const [name, sec] of SHOT_SOUNDS[Number(document.documentElement.dataset.shot ?? 1)] ?? []) at(name, sec);
+    // Il fischio d'inizio: su iPhone il telefono non lascia suonare prima di un tocco, e allora arriva al primo tocco.
+    if (elapsed < 0.8) timers.push(window.setTimeout(() => playOrDefer("whistle"), Math.max(0, Math.max(elapsed, 0.12) - elapsed) * 1000));
+    if (!reduce) for (const [name, sec] of SHOT_SOUNDS[shot] ?? []) at(name, sec);
     stopSounds.current = () => timers.forEach((x) => window.clearTimeout(x));
     return () => {
       window.clearTimeout(t);
@@ -112,6 +140,12 @@ export function Intro() {
     if (phase !== "leaving") return;
     const t = window.setTimeout(() => setPhase("gone"), 420);
     return () => window.clearTimeout(t);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "gone") return;
+    if (document.documentElement.dataset.intro !== "off") document.documentElement.dataset.intro = "done";
+    window.dispatchEvent(new Event(DONE_EVENT));
   }, [phase]);
 
   if (phase === "gone") return null;
