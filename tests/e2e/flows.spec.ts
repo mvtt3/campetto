@@ -235,7 +235,8 @@ test("animazione del badge sbloccato", async ({ page }) => {
 test("vetrina dei badge", async ({ page }) => {
   await openApp(page, "demo");
   await page.goto("/profilo/badge");
-  await page.getByRole("button", { name: /Sempre presente/ }).click();
+  // Un badge già sbloccato (con le soglie nuove non sono più tutti a portata).
+  await page.getByRole("button", { name: /Bronzo|Argento|Oro/ }).first().click();
   await page.getByRole("button", { name: /vetrina/ }).click();
   await expect(page.getByText(/vetrina/).first()).toBeVisible();
 });

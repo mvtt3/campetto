@@ -5,7 +5,14 @@ import { comebackSize } from "./stats/records";
 import { winnerOf, type Match } from "./types";
 import type { MonthAward, SeasonAward } from "./stats/awards";
 
-export const TIER_NAMES = ["Bloccato", "Bronzo", "Argento", "Oro", "Hall of Fame", "Leggenda"] as const;
+export const TIER_NAMES = [
+  "Bloccato",
+  "Bronzo",
+  "Argento",
+  "Oro",
+  "Hall of Fame",
+  "Leggenda",
+] as const;
 export type Tier = 0 | 1 | 2 | 3 | 4 | 5;
 
 export type BadgeCategory = "carriera" | "partita" | "speciali";
@@ -55,42 +62,319 @@ export interface BadgeDef {
   mode: "total" | "best";
 }
 
-const CAREER = [25, 50, 100, 250, 500] as [number, number, number, number, number];
+/**
+ * Soglie pensate per durare: il bronzo arriva in qualche settimana di campetto, l'oro in
+ * una stagione buona, la Hall of Fame solo a chi in quella cosa è un maestro (anni di
+ * partite), la Leggenda quasi a nessuno. Le sfide "di una partita" contano quante volte
+ * fai la grande serata, non la migliore: una sera fortunata non basta.
+ */
+const FEAT = [3, 10, 25, 50, 100] as [number, number, number, number, number];
 
 export const BADGES: BadgeDef[] = [
   // Carriera
-  { key: "punti", name: "Realizzatore", unit: "punti", description: "Punti segnati in carriera", category: "carriera", icon: "points", thresholds: [250, 500, 1000, 2500, 5000], mode: "total" },
-  { key: "assist", name: "Regista", unit: "assist", description: "Assist in carriera", category: "carriera", icon: "assist", thresholds: CAREER, mode: "total" },
-  { key: "rimbalzi", name: "Rimbalzista", unit: "rimbalzi", description: "Rimbalzi in carriera", category: "carriera", icon: "rebound", thresholds: CAREER, mode: "total" },
-  { key: "rubate", name: "Mani rapide", unit: "palle rubate", description: "Palle rubate in carriera", category: "carriera", icon: "steal", thresholds: CAREER, mode: "total" },
-  { key: "stoppate", name: "Muro", unit: "stoppate", description: "Stoppate in carriera", category: "carriera", icon: "block", thresholds: CAREER, mode: "total" },
-  { key: "triple", name: "Dalla distanza", unit: "triple", description: "Tiri da tre segnati in carriera", category: "carriera", icon: "three", thresholds: CAREER, mode: "total" },
-  { key: "vittorie", name: "Vincente", unit: "vittorie", description: "Partite vinte in carriera", category: "carriera", icon: "win", thresholds: CAREER, mode: "total" },
-  { key: "serie", name: "Inarrestabile", unit: "vittorie di fila", description: "Vittorie consecutive", category: "carriera", icon: "streak", thresholds: [3, 5, 10, 15, 20], mode: "best" },
-  { key: "presenze", name: "Sempre presente", unit: "partite", description: "Partite giocate", category: "carriera", icon: "presence", thresholds: [10, 25, 50, 100, 200], mode: "total" },
-  { key: "rimbalzi-off", name: "Seconda occasione", unit: "rimbalzi in attacco", description: "Rimbalzi offensivi in carriera", category: "carriera", icon: "putback", thresholds: [10, 25, 50, 100, 250], mode: "total" },
-  // Partita singola
-  { key: "partita-punti", name: "Serata perfetta", unit: "punti", description: "Punti in una sola partita", category: "partita", icon: "hot", thresholds: [8, 10, 12, 15, 21], mode: "best" },
-  { key: "partita-assist", name: "Visione di gioco", unit: "assist", description: "Assist in una sola partita", category: "partita", icon: "vision", thresholds: [3, 4, 5, 7, 10], mode: "best" },
-  { key: "partita-rimbalzi", name: "Padrone dell'area", unit: "rimbalzi", description: "Rimbalzi in una sola partita", category: "partita", icon: "paint", thresholds: [5, 7, 10, 12, 15], mode: "best" },
-  { key: "partita-triple", name: "Mano calda", unit: "triple", description: "Triple in una sola partita", category: "partita", icon: "sniper", thresholds: [2, 3, 4, 5, 7], mode: "best" },
-  { key: "partita-rubate", name: "Ladro di palloni", unit: "palle rubate", description: "Palle rubate in una sola partita", category: "partita", icon: "thief", thresholds: [2, 3, 4, 5, 7], mode: "best" },
-  { key: "partita-stoppate", name: "Stoppatore", unit: "stoppate", description: "Stoppate in una sola partita", category: "partita", icon: "swat", thresholds: [2, 3, 4, 5, 7], mode: "best" },
-  { key: "doppia-doppia", name: "Doppia doppia", unit: "partite", description: "Partite con almeno 10 in due voci tra punti, rimbalzi e assist", category: "partita", icon: "double", thresholds: [1, 3, 5, 10, 20], mode: "total" },
-  { key: "mira", name: "Mira perfetta", unit: "partite", description: "Partite con almeno il 60% al tiro, su 5 tiri o più", category: "partita", icon: "aim", thresholds: [1, 3, 5, 10, 25], mode: "total" },
-  { key: "fairplay", name: "Fair play", unit: "partite", description: "Partite senza falli, quando i falli si contano", category: "partita", icon: "fair", thresholds: [1, 5, 10, 25, 50], mode: "total" },
-  { key: "pulito", name: "Zero sbavature", unit: "partite", description: "Partite con tabellino e nessuna palla persa", category: "partita", icon: "clean", thresholds: [1, 5, 10, 25, 50], mode: "total" },
-  { key: "tuttofare", name: "Tuttofare", unit: "partite", description: "Partite con almeno 5 punti, 3 rimbalzi e 3 assist", category: "partita", icon: "allround", thresholds: [1, 3, 5, 10, 20], mode: "total" },
+  {
+    key: "punti",
+    name: "Realizzatore",
+    unit: "punti",
+    description: "Punti segnati in carriera",
+    category: "carriera",
+    icon: "points",
+    thresholds: [300, 750, 1500, 3000, 6000],
+    mode: "total",
+  },
+  {
+    key: "assist",
+    name: "Regista",
+    unit: "assist",
+    description: "Assist in carriera",
+    category: "carriera",
+    icon: "assist",
+    thresholds: [50, 125, 250, 500, 1000],
+    mode: "total",
+  },
+  {
+    key: "rimbalzi",
+    name: "Rimbalzista",
+    unit: "rimbalzi",
+    description: "Rimbalzi in carriera",
+    category: "carriera",
+    icon: "rebound",
+    thresholds: [150, 400, 1000, 2500, 5000],
+    mode: "total",
+  },
+  {
+    key: "rubate",
+    name: "Mani rapide",
+    unit: "palle rubate",
+    description: "Palle rubate in carriera",
+    category: "carriera",
+    icon: "steal",
+    thresholds: [30, 80, 200, 450, 900],
+    mode: "total",
+  },
+  {
+    key: "stoppate",
+    name: "Muro",
+    unit: "stoppate",
+    description: "Stoppate in carriera",
+    category: "carriera",
+    icon: "block",
+    thresholds: [15, 40, 100, 250, 500],
+    mode: "total",
+  },
+  {
+    key: "triple",
+    name: "Dalla distanza",
+    unit: "triple",
+    description: "Tiri da tre segnati in carriera",
+    category: "carriera",
+    icon: "three",
+    thresholds: [25, 75, 200, 450, 900],
+    mode: "total",
+  },
+  {
+    key: "vittorie",
+    name: "Vincente",
+    unit: "vittorie",
+    description: "Partite vinte in carriera",
+    category: "carriera",
+    icon: "win",
+    thresholds: [25, 75, 200, 450, 900],
+    mode: "total",
+  },
+  {
+    key: "serie",
+    name: "Inarrestabile",
+    unit: "vittorie di fila",
+    description: "Vittorie consecutive",
+    category: "carriera",
+    icon: "streak",
+    thresholds: [5, 8, 12, 18, 25],
+    mode: "best",
+  },
+  {
+    key: "presenze",
+    name: "Sempre presente",
+    unit: "partite",
+    description: "Partite giocate",
+    category: "carriera",
+    icon: "presence",
+    thresholds: [30, 75, 200, 400, 750],
+    mode: "total",
+  },
+  {
+    key: "rimbalzi-off",
+    name: "Seconda occasione",
+    unit: "rimbalzi in attacco",
+    description: "Rimbalzi offensivi in carriera",
+    category: "carriera",
+    icon: "putback",
+    thresholds: [40, 100, 250, 600, 1200],
+    mode: "total",
+  },
+  // Grandi serate: quante partite così
+  {
+    key: "partita-punti",
+    name: "Serata perfetta",
+    unit: "partite",
+    description: "Partite con almeno 15 punti",
+    category: "partita",
+    icon: "hot",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "partita-assist",
+    name: "Visione di gioco",
+    unit: "partite",
+    description: "Partite con almeno 4 assist",
+    category: "partita",
+    icon: "vision",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "partita-rimbalzi",
+    name: "Padrone dell'area",
+    unit: "partite",
+    description: "Partite con almeno 10 rimbalzi",
+    category: "partita",
+    icon: "paint",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "partita-triple",
+    name: "Mano calda",
+    unit: "partite",
+    description: "Partite con almeno 3 triple",
+    category: "partita",
+    icon: "sniper",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "partita-rubate",
+    name: "Ladro di palloni",
+    unit: "partite",
+    description: "Partite con almeno 3 palle rubate",
+    category: "partita",
+    icon: "thief",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "partita-stoppate",
+    name: "Stoppatore",
+    unit: "partite",
+    description: "Partite con almeno 2 stoppate",
+    category: "partita",
+    icon: "swat",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "doppia-doppia",
+    name: "Doppia doppia",
+    unit: "partite",
+    description:
+      "Partite con almeno 10 in due voci tra punti, rimbalzi e assist",
+    category: "partita",
+    icon: "double",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "mira",
+    name: "Mira perfetta",
+    unit: "partite",
+    description: "Partite con almeno il 60% al tiro, su 6 tiri o più",
+    category: "partita",
+    icon: "aim",
+    thresholds: [5, 15, 40, 80, 150],
+    mode: "total",
+  },
+  {
+    key: "fairplay",
+    name: "Fair play",
+    unit: "partite",
+    description: "Partite senza falli, quando i falli si contano",
+    category: "partita",
+    icon: "fair",
+    thresholds: [10, 30, 75, 150, 300],
+    mode: "total",
+  },
+  {
+    key: "pulito",
+    name: "Zero sbavature",
+    unit: "partite",
+    description: "Partite con tabellino e nessuna palla persa",
+    category: "partita",
+    icon: "clean",
+    thresholds: [10, 30, 75, 150, 300],
+    mode: "total",
+  },
+  {
+    key: "tuttofare",
+    name: "Tuttofare",
+    unit: "partite",
+    description: "Partite con almeno 5 punti, 3 rimbalzi e 3 assist",
+    category: "partita",
+    icon: "allround",
+    thresholds: FEAT,
+    mode: "total",
+  },
   // Speciali
-  { key: "mvp-mese", name: "MVP del mese", unit: "mesi", description: "Mesi chiusi da MVP", category: "speciali", icon: "crown", thresholds: [1, 2, 3, 5, 10], mode: "total" },
-  { key: "campione", name: "Campione di stagione", unit: "stagioni", description: "Stagioni vinte", category: "speciali", icon: "trophy", thresholds: [1, 2, 3, 4, 6], mode: "total" },
-  { key: "rimonta", name: "Rimonta", unit: "vittorie", description: "Vittorie da sotto di almeno 5 punti (dal video)", category: "speciali", icon: "comeback", thresholds: [1, 2, 3, 5, 10], mode: "total" },
-  { key: "uno-contro-uno", name: "Re dell'1 contro 1", unit: "vittorie in 1v1", description: "Vittorie nell'1 contro 1", category: "speciali", icon: "duel", thresholds: [3, 5, 10, 25, 50], mode: "total" },
-  { key: "costanza", name: "Settimana dopo settimana", unit: "mesi", description: "Mesi in cui hai giocato ogni settimana", category: "speciali", icon: "calendar", thresholds: [1, 2, 3, 6, 12], mode: "total" },
-  { key: "cappotto", name: "Cappotto", unit: "vittorie", description: "Vittorie lasciando gli avversari a 5 punti o meno", category: "speciali", icon: "shutout", thresholds: [1, 2, 3, 5, 10], mode: "total" },
-  { key: "fotofinish", name: "Al fotofinish", unit: "vittorie", description: "Vittorie con 2 punti di scarto o meno", category: "speciali", icon: "clutch", thresholds: [1, 3, 5, 10, 20], mode: "total" },
-  { key: "apripista", name: "Apripista", unit: "stagioni", description: "Presente alla prima partita della stagione", category: "speciali", icon: "opener", thresholds: [1, 2, 3, 4, 6], mode: "total" },
-  { key: "mvp-partita", name: "MVP della partita", unit: "partite da MVP", description: "Partite vinte da migliore in campo della tua squadra", category: "speciali", icon: "star", thresholds: [1, 3, 10, 25, 50], mode: "total" },
+  {
+    key: "mvp-mese",
+    name: "MVP del mese",
+    unit: "mesi",
+    description: "Mesi chiusi da MVP",
+    category: "speciali",
+    icon: "crown",
+    thresholds: [1, 3, 6, 12, 24],
+    mode: "total",
+  },
+  {
+    key: "campione",
+    name: "Campione di stagione",
+    unit: "stagioni",
+    description: "Stagioni vinte",
+    category: "speciali",
+    icon: "trophy",
+    thresholds: [1, 2, 4, 8, 12],
+    mode: "total",
+  },
+  {
+    key: "rimonta",
+    name: "Rimonta",
+    unit: "vittorie",
+    description: "Vittorie da sotto di almeno 5 punti (dal video)",
+    category: "speciali",
+    icon: "comeback",
+    thresholds: [2, 5, 12, 25, 50],
+    mode: "total",
+  },
+  {
+    key: "uno-contro-uno",
+    name: "Re dell'1 contro 1",
+    unit: "vittorie in 1v1",
+    description: "Vittorie nell'1 contro 1",
+    category: "speciali",
+    icon: "duel",
+    thresholds: [5, 15, 40, 100, 200],
+    mode: "total",
+  },
+  {
+    key: "costanza",
+    name: "Settimana dopo settimana",
+    unit: "mesi",
+    description: "Mesi in cui hai giocato ogni settimana",
+    category: "speciali",
+    icon: "calendar",
+    thresholds: [1, 3, 6, 12, 24],
+    mode: "total",
+  },
+  {
+    key: "cappotto",
+    name: "Cappotto",
+    unit: "vittorie",
+    description: "Vittorie lasciando gli avversari a 5 punti o meno",
+    category: "speciali",
+    icon: "shutout",
+    thresholds: [2, 5, 12, 25, 50],
+    mode: "total",
+  },
+  {
+    key: "fotofinish",
+    name: "Al fotofinish",
+    unit: "vittorie",
+    description: "Vittorie con 2 punti di scarto o meno",
+    category: "speciali",
+    icon: "clutch",
+    thresholds: FEAT,
+    mode: "total",
+  },
+  {
+    key: "apripista",
+    name: "Apripista",
+    unit: "stagioni",
+    description: "Presente alla prima partita della stagione",
+    category: "speciali",
+    icon: "opener",
+    thresholds: [1, 3, 6, 10, 16],
+    mode: "total",
+  },
+  {
+    key: "mvp-partita",
+    name: "MVP della partita",
+    unit: "partite da MVP",
+    description: "Partite vinte da migliore in campo della tua squadra",
+    category: "speciali",
+    icon: "star",
+    thresholds: [5, 20, 50, 120, 250],
+    mode: "total",
+  },
 ];
 
 export const BADGE_BY_KEY = new Map(BADGES.map((b) => [b.key, b]));
@@ -156,7 +440,13 @@ export function computeBadges(
   const values = new Map<string, number>(BADGES.map((b) => [b.key, 0]));
   const tiers = new Map<string, Tier>(BADGES.map((b) => [b.key, 0]));
   const unlocks: BadgeUnlock[] = [];
-  const bump = (key: string, value: number, mode: "total" | "best", date: string, matchId: string | null) => {
+  const bump = (
+    key: string,
+    value: number,
+    mode: "total" | "best",
+    date: string,
+    matchId: string | null,
+  ) => {
     const def = BADGE_BY_KEY.get(key)!;
     const cur = values.get(key)!;
     const next = mode === "total" ? cur + value : Math.max(cur, value);
@@ -164,7 +454,8 @@ export function computeBadges(
     const t = tierFor(def, next);
     const old = tiers.get(key)!;
     if (t > old) {
-      for (let k = old + 1; k <= t; k++) unlocks.push({ key, tier: k as Tier, date, matchId });
+      for (let k = old + 1; k <= t; k++)
+        unlocks.push({ key, tier: k as Tier, date, matchId });
       tiers.set(key, t);
     }
   };
@@ -201,7 +492,8 @@ export function computeBadges(
     bump("serie", streak, "best", d, m.id);
 
     const s = seasonOf(m.playedAt);
-    if (seasonFirst.get(seasonKey(s.year, s.quarter)) === m.id) bump("apripista", 1, "total", d, m.id);
+    if (seasonFirst.get(seasonKey(s.year, s.quarter)) === m.id)
+      bump("apripista", 1, "total", d, m.id);
 
     if (line.hasStats) {
       const b = normalizeBox(line.box);
@@ -212,29 +504,39 @@ export function computeBadges(
       bump("rubate", b.stl, "total", d, m.id);
       bump("stoppate", b.blk, "total", d, m.id);
       bump("triple", b.fg3m, "total", d, m.id);
-      bump("partita-punti", b.pts, "best", d, m.id);
-      bump("partita-assist", b.ast, "best", d, m.id);
-      bump("partita-rimbalzi", reb, "best", d, m.id);
-      bump("partita-triple", b.fg3m, "best", d, m.id);
+      if (b.pts >= 15) bump("partita-punti", 1, "total", d, m.id);
+      if (b.ast >= 4) bump("partita-assist", 1, "total", d, m.id);
+      if (reb >= 10) bump("partita-rimbalzi", 1, "total", d, m.id);
+      if (b.fg3m >= 3) bump("partita-triple", 1, "total", d, m.id);
       if (b.tov === 0) bump("pulito", 1, "total", d, m.id);
-      if (b.pts >= 5 && reb >= 3 && b.ast >= 3) bump("tuttofare", 1, "total", d, m.id);
+      if (b.pts >= 5 && reb >= 3 && b.ast >= 3)
+        bump("tuttofare", 1, "total", d, m.id);
       bump("rimbalzi-off", b.oreb, "total", d, m.id);
-      bump("partita-rubate", b.stl, "best", d, m.id);
-      bump("partita-stoppate", b.blk, "best", d, m.id);
-      if ([b.pts, reb, b.ast].filter((v) => v >= 10).length >= 2) bump("doppia-doppia", 1, "total", d, m.id);
+      if (b.stl >= 3) bump("partita-rubate", 1, "total", d, m.id);
+      if (b.blk >= 2) bump("partita-stoppate", 1, "total", d, m.id);
+      if ([b.pts, reb, b.ast].filter((v) => v >= 10).length >= 2)
+        bump("doppia-doppia", 1, "total", d, m.id);
       const fga = b.fg2a + b.fg3a;
-      if (fga >= 5 && (b.fg2m + b.fg3m) / fga >= 0.6) bump("mira", 1, "total", d, m.id);
+      if (fga >= 6 && (b.fg2m + b.fg3m) / fga >= 0.6)
+        bump("mira", 1, "total", d, m.id);
       // Conta solo le partite in cui i falli sono stati segnati (almeno uno in campo).
       const foulsTracked = m.players.some((p) => p.hasStats && p.box.fouls > 0);
       if (foulsTracked && b.fouls === 0) bump("fairplay", 1, "total", d, m.id);
-      if (matchMvp(m)?.playerId === playerId) bump("mvp-partita", 1, "total", d, m.id);
+      if (matchMvp(m)?.playerId === playerId)
+        bump("mvp-partita", 1, "total", d, m.id);
     }
   }
 
   // Month- and season-based specials, unlocked when the period closes.
-  const closedMonths = ctx.months.filter((mo) => mo.closed).sort((a, b) => a.year - b.year || a.month - b.month);
+  const closedMonths = ctx.months
+    .filter((mo) => mo.closed)
+    .sort((a, b) => a.year - b.year || a.month - b.month);
   for (const mo of closedMonths) {
-    const end = periodRange({ kind: "month", year: mo.year, month: mo.month })!.end;
+    const end = periodRange({
+      kind: "month",
+      year: mo.year,
+      month: mo.month,
+    })!.end;
     const date = new Date(end.getTime() - 1000).toISOString();
     if (mo.mvp?.playerId === playerId) bump("mvp-mese", 1, "total", date, null);
     const weeks = weeksOfMonth(mo.year, mo.month);
@@ -242,17 +544,34 @@ export function computeBadges(
       chrono
         .filter((m) => {
           const dt = new Date(m.playedAt);
-          return dt.getFullYear() === mo.year && dt.getMonth() === mo.month && teamOf(m, playerId);
+          return (
+            dt.getFullYear() === mo.year &&
+            dt.getMonth() === mo.month &&
+            teamOf(m, playerId)
+          );
         })
         .map((m) => weekKey(new Date(m.playedAt))),
     );
-    if (played.size > 0 && [...weeks].every((w) => played.has(w))) bump("costanza", 1, "total", date, null);
+    if (played.size > 0 && [...weeks].every((w) => played.has(w)))
+      bump("costanza", 1, "total", date, null);
   }
-  const closedSeasons = ctx.seasons.filter((s) => s.closed).sort((a, b) => a.year - b.year || a.quarter - b.quarter);
+  const closedSeasons = ctx.seasons
+    .filter((s) => s.closed)
+    .sort((a, b) => a.year - b.year || a.quarter - b.quarter);
   for (const s of closedSeasons) {
     if (s.ranking[0]?.playerId !== playerId) continue;
-    const end = periodRange({ kind: "season", year: s.year, quarter: s.quarter })!.end;
-    bump("campione", 1, "total", new Date(end.getTime() - 1000).toISOString(), null);
+    const end = periodRange({
+      kind: "season",
+      year: s.year,
+      quarter: s.quarter,
+    })!.end;
+    bump(
+      "campione",
+      1,
+      "total",
+      new Date(end.getTime() - 1000).toISOString(),
+      null,
+    );
   }
 
   unlocks.sort((a, b) => a.date.localeCompare(b.date));
@@ -273,7 +592,10 @@ export function computeBadges(
 }
 
 /** Badges shown in the showcase: the chosen ones if unlocked, else the best three. */
-export function showcaseBadges(states: BadgeState[], chosen: string[]): BadgeState[] {
+export function showcaseBadges(
+  states: BadgeState[],
+  chosen: string[],
+): BadgeState[] {
   const unlocked = states.filter((s) => s.tier > 0);
   const picked = chosen
     .map((k) => unlocked.find((s) => s.def.key === k))
@@ -281,7 +603,11 @@ export function showcaseBadges(states: BadgeState[], chosen: string[]): BadgeSta
   if (picked.length >= 3) return picked.slice(0, 3);
   const rest = unlocked
     .filter((s) => !picked.includes(s))
-    .sort((a, b) => b.tier - a.tier || (b.unlockedAt ?? "").localeCompare(a.unlockedAt ?? ""));
+    .sort(
+      (a, b) =>
+        b.tier - a.tier ||
+        (b.unlockedAt ?? "").localeCompare(a.unlockedAt ?? ""),
+    );
   return [...picked, ...rest].slice(0, 3);
 }
 

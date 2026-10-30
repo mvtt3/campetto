@@ -9,7 +9,7 @@ import { computePlayerStats } from "@/lib/stats/player";
 import { InfoTip } from "@/components/ui/info";
 
 type Metric = "eff" | "pts" | "elo";
-const LABEL: Record<Metric, string> = { eff: "Valutazione", pts: "Punti", elo: "ELO" };
+const LABEL: Record<Metric, string> = { eff: "Voto", pts: "Punti", elo: "ELO" };
 
 // Spazio di disegno in unità SVG; la larghezza si adatta al contenitore.
 const W = 300;
@@ -26,11 +26,18 @@ export function TrendChart({ playerId }: { playerId: string }) {
   const [metric, setMetric] = useState<Metric>("eff");
 
   const series = useMemo(() => {
-    const mine = data.matches.filter((m) => m.players.some((p) => p.playerId === playerId));
+    const mine = data.matches.filter((m) =>
+      m.players.some((p) => p.playerId === playerId),
+    );
     const months = monthsWithMatches(mine).slice(-6);
-    const elo = new Map(eloByMonth(engine.elo, playerId).map((x) => [x.key, x.value]));
+    const elo = new Map(
+      eloByMonth(engine.elo, playerId).map((x) => [x.key, x.value]),
+    );
     return months.map(({ year, month }) => {
-      const s = computePlayerStats(playerId, filterMatches(mine, { period: { kind: "month", year, month } }));
+      const s = computePlayerStats(
+        playerId,
+        filterMatches(mine, { period: { kind: "month", year, month } }),
+      );
       const key = `${year}-${String(month + 1).padStart(2, "0")}`;
       return {
         label: MONTHS_IT[month].slice(0, 3),
@@ -48,11 +55,20 @@ export function TrendChart({ playerId }: { playerId: string }) {
   const max = pts.length ? Math.max(...pts.map((p) => p.v)) : 1;
   const span = max - min || 1;
   const n = series.length - 1;
-  const x = (i: number) => (n <= 0 ? W / 2 : PAD_X + (i / n) * (W - PAD_X * 2));
-  const y = (v: number) => PAD_Y + (1 - (v - min) / span) * (H - PAD_Y * 2);
-  const line = pts.map((p, k) => `${k ? "L" : "M"}${x(p.i).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
-  const area = pts.length > 1 ? `${line} L${x(pts[pts.length - 1].i).toFixed(1)} ${H} L${x(pts[0].i).toFixed(1)} ${H} Z` : "";
-  const fmtv = (v: number) => (metric === "elo" ? String(Math.round(v)) : v.toFixed(1).replace(".", ","));
+  // Con un solo mese il punto sta a sinistra e a destra c'è la spiegazione, così non si toccano.
+  const x = (i: number) => (n <= 0 ? PAD_X + 6 : PAD_X + (i / n) * (W - PAD_X * 2));
+  // Con un solo valore (o tutti uguali) il punto sta a metà altezza, non schiacciato sull'asse.
+  const y = (v: number) =>
+    max === min ? H / 2 : PAD_Y + (1 - (v - min) / span) * (H - PAD_Y * 2);
+  const line = pts
+    .map((p, k) => `${k ? "L" : "M"}${x(p.i).toFixed(1)} ${y(p.v).toFixed(1)}`)
+    .join(" ");
+  const area =
+    pts.length > 1
+      ? `${line} L${x(pts[pts.length - 1].i).toFixed(1)} ${H} L${x(pts[0].i).toFixed(1)} ${H} Z`
+      : "";
+  const fmtv = (v: number) =>
+    metric === "elo" ? String(Math.round(v)) : v.toFixed(1).replace(".", ",");
   const pct = (i: number) => `${(x(i) / W) * 100}%`;
 
   return (
@@ -61,7 +77,8 @@ export function TrendChart({ playerId }: { playerId: string }) {
         <h2 className="title flex shrink-0 items-center gap-1.5 text-[16px]">
           Andamento
           <InfoTip label="Cosa mostra il grafico" size={15}>
-            Mese per mese: la valutazione media (punti, rimbalzi, assist, rubate e stoppate meno errori e perse), i punti a partita o l&apos;ELO
+            Mese per mese: il voto medio (punti, rimbalzi, assist, rubate e
+            stoppate meno errori e perse), i punti a partita o l&apos;ELO
           </InfoTip>
         </h2>
         <Segmented
@@ -70,7 +87,7 @@ export function TrendChart({ playerId }: { playerId: string }) {
           value={metric}
           onChange={setMetric}
           options={[
-            { value: "eff", label: "Valut." },
+            { value: "eff", label: "Voto" },
             { value: "pts", label: "Punti" },
             { value: "elo", label: "ELO" },
           ]}
@@ -78,13 +95,35 @@ export function TrendChart({ playerId }: { playerId: string }) {
       </div>
       {pts.length ? (
         <>
-          <div className="relative min-h-[60px] flex-1" role="img" aria-label={`${LABEL[metric]} mese per mese: ${pts.map((p) => `${p.label} ${fmtv(p.v)}`).join(", ")}`}>
-            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
+          <div
+            className="relative min-h-[44px] flex-1"
+            role="img"
+            aria-label={`${LABEL[metric]} mese per mese: ${pts.map((p) => `${p.label} ${fmtv(p.v)}`).join(", ")}`}
+          >
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              preserveAspectRatio="none"
+              className="absolute inset-0 h-full w-full"
+              aria-hidden
+            >
               {area && <path d={area} fill="var(--court)" opacity="0.14" />}
               {pts.length > 1 && (
-                <path d={line} fill="none" stroke="var(--court)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                <path
+                  d={line}
+                  fill="none"
+                  stroke="var(--court)"
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
               )}
             </svg>
+            {series.length === 1 && (
+              <p className="absolute right-0 top-1/2 w-[62%] -translate-y-1/2 text-right text-[12.5px] font-semibold leading-snug text-muted">
+                Dal mese prossimo vedi come cambi
+              </p>
+            )}
             {pts.map((p) => (
               <span
                 key={p.i}
@@ -94,13 +133,24 @@ export function TrendChart({ playerId }: { playerId: string }) {
               />
             ))}
           </div>
-          <div className="relative mt-2 h-9 border-t-2 border-line" aria-hidden>
+          <div
+            className="relative mt-2 h-9 shrink-0 border-t-2 border-line"
+            aria-hidden
+          >
             {series.map((s, i) => {
               const v = s[metric];
               return (
-                <span key={s.label + i} className="absolute top-1 flex -translate-x-1/2 flex-col items-center leading-none" style={{ left: pct(i) }}>
-                  <span className="num text-[14px]">{v === null ? "—" : fmtv(v)}</span>
-                  <span className="mt-1 text-[11px] font-semibold text-muted">{s.label}</span>
+                <span
+                  key={s.label + i}
+                  className="absolute top-1 flex -translate-x-1/2 flex-col items-center leading-none"
+                  style={{ left: pct(i) }}
+                >
+                  <span className="num text-[14px]">
+                    {v === null ? "—" : fmtv(v)}
+                  </span>
+                  <span className="mt-1 text-[11px] font-semibold text-muted">
+                    {s.label}
+                  </span>
                 </span>
               );
             })}
@@ -108,7 +158,8 @@ export function TrendChart({ playerId }: { playerId: string }) {
         </>
       ) : (
         <p className="grid flex-1 place-items-center text-center text-[13px] text-muted">
-          Il grafico si riempie mese dopo mese{metric !== "elo" ? ", con le partite che hanno il tabellino" : ""}.
+          Il grafico si riempie mese dopo mese
+          {metric !== "elo" ? ", con le partite che hanno il tabellino" : ""}.
         </p>
       )}
     </div>

@@ -40,7 +40,9 @@ export function ProfileHeader({
   const tint = playerColor(player);
   const light = isLightColor(tint);
   const charId = characterOf(player);
-  const badgesHref = self ? "/profilo/badge" : `/giocatore/badge?id=${encodeURIComponent(player.id)}`;
+  const badgesHref = self
+    ? "/profilo/badge"
+    : `/giocatore/badge?id=${encodeURIComponent(player.id)}`;
   const news = useNewRewards();
   const newBadges = self ? news.badges.size : 0;
   const newChars = self ? news.characters.size : 0;
@@ -64,10 +66,17 @@ export function ProfileHeader({
           data-tour="profile-character"
         >
           <span className="sr-only">
-            Il tuo personaggio, {AVATAR_PRESETS.find((p) => p.id === charId)?.name}: apri la collezione
-            {newChars ? `, ${newChars === 1 ? "un personaggio nuovo" : `${newChars} personaggi nuovi`}` : ""}
+            Il tuo personaggio,{" "}
+            {AVATAR_PRESETS.find((p) => p.id === charId)?.name}: apri la
+            collezione
+            {newChars
+              ? `, ${newChars === 1 ? "un personaggio nuovo" : `${newChars} personaggi nuovi`}`
+              : ""}
           </span>
-          <NewDot count={newChars || -1} className="absolute -left-1 top-0 z-10" />
+          <NewDot
+            count={newChars || -1}
+            className="absolute -left-1 top-0 z-10"
+          />
           <Character
             id={charId}
             number={player.jerseyNumber}
@@ -97,7 +106,8 @@ export function ProfileHeader({
           <h1 className="display line-clamp-2 break-words text-[20px] short:text-[18px]">
             {displayName(player)}
           </h1>
-          <p className="truncate text-[13.5px] text-[var(--soft)]">
+          {/* Fino a tre ruoli: vanno a capo invece di tagliarsi a metà parola. */}
+          <p className="line-clamp-2 text-[13px] leading-snug text-[var(--soft)]">
             {player.roles.join(", ") || "Giocatore"}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -111,7 +121,8 @@ export function ProfileHeader({
             {isMvp && engine.mvp?.period.kind === "month" && (
               // Sui telefoni bassi basta la cornice d'oro attorno alla foto: una riga in meno.
               <span className="flex items-center gap-1 rounded-full border-2 border-[#1d1a16] bg-volt px-2.5 py-0.5 text-[12.5px] font-bold text-[#1d1a16] short:hidden">
-                <Crown size={13} /> MVP di {MONTHS_IT[engine.mvp.period.month].toLowerCase()}
+                <Crown size={13} /> MVP di{" "}
+                {MONTHS_IT[engine.mvp.period.month].toLowerCase()}
               </span>
             )}
             {self && (
@@ -135,7 +146,11 @@ export function ProfileHeader({
         <Link
           href={badgesHref}
           className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border-2 border-[#1d1a16] bg-[#fffaf0] px-3 py-2 text-[#1d1a16]"
-          aria-label={newBadges ? `Vedi tutti i badge, ${newBadges === 1 ? "uno nuovo" : `${newBadges} nuovi`}` : "Vedi tutti i badge"}
+          aria-label={
+            newBadges
+              ? `Vedi tutti i badge, ${newBadges === 1 ? "uno nuovo" : `${newBadges} nuovi`}`
+              : "Vedi tutti i badge"
+          }
         >
           {showcase.length ? (
             showcase.map((s) => (

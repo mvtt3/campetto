@@ -37,10 +37,13 @@ export function ProfileScreen() {
 
       {tab === "panoramica" ? (
         <PullToRefresh scroll={false} className="px-5 pb-2 pt-3">
-          <div className="flex h-full flex-col gap-3 short:gap-2" data-tour="profile-stats">
+          <div
+            className="flex h-full flex-col gap-3 short:gap-2"
+            data-tour="profile-stats"
+          >
             <KeyRings playerId={me.id} />
             <Form playerId={me.id} />
-            <div className="card min-h-0 flex-1 p-4 short:hidden">
+            <div className="card min-h-0 flex-1 p-4 short:px-3.5 short:py-3 [@media(max-height:660px)]:hidden">
               <TrendChart playerId={me.id} />
             </div>
           </div>
