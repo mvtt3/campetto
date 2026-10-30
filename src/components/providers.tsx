@@ -8,24 +8,9 @@ import { checkForUpdate } from "@/lib/auto-update";
 
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => primeAudio(), []);
-  // Schermo intero vero su Android, come i giochi: nell'app installata la barra in alto
-  // (ora, batteria, notifiche) sparisce al primo tocco. Se si esce (tasto indietro, app in
-  // secondo piano), al tocco dopo torna a schermo intero. Su iPhone Apple non lo permette.
-  useEffect(() => {
-    const android = /Android/i.test(navigator.userAgent);
-    const installed = window.matchMedia(
-      "(display-mode: standalone), (display-mode: fullscreen)",
-    ).matches;
-    if (!android || !installed || !document.fullscreenEnabled) return;
-    const go = () => {
-      if (document.fullscreenElement) return;
-      void document.documentElement
-        .requestFullscreen({ navigationUI: "hide" })
-        .catch(() => undefined);
-    };
-    window.addEventListener("pointerup", go, { passive: true });
-    return () => window.removeEventListener("pointerup", go);
-  }, []);
+  // Schermo intero su Android: lo fa il manifest ("display": "fullscreen"), senza chiederlo
+  // dalla pagina. La richiesta dalla pagina faceva comparire ogni volta l'avviso del telefono
+  // "trascina verso il basso per uscire", fastidioso: tolta.
   // Niente zoom, mai. Ogni browser ha la sua strada, quindi le chiudiamo tutte:
   // - Safari: i gesti del pizzico (gesturestart/change/end);
   // - Chrome e Samsung Internet: due dita sullo schermo, fermate appena si appoggia la seconda;
