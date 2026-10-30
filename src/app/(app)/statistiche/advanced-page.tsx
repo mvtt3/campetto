@@ -300,11 +300,12 @@ export function AdvancedPage() {
                 <h2 className="title flex items-center gap-1.5 text-[15px]">
                   Mappa di tiro
                   <InfoTip label="Come si legge la mappa" size={15}>
-                    Tocca una zona del campo per vedere come tiri da lì. Il
-                    numero è la percentuale: verde dal 50%, giallo dal 20%,
-                    rosso sotto. Il colore della zona è il livello, come per i
-                    badge: bronzo, argento dal 40%, oro dal 60%, Hall of Fame
-                    dal 90%. Servono almeno {ZONE_MIN_ATT} tiri
+                    Tocca una zona del campo: si illumina e sotto vedi come tiri
+                    da lì. Il numero è la percentuale: verde dal 50%, giallo dal
+                    20%, rosso sotto. Il colore della zona illuminata è il
+                    livello, come per i badge: bronzo, argento dal 40%, oro dal
+                    60%, Hall of Fame dal 90%. Servono almeno {ZONE_MIN_ATT}{" "}
+                    tiri
                   </InfoTip>
                 </h2>
                 <span className="text-[11.5px] font-semibold text-muted">

@@ -1672,3 +1672,11 @@ html[data-shot="3"] .intro-ball-x {
 :root[data-theme="dark"] .mascot-halo {
   stroke: #fff8ea;
 }
+
+/* Mappa di tiro: le zone non scelte si spengono in grigio (più scuro nel tema scuro). */
+:root {
+  --zone-off: rgb(70 64 56 / 0.2);
+}
+:root[data-theme="dark"] {
+  --zone-off: rgb(0 0 0 / 0.38);
+}

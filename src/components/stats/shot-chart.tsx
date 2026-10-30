@@ -44,7 +44,7 @@ export const ZONE_NAME: Record<ZoneKey, string> = {
 export const TIER_TINT = [
   "transparent",
   "#c07a45",
-  "#8d98a3",
+  "#a9b8c6",
   "#d4a72c",
   "#7c55c8",
 ] as const;
@@ -80,17 +80,17 @@ export function ShotChart({
             key={k}
             d={ZONE_PATH[k]}
             fillRule="evenodd"
-            fill={tier ? TIER_TINT[tier] : "var(--raised)"}
-            fillOpacity={
-              tier
-                ? selected === k
-                  ? 0.42
-                  : 0.24
-                : selected === k
-                  ? 0.9
-                  : 0.45
+            // Solo la zona scelta si illumina (col colore del suo livello, o blu se i tiri
+            // sono pochi); le altre diventano grigie. Niente bordi: si capisce dal colore.
+            fill={
+              selected === k
+                ? tier
+                  ? TIER_TINT[tier]
+                  : "var(--court)"
+                : "var(--zone-off)"
             }
-            className="cursor-pointer transition-[fill-opacity] duration-300"
+            fillOpacity={selected === k ? (tier ? 0.72 : 0.4) : 1}
+            className="cursor-pointer transition-[fill,fill-opacity] duration-300"
             role="button"
             tabIndex={0}
             aria-pressed={selected === k}
@@ -127,22 +127,19 @@ export function ShotChart({
           stroke="var(--ball)"
         />
       </g>
-      {/* La zona scelta: bordo più marcato. */}
-      <path
-        d={ZONE_PATH[selected]}
-        fillRule="evenodd"
-        fill="none"
-        stroke="var(--court)"
-        strokeWidth="3"
-        pointerEvents="none"
-        className="transition-all duration-300"
-      />
       {(["sotto", "media", "tre"] as const).map((k) => {
         const z = zones[k];
         const p = z.att ? z.made / z.att : null;
         const { x, y } = LABEL_AT[k];
         return (
-          <g key={k} pointerEvents="none" textAnchor="middle">
+          <g
+            key={k}
+            pointerEvents="none"
+            textAnchor="middle"
+            // Le zone non scelte restano leggibili ma in secondo piano.
+            opacity={selected === k ? 1 : 0.45}
+            className="transition-opacity duration-300"
+          >
             <text
               x={x}
               y={y}

@@ -87,8 +87,8 @@ export function Onboarding({ me }: { me: Player }) {
                   Come ti chiamano al campetto?
                 </h1>
                 <p className="mx-auto mt-3 max-w-[32ch] text-[15px] font-medium text-[#3d342a]">
-                  È il nome che vedranno tutti nell&apos;app. Puoi cambiarlo
-                  quando vuoi.
+                  È il nome che vedranno tutti nell&apos;app. Sceglilo bene:
+                  dopo si cambia una volta ogni 14 giorni
                 </p>
                 <form
                   className="mt-6 w-full"
