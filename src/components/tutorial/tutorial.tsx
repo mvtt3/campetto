@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { MoveHorizontal, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { useIntroDone } from "@/components/intro";
 import { Mascot } from "@/components/mascot";
 import { Button, haptic } from "@/components/ui/basics";
+import { SWIPE_DEMO } from "@/components/tab-swipe";
 import { displayName, type Player } from "@/lib/types";
 import {
   readTour,
@@ -173,8 +174,23 @@ export function TutorialProvider({
     const nextId = active.run[active.run.indexOf(active.section) + 1];
     if (!nextId) return finish(active.run.length > 1);
     update({ section: nextId, step: 0 });
-    await go(nextId);
+    // Dalla Home alla Classifica la guida mostra il gesto: la scheda scorre da sola, un attimo.
+    if (active.section === "home" && nextId === "classifica") {
+      setActive(null);
+      await showSwipe();
+      if (window.location.pathname !== sections(false)[nextId].path) await go(nextId);
+    } else await go(nextId);
     setActive({ ...active, section: nextId, step: 0 });
+  };
+
+  const [swipeHint, setSwipeHint] = useState(false);
+  const showSwipe = async () => {
+    setSwipeHint(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    await new Promise((r) => setTimeout(r, 240));
+    if (!reduce) window.dispatchEvent(new Event(SWIPE_DEMO));
+    await new Promise((r) => setTimeout(r, 1100));
+    setSwipeHint(false);
   };
 
   const prev = async () => {
@@ -205,6 +221,7 @@ export function TutorialProvider({
           onStart={() => void start(SECTION_IDS, "home")}
         />
       )}
+      {swipeHint && <SwipeHint />}
       {done !== null && (
         <Completion
           key={done}
@@ -447,6 +464,24 @@ function Coach({
             </>
           )}
         </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * Un attimo solo: un dito che scorre e una scritta, mentre la scheda passa a quella
+ * dopo da sola. Durante il gesto i tocchi aspettano.
+ */
+function SwipeHint() {
+  return createPortal(
+    <div className="fixed inset-0 z-[80]" onPointerDown={(e) => e.preventDefault()}>
+      <span className="swipe-finger" aria-hidden />
+      <div className="pointer-events-none absolute inset-x-0 bottom-[112px] flex justify-center px-4" role="status">
+        <p className="swipe-pill flex items-center gap-2 rounded-full border-[2.5px] border-edge bg-volt py-2 pl-3 pr-4 text-[14.5px] font-bold text-volt-ink" style={{ boxShadow: "3px 3px 0 #1d1a16" }}>
+          <MoveHorizontal size={18} aria-hidden /> Scorri di lato per cambiare scheda
+        </p>
       </div>
     </div>,
     document.body,

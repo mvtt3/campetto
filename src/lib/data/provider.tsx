@@ -79,6 +79,7 @@ function readCacheRaw(): string | null {
 
 /** Chi eri all'ultima apertura: con i dati salvati, l'app si apre subito senza aspettare la rete. */
 const ME_KEY = "campetto:me:v1";
+const SEEN_KEY = "campetto:visto";
 
 function readFastStart(): { meId: string; raw: string } | null {
   try {
@@ -213,6 +214,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const off = backend.onAuthChange(() => void reinit());
     return off;
   }, [backend, reinit]);
+
+  // "Sono passato di qui", al massimo ogni 3 ore: chi apre l'app non riceve il promemoria settimanale.
+  useEffect(() => {
+    if (auth.status !== "ready") return;
+    const ping = () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const last = Number(localStorage.getItem(SEEN_KEY) ?? 0);
+        if (Date.now() - last < 3 * 3_600_000) return;
+        localStorage.setItem(SEEN_KEY, String(Date.now()));
+      } catch {
+        /* senza memoria: si avvisa comunque */
+      }
+      void backend.touchSeen().catch(() => {
+        try {
+          localStorage.removeItem(SEEN_KEY);
+        } catch {
+          /* ignore */
+        }
+      });
+    };
+    // Dopo l'apertura, quando il telefono è libero.
+    const t = window.setTimeout(ping, 2500);
+    document.addEventListener("visibilitychange", ping);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener("visibilitychange", ping);
+    };
+  }, [auth.status, backend]);
 
   useEffect(() => {
     if (auth.status !== "ready") return;

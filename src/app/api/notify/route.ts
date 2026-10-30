@@ -6,6 +6,7 @@ import { BADGE_BY_KEY, computeBadges } from "@/lib/badges";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, VAPID_PUBLIC_KEY } from "@/lib/config";
 import { MATCH_SELECT, PROPOSAL_SELECT, mapMatch, mapPlayer, mapProposal } from "@/lib/data/map";
 import { decideProposalNotifications, dayLabel, neededPlayers, summaryText } from "@/lib/notifications/grouping";
+import { nudgeFor } from "@/lib/notifications/nudges";
 import { MONTHS_IT, monthKey } from "@/lib/periods";
 import { TIER_NAMES } from "@/lib/badges";
 import { currentMvp, monthlyHistory, seasonHistory } from "@/lib/stats/awards";
@@ -324,7 +325,38 @@ async function tick(req: Request) {
       /* abbonamento scaduto: lo ripulisce il prossimo invio normale */
     }
   }
-  return Response.json({ sent });
+  // "Torna a giocare": verso sera (17–19, ora di Roma), a chi non apre l'app da 6 giorni,
+  // al massimo una volta a settimana (lo segna il database).
+  let nudged = 0;
+  const h = romeHour();
+  if (h >= 17 && h < 19) {
+    const { data: due } = await sb.rpc("cron_due_nudges", { p_secret: secret });
+    for (const r of (due as DueNudge[] | null) ?? []) {
+      const msg = nudgeFor(r.player_id, r.n, r.nickname || r.first_name, r.days);
+      try {
+        await webpush.sendNotification(
+          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
+          JSON.stringify({ title: msg.title, body: msg.body, url: msg.url, tag: "ritorno" }),
+          { TTL: 6 * 3600, urgency: "low" },
+        );
+        nudged++;
+      } catch {
+        /* abbonamento scaduto */
+      }
+    }
+  }
+  return Response.json({ sent, nudged });
+}
+
+interface DueNudge {
+  player_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  first_name: string;
+  nickname: string | null;
+  days: number;
+  n: number;
 }
 
 export async function POST(req: Request) {

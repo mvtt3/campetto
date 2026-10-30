@@ -365,6 +365,9 @@ export function createMockBackend(): Backend {
       state.notifications.push(body);
       localStorage.setItem(KEY, JSON.stringify(state));
     },
+    async touchSeen() {
+      localStorage.setItem("campetto:mock:seen", new Date().toISOString());
+    },
   };
 }
 

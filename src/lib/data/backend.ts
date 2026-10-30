@@ -113,6 +113,8 @@ export interface Backend {
   removePushSubscription(endpoint: string): Promise<void>;
   notify(body: NotifyBody): Promise<void>;
   sendFeedback(input: FeedbackInput): Promise<void>;
+  /** "Sono passato di qui": serve al promemoria settimanale per chi non apre l'app da giorni. */
+  touchSeen(): Promise<void>;
 }
 
 export type { Player };

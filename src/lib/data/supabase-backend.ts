@@ -290,5 +290,9 @@ export function createSupabaseBackend(): Backend {
         // Le notifiche sono un extra: se falliscono non blocchiamo nulla.
       }
     },
+
+    async touchSeen() {
+      await sb.rpc("touch_seen");
+    },
   };
 }

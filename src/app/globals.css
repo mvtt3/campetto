@@ -942,6 +942,62 @@ html[data-shot="3"] .intro-ball-x { animation: shot-3 1.50s 0.85s linear both; }
   }
 }
 
+/* La guida mostra lo swipe: un dito che scorre da destra a sinistra, una scritta che compare e se ne va. */
+.swipe-finger {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 9999px;
+  background: rgb(255 250 240 / 0.85);
+  border: 2.5px solid #1d1a16;
+  box-shadow: 0 0 0 7px rgb(255 250 240 / 0.3);
+  animation: swipe-finger 1.25s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes swipe-finger {
+  0% {
+    opacity: 0;
+    transform: translateX(95px) scale(0.7);
+  }
+  14% {
+    opacity: 1;
+    transform: translateX(95px) scale(1);
+  }
+  68% {
+    opacity: 1;
+    transform: translateX(-95px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-110px) scale(0.85);
+  }
+}
+.swipe-pill {
+  animation: swipe-pill 1.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes swipe-pill {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.92);
+  }
+  18%,
+  80% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipe-finger {
+    display: none;
+  }
+}
+
 /* Pillola della barra in basso: larga un quarto (meno gli spazi), scorre con calma. */
 .nav-pill {
   width: calc((100% - 0.75rem - 0.75rem) / 4);

@@ -30,7 +30,7 @@ export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
         step("home-month", "Il tuo mese", "Vittorie, sconfitte ed ELO, aggiornati dopo ogni partita"),
         step("home-next", "Chi viene a giocare", "Rispondi con un tocco, oppure tocca la scheda per il calendario"),
         step("home-mvp", "L'MVP in carica", "Il migliore del mese: la i ti spiega come si diventa"),
-        step("nav", "Cambia scheda", "Tocca qui sotto o scorri a destra e a sinistra, tira giù per aggiornare"),
+        step("nav", "Le schede", "Tocca un'icona per spostarti, tira giù una schermata per aggiornarla"),
       ],
     },
     classifica: {

@@ -31,7 +31,8 @@ export type NotifyKind =
   | "partite"
   | "mvp"
   | "badge"
-  | "record";
+  | "record"
+  | "ritorno";
 /** Un interruttore per ogni tipo di notifica, più il silenzio di notte (23–8). */
 export type NotifyPrefs = Record<NotifyKind, boolean> & { notte: boolean };
 export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
@@ -44,6 +45,7 @@ export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
   mvp: true,
   badge: true,
   record: true,
+  ritorno: true,
   notte: true,
 };
 
@@ -57,6 +59,7 @@ export const NOTIFY_GROUPS: { title: string; items: { kind: NotifyKind; label: s
       { kind: "completa", label: "Squadre al completo", hint: "Quando si arriva al numero giusto per giocare" },
       { kind: "promemoria", label: "Promemoria", hint: "Un'ora prima della partita a cui hai detto ci sono" },
       { kind: "annullate", label: "Partite annullate", hint: "Se salta una partita a cui avevi risposto" },
+      { kind: "ritorno", label: "Torna a giocare", hint: "Se non passi da 6 giorni, al massimo una volta a settimana" },
     ],
   },
   {

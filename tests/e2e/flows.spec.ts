@@ -403,8 +403,11 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   await tour.getByRole("button", { name: "Avanti" }).click();
   await expect(tour).toContainText("Chi viene a giocare");
   await tour.getByRole("button", { name: "Salta Home" }).click();
+  // Dalla Home alla Classifica la guida mostra lo swipe: un attimo, poi riparte.
+  await expect(page.getByRole("status").filter({ hasText: "Scorri di lato per cambiare scheda" })).toBeVisible();
   await expect(page).toHaveURL(/\/classifiche$/);
   await expect(tour).toContainText("Mese, stagione o sempre");
+  await expect(page.getByText("Scorri di lato per cambiare scheda")).toHaveCount(0);
   await tour.getByRole("button", { name: "Salta Classifica" }).click();
   await expect(page).toHaveURL(/\/partite$/);
   await tour.getByRole("button", { name: "Salta Partite" }).click();
@@ -421,6 +424,16 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   await page.getByRole("button", { name: "Guida all'app" }).click();
   await page.getByRole("button", { name: /Solo Classifica/ }).click();
   await expect(tour).toContainText("Classifica · 1 di 3");
+});
+
+test("promemoria settimanale: l'app segna che sei passato e si può spegnere", async ({ page }) => {
+  await openApp(page, "demo");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("campetto:mock:seen")), { timeout: 8000 }).not.toBeNull();
+  await page.goto("/profilo/notifiche");
+  const toggle = page.getByRole("switch", { name: "Torna a giocare" });
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
 });
 
 test("segnala un problema dalle impostazioni", async ({ page }) => {

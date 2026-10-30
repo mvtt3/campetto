@@ -3,6 +3,9 @@
 import { useEffect, useLayoutEffect, type RefObject } from "react";
 import { haptic } from "@/components/ui/basics";
 
+/** Evento per far scorrere da sola la scheda verso quella dopo (la guida mostra il gesto). */
+export const SWIPE_DEMO = "campetto:swipe-demo";
+
 const IGNORE = ".scroll-x, [data-no-swipe], input, textarea, select, [role='slider']";
 const STYLE_PROPS = ["display", "flexDirection", "position", "inset", "transform", "transition", "zIndex", "willChange", "contentVisibility", "pointerEvents"] as const;
 
@@ -57,9 +60,9 @@ export function useTabSwipe({
     let busy = false;
     const cur = el(active);
 
-    const place = (x: number, animate: boolean) => {
+    const place = (x: number, animate: boolean | string) => {
       const w = root.clientWidth;
-      const t = animate ? "transform 280ms cubic-bezier(0.22, 0.8, 0.3, 1)" : "none";
+      const t = animate ? `transform ${animate === true ? "280ms cubic-bezier(0.22, 0.8, 0.3, 1)" : animate}` : "none";
       if (cur) {
         cur.style.transition = t;
         cur.style.transform = `translate3d(${x}px, 0, 0)`;
@@ -163,11 +166,40 @@ export function useTabSwipe({
       } else done();
     };
 
+    // La guida mostra il gesto: la scheda scorre da sola verso quella dopo, come col dito.
+    const demo = () => {
+      const target = paths[idx + 1];
+      if (busy || tracking || !target) return;
+      busy = true;
+      dir = 1;
+      neighbor = el(target);
+      place(0, false);
+      const pill = document.querySelector<HTMLElement>("[data-nav-pill]");
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          onRelease?.(target);
+          place(-root.clientWidth, "640ms cubic-bezier(0.65, 0, 0.35, 1)");
+          pill?.removeAttribute("data-dragging");
+          let fired = false;
+          const fin = () => {
+            if (fired) return;
+            fired = true;
+            busy = false;
+            onCommit(target);
+          };
+          cur?.addEventListener("transitionend", fin, { once: true });
+          window.setTimeout(fin, 720);
+        }),
+      );
+    };
+    window.addEventListener(SWIPE_DEMO, demo);
+
     root.addEventListener("touchstart", start, { passive: true });
     root.addEventListener("touchmove", move, { passive: false });
     root.addEventListener("touchend", end);
     root.addEventListener("touchcancel", end);
     return () => {
+      window.removeEventListener(SWIPE_DEMO, demo);
       root.removeEventListener("touchstart", start);
       root.removeEventListener("touchmove", move);
       root.removeEventListener("touchend", end);
