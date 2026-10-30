@@ -138,6 +138,9 @@ export function demoMatches(
         box.fg3m = Math.min(Math.floor(rnd() * 3), Math.floor(share / 3));
         box.fg2m = Math.max(0, Math.floor((share - box.fg3m * 3) / 2));
         box.fg2a = box.fg2m + Math.floor(rnd() * 5);
+        // Da sotto: circa metà dei tiri da 2 (il resto dalla media).
+        box.fgra = Math.round(box.fg2a * (0.3 + rnd() * 0.4));
+        box.fgrm = Math.min(box.fgra, box.fg2m, Math.round(box.fgra * (0.4 + rnd() * 0.4)));
         box.fg3a = box.fg3m + Math.floor(rnd() * 4);
         box.pts = box.fg2m * 2 + box.fg3m * 3;
         box.oreb = Math.floor(rnd() * 3);
@@ -224,14 +227,18 @@ function ieriState(): MockState {
       createdBy: "p1",
       notes: null,
       createdAt: new Date(m.at).toISOString(),
-      players: m.lines.map(([playerId, team, v]) => ({
+      players: m.lines.map(([playerId, team, v, [fgrm, fgra]]) => ({
         matchId: `ieri-${i}`,
         playerId,
         team,
         hasStats: true,
-        box: Object.fromEntries(
-          BOX_KEYS.map((k, j) => [k, v[j]]),
-        ) as unknown as Match["players"][number]["box"],
+        box: {
+          ...(Object.fromEntries(
+            BOX_KEYS.map((k, j) => [k, v[j]]),
+          ) as unknown as Match["players"][number]["box"]),
+          fgrm,
+          fgra,
+        },
       })),
       events: [],
     };

@@ -50,6 +50,8 @@ function mapBox(r: any): Box {
     blk: r.blk ?? 0,
     tov: r.tov ?? 0,
     fouls: r.fouls ?? 0,
+    fgrm: r.fgrm ?? null,
+    fgra: r.fgra ?? null,
   };
 }
 

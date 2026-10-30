@@ -111,7 +111,11 @@ export const BOX_KEYS = [
   "fouls",
 ] as const;
 export type BoxKey = (typeof BOX_KEYS)[number];
-export type Box = Record<BoxKey, number>;
+/**
+ * fgrm/fgra: i tiri da 2 presi da sotto (segnati/tentati); quelli dalla media sono il resto
+ * dei tiri da 2. null quando non si sa da dove (partite vecchie, importate o dal video).
+ */
+export type Box = Record<BoxKey, number> & { fgrm?: number | null; fgra?: number | null };
 
 export const emptyBox = (): Box => ({
   pts: 0,

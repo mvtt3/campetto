@@ -117,14 +117,14 @@ test("nuova partita con tabellino", async ({ page }) => {
   await page.getByLabel("Punti squadra B").fill("2");
   await page.getByRole("button", { name: "Avanti" }).click();
   await page.getByRole("button", { name: "Aggiungi il tabellino" }).click();
-  // Mattia: 2 canestri da 2 e una tripla
-  await page.getByRole("button", { name: "Aggiungi Da 2 segnati" }).click();
-  await page.getByRole("button", { name: "Aggiungi Da 2 segnati" }).click();
+  // Mattia: un canestro da sotto, uno dalla media e una tripla
+  await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
+  await page.getByRole("button", { name: "Aggiungi Dalla media segnati" }).click();
   await page.getByRole("button", { name: "Aggiungi Da 3 segnati" }).click();
   await page.getByRole("button", { name: "Aggiungi Assist" }).click();
   await expect(page.getByTestId("box-points")).toHaveText("7");
   await page.getByRole("button", { name: /Simone/ }).click();
-  await page.getByRole("button", { name: "Aggiungi Da 2 segnati" }).click();
+  await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
   await expect(page.getByText(/tutto torna/)).toBeVisible();
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page.getByRole("dialog")).toContainText("Tabellino");
