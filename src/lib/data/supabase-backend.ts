@@ -5,6 +5,8 @@ import { accessToken, signInWithGoogle, supabase } from "../supabase/client";
 import {
   MATCH_SELECT,
   PROPOSAL_SELECT,
+  mapHighlight,
+  mapHighlightComment,
   mapMatch,
   mapPlayer,
   mapProposal,
@@ -75,7 +77,7 @@ export function createSupabaseBackend(): Backend {
 
     async loadAll() {
       const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
-      const [p, m, pr, nw] = await Promise.all([
+      const [p, m, pr, nw, hl] = await Promise.all([
         sb.from("players").select("*").order("created_at"),
         sb
           .from("matches")
@@ -91,6 +93,11 @@ export function createSupabaseBackend(): Backend {
           .select("*")
           .order("created_at", { ascending: false })
           .limit(30),
+        // Gli highlights li restituisce solo a chi li può vedere (per ora l'amministratore).
+        sb
+          .from("highlights")
+          .select("*")
+          .order("created_at", { ascending: false }),
       ]);
       fail(p.error);
       fail(m.error);
@@ -115,6 +122,8 @@ export function createSupabaseBackend(): Backend {
               kind: r.kind,
               createdAt: r.created_at,
             })),
+        // Come le notizie: se mancano, l'app va avanti senza.
+        highlights: hl.error ? [] : (hl.data ?? []).map(mapHighlight),
       };
     },
 
@@ -297,7 +306,10 @@ export function createSupabaseBackend(): Backend {
     async createGuest(name) {
       const { data, error } = await sb
         .from("players")
-        .insert({ first_name: name.trim().slice(0, 40) || "Ospite", guest: true })
+        .insert({
+          first_name: name.trim().slice(0, 40) || "Ospite",
+          guest: true,
+        })
         .select("id")
         .single();
       fail(error);
@@ -439,6 +451,76 @@ export function createSupabaseBackend(): Backend {
 
     async touchSeen() {
       await sb.rpc("touch_seen");
+    },
+
+    async loadHighlightSocial(ids) {
+      if (!ids.length) return { likes: [], comments: [] };
+      const [l, c] = await Promise.all([
+        sb
+          .from("highlight_likes")
+          .select("highlight_id, player_id")
+          .in("highlight_id", ids),
+        sb
+          .from("highlight_comments")
+          .select("*")
+          .in("highlight_id", ids)
+          .order("created_at"),
+      ]);
+      fail(l.error);
+      fail(c.error);
+      return {
+        likes: (l.data ?? []).map((r) => ({
+          highlightId: r.highlight_id,
+          playerId: r.player_id,
+        })),
+        comments: (c.data ?? []).map(mapHighlightComment),
+      };
+    },
+
+    async setHighlightLike(highlightId, on) {
+      if (!meId) throw new Error(friendly("not authenticated"));
+      const q = on
+        ? sb
+            .from("highlight_likes")
+            .upsert(
+              { highlight_id: highlightId, player_id: meId },
+              { ignoreDuplicates: true },
+            )
+        : sb
+            .from("highlight_likes")
+            .delete()
+            .eq("highlight_id", highlightId)
+            .eq("player_id", meId);
+      fail((await q).error);
+    },
+
+    async addHighlightComment(highlightId, body) {
+      const { data, error } = await sb
+        .from("highlight_comments")
+        .insert({ highlight_id: highlightId, player_id: meId, body })
+        .select("*")
+        .single();
+      fail(error);
+      return mapHighlightComment(data);
+    },
+
+    async deleteHighlightComment(id) {
+      fail((await sb.from("highlight_comments").delete().eq("id", id)).error);
+    },
+
+    subscribeHighlights(onChange) {
+      const channel = sb.channel("campetto-highlights");
+      for (const table of ["highlight_likes", "highlight_comments"]) {
+        channel.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table },
+          () => onChange(),
+        );
+      }
+      channel.subscribe();
+      return () => {
+        sb.removeChannel(channel);
+      };
     },
   };
 }

@@ -306,7 +306,45 @@ export interface Dataset {
   proposals: Proposal[];
   /** Le notizie scritte a mano (annunci); quelle dalle partite si calcolano nell'app. */
   news?: NewsPost[];
+  /** I video coi canestri delle partite (per ora li vede solo l'amministratore). */
+  highlights?: Highlight[];
 }
+
+/** Un canestro dentro il montaggio: da che secondo parte e com'è. */
+export interface HighlightClip {
+  t: number;
+  punti: 2 | 3;
+  come: string;
+  descrizione: string;
+}
+
+/** Il video coi canestri di una partita. Like e commenti arrivano a parte, solo quando si guarda. */
+export interface Highlight {
+  id: string;
+  matchId: string;
+  videoUrl: string;
+  posterUrl: string | null;
+  duration: number;
+  description: string | null;
+  clips: HighlightClip[];
+  createdAt: string;
+}
+
+export interface HighlightComment {
+  id: string;
+  highlightId: string;
+  playerId: string;
+  body: string;
+  createdAt: string;
+}
+
+/** Like e commenti degli highlights: si caricano all'apertura e si aggiornano in diretta. */
+export interface HighlightSocial {
+  likes: { highlightId: string; playerId: string }[];
+  comments: HighlightComment[];
+}
+
+export const COMMENT_MAX = 280;
 
 export interface NewsPost {
   id: string;

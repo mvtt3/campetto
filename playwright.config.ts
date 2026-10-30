@@ -32,6 +32,16 @@ export default defineConfig({
       use: { ...devices["Pixel 7"], viewport: { width: 360, height: 800 } },
     },
     {
+      // Il feed dei video: come su un telefono vero, l'audio parte solo dopo un tocco.
+      name: "highlights",
+      testMatch: /highlights\.spec\.ts/,
+      use: {
+        ...devices["Pixel 7"],
+        viewport: { width: 360, height: 800 },
+        launchOptions: { args: ["--autoplay-policy=user-gesture-required"] },
+      },
+    },
+    {
       name: "salute",
       testMatch: /health\.spec\.ts/,
       use: { ...devices["Pixel 7"], viewport: { width: 360, height: 800 } },

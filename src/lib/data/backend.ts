@@ -3,6 +3,8 @@ import type {
   Dataset,
   EventKind,
   Format,
+  HighlightComment,
+  HighlightSocial,
   NotifyPrefs,
   Player,
   Place,
@@ -147,6 +149,18 @@ export interface Backend {
   sendFeedback(input: FeedbackInput): Promise<void>;
   /** "Sono passato di qui": serve al promemoria settimanale per chi non apre l'app da giorni. */
   touchSeen(): Promise<void>;
+
+  /** Like e commenti degli highlights indicati (si chiedono solo quando si apre il feed). */
+  loadHighlightSocial(highlightIds: string[]): Promise<HighlightSocial>;
+  /** Mi piace (il pallone): true lo mette, false lo toglie. Ripeterlo non fa danni. */
+  setHighlightLike(highlightId: string, on: boolean): Promise<void>;
+  addHighlightComment(
+    highlightId: string,
+    body: string,
+  ): Promise<HighlightComment>;
+  deleteHighlightComment(commentId: string): Promise<void>;
+  /** Like e commenti degli altri in diretta, finché il feed è aperto. */
+  subscribeHighlights(onChange: () => void): () => void;
 }
 
 export type { Player };

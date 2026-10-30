@@ -20,6 +20,8 @@ import { markMatchOpenedFromElsewhere } from "@/components/screens/matches-scree
 import { Avatar } from "@/components/ui/avatar";
 import { CountUp, CourtLines, Ring } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { PlayBadge } from "@/components/highlights/entry";
+import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
 import { eloDelta, eloOf } from "@/lib/stats/elo";
@@ -48,6 +50,7 @@ function relativeDay(iso: string, now: Date): string {
 
 export function HomeScreen() {
   const { data, me, engine } = useData();
+  const hl = useHighlights();
   const now = useNow();
   const router = useNav();
   const news = useNews();
@@ -364,14 +367,28 @@ export function HomeScreen() {
             <div className="min-h-0">
               <Link
                 href={last ? `/partite?m=${last.id}` : "/partite"}
-                onClick={() => last && markMatchOpenedFromElsewhere()}
+                onClick={(e) => {
+                  if (!last) return;
+                  // Il bollino ▶ dentro la scheda apre il video invece della partita.
+                  if ((e.target as Element).closest("[data-hl-badge]")) {
+                    e.preventDefault();
+                    hl.open(last.id);
+                    return;
+                  }
+                  markMatchOpenedFromElsewhere();
+                }}
                 // Si adatta all'altezza che resta (container query): su un telefono basso spariscono
                 // prima "Hai vinto", poi la figurina, mai il risultato tagliato.
                 className="last-card card flex h-full flex-col overflow-hidden p-4 short:p-3.5"
               >
-                <h2 className="text-[13.5px] font-semibold text-muted">
-                  Ultima partita
-                </h2>
+                <div className="flex items-start justify-between gap-1">
+                  <h2 className="text-[13.5px] font-semibold text-muted">
+                    Ultima partita
+                  </h2>
+                  {last && (
+                    <PlayBadge matchId={last.id} className="-my-1.5 -mr-1.5" />
+                  )}
+                </div>
                 {lastMvpPlayer && (
                   <div className="last-mvp mt-1.5 flex min-w-0 items-end gap-1.5">
                     <span

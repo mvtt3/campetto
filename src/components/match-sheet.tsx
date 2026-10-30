@@ -19,6 +19,7 @@ import {
 } from "@/lib/types";
 import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
+import { HighlightCard } from "./highlights/entry";
 import { useToast } from "./ui/toast";
 import { InfoTip } from "@/components/ui/info";
 import { MvpMatchInfo } from "@/components/mvp-info";
@@ -234,6 +235,13 @@ export function MatchSheet({
             <TeamBlock m={withGuestLines(m)} team="A" players={everyone} />
             <TeamBlock m={withGuestLines(m)} team="B" players={everyone} />
           </div>
+
+          <HighlightCard
+            matchId={m.id}
+            onOpen={(replace) => {
+              if (!replace) onClose();
+            }}
+          />
 
           {mvp && mvpPlayer && mvpLine ? (
             <section

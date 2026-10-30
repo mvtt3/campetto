@@ -25,7 +25,11 @@ const step = (target: string, title: string, text: string): TourStep => ({
 
 export type SectionId = "home" | "classifica" | "partite" | "profilo";
 
-export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
+export function sections(
+  isAdmin: boolean,
+  /** Ci sono gli highlights dell'ultima serata: un passo in più in Partite. */
+  highlights = false,
+): Record<SectionId, TourSection> {
   return {
     home: {
       title: "Home",
@@ -88,6 +92,15 @@ export function sections(isAdmin: boolean): Record<SectionId, TourSection> {
           "Tutte le partite",
           "Tocca una partita per vedere risultato, MVP e tabellino",
         ),
+        ...(highlights
+          ? [
+              step(
+                "matches-highlights",
+                "Gli highlights",
+                "Tutti i canestri della serata in un video. Scorri in su per la partita dopo, due tocchi per dare il pallone",
+              ),
+            ]
+          : []),
         ...(isAdmin
           ? [
               step(

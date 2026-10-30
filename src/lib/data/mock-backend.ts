@@ -10,6 +10,8 @@ import {
   TEAM_SIZE,
   type Dataset,
   type Format,
+  type Highlight,
+  type HighlightComment,
   type Match,
   type Player,
 } from "../types";
@@ -24,6 +26,8 @@ import { APP_START } from "../periods";
 const KEY = "campetto:mock:v1";
 
 interface MockState extends Dataset {
+  hlLikes?: { highlightId: string; playerId: string }[];
+  hlComments?: HighlightComment[];
   meId: string;
   signedIn: boolean;
   private: PlayerPrivate[];
@@ -399,6 +403,8 @@ function initialState(demo: boolean, full = false): MockState {
 export function createMockBackend(): Backend {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mock");
+  trial.slow = params.get("lento") === "1";
+  trial.broken = params.get("guasto") ?? "";
   localStorage.setItem("campetto:use-mock", "1");
   // ?telefono=nuovo: prova come la vede chi entra per la prima volta su un telefono nuovo.
   if (params.get("telefono") === "nuovo")
@@ -437,6 +443,7 @@ export function createMockBackend(): Backend {
         if (meP && !meP.nickname) meP.nickname = meP.firstName;
       }
     }
+    if (mode === "demo" || mode === "pieno") seedHighlights(state, params);
     // ?nuovo=1: primo accesso, il giocatore deve ancora scegliere nome e figurina
     if (params.get("nuovo") === "1") {
       const meP = state.players.find((p) => p.id === state.meId);
@@ -446,6 +453,12 @@ export function createMockBackend(): Backend {
     state = JSON.parse(raw);
   }
   const listeners = new Set<() => void>();
+  const socialListeners = new Set<() => void>();
+  // Like e commenti non toccano il resto dei dati: avvisano solo il feed.
+  const saveSocial = () => {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    for (const l of socialListeners) setTimeout(l, 0);
+  };
   const save = () => {
     localStorage.setItem(KEY, JSON.stringify(state));
     for (const l of listeners) setTimeout(l, 0);
@@ -470,6 +483,8 @@ export function createMockBackend(): Backend {
         matches: split.matches,
         proposals: state.proposals,
         news: state.news ?? [],
+        // Come nel database: per ora gli highlights li vede solo l'amministratore.
+        highlights: me().isAdmin ? (state.highlights ?? []) : [],
       });
     },
     async createGuest(name) {
@@ -748,7 +763,137 @@ export function createMockBackend(): Backend {
     async touchSeen() {
       localStorage.setItem("campetto:mock:seen", new Date().toISOString());
     },
+
+    async loadHighlightSocial(ids) {
+      await mockDelay();
+      if (failing("social"))
+        throw new Error("Spicchio non riesce a caricare i commenti");
+      const set = new Set(ids);
+      return structuredClone({
+        likes: (state.hlLikes ?? []).filter((l) => set.has(l.highlightId)),
+        comments: (state.hlComments ?? []).filter((c) =>
+          set.has(c.highlightId),
+        ),
+      });
+    },
+    async setHighlightLike(highlightId, on) {
+      await mockDelay();
+      if (failing("like"))
+        throw new Error("Spicchio non riesce a salvare il like");
+      const rest = (state.hlLikes ?? []).filter(
+        (l) => !(l.highlightId === highlightId && l.playerId === state.meId),
+      );
+      state.hlLikes = on
+        ? [...rest, { highlightId, playerId: state.meId }]
+        : rest;
+      saveSocial();
+    },
+    async addHighlightComment(highlightId, body) {
+      await mockDelay();
+      if (failing("commento"))
+        throw new Error("Spicchio non riesce a mandare il commento");
+      const text = body.trim();
+      if (!text) throw new Error("Il commento è vuoto");
+      const c: HighlightComment = {
+        id: rid(),
+        highlightId,
+        playerId: state.meId,
+        body: text.slice(0, 280),
+        createdAt: new Date().toISOString(),
+      };
+      state.hlComments = [...(state.hlComments ?? []), c];
+      saveSocial();
+      return structuredClone(c);
+    },
+    async deleteHighlightComment(id) {
+      await mockDelay();
+      state.hlComments = (state.hlComments ?? []).filter((c) => c.id !== id);
+      saveSocial();
+    },
+    subscribeHighlights(onChange) {
+      socialListeners.add(onChange);
+      return () => socialListeners.delete(onChange);
+    },
   };
+}
+
+/** Le prove scelte nell'indirizzo d'apertura: valgono finché l'app resta aperta. */
+const trial = { slow: false, broken: "" };
+
+/** ?lento=1: like e commenti rispondono in ritardo, per provare i caricamenti. */
+function mockDelay(): Promise<void> {
+  return new Promise((r) => setTimeout(r, trial.slow ? 1200 : 60));
+}
+
+/** ?guasto=like|commento|social: quella chiamata fallisce, per provare gli errori. */
+function failing(what: string): boolean {
+  return trial.broken === what;
+}
+
+const MOCK_COMMENTS = [
+  "Che tripla 🔥",
+  "Ma quello al secondo 12 è passi 😂",
+  "Difesa zero, ma ci sta",
+  "Il terzo tempo di Davide è da NBA, non scherzo. Rivisto 5 volte e ogni volta è meglio, voglio la maglia autografata",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "Martedì rivincita",
+];
+
+/** Gli highlights di prova: le tre partite più recenti, coi video piccoli in /public/mock. */
+function seedHighlights(state: MockState, params: URLSearchParams) {
+  const recent = [...state.matches]
+    .sort((a, b) => b.playedAt.localeCompare(a.playedAt))
+    .slice(0, 3);
+  const durations = [9, 7, 6];
+  state.highlights = recent.map((m, i): Highlight => ({
+    id: `h${i + 1}`,
+    matchId: m.id,
+    videoUrl: `/mock/hl-${i + 1}.mp4`,
+    posterUrl: `/mock/hl-${i + 1}.jpg`,
+    duration: durations[i],
+    description:
+      i === 0
+        ? "Tre triple di fila e un terzo tempo al tabellone: serata da ricordare, con un finale tiratissimo fino all'ultimo canestro."
+        : i === 1
+          ? "Appoggi, tap-in e un no-look sotto canestro."
+          : null,
+    clips: [
+      {
+        t: 0,
+        punti: 3,
+        come: "tripla",
+        descrizione: "Bomba frontale, solo retina",
+      },
+      {
+        t: 3,
+        punti: 2,
+        come: "terzo tempo",
+        descrizione: "Terzo tempo al tabellone",
+      },
+      {
+        t: 5,
+        punti: 2,
+        come: "appoggio",
+        descrizione: "Appoggio dopo lo scarico",
+      },
+    ].filter((c) => c.t < durations[i]) as Highlight["clips"],
+    createdAt: m.playedAt,
+  }));
+  const many = params.get("commenti") === "tanti";
+  state.hlLikes = [
+    { highlightId: "h1", playerId: "p2" },
+    { highlightId: "h1", playerId: "p3" },
+    { highlightId: "h2", playerId: "p4" },
+  ];
+  const others = state.players.filter((p) => p.id !== "p1").slice(0, 6);
+  const count = many ? 60 : MOCK_COMMENTS.length;
+  state.hlComments = Array.from({ length: count }, (_, i) => ({
+    id: `c${i + 1}`,
+    highlightId: "h1",
+    playerId: others[i % others.length].id,
+    body: MOCK_COMMENTS[i % MOCK_COMMENTS.length],
+    createdAt: new Date(Date.now() - (count - i) * 7 * 60_000).toISOString(),
+  }));
 }
 
 export function mockAllowed(): boolean {

@@ -1,5 +1,7 @@
 "use client";
 
+import { useHighlights } from "@/components/highlights/provider";
+import { useData } from "@/lib/data/provider";
 import { MoveDown, MoveHorizontal, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import {
@@ -83,7 +85,16 @@ export function TutorialProvider({
   const [done, setDone] = useState<number | null>(null);
   const path = usePathname();
   const moving = useRef(false);
-  const all = sections(me.isAdmin);
+  const hl = useHighlights();
+  const { data } = useData();
+  // Il passo sugli highlights solo se ci sono quelli dell'ultima partita (la serata aperta in cima).
+  const latest = useMemo(() => {
+    let best: { id: string; at: string } | null = null;
+    for (const m of data.matches)
+      if (!best || m.playedAt > best.at) best = { id: m.id, at: m.playedAt };
+    return best?.id ?? null;
+  }, [data.matches]);
+  const all = sections(me.isAdmin, Boolean(latest && hl.forMatch(latest)));
 
   const update = useCallback(
     (patch: Partial<TourState>) =>

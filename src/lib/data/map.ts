@@ -2,6 +2,8 @@ import {
   DEFAULT_NOTIFY_PREFS,
   type Box,
   type Format,
+  type Highlight,
+  type HighlightComment,
   type Match,
   type MatchEvent,
   type MatchPlayer,
@@ -114,5 +116,28 @@ export function mapProposal(r: any): Proposal {
       altStartsAt: x.alt_starts_at ?? null,
       altPlace: x.alt_place ?? null,
     })),
+  };
+}
+
+export function mapHighlight(r: any): Highlight {
+  return {
+    id: r.id,
+    matchId: r.match_id,
+    videoUrl: r.video_url,
+    posterUrl: r.poster_url ?? null,
+    duration: Number(r.duration) || 0,
+    description: r.description ?? null,
+    clips: Array.isArray(r.clips) ? r.clips : [],
+    createdAt: r.created_at,
+  };
+}
+
+export function mapHighlightComment(r: any): HighlightComment {
+  return {
+    id: r.id,
+    highlightId: r.highlight_id,
+    playerId: r.player_id,
+    body: r.body,
+    createdAt: r.created_at,
   };
 }

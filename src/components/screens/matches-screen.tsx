@@ -15,6 +15,7 @@ import {
   useState,
 } from "react";
 import { MatchSheet } from "@/components/match-sheet";
+import { NightHighlightsButton } from "@/components/highlights/entry";
 import { EmptyState, ScreenHeader, Segmented } from "@/components/ui/basics";
 import { AvatarStack } from "@/components/ui/avatar";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -238,6 +239,7 @@ function NightCard({
               {night.items.map((m) => (
                 <MatchRow key={m.id} m={m} onOpen={onOpen} flat />
               ))}
+              <NightHighlightsButton matchIds={night.items.map((m) => m.id)} />
             </div>
           </motion.div>
         )}
