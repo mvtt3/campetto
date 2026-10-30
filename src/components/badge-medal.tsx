@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { NewTag } from "./new-dot";
 import { useId } from "react";
 import {
   CalendarCheck,
@@ -134,17 +135,35 @@ export function BadgeMedal({
   );
 }
 
-export function BadgeTile({ state, onClick, selected }: { state: BadgeState; onClick?: () => void; selected?: boolean }) {
+export function BadgeTile({
+  state,
+  onClick,
+  selected,
+  fresh,
+  popped,
+}: {
+  state: BadgeState;
+  onClick?: () => void;
+  selected?: boolean;
+  /** Appena guadagnato e non ancora aperto: "Nuovo". */
+  fresh?: boolean;
+  /** Appena riscattato: un piccolo salto. */
+  popped?: boolean;
+}) {
   const { def, tier, value, next, prev } = state;
   const progress = next ? Math.min(1, (value - prev) / (next - prev)) : 1;
   return (
     <button
       onClick={onClick}
+      aria-label={fresh ? `${def.name}, nuovo` : undefined}
       className={clsx(
-        "flex flex-col items-center rounded-2xl px-1.5 pb-2.5 pt-3 text-center transition-colors",
+        "relative flex flex-col items-center rounded-2xl px-1.5 pb-2.5 pt-3 text-center transition-colors",
         selected ? "bg-ball-soft ring-2 ring-ball" : "card",
+        fresh && "!border-danger ring-2 ring-danger/40",
+        popped && "claim-pop",
       )}
     >
+      {fresh && <NewTag className="-left-1 -top-1.5" />}
       <BadgeMedal icon={def.icon} tier={tier} size={44} />
       <span className={clsx("mt-2 line-clamp-2 text-[12px] font-semibold leading-tight", tier === 0 && "text-muted")}>
         {def.name}

@@ -1,3 +1,5 @@
+import { isOffensive } from "./nickname-filter";
+
 export type Format = "1v1" | "2v2" | "3v3" | "4v4";
 export const FORMATS: Format[] = ["1v1", "2v2", "3v3", "4v4"];
 export const TEAM_SIZE: Record<Format, number> = { "1v1": 1, "2v2": 2, "3v3": 3, "4v4": 4 };
@@ -236,9 +238,13 @@ export function nameError(name: string, players: Pick<Player, "id" | "nickname">
   const n = name.trim().replace(/\s+/g, " ");
   if (n.length < NAME_MIN) return `Mi servono almeno ${NAME_MIN} lettere`;
   if (n.length > NAME_MAX) return `Massimo ${NAME_MAX} caratteri`;
+  if (isOffensive(n)) return OFFENSIVE_NAME;
   if (players.some((p) => p.id !== meId && p.nickname?.trim().toLowerCase() === n.toLowerCase())) return "Questo nome ce l'ha già qualcuno: provane un altro";
   return null;
 }
+
+/** Il messaggio per un soprannome che può offendere: gentile, senza ripetere la parola. */
+export const OFFENSIVE_NAME = "Questo nome non lo posso usare: potrebbe offendere qualcuno";
 
 export function initials(p: Pick<Player, "firstName" | "lastName" | "nickname"> | undefined | null): string {
   if (!p) return "?";

@@ -7,6 +7,8 @@ import { AVATAR_PRESETS, CHARACTER_TAGLINE } from "@/components/avatar-presets";
 import { BadgeMedal } from "@/components/badge-medal";
 import { Character, characterOf } from "@/components/character";
 import { Avatar, isLightColor, playerColor } from "@/components/ui/avatar";
+import { NewDot } from "@/components/new-dot";
+import { useNewRewards } from "@/components/rewards";
 import { CourtLines } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
 import { showcaseBadges } from "@/lib/badges";
@@ -39,6 +41,9 @@ export function ProfileHeader({
   const light = isLightColor(tint);
   const charId = characterOf(player);
   const badgesHref = self ? "/profilo/badge" : `/giocatore/badge?id=${encodeURIComponent(player.id)}`;
+  const news = useNewRewards();
+  const newBadges = self ? news.badges.size : 0;
+  const newChars = self ? news.characters.size : 0;
 
   return (
     <div
@@ -58,7 +63,11 @@ export function ProfileHeader({
           className="press absolute right-2.5 top-2 z-10 rounded-2xl"
           data-tour="profile-character"
         >
-          <span className="sr-only">Il tuo personaggio, {AVATAR_PRESETS.find((p) => p.id === charId)?.name}: apri la collezione</span>
+          <span className="sr-only">
+            Il tuo personaggio, {AVATAR_PRESETS.find((p) => p.id === charId)?.name}: apri la collezione
+            {newChars ? `, ${newChars === 1 ? "un personaggio nuovo" : `${newChars} personaggi nuovi`}` : ""}
+          </span>
+          <NewDot count={newChars || -1} className="absolute -left-1 top-0 z-10" />
           <Character
             id={charId}
             number={player.jerseyNumber}
@@ -126,7 +135,7 @@ export function ProfileHeader({
         <Link
           href={badgesHref}
           className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border-2 border-[#1d1a16] bg-[#fffaf0] px-3 py-2 text-[#1d1a16]"
-          aria-label="Vedi tutti i badge"
+          aria-label={newBadges ? `Vedi tutti i badge, ${newBadges === 1 ? "uno nuovo" : `${newBadges} nuovi`}` : "Vedi tutti i badge"}
         >
           {showcase.length ? (
             showcase.map((s) => (
@@ -142,7 +151,10 @@ export function ProfileHeader({
               Ancora nessun badge
             </span>
           )}
-          <span className="ml-auto whitespace-nowrap pl-1 text-[13.5px] font-bold">{self ? "Badge" : "Tutti i badge"}</span>
+          <span className="ml-auto flex items-center gap-1.5 whitespace-nowrap pl-1 text-[13.5px] font-bold">
+            {self ? "Badge" : "Tutti i badge"}
+            <NewDot count={newBadges || -1} />
+          </span>
         </Link>
         {self && (
           <Link

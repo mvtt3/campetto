@@ -173,6 +173,9 @@ export function createMockBackend(): Backend {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mock");
   localStorage.setItem("campetto:use-mock", "1");
+  // ?telefono=nuovo: prova come la vede chi entra per la prima volta su un telefono nuovo.
+  if (params.get("telefono") === "nuovo") localStorage.setItem("campetto:mock:telefono-nuovo", "1");
+  else if (mode === "reset" || mode === "demo" || mode === "pieno") localStorage.removeItem("campetto:mock:telefono-nuovo");
   let state: MockState;
   const raw = localStorage.getItem(KEY);
   if (mode === "reset" || mode === "demo" || mode === "pieno" || !raw) {

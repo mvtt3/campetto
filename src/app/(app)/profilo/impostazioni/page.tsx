@@ -3,17 +3,20 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Compass, Download, Eye, LogOut, MessageSquareWarning, Palette, Shield, Check, Users, Volume2, VolumeX } from "lucide-react";
+import { Bell, Camera, ChevronRight, Compass, Download, Eye, LogOut, MessageSquareWarning, Palette, Shield, ShieldAlert, Check, Users, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { AVATAR_PRESETS, type AvatarPresetId } from "@/components/avatar-presets";
 import { Character, characterOf } from "@/components/character";
 import { CharacterCard, CharacterGrid } from "@/components/character-card";
+import { NewDot } from "@/components/new-dot";
+import { useNewRewards } from "@/components/rewards";
 import { FeedbackSheet } from "@/components/feedback-sheet";
 import { SECTION_IDS, sections } from "@/components/tutorial/model";
 import { useTutorial } from "@/components/tutorial/tutorial";
 import { Sheet } from "@/components/ui/sheet";
-import { NAME_MAX, nameError, playerHref } from "@/lib/types";
+import { NAME_MAX, nameError, OFFENSIVE_NAME, playerHref } from "@/lib/types";
+import { isOffensive } from "@/lib/nickname-filter";
 import { Avatar, CARD_COLORS, isLightColor, playerColor } from "@/components/ui/avatar";
 import { Button, ScreenHeader, Segmented, Spinner, Toggle } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
@@ -46,11 +49,13 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemePref>("light");
   const push = usePush();
   const [nickname, setNickname] = useState("");
+  const nickOffensive = isOffensive(nickname);
   const [jersey, setJersey] = useState("");
   const [uploading, setUploading] = useState(false);
   const [install, setInstall] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(true);
   const [picking, setPicking] = useState(false);
+  const newChars = useNewRewards().characters.size;
   const [characters, setCharacters] = useState(false);
   const [feedback, setFeedback] = useState(false);
   const [card, setCard] = useState<AvatarPresetId | null>(null);
@@ -128,8 +133,12 @@ export default function SettingsPage() {
               <Character id={characterOf(me)} number={me.jerseyNumber} height={72} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="title block text-[17px]">Il tuo personaggio</span>
-              <span className="block text-[13px] text-muted">Con i badge ne sblocchi di speciali</span>
+              <span className="title flex items-center gap-2 text-[17px]">
+                Il tuo personaggio <NewDot count={newChars || -1} />
+              </span>
+              <span className="block text-[13px] text-muted">
+                {newChars ? (newChars === 1 ? "Ne hai sbloccato uno nuovo: aprilo" : `Ne hai sbloccati ${newChars} nuovi: aprili`) : "Con i badge ne sblocchi di speciali"}
+              </span>
             </span>
             <ChevronRight size={18} className="text-faint" />
           </button>
@@ -176,9 +185,19 @@ export default function SettingsPage() {
                   setNickname(me.nickname ?? "");
                 } else void patchMe({ nickname: clean }, "Ho salvato il nome");
               }}
-              className="h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:font-normal placeholder:text-faint"
+              aria-invalid={nickOffensive || undefined}
+              className={clsx(
+                "h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:font-normal placeholder:text-faint",
+                nickOffensive && "text-danger",
+              )}
             />
           </Row>
+          {/* Mentre scrivi: se il nome può offendere lo dico subito, prima di salvarlo. */}
+          {nickOffensive && (
+            <p className="nick-warn flex items-center gap-1.5 border-t border-line px-4 py-2.5 text-[13px] font-semibold text-danger" role="alert">
+              <ShieldAlert size={15} className="shrink-0" aria-hidden /> {OFFENSIVE_NAME}
+            </p>
+          )}
           <Row>
             <label htmlFor="jersey" className="shrink-0 text-[15px]">
               Numero di maglia

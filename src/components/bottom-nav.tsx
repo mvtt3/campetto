@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, Rows3, Trophy, UserRound } from "lucide-react";
 import { haptic } from "./ui/basics";
+import { NewDot } from "./new-dot";
+import { useNewRewards } from "./rewards";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: House, match: (p: string) => p === "/" || p.startsWith("/organizza") },
@@ -27,6 +29,8 @@ export function BottomNav({ current, onTab }: { current?: string; onTab?: (href:
   const routePath = usePathname();
   const path = current ?? routePath;
   const index = ITEMS.findIndex((it) => it.match(path));
+  // Badge e personaggi nuovi da aprire: il pallino rosso sul Profilo.
+  const news = useNewRewards().total;
   return (
     <nav aria-label="Navigazione principale" data-tour="nav" className="safe-bottom shrink-0 px-4 pb-3 pt-1">
       <ul className="sticker relative mx-auto grid h-[66px] max-w-md grid-cols-4 gap-1 rounded-[24px] bg-surface p-1.5">
@@ -57,14 +61,17 @@ export function BottomNav({ current, onTab }: { current?: string; onTab?: (href:
                   if (onTab) onTab(href);
                   else window.history.pushState(null, "", href);
                 }}
-                aria-label={label}
+                aria-label={href === "/profilo" && news ? `${label}, ${news === 1 ? "una novità" : `${news} novità`}` : label}
                 aria-current={active ? "page" : undefined}
                 className={clsx(
                   "flex w-full flex-col items-center justify-center gap-0.5 rounded-[18px] text-[11.5px] font-bold transition-colors duration-300",
                   active ? "text-court-ink" : "text-muted",
                 )}
               >
-                <Icon size={21} strokeWidth={active ? 2.4 : 2} aria-hidden />
+                <span className="relative">
+                  <Icon size={21} strokeWidth={active ? 2.4 : 2} aria-hidden />
+                  {href === "/profilo" && <NewDot count={news} className="absolute -right-3 -top-2" />}
+                </span>
                 <span>{label}</span>
               </Link>
             </li>

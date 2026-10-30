@@ -7,6 +7,7 @@ const RULES: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
   [/JWT|token|Accesso richiesto|not authenticated|Sessione/i, "Ti sei disconnesso: rientra con Google e riprova"],
   [/players_nickname_key|nome è già preso|duplicate key/i, "Questo nome ce l'ha già qualcuno: provane un altro"],
   [/players_nickname_len/i, "Il nome deve avere da 2 a 16 caratteri"],
+  [/potrebbe offendere/i, "Questo nome non lo posso usare: potrebbe offendere qualcuno"],
   [/matches_since_start/i, "Prima di ottobre 2026 il campetto non esisteva: scegli una data da allora"],
   [/Invito non valido/i, "Questo invito non lo riconosco: chiedi a Matteo un link nuovo"],
   [/invito è già stato usato/i, "Questo invito l'ha già usato qualcun altro: chiedi a Matteo un link nuovo"],

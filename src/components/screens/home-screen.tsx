@@ -19,6 +19,7 @@ import { Character, characterOf } from "@/components/character";
 import { shortName, winnerOf } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { InfoTip } from "@/components/ui/info";
+import { MvpMonthInfo } from "@/components/mvp-info";
 import { greeting } from "@/lib/greeting";
 import { useNav } from "@/lib/nav";
 
@@ -176,7 +177,7 @@ export function HomeScreen() {
                 <h2 className="relative flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold">
                   <Crown size={15} className="shrink-0" /> MVP in carica
                   <InfoTip label="Come si diventa MVP" size={14} className="ml-auto">
-                    Chi fa vincere di più: 35% vittorie, 20% quanto la squadra va meglio con te, 30% statistiche, 15% presenza. Servono 3 partite
+                    <MvpMonthInfo />
                   </InfoTip>
                 </h2>
                 {mvp && mvpPlayer ? (

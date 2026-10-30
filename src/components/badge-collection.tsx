@@ -8,6 +8,8 @@ import { Button, Segmented } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
 import { say } from "@/lib/voice";
+import { play } from "@/lib/sound";
+import { useNewRewards } from "./rewards";
 
 const CATS: { value: BadgeCategory | "tutti"; label: string }[] = [
   { value: "tutti", label: "Tutti" },
@@ -27,9 +29,22 @@ export function BadgeCollection({ playerId, editable }: { playerId: string; edit
   const unlocked = states.filter((s) => s.tier > 0).length;
 
   const progress = (s: BadgeState) => (s.next ? (s.value - s.prev) / (s.next - s.prev) : 1);
+  // Nella propria collezione, i badge appena guadagnati stanno in cima con "Nuovo" finché non li apri.
+  const rewards = useNewRewards();
+  const fresh = editable ? rewards.badges : new Set<string>();
+  const [claimed, setClaimed] = useState<string | null>(null);
   const list = states
     .filter((s) => cat === "tutti" || s.def.category === cat)
-    .sort((a, b) => b.tier - a.tier || progress(b) - progress(a));
+    .sort((a, b) => Number(fresh.has(b.def.key)) - Number(fresh.has(a.def.key)) || b.tier - a.tier || progress(b) - progress(a));
+  const openBadge = (s: BadgeState) => {
+    if (fresh.has(s.def.key)) {
+      // Riscattato: via l'etichetta, un piccolo salto e il suono dello sblocco.
+      rewards.claimBadge(s.def.key);
+      setClaimed(s.def.key);
+      play("unlock");
+    }
+    setOpen(s);
+  };
 
   const toggleShowcase = async (key: string) => {
     if (!player) return;
@@ -48,12 +63,19 @@ export function BadgeCollection({ playerId, editable }: { playerId: string; edit
     <div className="flex flex-col gap-3">
       <p className="px-1 text-center text-[14px] text-muted">
         <span className="tnum font-bold text-text">{unlocked}</span> di {states.length} sbloccati
-        {editable && " · tocca un badge per metterlo in vetrina"}
+        {editable && (fresh.size ? ` · ${fresh.size === 1 ? "uno nuovo da aprire" : `${fresh.size} nuovi da aprire`}` : " · tocca un badge per metterlo in vetrina")}
       </p>
       <Segmented value={cat} onChange={setCat} size="sm" options={CATS} />
       <div className="grid grid-cols-3 gap-2">
         {list.map((s) => (
-          <BadgeTile key={s.def.key} state={s} selected={editable && showcase.includes(s.def.key)} onClick={() => setOpen(s)} />
+          <BadgeTile
+            key={s.def.key}
+            state={s}
+            selected={editable && showcase.includes(s.def.key)}
+            fresh={fresh.has(s.def.key)}
+            popped={claimed === s.def.key}
+            onClick={() => openBadge(s)}
+          />
         ))}
       </div>
       <Sheet

@@ -9,6 +9,7 @@ import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Chips, EmptyState, ScreenHeader } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
+import { MvpMonthInfo } from "@/components/mvp-info";
 import { GroupStrip } from "@/components/group-strip";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
@@ -176,7 +177,7 @@ export function RankingScreen() {
         ) : (
           <div key={`${board}-${period.kind}-${format}`} className="relative" data-tour="rank-podium">
             <div className="absolute right-0 top-1 z-10">
-              <InfoTip label="Come funziona questa classifica">{info}</InfoTip>
+              <InfoTip label="Come funziona questa classifica">{board === "mvp" ? <MvpMonthInfo minGames={minGames ?? 3} /> : info}</InfoTip>
             </div>
             <Podium rows={rows} />
             <ol className="flex flex-col gap-2">

@@ -16,6 +16,7 @@ import { BadgeMedal, TIER_STYLE } from "./badge-medal";
 import { characterProgress } from "./character";
 import { Character3D } from "./character-card";
 import { useIntroDone } from "./intro";
+import { isNewcomer } from "./rewards";
 import { Mascot } from "./mascot";
 import { Button, CourtLines } from "./ui/basics";
 import { useToast } from "./ui/toast";
@@ -65,10 +66,14 @@ export function BadgeCelebration() {
   useEffect(() => {
     if (!me || loading || !badges || !introDone) return;
     const items: Item[] = [];
+    // Telefono nuovo: chi gioca da poco si gode le feste di quello che ha già fatto;
+    // chi c'è da tempo e cambia telefono no (sarebbero troppe e vecchie).
+    const newcomer = isNewcomer(me.id, data.matches);
+    const seenOr = (key: string, all: string[]) => seenList(key, all) ?? (newcomer ? [] : null);
 
     // 1. Com'è andata: le partite giocate che non hai ancora visto.
     const played = sortChrono(data.matches).filter((m) => teamOf(m, me.id));
-    const seenMatches = seenList(`campetto:seen-matches:${me.id}`, played.map((m) => m.id));
+    const seenMatches = seenOr(`campetto:seen-matches:${me.id}`, played.map((m) => m.id));
     if (seenMatches) {
       const fresh = played.filter((m) => !seenMatches.includes(m.id) && winnerOf(m));
       if (fresh.length) {
@@ -99,7 +104,7 @@ export function BadgeCelebration() {
     }
 
     // 2. I badge nuovi: solo il livello più alto per badge, i tre più recenti.
-    const seenBadges = seenList(`campetto:seen-badges:${me.id}`, badges.unlocks.map(badgeKey));
+    const seenBadges = seenOr(`campetto:seen-badges:${me.id}`, badges.unlocks.map(badgeKey));
     if (seenBadges) {
       const fresh = badges.unlocks.filter((u) => !seenBadges.includes(badgeKey(u)));
       const best = new Map<string, BadgeUnlock>();
@@ -112,7 +117,7 @@ export function BadgeCelebration() {
 
     // 3. I personaggi appena sbloccati.
     const open = AVATAR_PRESETS.filter((p) => p.rarity !== "base" && characterProgress(p.id, badges.states).unlocked).map((p) => p.id as string);
-    const seenChars = seenList(`campetto:personaggi:${me.id}`, open);
+    const seenChars = seenOr(`campetto:personaggi:${me.id}`, open);
     if (seenChars) {
       open
         .filter((id) => !seenChars.includes(id))

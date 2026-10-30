@@ -15,6 +15,7 @@
 //   "cambiA": ["Cande"],
 //   "statistiche": { "Valerio": { "pts": 9, "fg3m": 1, "ast": 3, "dreb": 4 } }
 // }]
+// "fonte" (facoltativa): tabellino, importata, video. "eventi": la cronaca, vedi sotto.
 // Le statistiche e i cambi ("cambiA", "cambiB": chi entrava a rotazione, al massimo due per squadra) sono facoltativi. Nomi: il nome scelto nell'app, nome e cognome, solo nome se unico, o cognome.
 // Date: dal 1° ottobre 2026 in poi (prima l'app non esisteva).
 
@@ -72,7 +73,7 @@ for (const m of matches) {
     target_points: m.finoA ?? 21,
     score_a: m.punteggio[0],
     score_b: m.punteggio[1],
-    stats_source: hasStats ? "importata" : "solo_risultato",
+    stats_source: m.fonte ?? (hasStats ? "importata" : "solo_risultato"),
     notes: m.note ?? null,
     players: [
       ...m.squadraA.map((n) => line(n, "A")),
@@ -80,7 +81,14 @@ for (const m of matches) {
       ...(m.cambiA ?? []).map((n) => line(n, "A", true)),
       ...(m.cambiB ?? []).map((n) => line(n, "B", true)),
     ],
-    events: [],
+    // Facoltativo: la cronaca azione per azione ("eventi": [{ "giocatore", "tipo", "su" }]), per
+    // l'intesa negli assist e le rimonte. tipo: 2pt, 3pt, miss2, miss3, oreb, dreb, ast, stl, blk, tov, foul.
+    events: (m.eventi ?? []).map((e) => ({
+      player_id: find(e.giocatore),
+      kind: e.tipo,
+      target_player_id: e.su ? find(e.su) : null,
+      video_ts: null,
+    })),
   };
   await c.query("begin");
   try {

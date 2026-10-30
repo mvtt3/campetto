@@ -436,6 +436,34 @@ test("promemoria settimanale: l'app segna che sei passato e si può spegnere", a
   await expect(toggle).toHaveAttribute("aria-checked", "false");
 });
 
+test("badge e personaggi nuovi da riscattare: pallino rosso finché non li apri", async ({ page }) => {
+  await skipTour(page);
+  // Chi entra per la prima volta su un telefono nuovo: prima le feste, poi le novità da aprire.
+  await page.goto("/?mock=demo&telefono=nuovo");
+  const party = page.locator('[aria-labelledby="party-title"]');
+  await expect(party).toBeVisible();
+  for (let i = 0; i < 8 && (await party.count()); i++) {
+    const later = party.getByRole("button", { name: "Dopo" });
+    await ((await later.count()) ? later : party.getByRole("button").last()).click();
+    await page.waitForTimeout(350);
+  }
+  const nav = page.getByRole("navigation", { name: "Navigazione principale" });
+  const profile = nav.getByRole("link", { name: /^Profilo, \d+ novità|^Profilo, una novità/ });
+  await expect(profile).toBeVisible();
+  const before = Number(((await profile.getAttribute("aria-label")) ?? "").match(/\d+/)?.[0] ?? 1);
+  await profile.click();
+  await page.getByRole("link", { name: /Vedi tutti i badge, / }).click();
+  const fresh = page.getByRole("button", { name: /, nuovo$/ });
+  await expect(fresh.first()).toBeVisible();
+  const n = await fresh.count();
+  await fresh.first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: /, nuovo$/ })).toHaveCount(n - 1);
+  // Il numero sul Profilo scende di uno.
+  await expect(nav.getByRole("link", { name: before - 1 > 0 ? new RegExp(`^Profilo, (${before - 1} novità|una novità)`) : /^Profilo$/ })).toBeVisible();
+});
+
 test("segnala un problema dalle impostazioni", async ({ page }) => {
   await openApp(page, "demo");
   await page.goto("/profilo/impostazioni");

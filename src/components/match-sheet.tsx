@@ -13,6 +13,7 @@ import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
 import { InfoTip } from "@/components/ui/info";
+import { MvpMatchInfo } from "@/components/mvp-info";
 import { say } from "@/lib/voice";
 import { Character, characterOf } from "./character";
 
@@ -74,6 +75,17 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
   const mvp = m ? matchMvp(m) : null;
   const mvpPlayer = mvp ? players.find((p) => p.id === mvp.playerId) : undefined;
   const mvpLine = mvp ? normalizeBox(m!.players.find((l) => l.playerId === mvp.playerId)!.box) : null;
+  // Il suo contributo: la sua parte di quello che la squadra ha prodotto (punti, rimbalzi, assist, rubate, stoppate).
+  const mvpShare = (() => {
+    if (!m || !mvp) return null;
+    const made = (box: Match["players"][number]["box"]) => {
+      const b = normalizeBox(box);
+      return b.pts + b.oreb + b.dreb + b.ast + b.stl + b.blk;
+    };
+    const line = m.players.find((l) => l.playerId === mvp.playerId)!;
+    const total = m.players.filter((l) => l.team === line.team && l.hasStats).reduce((a, l) => a + made(l.box), 0);
+    return total > 0 ? Math.round((made(line.box) / total) * 100) : null;
+  })();
 
   return (
     <Sheet
@@ -151,9 +163,10 @@ export function MatchSheet({ match, onClose }: { match: Match | null; onClose: (
                 <p className="text-[12.5px] font-semibold opacity-80">
                   {mvpLine.pts} punti · {mvpLine.oreb + mvpLine.dreb} rimbalzi · {mvpLine.ast} assist
                 </p>
+                {mvpShare !== null && <p className="text-[11.5px] font-bold opacity-70">{mvpShare}% del gioco della squadra</p>}
               </div>
               <InfoTip label="Come si sceglie l'MVP della partita" size={16}>
-                Il migliore della squadra che vince, per valutazione: punti, rimbalzi, assist, rubate e stoppate, meno tiri sbagliati e palle perse. Serve il tabellino
+                <MvpMatchInfo />
               </InfoTip>
             </section>
           )}

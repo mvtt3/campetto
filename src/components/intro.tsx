@@ -7,28 +7,25 @@ import { play, playOrDefer, type SoundName } from "@/lib/sound";
 
 /**
  * L'apertura dell'app: Spicchio tira a canestro e sotto compare una frase sul
- * gruppo, ogni volta diversa. Parte già dall'HTML (solo CSS), così non c'è la
+ * campetto, ogni volta diversa. Parte già dall'HTML (solo CSS), così non c'è la
  * schermata bianca; si chiude da sola appena l'app è pronta, o con un tocco.
  * Una volta per sessione.
  */
 
-const WITH_NAME = [
-  "{n} sta palleggiando",
-  "{n} prova un tiro libero",
-  "{n} si allaccia le scarpe",
-  "{n} scalda il tiro da tre",
-  "{n} chiama il pick and roll",
-  "{n} gonfia il pallone",
-  "{n} fa stretching, finalmente",
-  "{n} sta già scegliendo le squadre",
-  "{n} giura che oggi segna da metà campo",
-];
-const MINE = [
-  "Sto aprendo il campetto",
-  "Sto ridisegnando le linee del campo",
-  "Sto contando le triple di ieri",
-  "Sto gonfiando il pallone",
-  "Sto cercando il canestro buono",
+/** Le frasi dell'apertura: il campetto come lo viviamo, una a caso ogni volta (mai la stessa di prima). */
+export const CAPTIONS = [
+  "Oggi la tripla entra, me lo sento",
+  "Incrocio le dita: niente pioggia sul campetto",
+  "Ultimo tiro e poi andiamo. Forse",
+  "Chi perde offre i ghiaccioli",
+  "Il ferro di destra è più buono, fidati",
+  "Scarpe allacciate, si scende in campo",
+  "Oggi niente airball, promesso",
+  "Il campetto è aperto, le scuse no",
+  "Sto ancora pensando a quel tiro di ieri",
+  "Pallone gonfio, campo libero, si parte",
+  "Regola del campetto: chi segna resta",
+  "Riscaldamento finito, ora si fa sul serio",
 ];
 
 /** Quanto resta l'apertura, per ogni tiro: il tempo di vedere com'è andata e leggere la frase. */
@@ -50,19 +47,20 @@ const SHOT_SOUNDS: Record<number, [SoundName, number][]> = {
 };
 
 function pickCaption(): string {
-  let names: string[] = [];
+  let last = -1;
   try {
-    const raw = localStorage.getItem("campetto:data:v1") ?? localStorage.getItem("campetto:mock:v1");
-    const d = raw ? (JSON.parse(raw) as { players?: { nickname?: string | null; archived?: boolean }[] }) : null;
-    names = (d?.players ?? []).filter((p) => p.nickname && !p.archived).map((p) => p.nickname!.trim());
+    last = Number(localStorage.getItem("campetto:frase") ?? -1);
   } catch {
-    /* nessun nome: frase di Spicchio */
+    /* ignore */
   }
-  if (names.length && Math.random() < 0.75) {
-    const n = names[Math.floor(Math.random() * names.length)];
-    return WITH_NAME[Math.floor(Math.random() * WITH_NAME.length)].replace("{n}", n);
+  let i = Math.floor(Math.random() * CAPTIONS.length);
+  if (i === last) i = (i + 1 + Math.floor(Math.random() * (CAPTIONS.length - 1))) % CAPTIONS.length;
+  try {
+    localStorage.setItem("campetto:frase", String(i));
+  } catch {
+    /* ignore */
   }
-  return MINE[Math.floor(Math.random() * MINE.length)];
+  return CAPTIONS[i];
 }
 
 const DONE_EVENT = "campetto:intro-done";

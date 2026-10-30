@@ -9,6 +9,8 @@ import { Character, characterProgress, nextCharacter, type GoalStep } from "@/co
 import { Button, haptic } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { play } from "@/lib/sound";
+import { NewTag } from "./new-dot";
+import { useNewRewards } from "./rewards";
 
 /** Quanto è spesso il personaggio, in proporzione alla larghezza. */
 const DEPTH = 0.16;
@@ -378,6 +380,8 @@ export function CharacterCard({
 /** Tutti i personaggi, divisi per rarità, con il prossimo da sbloccare in cima. */
 export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void }) {
   const { me, engine } = useData();
+  // I personaggi appena sbloccati: "Nuovo" finché non li apri.
+  const rewards = useNewRewards();
   const states = useMemo(() => (me ? engine.badges(me.id).states : []), [me, engine]);
   const progress = useMemo(() => new Map(AVATAR_PRESETS.map((p) => [p.id, characterProgress(p.id, states)])), [states]);
   // Al tocco solo il pannello; al fotogramma dopo la parte in alto, il resto appena il
@@ -461,18 +465,23 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
               {items.map((p) => {
                 const prog = progress.get(p.id)!;
                 const on = me.character === p.id;
+                const fresh = rewards.characters.has(p.id);
                 return (
                   <button
                     key={p.id}
                     onClick={() => {
                       haptic(5);
-                      play("select");
+                      if (fresh) {
+                        rewards.claimCharacter(p.id);
+                        play("unlock");
+                      } else play("select");
                       onOpen(p.id);
                     }}
-                    aria-label={`${p.name}${prog.unlocked ? "" : ", bloccato"}${on ? ", il tuo" : ""}`}
+                    aria-label={`${p.name}${prog.unlocked ? "" : ", bloccato"}${on ? ", il tuo" : ""}${fresh ? ", nuovo" : ""}`}
                     className={clsx(
                       "press relative flex flex-col items-center overflow-hidden rounded-[18px] border-2 border-edge px-0.5 pb-1.5 pt-1.5",
                       on ? "sticker bg-volt" : "bg-surface",
+                      fresh && "!border-danger ring-2 ring-danger/40",
                     )}
                     style={g !== "base" && !on ? { boxShadow: `inset 0 -4px 0 ${RARITY[g].ring}` } : undefined}
                   >
@@ -489,6 +498,7 @@ export function CharacterGrid({ onOpen }: { onOpen: (id: AvatarPresetId) => void
                         <span className="block h-full bg-ball" style={{ width: `${Math.round(prog.pct * 100)}%` }} />
                       </span>
                     )}
+                    {fresh && <NewTag className="left-0.5 top-0.5" />}
                     {on && (
                       <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-edge bg-ok text-white">
                         <Check size={11} strokeWidth={3} />

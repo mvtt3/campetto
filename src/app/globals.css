@@ -998,6 +998,75 @@ html[data-shot="3"] .intro-ball-x { animation: shot-3 1.50s 0.85s linear both; }
   }
 }
 
+/* Avviso sul soprannome: entra con un piccolo scossone, senza spaventare. */
+.nick-warn {
+  animation: nick-warn 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes nick-warn {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(-3px);
+  }
+  55% {
+    transform: translateX(3px);
+  }
+  80% {
+    transform: translateX(-1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nick-warn {
+    animation: none;
+  }
+}
+
+/* Novità da aprire: il pallino rosso compare con un rimbalzo e pulsa un paio di volte. */
+.new-dot {
+  animation:
+    new-dot-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.5) both,
+    new-dot-pulse 1.6s 0.6s ease-in-out 3;
+}
+@keyframes new-dot-pop {
+  from {
+    transform: scale(0);
+  }
+}
+@keyframes new-dot-pulse {
+  50% {
+    transform: scale(1.18);
+  }
+}
+.new-tag {
+  transform: rotate(-6deg);
+  animation: new-tag-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+@keyframes new-tag-in {
+  from {
+    transform: rotate(-6deg) scale(0.4);
+    opacity: 0;
+  }
+}
+/* Riscattato: il badge fa un piccolo salto di gioia. */
+.claim-pop {
+  animation: claim-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+@keyframes claim-pop {
+  40% {
+    transform: scale(1.12) rotate(-3deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .new-dot,
+  .new-tag,
+  .claim-pop {
+    animation: none;
+  }
+}
+
 /* Pillola della barra in basso: larga un quarto (meno gli spazi), scorre con calma. */
 .nav-pill {
   width: calc((100% - 0.75rem - 0.75rem) / 4);

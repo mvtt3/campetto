@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { Mascot } from "@/components/mascot";
@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { compressAvatar } from "@/lib/theme";
-import { NAME_MAX, nameError, type Player } from "@/lib/types";
+import { NAME_MAX, nameError, OFFENSIVE_NAME, type Player } from "@/lib/types";
+import { nickIdeas } from "@/lib/nickname-filter";
 import { say } from "@/lib/voice";
 
 /**
@@ -27,6 +28,7 @@ export function Onboarding({ me }: { me: Player }) {
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const error = nameError(name, data.players, me.id);
+  const ideas = nickIdeas(me.firstName, data.players.map((p) => p.nickname ?? ""));
   const clean = name.trim().replace(/\s+/g, " ");
 
   const finish = async () => {
@@ -90,9 +92,31 @@ export function Onboarding({ me }: { me: Player }) {
                     onBlur={() => name && setTouched(true)}
                     className="sticker display h-16 w-full rounded-[20px] bg-[#fffaf0] px-5 text-center text-[26px] text-[#1d1a16] outline-none placeholder:text-[#1d1a16]/30"
                   />
-                  <p className="mt-2 h-5 text-[13.5px] font-semibold" role="status">
-                    {touched && error ? <span className="text-[#b5281a]">{error}</span> : <span className="text-[#3d342a]/70">{clean.length}/{NAME_MAX}</span>}
-                  </p>
+                  {/* Una parola che può offendere si segnala subito, mentre scrivi, con qualche idea al posto. */}
+                  {error === OFFENSIVE_NAME ? (
+                    <div className="nick-warn mt-2.5 rounded-[18px] border-2 border-[#1d1a16] bg-[#fffaf0] px-3 py-2.5" role="alert">
+                      <p className="flex items-center justify-center gap-1.5 text-[13.5px] font-bold text-[#b5281a]">
+                        <ShieldAlert size={16} aria-hidden /> {OFFENSIVE_NAME}
+                      </p>
+                      <p className="mt-1.5 text-[12.5px] font-semibold text-[#3d342a]">Prova con</p>
+                      <div className="mt-1 flex flex-wrap justify-center gap-1.5">
+                        {ideas.map((x) => (
+                          <button
+                            key={x}
+                            type="button"
+                            onClick={() => setName(x)}
+                            className="press rounded-full border-2 border-[#1d1a16] bg-volt px-3 py-1 text-[13px] font-bold text-[#1d1a16]"
+                          >
+                            {x}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 h-5 text-[13.5px] font-semibold" role="status">
+                      {touched && error ? <span className="text-[#b5281a]">{error}</span> : <span className="text-[#3d342a]/70">{clean.length}/{NAME_MAX}</span>}
+                    </p>
+                  )}
                 </form>
               </div>
               <Button
