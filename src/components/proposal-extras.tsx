@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Avatar } from "./ui/avatar";
 import { Button, Segmented } from "./ui/basics";
 import { TimeField } from "./ui/pickers";
-import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
 import { useData } from "@/lib/data/provider";
 import { altLabel } from "@/lib/proposals";
@@ -19,25 +18,11 @@ import {
 import { useNow } from "@/lib/use-now";
 import { say } from "@/lib/voice";
 
-const hhmm = (iso: string) =>
-  new Date(iso).toLocaleTimeString("it-IT", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
 /**
- * Chi c'è, chi forse, chi no e chi deve ancora rispondere: tutti i nomi in un colpo d'occhio,
- * come gli inviti delle app di oggi. Accanto a chi ha una controproposta, cosa preferisce.
+ * Chi c'è, chi forse, chi no e chi deve ancora rispondere: tutti i nomi in vista, senza
+ * aprire niente, come gli inviti delle app di oggi. Accanto a chi ha un'alternativa, cosa preferisce.
  */
-export function RosterSheet({
-  proposal,
-  open,
-  onClose,
-}: {
-  proposal: Proposal;
-  open: boolean;
-  onClose: () => void;
-}) {
+export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const { data, me } = useData();
   const byId = new Map(data.players.map((p) => [p.id, p]));
   const by = (k: "si" | "forse" | "no") =>
@@ -86,62 +71,54 @@ export function RosterSheet({
     },
   ];
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(o) => !o && onClose()}
-      title="Chi c'è"
-      description={`${hhmm(proposal.startsAt)}${proposal.place ? ` al ${PLACES.find((x) => x.value === proposal.place)?.label}` : ""}`}
+    <div
+      className="flex flex-col gap-3 border-t-2 border-dashed border-line-strong pt-3"
+      aria-label="Chi c'è"
+      role="group"
     >
-      <div className="flex flex-col gap-4 pb-2">
-        {groups
-          .filter((g) => g.rows.length)
-          .map((g) => (
-            <section key={g.title} aria-label={g.title}>
-              <h3 className="mb-2 flex items-center gap-2 text-[13px] font-bold">
-                <span
+      {groups
+        .filter((g) => g.rows.length)
+        .map((g) => (
+          <section key={g.title} aria-label={g.title}>
+            <h3 className="mb-1.5 flex items-center gap-2 text-[12.5px] font-bold">
+              <span
+                className={clsx(
+                  "grid h-5 min-w-5 place-items-center rounded-full border-2 border-edge px-1 text-[11px]",
+                  g.tone,
+                )}
+              >
+                {g.rows.length}
+              </span>
+              {g.title}
+            </h3>
+            <ul className="flex flex-wrap gap-1.5">
+              {g.rows.map(({ player, hint }) => (
+                <li
+                  key={player?.id}
                   className={clsx(
-                    "grid h-6 min-w-6 place-items-center rounded-full border-2 border-edge px-1.5 text-[12px]",
-                    g.tone,
+                    "flex max-w-full items-center gap-1.5 rounded-full border-2 border-line-strong bg-surface py-0.5 pl-0.5 pr-2.5",
+                    player?.id === me?.id && "!border-court bg-court-soft",
                   )}
                 >
-                  {g.rows.length}
-                </span>
-                {g.title}
-              </h3>
-              <ul className="flex flex-wrap gap-1.5">
-                {g.rows.map(({ player, hint }) => (
-                  <li
-                    key={player?.id}
-                    className={clsx(
-                      "flex max-w-full items-center gap-2 rounded-full border-2 border-line-strong bg-surface py-1 pl-1 pr-3",
-                      player?.id === me?.id && "!border-court bg-court-soft",
-                    )}
-                  >
-                    <Avatar
-                      player={player}
-                      size={28}
-                      href={false}
-                      ring="none"
-                    />
-                    <span className="min-w-0 leading-tight">
-                      <span className="block truncate text-[13.5px] font-semibold">
-                        {player?.id === me?.id
-                          ? "Tu"
-                          : shortName(player, data.players)}
-                      </span>
-                      {hint && (
-                        <span className="block truncate text-[11px] text-muted">
-                          {hint}
-                        </span>
-                      )}
+                  <Avatar player={player} size={24} href={false} ring="none" />
+                  <span className="min-w-0 leading-tight">
+                    <span className="block truncate text-[13px] font-semibold">
+                      {player?.id === me?.id
+                        ? "Tu"
+                        : shortName(player, data.players)}
                     </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-      </div>
-    </Sheet>
+                    {hint && (
+                      <span className="block truncate text-[10.5px] text-muted">
+                        {hint}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+    </div>
   );
 }
 
@@ -149,15 +126,13 @@ export function RosterSheet({
  * Un altro orario o l'altro campetto, sempre lo stesso giorno. Per chi ha detto "ci sono" è una
  * controproposta (la vede chi ha proposto); per chi l'ha proposta sposta subito la partita.
  */
-export function AltSheet({
+export function AltForm({
   proposal,
   mode,
-  open,
   onClose,
 }: {
   proposal: Proposal;
   mode: "alt" | "move";
-  open: boolean;
   onClose: () => void;
 }) {
   const { backend, me, mutate, data } = useData();
@@ -245,48 +220,43 @@ export function AltSheet({
   };
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(o) => !o && onClose()}
-      title={mode === "move" ? "Sposta la partita" : "Proponi un'alternativa"}
-      description={
-        mode === "move"
-          ? "Stesso giorno: cambia orario, campetto o tutti e due. Avviso io chi c'è"
-          : `Stesso giorno: un altro orario, l'altro campetto o tutti e due. Lo dico a ${shortName(creator, data.players)}`
+    <div
+      className="flex flex-col gap-3 rounded-[20px] border-2 border-edge bg-raised p-3"
+      role="group"
+      aria-label={
+        mode === "move" ? "Sposta la partita" : "Proponi un'alternativa"
       }
-      footer={
+    >
+      <p className="text-[13px] font-semibold text-muted">
+        {mode === "move"
+          ? "Stesso giorno: cambia orario, campetto o tutti e due. Avviso io chi c'è"
+          : `Stesso giorno: un altro orario, l'altro campetto o tutti e due. Lo dico a ${shortName(creator, data.players)}`}
+      </p>
+      <TimeField value={time} onChange={setTime} />
+      <Segmented
+        value={place}
+        onChange={setPlace}
+        options={PLACES.map((x) => ({ value: x.value, label: x.label }))}
+      />
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={onClose} className="flex-1">
+          Chiudi
+        </Button>
         <Button
           variant="primary"
-          block
+          className="flex-1"
           onClick={submit}
           disabled={busy || unchanged || past}
         >
           {busy
             ? "Invio…"
-            : unchanged
-              ? "Cambia orario o campetto"
-              : past
-                ? "Questo orario è già passato"
-                : mode === "move"
-                  ? "Sposta"
-                  : "Proponi"}
+            : past
+              ? "Già passato"
+              : mode === "move"
+                ? "Sposta"
+                : "Proponi"}
         </Button>
-      }
-    >
-      <div className="flex flex-col gap-5 pb-2">
-        <section>
-          <h3 className="mb-2 text-[13px] font-semibold text-muted">Ora</h3>
-          <TimeField value={time} onChange={setTime} />
-        </section>
-        <section>
-          <h3 className="mb-2 text-[13px] font-semibold text-muted">Dove</h3>
-          <Segmented
-            value={place}
-            onChange={setPlace}
-            options={PLACES.map((x) => ({ value: x.value, label: x.label }))}
-          />
-        </section>
       </div>
-    </Sheet>
+    </div>
   );
 }

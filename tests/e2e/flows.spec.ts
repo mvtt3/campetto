@@ -200,16 +200,14 @@ test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
   await page.goto("/organizza");
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
   await expect(card).toContainText("Decathlon");
-  // Chi c'è: i nomi sotto la barra, e l'elenco completo con un tocco.
-  await card.getByRole("button", { name: /^Chi c'è/ }).click();
-  const roster = page.getByRole("dialog", { name: "Chi c'è" });
+  // Chi c'è: tutti i nomi sotto la proposta, senza aprire niente.
+  const roster = card.getByRole("group", { name: "Chi c'è" });
   await expect(roster.getByRole("region", { name: "Ci sono" })).toContainText(
     "Tu",
   );
   await expect(
     roster.getByRole("region", { name: "Non hanno ancora risposto" }),
   ).toBeVisible();
-  await page.keyboard.press("Escape");
   // La controproposta di prova (un'ora dopo, al Niche): "Anch'io".
   const alts = card.getByRole("list", { name: "Controproposte" });
   await expect(alts).toContainText("al Niche");
@@ -221,10 +219,12 @@ test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
   await card
     .getByRole("button", { name: "Meglio un altro orario o campetto?" })
     .click();
-  const sheet = page.getByRole("dialog", { name: "Proponi un'alternativa" });
-  await sheet.getByRole("button", { name: "17:30" }).click();
-  await sheet.getByRole("button", { name: "Proponi", exact: true }).click();
+  // Si apre lì, dentro la scheda: niente finestre.
+  const form = card.getByRole("group", { name: "Proponi un'alternativa" });
+  await form.getByRole("button", { name: "17:30" }).click();
+  await form.getByRole("button", { name: "Proponi", exact: true }).click();
   await expect(alts).toContainText("Alle 17:30");
+  await expect(form).toHaveCount(0);
 });
 
 test("chi ha proposto sposta la partita su una controproposta", async ({

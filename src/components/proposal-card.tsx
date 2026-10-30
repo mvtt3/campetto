@@ -3,8 +3,9 @@
 import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { ChevronRight, MapPin, Repeat2, Shuffle, X } from "lucide-react";
-import { motion } from "motion/react";
-import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
+import { useState, type ReactNode } from "react";
 import { TeamsSheet } from "./teams-sheet";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
@@ -16,7 +17,7 @@ import {
   type Proposal,
   type ResponseKind,
 } from "@/lib/types";
-import { AltSheet, RosterSheet } from "./proposal-sheets";
+import { AltForm, RosterPanel } from "./proposal-extras";
 import { AvatarStack } from "./ui/avatar";
 import { haptic } from "./ui/basics";
 import { useToast } from "./ui/toast";
@@ -132,9 +133,8 @@ export function ProposalCard({
   const canCancel = me && (me.id === proposal.createdBy || me.isAdmin);
 
   const [teamsOpen, setTeamsOpen] = useState(false);
-  const [rosterOpen, setRosterOpen] = useState(false);
-  // Ogni apertura riparte dai valori attuali della partita.
-  const [altSheet, setAltSheet] = useState<{
+  // L'alternativa si scrive lì dentro la scheda, senza finestre: ogni apertura riparte da capo.
+  const [altForm, setAltForm] = useState<{
     mode: "alt" | "move";
     n: number;
     open: boolean;
@@ -155,7 +155,7 @@ export function ProposalCard({
   );
 
   const openAlt = (mode: "alt" | "move") =>
-    setAltSheet((s) => ({ mode, n: s.n + 1, open: true }));
+    setAltForm((s) => ({ mode, n: s.n + 1, open: true }));
 
   // "Anch'io" su una controproposta, o la ritiro se è già la mia.
   const backAlt = async (startsAt: string, place: Proposal["place"]) => {
@@ -269,12 +269,10 @@ export function ProposalCard({
         <WeatherChip at={proposal.startsAt} className="shrink-0" />
       </div>
 
-      {/* Chi c'è: facce, conta e nomi. Un tocco apre l'elenco completo. */}
-      <button
-        type="button"
-        onClick={() => setRosterOpen(true)}
-        aria-label={`Chi c'è: ${yesNames.length ? namesList(yesNames, 6) : "ancora nessuno"}. Vedi tutte le risposte`}
-        className="press -mx-1 flex items-center gap-3 rounded-2xl px-1 text-left"
+      {/* Chi c'è: facce e conta. Nella Home porta al calendario, dove ci sono tutti i nomi. */}
+      <WhoRow
+        compact={compact}
+        label={`Chi c'è: ${yesNames.length ? namesList(yesNames, 6) : "ancora nessuno"}. Apri il calendario`}
       >
         {yes.length ? (
           <AvatarStack players={yes} size={compact ? 28 : 32} />
@@ -321,13 +319,8 @@ export function ProposalCard({
               transition={{ type: "spring", stiffness: 200, damping: 26 }}
             />
           </div>
-          {yesNames.length > 0 && (
-            <p
-              className={clsx(
-                "mt-1 truncate text-[12.5px] text-muted",
-                compact && "short:hidden",
-              )}
-            >
+          {compact && yesNames.length > 0 && (
+            <p className="mt-1 truncate text-[12.5px] text-muted short:hidden">
               <span className="font-semibold text-text">
                 {namesList(
                   yesNames.map((n, i) =>
@@ -339,8 +332,10 @@ export function ProposalCard({
             </p>
           )}
         </div>
-        <ChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
-      </button>
+        {compact && (
+          <ChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
+        )}
+      </WhoRow>
 
       <div className="flex gap-2" role="group" aria-label="La tua risposta">
         {RESPONSES.map((r) => {
@@ -429,7 +424,25 @@ export function ProposalCard({
       )}
 
       {/* Un altro orario o l'altro campetto, stesso giorno: per chi c'è, e per chi l'ha proposta. */}
-      {!compact && future && (canMove || mine === "si") && (
+      <AnimatePresence initial={false}>
+        {altForm.open && !compact && (
+          <motion.div
+            key={`alt-${altForm.n}`}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+            className="-m-1 overflow-hidden p-1"
+          >
+            <AltForm
+              proposal={proposal}
+              mode={altForm.mode}
+              onClose={() => setAltForm((s) => ({ ...s, open: false }))}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {!compact && !altForm.open && future && (canMove || mine === "si") && (
         <button
           type="button"
           onClick={() => openAlt(canMove ? "move" : "alt")}
@@ -497,20 +510,8 @@ export function ProposalCard({
             ))}
         </div>
       )}
-      <RosterSheet
-        proposal={proposal}
-        open={rosterOpen}
-        onClose={() => setRosterOpen(false)}
-      />
-      {!compact && (
-        <AltSheet
-          key={`${altSheet.mode}-${altSheet.n}`}
-          proposal={proposal}
-          mode={altSheet.mode}
-          open={altSheet.open}
-          onClose={() => setAltSheet((s) => ({ ...s, open: false }))}
-        />
-      )}
+      {/* Tutti i nomi, sotto, nello spazio del calendario: niente da aprire. */}
+      {!compact && <RosterPanel proposal={proposal} />}
       {teamsOpen && (
         <TeamsSheet
           playerIds={yes.map((p) => p.id)}
@@ -519,5 +520,28 @@ export function ProposalCard({
         />
       )}
     </div>
+  );
+}
+
+/** La riga di chi c'è: nella Home è un collegamento al calendario, nel calendario è solo da leggere. */
+function WhoRow({
+  compact,
+  label,
+  children,
+}: {
+  compact?: boolean;
+  label: string;
+  children: ReactNode;
+}) {
+  return compact ? (
+    <Link
+      href="/organizza"
+      aria-label={label}
+      className="press -mx-1 flex items-center gap-3 rounded-2xl px-1 text-left"
+    >
+      {children}
+    </Link>
+  ) : (
+    <div className="flex items-center gap-3">{children}</div>
   );
 }
