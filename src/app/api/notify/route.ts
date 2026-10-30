@@ -357,21 +357,31 @@ async function monthLeaders(
     month: d.getMonth(),
   };
   const scoped = filterMatches(matches, { period, format: "all" });
+  const scopedBefore = scoped.filter((x) => x.id !== m.id);
   const stats = ids.map((id) => computePlayerStats(id, scoped));
+  const statsBefore = ids.map((id) => computePlayerStats(id, scopedBefore));
   const month = MONTHS_IT[d.getMonth()].toLowerCase();
+  const opts = {
+    elo: { ratings: new Map(), history: [] } as never,
+    allTime: false,
+  };
+  // Primo da solo, con un valore vero: niente primati a pari merito o a zero.
+  const leaderOf = (rows: { playerId: string; value: number }[]) => {
+    const [first, second] = rows;
+    if (!first || first.value <= 0 || (second && second.value === first.value))
+      return null;
+    return first;
+  };
   for (const l of LEADERS) {
     const def = STAT_BY_KEY.get(l.stat)!;
-    const lb = leaderboard(def, stats, {
-      elo: { ratings: new Map(), history: [] } as never,
-      allTime: false,
-    });
-    const [first, second] = lb.rows;
-    // Primo da solo, con un valore vero: niente primati a pari merito o a zero.
-    if (!first || first.value <= 0 || (second && second.value === first.value))
-      continue;
+    const first = leaderOf(leaderboard(def, stats, opts).rows);
+    if (!first) continue;
+    // Solo quando cambia chi è in testa: chi resta primo non riceve lo stesso messaggio ogni volta.
+    const prev = leaderOf(leaderboard(def, statsBefore, opts).rows);
+    if (prev?.playerId === first.playerId) continue;
     if (
       !(await ctx.claim(
-        `primato:${monthKey(period.year, period.month)}:${l.stat}:${first.playerId}`,
+        `primato:${monthKey(period.year, period.month)}:${l.stat}:${first.playerId}:${m.id}`,
       ))
     )
       continue;
@@ -459,26 +469,56 @@ async function matchSaved(ctx: Ctx, matchId: string) {
     });
   }
 
-  // Nuovo MVP in carica.
+  // Dopo ogni partita si rifanno i conti del mese: se cambia l'MVP in carica o il primo di
+  // una statistica, glielo dico subito (anche se si riprende un primato che aveva già avuto).
   const ids = players.map((p) => p.id);
-  const elo = computeElo(matches, ids);
-  const mvp = currentMvp(ids, matches, new Date(), elo);
-  if (mvp && mvp.period.kind === "month") {
-    const key = `mvp:${monthKey(mvp.period.year, mvp.period.month)}:${mvp.entry.playerId}`;
+  const withoutIt = matches.filter((x) => x.id !== m.id);
+  const now = new Date();
+  const mvp = currentMvp(ids, matches, now, computeElo(matches, ids));
+  const mvpBefore = currentMvp(ids, withoutIt, now, computeElo(withoutIt, ids));
+  if (
+    mvp &&
+    mvp.period.kind === "month" &&
+    (!mvpBefore ||
+      mvpBefore.period.kind !== "month" ||
+      mvpBefore.period.month !== mvp.period.month ||
+      mvpBefore.entry.playerId !== mvp.entry.playerId)
+  ) {
+    const key = `mvp:${monthKey(mvp.period.year, mvp.period.month)}:${mvp.entry.playerId}:${m.id}`;
     if (await ctx.claim(key)) {
       const month = MONTHS_IT[mvp.period.month].toLowerCase();
+      const dethroned =
+        mvpBefore?.period.kind === "month" &&
+        mvpBefore.period.month === mvp.period.month
+          ? mvpBefore.entry.playerId
+          : null;
       const targets = await ctx.targets("mvp", null);
       await ctx.send(
         targets.filter((t) => t.player_id === mvp.entry.playerId),
         {
           title: "Sei tu l'MVP!",
-          body: `Ti ho messo la corona d'oro: sei l'MVP di ${month}`,
+          body: dethroned
+            ? `Hai superato ${name(dethroned)}: sei il nuovo MVP di ${month}. Tieniti stretta la corona`
+            : `Ti ho messo la corona d'oro: sei l'MVP di ${month}`,
           url: "/classifiche",
           tag: "mvp",
         },
       );
+      if (dethroned)
+        await ctx.send(
+          targets.filter((t) => t.player_id === dethroned),
+          {
+            title: "Ti hanno preso la corona",
+            body: `${name(mvp.entry.playerId)} è il nuovo MVP di ${month}. Alla prossima partita te la riprendi`,
+            url: "/classifiche",
+            tag: "mvp",
+          },
+        );
       await ctx.send(
-        targets.filter((t) => t.player_id !== mvp.entry.playerId),
+        targets.filter(
+          (t) =>
+            t.player_id !== mvp.entry.playerId && t.player_id !== dethroned,
+        ),
         {
           title: "Nuovo MVP",
           body: `${name(mvp.entry.playerId)} è l'MVP di ${month}. Riesci a strappargli la corona?`,
@@ -489,12 +529,10 @@ async function matchSaved(ctx: Ctx, matchId: string) {
     }
   }
 
-  // I migliori del mese, statistica per statistica: a chi passa in testa arriva il suo
-  // messaggio, una volta sola al mese per ogni statistica (come la corona dell'MVP).
+  // I migliori del mese, statistica per statistica: a chi passa in testa arriva il suo messaggio.
   await monthLeaders(ctx, matches, m, ids);
 
   // Badge sbloccati con questa partita.
-  const now = new Date();
   const months = monthlyHistory(ids, matches, now);
   const seasons = seasonHistory(ids, matches, now);
   for (const line of m.players) {
