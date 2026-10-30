@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mascot } from "@/components/mascot";
 import { useData } from "@/lib/data/provider";
-import { play, playOrDefer, type SoundName } from "@/lib/sound";
+import { play, type SoundName } from "@/lib/sound";
 
 /**
  * L'apertura dell'app: Spicchio tira a canestro e sotto compare una frase sul
@@ -30,6 +30,9 @@ export const CAPTIONS = [
 
 /** Quanto resta l'apertura, per ogni tiro: il tempo di vedere com'è andata e leggere la frase. */
 const MIN_MS: Record<number, number> = { 0: 2600, 1: 2550, 2: 2650, 3: 2900 };
+
+/** Quanto dopo l'ultimo rumore della palla parte il fischio (secondi): subito, ma separato. */
+const WHISTLE_AFTER = 0.06;
 
 /** I suoni dei quattro tiri, in secondi dall'inizio dell'animazione (allineati alle parabole). */
 const SHOT_SOUNDS: Record<number, [SoundName, number][]> = {
@@ -117,9 +120,13 @@ export function Intro() {
       const wait = sec - elapsed;
       if (wait > -0.05) timers.push(window.setTimeout(() => play(name), Math.max(0, wait) * 1000));
     };
-    // Il fischio d'inizio: su iPhone il telefono non lascia suonare prima di un tocco, e allora arriva al primo tocco.
-    if (elapsed < 0.8) timers.push(window.setTimeout(() => playOrDefer("whistle"), Math.max(0, Math.max(elapsed, 0.12) - elapsed) * 1000));
-    if (!reduce) for (const [name, sec] of SHOT_SOUNDS[shot] ?? []) at(name, sec);
+    // Il fischio arriva appena finisce il tiro di Spicchio (dentro o fuori), un attimo dopo
+    // l'ultimo suono della palla. Se in quel momento il telefono non lascia suonare (iPhone
+    // appena aperto, prima di un tocco) il fischio si salta: mai più tardi, mentre usi l'app.
+    const sounds = reduce ? [] : (SHOT_SOUNDS[shot] ?? []);
+    for (const [name, sec] of sounds) at(name, sec);
+    const lastHit = sounds.length ? Math.max(...sounds.map(([, sec]) => sec)) : 0.5;
+    at("whistle", lastHit + WHISTLE_AFTER);
     stopSounds.current = () => timers.forEach((x) => window.clearTimeout(x));
     return () => {
       window.clearTimeout(t);

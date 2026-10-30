@@ -39,7 +39,11 @@ const pctLabel = (r: TeamRecord) => `${Math.round(r.winPct * 100)}% vinte`;
 export function TeamBoard({ matches }: { matches: Match[] }) {
   const { data, me } = useData();
   const [format, setFormat] = useState<Format>(() => busiestFormat(matches));
-  const rows = useMemo(() => teamRecords(matches, format), [matches, format]);
+  // Prima chi ha giocato insieme almeno due volte, poi tutte le altre coppie: nessuna sparisce.
+  const rows = useMemo(
+    () => [...teamRecords(matches, format), ...teamRecords(matches, format, 1).filter((r) => r.games < TEAM_MIN_GAMES)],
+    [matches, format],
+  );
   const [best, ...rest] = rows;
   const team = (r: TeamRecord) => r.ids.map((id) => data.players.find((p) => p.id === id)).filter((p): p is Player => Boolean(p));
   const isMine = (r: TeamRecord) => !!me && r.ids.includes(me.id);
@@ -89,7 +93,7 @@ export function TeamBoard({ matches }: { matches: Match[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-[14.5px] font-semibold leading-tight [overflow-wrap:anywhere]">{names(r, data.players)}</p>
                   <p className="truncate text-[12.5px] text-muted">
-                    {r.games} partite, {pctLabel(r)}
+                    {r.games === 1 ? "1 partita" : `${r.games} partite`}, {pctLabel(r)}
                   </p>
                 </div>
                 <span className="num shrink-0 text-[22px]">

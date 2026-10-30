@@ -101,14 +101,6 @@ function wire(c: BaseAudioContext) {
   for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
 }
 
-/**
- * Il fischio d'inizio, se all'apertura il telefono non lasciava ancora suonare
- * (su iPhone l'audio parte solo dopo un tocco): arriva al primo tocco, se è presto.
- */
-let deferred: { name: SoundName; until: number } | null = null;
-/** Per un attimo dopo il fischio rimandato, gli altri suoni tacciono (niente doppio suono). */
-let quietUntil = 0;
-
 /** Da chiamare all'avvio: il primo tocco sblocca l'audio (regola dei browser). */
 export function primeAudio() {
   if (typeof window === "undefined") return;
@@ -119,50 +111,12 @@ export function primeAudio() {
   // Il tocco vero (dito alzato, clic, tasto): qui il browser lascia partire l'audio.
   const gesture = () => {
     const c = engine();
-    if (!c) return;
-    const d = deferred;
-    if (d && performance.now() > d.until) deferred = null;
-    const playDeferred = () => {
-      const p = deferred;
-      deferred = null;
-      if (!p || !soundOn()) return;
-      quietUntil = performance.now() + 450;
-      try {
-        run(c, p.name, c.currentTime + 0.01);
-      } catch {
-        /* ignora */
-      }
-    };
-    if (c.state === "running") playDeferred();
-    else if (deferred) void c.resume().then(playDeferred).catch(() => undefined);
-    else void c.resume().catch(() => undefined);
+    if (c && c.state !== "running") void c.resume().catch(() => undefined);
   };
   window.addEventListener("pointerdown", unlock, { capture: true, passive: true });
   for (const t of ["touchend", "click", "keydown"]) window.addEventListener(t, gesture, { capture: true, passive: true });
   // Nella app installata il browser di solito permette l'audio anche prima del tocco.
   unlock();
-}
-
-/**
- * Suona subito se si può; altrimenti (iPhone appena aperto) al primo tocco dei
- * prossimi secondi. Per il fischio d'inizio.
- */
-export function playOrDefer(name: SoundName, withinMs = 10_000) {
-  if (!soundOn()) return;
-  const c = engine();
-  if (!c) return;
-  if (c.state === "running") return play(name);
-  deferred = { name, until: performance.now() + withinMs };
-  const asked = performance.now();
-  void c
-    .resume()
-    .then(() => {
-      if (deferred?.name === name && performance.now() - asked < 160) {
-        deferred = null;
-        play(name);
-      }
-    })
-    .catch(() => undefined);
 }
 
 interface Tone {
@@ -390,7 +344,7 @@ function run(c: BaseAudioContext, name: SoundName, t: number) {
 
 /** Suona, se i suoni sono accesi e il browser lo permette. Non aspetta mai. */
 export function play(name: SoundName) {
-  if (!soundOn() || performance.now() < quietUntil) return;
+  if (!soundOn()) return;
   const c = engine();
   if (!c) return;
   const go = () => {

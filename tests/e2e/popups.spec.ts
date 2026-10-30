@@ -101,9 +101,11 @@ for (const vp of VIEWPORTS) {
 
       // Un messaggio di Spicchio (errore) in alto.
       await page.goto("/profilo/impostazioni");
-      await page.getByLabel("Nome nell'app").fill("x");
-      await page.getByLabel("Numero di maglia").click();
-      await check(page, '[role="alert"]', "messaggio di errore");
+      await page.getByRole("button", { name: /Nome nell'app/ }).click();
+      await check(page, '[role="dialog"]', "cambio del nome");
+      await page.getByLabel("Nuovo nome").fill("c4zz0");
+      await check(page, '[role="alert"]', "avviso sul nome");
+      await page.keyboard.press("Escape");
       await page.goto("/profilo/impostazioni");
       await page.getByRole("button", { name: /Segnala un problema/ }).click();
       await check(page, '[role="dialog"]', "segnala un problema");

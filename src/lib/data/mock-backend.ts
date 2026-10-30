@@ -5,6 +5,7 @@ import {
   DEFAULT_NOTIFY_PREFS,
   emptyBox,
   MAX_SUBS,
+  nameUnlockDate,
   TEAM_SIZE,
   type Dataset,
   type Format,
@@ -262,7 +263,7 @@ function initialState(demo: boolean, full = false): MockState {
       "Cande",
       "Matti",
       "Mocciaro",
-      "Simone Falco",
+      "Simone Falbo",
       "Gigi Pyq",
       "Samu Formigaro",
     ];
@@ -477,7 +478,14 @@ export function createMockBackend(): Backend {
         throw new Error(
           'duplicate key value violates unique constraint "players_nickname_key"',
         );
-      Object.assign(me(), patch);
+      // Come nel database: dopo il primo nome, un cambio ogni 14 giorni.
+      const cur = me();
+      if (patch.nickname !== undefined && patch.nickname !== cur.nickname && cur.nickname) {
+        const until = nameUnlockDate(cur);
+        if (until) throw new Error(`Puoi cambiare nome di nuovo dal ${until.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}`);
+        cur.nicknameChangedAt = new Date().toISOString();
+      }
+      Object.assign(cur, patch);
       save();
     },
     async uploadAvatar(file) {

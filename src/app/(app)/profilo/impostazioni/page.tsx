@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Compass, Download, Eye, LogOut, MessageSquareWarning, Palette, Shield, ShieldAlert, Check, Users, Volume2, VolumeX } from "lucide-react";
+import { Bell, Camera, ChevronRight, Compass, Download, Eye, LogOut, MessageSquareWarning, Palette, Shield, Check, Lock, Users, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { AVATAR_PRESETS, type AvatarPresetId } from "@/components/avatar-presets";
@@ -15,8 +15,8 @@ import { FeedbackSheet } from "@/components/feedback-sheet";
 import { SECTION_IDS, sections } from "@/components/tutorial/model";
 import { useTutorial } from "@/components/tutorial/tutorial";
 import { Sheet } from "@/components/ui/sheet";
-import { NAME_MAX, nameError, OFFENSIVE_NAME, playerHref } from "@/lib/types";
-import { isOffensive } from "@/lib/nickname-filter";
+import { nameUnlockDate, playerHref } from "@/lib/types";
+import { NameSheet } from "@/components/name-sheet";
 import { Avatar, CARD_COLORS, isLightColor, playerColor } from "@/components/ui/avatar";
 import { Button, ScreenHeader, Segmented, Spinner, Toggle } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
@@ -43,13 +43,12 @@ function Row({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
 }
 
 export default function SettingsPage() {
-  const { me, data, backend, mutate, reinit, playerView } = useData();
+  const { me, backend, mutate, reinit, playerView } = useData();
   const router = useRouter();
   const toast = useToast();
   const [theme, setTheme] = useState<ThemePref>("light");
   const push = usePush();
-  const [nickname, setNickname] = useState("");
-  const nickOffensive = isOffensive(nickname);
+  const [naming, setNaming] = useState(false);
   const [jersey, setJersey] = useState("");
   const [uploading, setUploading] = useState(false);
   const [install, setInstall] = useState<BeforeInstallPromptEvent | null>(null);
@@ -89,7 +88,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!me) return;
     /* eslint-disable react-hooks/set-state-in-effect */
-    setNickname(me.nickname ?? "");
     setJersey(me.jerseyNumber !== null ? String(me.jerseyNumber) : "");
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [me]);
@@ -167,37 +165,13 @@ export default function SettingsPage() {
             </div>
           </div>
           <Row>
-            <label htmlFor="nick" className="shrink-0 text-[15px]">
-              Nome nell&apos;app
-            </label>
-            <input
-              id="nick"
-              value={nickname}
-              maxLength={NAME_MAX}
-              autoCapitalize="words"
-              onChange={(e) => setNickname(e.target.value)}
-              onBlur={() => {
-                const clean = nickname.trim().replace(/\s+/g, " ");
-                if (clean === (me.nickname ?? "")) return;
-                const err = nameError(clean, data.players, me.id);
-                if (err) {
-                  toast(err, "error");
-                  setNickname(me.nickname ?? "");
-                } else void patchMe({ nickname: clean }, "Ho salvato il nome");
-              }}
-              aria-invalid={nickOffensive || undefined}
-              className={clsx(
-                "h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:font-normal placeholder:text-faint",
-                nickOffensive && "text-danger",
-              )}
-            />
+            {/* Il nome si cambia in un pannello a parte: anteprima, avviso e pausa di 14 giorni. */}
+            <button className="press flex min-h-10 min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setNaming(true)}>
+              <span className="shrink-0 text-[15px]">Nome nell&apos;app</span>
+              <span className="min-w-0 flex-1 truncate text-right text-[15px] font-semibold">{me.nickname}</span>
+              {nameUnlockDate(me) ? <Lock size={16} className="shrink-0 text-faint" aria-label="bloccato per ora" /> : <ChevronRight size={18} className="shrink-0 text-faint" />}
+            </button>
           </Row>
-          {/* Mentre scrivi: se il nome può offendere lo dico subito, prima di salvarlo. */}
-          {nickOffensive && (
-            <p className="nick-warn flex items-center gap-1.5 border-t border-line px-4 py-2.5 text-[13px] font-semibold text-danger" role="alert">
-              <ShieldAlert size={15} className="shrink-0" aria-hidden /> {OFFENSIVE_NAME}
-            </p>
-          )}
           <Row>
             <label htmlFor="jersey" className="shrink-0 text-[15px]">
               Numero di maglia
@@ -417,6 +391,8 @@ export default function SettingsPage() {
         }}
       />
       <FeedbackSheet open={feedback} onClose={() => setFeedback(false)} />
+      {/* Rimontato a ogni apertura, così riparte dal nome attuale. */}
+      {naming && <NameSheet me={me} open onClose={() => setNaming(false)} />}
     </>
   );
 }

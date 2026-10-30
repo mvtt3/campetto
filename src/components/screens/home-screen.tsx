@@ -159,8 +159,10 @@ export function HomeScreen() {
                     stroke={6}
                     label={`${Math.round(mine.winPct * 100)}% di vittorie`}
                   >
-                    <span className="num text-[13px]">
-                      {Math.round(mine.winPct * 100)}%
+                    {/* Il % piccolo in alto: "100%" a grandezza piena usciva dall'anello. */}
+                    <span className="num whitespace-nowrap text-[13px] leading-none">
+                      {Math.round(mine.winPct * 100)}
+                      <span className="ml-px align-[0.3em] text-[8.5px]">%</span>
                     </span>
                   </Ring>
                   <div className="text-[13px] leading-tight">
@@ -336,7 +338,15 @@ export function HomeScreen() {
                 )}
                 {last ? (
                   <div className="flex flex-1 flex-col justify-end">
-                    <p className="score text-[40px] short:text-[30px]">
+                    <p
+                      // Si adatta alla larghezza: con le cifre doppie "22–10" a 40 px usciva dal riquadro.
+                      className={clsx(
+                        "score whitespace-nowrap",
+                        String(last.scoreA).length + String(last.scoreB).length > 3
+                          ? "text-[clamp(24px,8.4vw,36px)] short:text-[26px]"
+                          : "text-[40px] short:text-[30px]",
+                      )}
+                    >
                       {last.scoreA}
                       <span className="text-faint">–</span>
                       {last.scoreB}

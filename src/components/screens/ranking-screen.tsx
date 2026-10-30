@@ -67,6 +67,10 @@ function boardInfo(board: Board, minGames: number | null): string {
   return `Media a partita. Per entrare servono almeno ${minGames ?? 2} partite con tabellino${extra}, così chi gioca poco non scavalca chi c'è sempre.`;
 }
 
+function missingLabel(missing: number): string {
+  return missing === 1 ? "manca 1 partita" : `mancano ${missing} partite`;
+}
+
 const PODIUM = [
   { place: 2, h: 64, color: "bg-court text-court-ink" },
   { place: 1, h: 92, color: "bg-volt text-volt-ink" },
@@ -77,7 +81,7 @@ function Podium({ rows }: { rows: Row[] }) {
   const { data } = useData();
   return (
     <div
-      className="mb-4 grid grid-cols-3 items-end gap-2 px-1 pt-2"
+      className="mb-2 grid grid-cols-3 items-end gap-2 px-1 pt-2"
       aria-label="Podio"
     >
       {PODIUM.map(({ place, h, color }, i) => {
@@ -107,6 +111,9 @@ function Podium({ rows }: { rows: Row[] }) {
                 {shortName(p, data.players)}
               </p>
               <p className="num text-[20px]">{r.value}</p>
+              {r.value === "—" && r.sub && (
+                <p className="text-[11.5px] font-semibold text-muted">{r.sub}</p>
+              )}
             </div>
             <motion.div
               className={clsx(
@@ -191,18 +198,27 @@ export function RankingScreen() {
     });
     const fmt = (v: number) => stat.format(v).replace(".", ",");
     return {
-      rows: lb.rows.map((r) => {
-        const s = stats.find((x) => x.playerId === r.playerId)!;
-        const n = stat.qualify?.by === "statGames" ? s.statGames : s.games;
-        return {
+      // Chi ha tirato poco non sparisce: viene dopo gli altri, con il motivo.
+      rows: [
+        ...lb.rows.map((r) => {
+          const s = stats.find((x) => x.playerId === r.playerId)!;
+          const n = stat.qualify?.by === "statGames" ? s.statGames : s.games;
+          return {
+            playerId: r.playerId,
+            rank: r.rank,
+            value: fmt(r.value),
+            sub: stat.qualify
+              ? `su ${n} ${n === 1 ? "partita" : "partite"}`
+              : `${s.games} ${s.games === 1 ? "partita" : "partite"}`,
+          };
+        }),
+        ...lb.loose.map((r, i) => ({
           playerId: r.playerId,
-          rank: r.rank,
+          rank: lb.rows.length + i + 1,
           value: fmt(r.value),
-          sub: stat.qualify
-            ? `su ${n} ${n === 1 ? "partita" : "partite"}`
-            : `${s.games} ${s.games === 1 ? "partita" : "partite"}`,
-        };
-      }),
+          sub: r.note,
+        })),
+      ],
       pending: lb.pending.map((r) => ({
         playerId: r.playerId,
         value: fmt(r.value),
@@ -223,6 +239,20 @@ export function RankingScreen() {
   ]);
 
   const info = boardInfo(board, minGames);
+  // Il podio non resta mai mezzo vuoto: se in classifica sono meno di tre, salgono anche
+  // quelli fuori classifica (senza valore, con quante partite mancano).
+  const fill = pending.slice(0, Math.max(0, 3 - rows.length));
+  const podium: Row[] = [
+    ...rows.slice(0, 3),
+    ...fill.map((r, i) => ({
+      playerId: r.playerId,
+      rank: rows.length + i + 1,
+      value: r.value || "—",
+      sub: missingLabel(r.missing),
+    })),
+  ];
+  const rest = rows.slice(3);
+  const restPending = pending.slice(fill.length);
 
   return (
     <>
@@ -253,28 +283,15 @@ export function RankingScreen() {
         </div>
       </div>
 
-      <PullToRefresh className="px-5 pb-4 pt-2">
-        {board === "squadre" ? (
-          <TeamBoard matches={teamScope} />
-        ) : rows.length === 0 ? (
-          <>
-            <EmptyState
-              title="Classifica ancora vuota"
-              text={
-                board === "mvp"
-                  ? "Per entrare in classifica servono almeno 3 partite nel periodo"
-                  : "Non ci sono ancora abbastanza partite in questo periodo"
-              }
-            />
-            <GroupStrip title="Intanto, ecco il gruppo" />
-          </>
-        ) : (
+      {board !== "squadre" && (rows.length > 0 || pending.length > 0) ? (
+        <>
+          {/* Il podio resta fermo in vista; scorre solo l'elenco dal quarto in giù. */}
           <div
             key={`${board}-${period.kind}-${format}`}
-            className="relative"
+            className="relative shrink-0 px-5 pt-1"
             data-tour="rank-podium"
           >
-            <div className="absolute right-0 top-1 z-10">
+            <div className="absolute right-5 top-1 z-10">
               <InfoTip label="Come funziona questa classifica">
                 {board === "mvp" ? (
                   <MvpMonthInfo minGames={minGames ?? 3} />
@@ -283,9 +300,11 @@ export function RankingScreen() {
                 )}
               </InfoTip>
             </div>
-            <Podium rows={rows} />
+            <Podium rows={podium} />
+          </div>
+          <PullToRefresh className="px-5 pb-4 pt-1">
             <ol className="flex flex-col gap-2">
-              {rows.slice(3).map((r) => {
+              {rest.map((r) => {
                 const p = data.players.find((x) => x.id === r.playerId);
                 const mine = r.playerId === me?.id;
                 return (
@@ -317,17 +336,17 @@ export function RankingScreen() {
                 );
               })}
             </ol>
-            {pending.length > 0 && (
+            {restPending.length > 0 && (
               <section className="mt-5" aria-label="Fuori classifica">
                 <h3 className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-bold text-muted">
                   Fuori classifica
                   <InfoTip label="Perché sono fuori classifica" size={16}>
-                    Hanno giocato meno partite del minimo di questo periodo:
-                    entrano appena le raggiungono
+                    Hanno giocato meno partite del minimo: entrano in classifica
+                    appena lo raggiungono
                   </InfoTip>
                 </h3>
                 <ul className="flex flex-col gap-1.5">
-                  {pending.map((r) => {
+                  {restPending.map((r) => {
                     const p = data.players.find((x) => x.id === r.playerId);
                     return (
                       <li
@@ -344,9 +363,7 @@ export function RankingScreen() {
                               {r.value}
                             </span>
                           )}
-                          {r.missing === 1
-                            ? "manca 1 partita"
-                            : `mancano ${r.missing} partite`}
+                          {missingLabel(r.missing)}
                         </span>
                       </li>
                     );
@@ -354,9 +371,23 @@ export function RankingScreen() {
                 </ul>
               </section>
             )}
-          </div>
-        )}
-      </PullToRefresh>
+          </PullToRefresh>
+        </>
+      ) : (
+        <PullToRefresh className="px-5 pb-4 pt-2">
+          {board === "squadre" ? (
+            <TeamBoard matches={teamScope} />
+          ) : (
+            <>
+              <EmptyState
+                title="Classifica ancora vuota"
+                text="Appena si gioca una partita in questo periodo, qui compare la classifica"
+              />
+              <GroupStrip title="Intanto, ecco il gruppo" />
+            </>
+          )}
+        </PullToRefresh>
+      )}
     </>
   );
 }

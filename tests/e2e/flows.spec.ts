@@ -331,11 +331,19 @@ test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({ page })
   await expect(page.getByRole("heading", { name: /, (Pluto|MVP)\??$/ })).toBeVisible();
   // Il nome si cambia dalle impostazioni, sempre senza doppioni.
   await page.goto("/profilo/impostazioni");
-  const field = page.getByLabel("Nome nell'app");
+  await page.getByRole("button", { name: /Nome nell'app/ }).click();
+  const field = page.getByLabel("Nuovo nome");
   await expect(field).toHaveValue("Pluto");
+  await expect(page.getByRole("button", { name: "Salva il nome" })).toBeDisabled();
   await field.fill("Pluto Jr");
-  await field.blur();
-  await expect(page.getByText("Ho salvato il nome")).toBeVisible();
+  await expect(page.getByText(/una volta ogni 14 giorni/)).toBeVisible();
+  await page.getByRole("button", { name: "Salva il nome" }).click();
+  await expect(page.getByText("Ora sei Pluto Jr")).toBeVisible();
+  // Dopo un cambio il nome resta bloccato per 14 giorni.
+  await page.getByRole("button", { name: /Nome nell'app/ }).click();
+  await expect(page.getByText("Nome bloccato per ora")).toBeVisible();
+  await expect(page.getByText(/Mancano 1[34] giorni/)).toBeVisible();
+  await page.getByRole("button", { name: "Ho capito" }).click();
   await page.getByRole("button", { name: /Foto profilo/ }).click();
   await page.getByRole("radio", { name: "Figurina Kofi" }).click();
   await expect(page.getByText("Ho cambiato la figurina")).toBeVisible();

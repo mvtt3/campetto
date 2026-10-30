@@ -80,6 +80,8 @@ export interface Player {
   firstName: string;
   lastName: string | null;
   nickname: string | null;
+  /** Quando ha cambiato nome l'ultima volta (dopo il primo): da lì 14 giorni prima del prossimo. */
+  nicknameChangedAt?: string | null;
   roles: string[];
   jerseyNumber: number | null;
   cardColor: string | null;
@@ -228,6 +230,16 @@ export function adminName(p: Pick<Player, "firstName" | "lastName" | "nickname">
   if (!p) return "—";
   const real = playerName(p);
   return p.nickname && p.nickname.trim().toLowerCase() !== real.toLowerCase() ? `${p.nickname} (${real})` : real;
+}
+
+/** Ogni quanto si può cambiare il nome nell'app (il primo, all'accesso, è libero). */
+export const NAME_COOLDOWN_DAYS = 14;
+
+/** Da quando si può cambiare di nuovo il nome; null se si può già. */
+export function nameUnlockDate(p: Pick<Player, "nicknameChangedAt">, now = new Date()): Date | null {
+  if (!p.nicknameChangedAt) return null;
+  const at = new Date(new Date(p.nicknameChangedAt).getTime() + NAME_COOLDOWN_DAYS * 86_400_000);
+  return at > now ? at : null;
 }
 
 export const NAME_MIN = 2;

@@ -21,6 +21,7 @@ export function mapPlayer(r: any): Player {
     firstName: r.first_name,
     lastName: r.last_name,
     nickname: r.nickname,
+    nicknameChangedAt: r.nickname_changed_at ?? null,
     roles: r.roles ?? [],
     jerseyNumber: r.jersey_number,
     cardColor: r.card_color,
