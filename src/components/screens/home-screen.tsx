@@ -4,11 +4,14 @@ import clsx from "clsx";
 import Link from "next/link";
 import {
   CalendarDays,
+  CircleCheck,
   Crown,
   Plus,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { proposalPhase } from "@/lib/proposals";
+import { neededPlayers } from "@/lib/notifications/grouping";
 import { useEffect, useMemo, useState } from "react";
 import { NewsButton, NewsPanel, useNews } from "@/components/news-panel";
 import { Logo, Mascot } from "@/components/mascot";
@@ -73,6 +76,9 @@ export function HomeScreen() {
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0],
     [data.proposals, now],
   );
+  const nextPhase = next
+    ? proposalPhase(next, now, neededPlayers(next.format))
+    : null;
   const month = now.getMonth();
   const year = now.getFullYear();
   const mine = useMemo(
@@ -247,7 +253,16 @@ export function HomeScreen() {
             }}
           >
             <div className="mb-3 flex items-center justify-between short:mb-1.5">
-              <h2 className="title text-[16px]">Prossima partita</h2>
+              {nextPhase === "confirmed" ? (
+                <h2 className="title flex items-center gap-1.5 text-[16px] text-ok">
+                  <CircleCheck size={18} strokeWidth={2.6} aria-hidden />
+                  Partita confermata
+                </h2>
+              ) : (
+                <h2 className="title text-[16px]">
+                  {nextPhase === "live" ? "Si gioca adesso" : "Prossima partita"}
+                </h2>
+              )}
               <Link
                 href="/organizza"
                 className="press -my-2 flex items-center gap-1.5 py-2 text-[13.5px] font-semibold text-text"

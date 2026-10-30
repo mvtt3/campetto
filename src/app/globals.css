@@ -1726,3 +1726,71 @@ html[data-shot="3"] .intro-ball-x {
     display: none;
   }
 }
+
+/* La partita in corso: bollino che pulsa, Spicchio che palleggia, la cronaca che scorre. */
+.live-dot {
+  animation: live-dot 1.2s ease-in-out infinite;
+}
+@keyframes live-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.live-bounce {
+  animation: live-bounce 0.62s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes live-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  12% {
+    transform: translateY(-4px) scale(0.98, 1.03);
+  }
+  50% {
+    transform: translateY(-16px) scale(1, 1);
+  }
+  88% {
+    transform: translateY(-4px) scale(0.98, 1.03);
+  }
+}
+.live-shadow {
+  animation: live-shadow 0.62s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes live-shadow {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(-50%) scale(0.62);
+    opacity: 0.55;
+  }
+}
+.live-line {
+  animation: live-line 0.38s ease-out;
+}
+@keyframes live-line {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .live-bounce,
+  .live-shadow,
+  .live-line {
+    animation: none;
+  }
+}

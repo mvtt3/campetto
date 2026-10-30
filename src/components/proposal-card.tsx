@@ -2,7 +2,14 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import { ChevronRight, MapPin, Repeat2, Shuffle, X } from "lucide-react";
+import {
+  ChevronRight,
+  CircleCheck,
+  MapPin,
+  Repeat2,
+  Shuffle,
+  X,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -10,7 +17,12 @@ import { TeamsSheet } from "./teams-sheet";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
 import { useNow } from "@/lib/use-now";
-import { alternativesOf, altLabel, namesList } from "@/lib/proposals";
+import {
+  alternativesOf,
+  altLabel,
+  namesList,
+  proposalPhase,
+} from "@/lib/proposals";
 import {
   placeLabel,
   shortName,
@@ -18,6 +30,7 @@ import {
   type ResponseKind,
 } from "@/lib/types";
 import { AltForm, RosterPanel } from "./proposal-extras";
+import { LiveMatch } from "./live-match";
 import { AvatarStack } from "./ui/avatar";
 import { haptic } from "./ui/basics";
 import { useToast } from "./ui/toast";
@@ -233,11 +246,29 @@ export function ProposalCard({
     }
   };
 
+  // Al completo, o in 4 a meno di 12 ore: confermata. Iniziata: in corso, con la cronaca.
+  const phase = proposalPhase(proposal, now, needed);
+  if (phase === "live")
+    return <LiveMatch proposal={proposal} compact={compact} />;
+
   return (
     <div
       data-testid="proposal-card"
+      data-phase={phase}
       className={clsx("flex flex-col", compact ? "gap-3 short:gap-2" : "gap-4")}
     >
+      {phase === "confirmed" && !compact && (
+        <div
+          className="halftone -mx-4 -mt-4 flex items-center gap-2 rounded-t-[19.5px] border-b-[2.5px] border-edge bg-ok px-4 py-2.5 text-white"
+          role="status"
+        >
+          <CircleCheck size={19} strokeWidth={2.6} aria-hidden />
+          <span className="title text-[15.5px]">Partita confermata</span>
+          <span className="ml-auto truncate text-[12.5px] font-semibold opacity-90">
+            {full ? "al completo" : `siete in ${yes.length}, si gioca`}
+          </span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="title truncate text-[19px]">
@@ -280,12 +311,12 @@ export function ProposalCard({
             </span>
             <span className="text-muted">
               {" "}
-              di {needed}{" "}
+              di {needed}
               {full
                 ? ""
-                : `per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
+                : ` per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
             </span>
-            {full && <span className="font-bold text-ok"> si gioca!</span>}
+            {full && <span className="font-bold text-ok"> al completo</span>}
             {yes.length > needed && (
               <span className="font-semibold text-muted">
                 {" "}

@@ -589,6 +589,18 @@ async function proposalCancelled(ctx: Ctx, p: Proposal, players: Player[]) {
   });
 }
 
+interface DueConfirmation {
+  player_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  proposal_id: string;
+  starts_at: string;
+  format: string | null;
+  place: string | null;
+  yes_count: number;
+}
+
 interface Reminder {
   player_id: string;
   endpoint: string;
@@ -651,6 +663,31 @@ async function tick(req: Request) {
       /* abbonamento scaduto: lo ripulisce il prossimo invio normale */
     }
   }
+  // Partita confermata: a 12 ore dall'inizio, se ci sono almeno 4 "ci sono". Di notte si
+  // aspetta le 8 (non la segna come inviata), così il messaggio non va perso.
+  let confirmed = 0;
+  if (!night) {
+    const { data: due } = await sb.rpc("cron_due_confirmations", {
+      p_secret: secret,
+    });
+    for (const r of (due as DueConfirmation[] | null) ?? []) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
+          JSON.stringify({
+            title: "Partita confermata",
+            body: `Siete in ${r.yes_count}: ci vediamo ${dayLabel(r.starts_at)}${r.place ? atPlace(r.place as Place) : " al campetto"}. Se non puoi più, dillo nell'app`,
+            url: "/organizza",
+            tag: `proposal-${r.proposal_id}`,
+          }),
+          { TTL: 6 * 3600, urgency: "normal" },
+        );
+        confirmed++;
+      } catch {
+        /* abbonamento scaduto */
+      }
+    }
+  }
   // "Torna a giocare": verso sera (17–19, ora di Roma), a chi non apre l'app da 6 giorni,
   // al massimo una volta a settimana (lo segna il database).
   let nudged = 0;
@@ -703,7 +740,7 @@ async function tick(req: Request) {
       }
     }
   }
-  return Response.json({ sent, nudged, news });
+  return Response.json({ sent, confirmed, nudged, news });
 }
 
 interface DueNews {

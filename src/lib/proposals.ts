@@ -58,3 +58,32 @@ export function namesList(names: string[], max = 3): string {
   const rest = names.length - (max - 1);
   return `${names.slice(0, max - 1).join(", ")} e altri ${rest}`;
 }
+
+/** Con almeno 4 "ci sono" e nessuno che si tira indietro fino a 12 ore prima, si gioca. */
+export const CONFIRM_MIN = 4;
+export const CONFIRM_HOURS = 12;
+/** Quanto si considera "in corso" una partita confermata, dall'ora d'inizio. */
+export const LIVE_HOURS = 2;
+
+export type ProposalPhase = "open" | "confirmed" | "live" | "over";
+
+/**
+ * A che punto è una proposta: aperta (si raccolgono i sì), confermata (al completo, oppure
+ * almeno 4 a meno di 12 ore dall'inizio), in corso (confermata e già iniziata), finita.
+ */
+export function proposalPhase(
+  p: Proposal,
+  now: Date,
+  needed: number,
+): ProposalPhase {
+  const start = new Date(p.startsAt).getTime();
+  const t = now.getTime();
+  const yes = p.responses.filter((r) => r.response === "si").length;
+  const confirmed =
+    yes >= needed ||
+    (yes >= Math.min(CONFIRM_MIN, needed) &&
+      start - t <= CONFIRM_HOURS * 3_600_000);
+  if (t >= start + LIVE_HOURS * 3_600_000) return "over";
+  if (t >= start) return confirmed ? "live" : "over";
+  return confirmed ? "confirmed" : "open";
+}

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { alternativesOf, altLabel, namesList } from "@/lib/proposals";
+import {
+  alternativesOf,
+  altLabel,
+  namesList,
+  proposalPhase,
+} from "@/lib/proposals";
 import type { Proposal } from "@/lib/types";
 
 const at = (h: number, m = 0) => new Date(2026, 10, 3, h, m).toISOString();
@@ -62,5 +67,30 @@ describe("controproposte", () => {
     expect(namesList(["Davide", "Simone"])).toBe("Davide e Simone");
     expect(namesList(["A", "B", "C"])).toBe("A, B e C");
     expect(namesList(["A", "B", "C", "D", "E"])).toBe("A, B e altri 3");
+  });
+});
+
+describe("partita confermata e in corso", () => {
+  const start = new Date(2026, 10, 3, 18).getTime();
+  const p = (n: number) =>
+    proposal(Array.from({ length: n }, (_, i) => yes(`p${i + 1}`)));
+  const at = (hoursBefore: number) =>
+    new Date(start - hoursBefore * 3_600_000);
+
+  it("al completo è confermata subito", () => {
+    expect(proposalPhase(p(6), at(48), 6)).toBe("confirmed");
+  });
+  it("in 4 si conferma solo da 12 ore prima", () => {
+    expect(proposalPhase(p(4), at(13), 6)).toBe("open");
+    expect(proposalPhase(p(4), at(12), 6)).toBe("confirmed");
+    expect(proposalPhase(p(3), at(2), 6)).toBe("open");
+  });
+  it("confermata e iniziata è in corso per due ore, poi finita", () => {
+    expect(proposalPhase(p(4), at(-0.5), 6)).toBe("live");
+    expect(proposalPhase(p(4), at(-2), 6)).toBe("over");
+    expect(proposalPhase(p(3), at(-0.5), 6)).toBe("over");
+  });
+  it("per un 1v1 bastano due", () => {
+    expect(proposalPhase(p(2), at(48), 2)).toBe("confirmed");
   });
 });

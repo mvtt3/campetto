@@ -242,6 +242,31 @@ test("chi ha proposto sposta la partita su una controproposta", async ({
   await expect(alts).toHaveCount(0);
 });
 
+test("partita confermata e poi in corso, nel calendario e nella Home", async ({
+  page,
+}) => {
+  // Al completo: la proposta diventa una conferma.
+  await skipTour(page);
+  await page.goto("/?mock=demo&as=p4&partita=confermata");
+  await expect(
+    page.getByRole("heading", { name: "Partita confermata" }),
+  ).toBeVisible();
+  await page.goto("/organizza");
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
+  await expect(card).toHaveAttribute("data-phase", "confirmed");
+  await expect(card.getByRole("status")).toContainText("Partita confermata");
+  // Iniziata da 25 minuti: partita in corso, con la cronaca e chi è in campo.
+  await page.goto("/?mock=demo&as=p4&partita=incorso");
+  await expect(
+    page.getByRole("heading", { name: "Si gioca adesso" }),
+  ).toBeVisible();
+  await page.goto("/organizza");
+  const live = page.locator('[data-testid="live-match"]:visible').first();
+  await expect(live).toContainText("In corso");
+  await expect(live).toContainText(/da 2[5-7] minuti/);
+  await expect(live).toContainText("In campo");
+});
+
 test("importa statistiche da testo", async ({ page }) => {
   await openApp(page);
   await page.goto("/importa");

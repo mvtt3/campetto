@@ -189,6 +189,19 @@ function demoProposals() {
   d.setDate(d.getDate() + 1);
   d.setHours(18, 0, 0, 0);
   const at = new Date().toISOString();
+  // ?partita=confermata | quasi | incorso: per vedere la proposta nelle sue fasi.
+  const phase =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("partita")
+      : null;
+  if (phase === "incorso") d.setTime(Date.now() - 25 * 60_000);
+  if (phase === "quasi") d.setTime(Date.now() + 5 * 3_600_000);
+  const extra =
+    phase === "confermata"
+      ? ["p1", "p3", "p6"]
+      : phase === "incorso" || phase === "quasi"
+        ? ["p3"]
+        : [];
   return [
     {
       id: "demo-prop",
@@ -211,6 +224,11 @@ function demoProposals() {
           altPlace: "niche" as const,
         },
         { playerId: "p5", response: "forse" as const, updatedAt: at },
+        ...extra.map((playerId) => ({
+          playerId,
+          response: "si" as const,
+          updatedAt: at,
+        })),
       ],
     },
   ];
