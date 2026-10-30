@@ -91,7 +91,7 @@ export function ShotChart({
                 : "var(--zone-off)"
             }
             fillOpacity={selected === k ? (tier ? 0.92 : 0.45) : 1}
-            className="cursor-pointer transition-[fill,fill-opacity] duration-300"
+            className="cursor-pointer outline-none transition-[fill,fill-opacity] duration-300 [-webkit-tap-highlight-color:transparent]"
             role="button"
             tabIndex={0}
             aria-pressed={selected === k}

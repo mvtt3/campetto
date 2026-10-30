@@ -266,6 +266,58 @@ function ieriState(): MockState {
 /** "pieno": un mese intenso, nomi lunghi e tutte le statistiche, per provare gli spazi. */
 function initialState(demo: boolean, full = false): MockState {
   const players = seedPlayers();
+  // ?gruppo=30: un gruppo grande, per provare classifiche ed elenchi lunghi.
+  const group = Number(
+    new URLSearchParams(window.location.search).get("gruppo") ?? 0,
+  );
+  const extraNames = [
+    "Luca",
+    "Marco",
+    "Andrea",
+    "Giulia",
+    "Fede",
+    "Teo",
+    "Nico",
+    "Ale",
+    "Paolo",
+    "Rocco",
+    "Enzo",
+    "Dario",
+    "Ivan",
+    "Gabri",
+    "Pietro",
+    "Tommi",
+    "Edo",
+    "Leo",
+    "Bruno",
+    "Carlo",
+    "Elia",
+    "Filo",
+    "Gino",
+    "Ugo",
+    "Vito",
+    "Zeno",
+    "Omar",
+    "Rudi",
+    "Sandro",
+    "Tino",
+    "Ciro",
+    "Mirko",
+  ];
+  for (let i = players.length; i < Math.min(group, 40); i++) {
+    const n = extraNames[(i - 9) % extraNames.length];
+    players.push({
+      ...players[i % 9],
+      id: `p${i + 1}`,
+      firstName: n,
+      lastName: "Prova",
+      nickname: n,
+      avatarUrl: null,
+      userId: null,
+      isAdmin: false,
+      createdAt: new Date(2026, 9, 1, 11, i).toISOString(),
+    });
+  }
   if (full) {
     const long = [
       "Strings",
