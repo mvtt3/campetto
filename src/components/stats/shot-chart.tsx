@@ -41,12 +41,13 @@ export const ZONE_NAME: Record<ZoneKey, string> = {
 };
 
 /** Le tinte dei livelli, appena accennate: bronzo, argento, oro, Hall of Fame. */
+/** I colori dei livelli, pieni come le medaglie: bronzo, argento, oro, Hall of Fame. */
 export const TIER_TINT = [
   "transparent",
-  "#c07a45",
-  "#a9b8c6",
-  "#d4a72c",
-  "#7c55c8",
+  "#cd7f32",
+  "#a8bfd6",
+  "#f5c518",
+  "#8b5cf6",
 ] as const;
 export const TONE_CLASS = {
   bad: "fill-[var(--danger)]",
@@ -89,7 +90,7 @@ export function ShotChart({
                   : "var(--court)"
                 : "var(--zone-off)"
             }
-            fillOpacity={selected === k ? (tier ? 0.72 : 0.4) : 1}
+            fillOpacity={selected === k ? (tier ? 0.92 : 0.45) : 1}
             className="cursor-pointer transition-[fill,fill-opacity] duration-300"
             role="button"
             tabIndex={0}
@@ -145,14 +146,23 @@ export function ShotChart({
               y={y}
               className={clsx("num", TONE_CLASS[pctTone(p)])}
               fontSize="24"
+              // Un bordo del colore della scheda: il numero si legge anche sull'oro acceso.
+              stroke="var(--surface)"
+              strokeWidth={5}
+              strokeLinejoin="round"
+              paintOrder="stroke"
             >
               {p === null ? "—" : `${Math.round(p * 100)}%`}
             </text>
             <text
               x={x}
               y={y + 16}
-              className="fill-[var(--muted)]"
+              className="fill-[var(--text)]"
               fontSize="11.5"
+              stroke="var(--surface)"
+              strokeWidth={3.5}
+              strokeLinejoin="round"
+              paintOrder="stroke"
               fontWeight="600"
             >
               {z.att ? `${z.made}/${z.att}` : "nessun tiro"}
