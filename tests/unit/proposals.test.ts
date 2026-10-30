@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   alternativesOf,
   altLabel,
+  awaitingStats,
   namesList,
   proposalPhase,
 } from "@/lib/proposals";
@@ -92,5 +93,24 @@ describe("partita confermata e in corso", () => {
   });
   it("per un 1v1 bastano due", () => {
     expect(proposalPhase(p(2), at(48), 2)).toBe("confirmed");
+  });
+});
+
+describe("statistiche in arrivo", () => {
+  const start = new Date(2026, 10, 3, 18);
+  const p = proposal(Array.from({ length: 4 }, (_, i) => yes(`p${i + 1}`)));
+  const h = (n: number) => new Date(start.getTime() + n * 3_600_000);
+  const six = () => 6;
+  it("dopo la fine, finché non c'è il risultato", () => {
+    expect(awaitingStats([p], [], h(1), six)).toBeNull();
+    expect(awaitingStats([p], [], h(2.5), six)?.id).toBe("x");
+    expect(
+      awaitingStats([p], [{ playedAt: h(1).toISOString() }], h(3), six),
+    ).toBeNull();
+    expect(awaitingStats([p], [], h(19), six)).toBeNull();
+  });
+  it("solo se era confermata", () => {
+    const few = proposal([yes("p1"), yes("p2")]);
+    expect(awaitingStats([few], [], h(3), six)).toBeNull();
   });
 });

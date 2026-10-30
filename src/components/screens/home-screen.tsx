@@ -71,7 +71,7 @@ export function HomeScreen() {
         .filter(
           (p) =>
             p.status === "aperta" &&
-            new Date(p.startsAt).getTime() > now.getTime() - 2 * 3_600_000,
+            proposalPhase(p, now, neededPlayers(p.format)) !== "over",
         )
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0],
     [data.proposals, now],

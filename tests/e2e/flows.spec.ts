@@ -181,12 +181,13 @@ test("proponi una partita e rispondi", async ({ page }) => {
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
   await expect(card).toContainText("1 di 6");
   await expect(card).toContainText("Decathlon");
-  await card.getByRole("button", { name: "Forse" }).click();
-  await expect(card.getByRole("button", { name: "Forse" })).toHaveAttribute(
+  const answer = card.getByRole("group", { name: "La tua risposta" });
+  await answer.getByRole("button", { name: "Forse" }).click();
+  await expect(answer.getByRole("button", { name: "Forse" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await card.getByRole("button", { name: "Ci sono" }).click();
+  await answer.getByRole("button", { name: "Ci sono" }).click();
   await expect(card).toContainText("1 di 6");
   await page.getByRole("link", { name: "Home" }).click();
   await expect(page.getByTestId("proposal-card")).toBeVisible();
@@ -265,6 +266,29 @@ test("partita confermata e poi in corso, nel calendario e nella Home", async ({
   await expect(live).toContainText("In corso");
   await expect(live).toContainText(/da 2[5-7] minuti/);
   await expect(live).toContainText("In campo");
+  // Finita da mezz'ora: nello spazio sotto, le statistiche in arrivo.
+  await page.goto("/?mock=demo&as=p4&partita=finita");
+  await page.goto("/organizza");
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Sto preparando le statistiche" }),
+  ).toBeVisible();
+});
+
+test("chi c'è: un tocco sulla riga apre tutti i nomi", async ({ page }) => {
+  await openApp(page, "demo", "light", "p4");
+  await page.goto("/organizza");
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
+  const waiting = card.getByRole("region", {
+    name: "Non hanno ancora risposto",
+  });
+  await waiting.getByRole("button").click();
+  await expect(waiting.getByRole("button")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(waiting.getByRole("listitem")).toHaveCount(5);
 });
 
 test("importa statistiche da testo", async ({ page }) => {

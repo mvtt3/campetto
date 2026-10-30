@@ -196,10 +196,11 @@ function demoProposals() {
       : null;
   if (phase === "incorso") d.setTime(Date.now() - 25 * 60_000);
   if (phase === "quasi") d.setTime(Date.now() + 5 * 3_600_000);
+  if (phase === "finita") d.setTime(Date.now() - 150 * 60_000);
   const extra =
     phase === "confermata"
       ? ["p1", "p3", "p6"]
-      : phase === "incorso" || phase === "quasi"
+      : phase === "incorso" || phase === "quasi" || phase === "finita"
         ? ["p3"]
         : [];
   return [

@@ -87,3 +87,30 @@ export function proposalPhase(
   if (t >= start) return confirmed ? "live" : "over";
   return confirmed ? "confirmed" : "open";
 }
+
+/**
+ * La partita confermata appena finita di cui manca ancora il risultato: dalla fine (2 ore
+ * dopo l'inizio) fino a 18 ore dopo, finché non viene inserita una partita da quell'ora in poi.
+ */
+export function awaitingStats(
+  proposals: Proposal[],
+  matches: { playedAt: string }[],
+  now: Date,
+  neededOf: (p: Proposal) => number,
+): Proposal | null {
+  const t = now.getTime();
+  const done = proposals
+    .filter((p) => {
+      if (p.status !== "aperta") return false;
+      const start = new Date(p.startsAt).getTime();
+      if (t < start + LIVE_HOURS * 3_600_000 || t >= start + 18 * 3_600_000)
+        return false;
+      const yes = p.responses.filter((r) => r.response === "si").length;
+      if (yes < Math.min(CONFIRM_MIN, neededOf(p))) return false;
+      return !matches.some(
+        (m) => new Date(m.playedAt).getTime() >= start - 3_600_000,
+      );
+    })
+    .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+  return done[0] ?? null;
+}

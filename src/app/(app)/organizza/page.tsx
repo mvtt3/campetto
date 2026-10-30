@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
+import { StatsComing } from "@/components/stats-coming";
+import { neededPlayers } from "@/lib/notifications/grouping";
+import { proposalPhase } from "@/lib/proposals";
 import {
   Button,
   Card,
@@ -243,7 +246,13 @@ function OrganizeInner() {
     router.replace("/organizza");
   }, [params, data.proposals, respond, router]);
 
-  const open = data.proposals.filter((p) => p.status === "aperta");
+  const today = useNow();
+  // Una partita finita (o mai confermata e ormai iniziata) esce dal calendario: si torna a proporre.
+  const open = data.proposals.filter(
+    (p) =>
+      p.status === "aperta" &&
+      proposalPhase(p, today, neededPlayers(p.format)) !== "over",
+  );
   const days = Array.from(
     { length: 7 },
     (_, i) =>
@@ -258,7 +267,6 @@ function OrganizeInner() {
     weekStart.getMonth(),
     weekStart.getDate() + 7,
   );
-  const today = useNow();
   const thisWeek = sameDay(weekStart, startOfWeek(today));
 
   const list = open
@@ -377,6 +385,8 @@ function OrganizeInner() {
         </div>
       </div>
       <PullToRefresh className="px-4 pb-4">
+        {/* Senza partite in lista sta in cima, così si vede anche sui telefoni piccoli. */}
+        {list.length === 0 && <StatsComing first />}
         {list.length === 0 ? (
           <EmptyState
             title={
@@ -403,6 +413,8 @@ function OrganizeInner() {
             ))}
           </div>
         )}
+        {/* Finita una partita: le statistiche in arrivo, nello spazio libero sotto. */}
+        {list.length > 0 && <StatsComing />}
       </PullToRefresh>
       {creating && (
         <NewProposalSheet

@@ -1794,3 +1794,37 @@ html[data-shot="3"] .intro-ball-x {
     animation: none;
   }
 }
+
+/* Tre puntini che saltano in fila: "sto caricando", senza fretta. */
+.typing-dots > span {
+  width: 5px;
+  height: 5px;
+  margin-bottom: 0.32em;
+  border-radius: 999px;
+  background: currentColor;
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+.typing-dots > span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.typing-dots > span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-dots > span {
+    animation: none;
+    opacity: 0.7;
+  }
+}

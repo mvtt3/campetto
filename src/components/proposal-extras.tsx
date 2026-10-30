@@ -2,7 +2,9 @@
 
 import clsx from "clsx";
 import { useState } from "react";
-import { AvatarStack } from "./ui/avatar";
+import { ChevronDown } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Avatar, AvatarStack } from "./ui/avatar";
 import { Button, Segmented } from "./ui/basics";
 import { TimeField } from "./ui/pickers";
 import { useToast } from "./ui/toast";
@@ -67,47 +69,87 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   ];
   const name = (p: Player) =>
     p.id === me?.id ? "Tu" : shortName(p, data.players);
+  const [open, setOpen] = useState<string | null>(null);
   return (
     <div
-      className="flex flex-col gap-1.5 border-t-2 border-dashed border-line-strong pt-2.5"
+      className="flex flex-col gap-1 border-t-2 border-dashed border-line-strong pt-2.5"
       aria-label="Chi c'è"
       role="group"
     >
       {groups
         .filter((g) => g.players.length)
-        .map((g) => (
-          <section
-            key={g.title}
-            aria-label={g.title}
-            className="flex min-w-0 items-center gap-2"
-          >
-            <span
-              className={clsx(
-                "flex h-6 w-[86px] shrink-0 items-center justify-between rounded-full border-2 border-edge pl-2 pr-1.5 text-[11.5px] font-bold",
-                g.tone,
-              )}
-            >
-              {g.short}
-              <span className="tnum">{g.players.length}</span>
-            </span>
-            <AvatarStack players={g.players} size={22} max={4} />
-            <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted">
-              {g.players.map((p, i) => (
-                <span key={p.id}>
-                  {i > 0 && ", "}
-                  <span
-                    className={clsx(
-                      "font-semibold",
-                      p.id === me?.id ? "text-court" : "text-text",
-                    )}
-                  >
-                    {name(p)}
-                  </span>
+        .map((g) => {
+          const isOpen = open === g.title;
+          return (
+            <section key={g.title} aria-label={g.title} className="min-w-0">
+              {/* Un tocco sulla riga e si aprono tutti i nomi, per intero; un altro la richiude. */}
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setOpen(isOpen ? null : g.title)}
+                className="press -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-2 rounded-full px-1 py-0.5 text-left"
+              >
+                <span
+                  className={clsx(
+                    "flex h-6 w-[86px] shrink-0 items-center justify-between rounded-full border-2 border-edge pl-2 pr-1.5 text-[11.5px] font-bold",
+                    g.tone,
+                  )}
+                >
+                  {g.short}
+                  <span className="tnum">{g.players.length}</span>
                 </span>
-              ))}
-            </p>
-          </section>
-        ))}
+                <AvatarStack players={g.players} size={22} max={4} />
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">
+                  {g.players.map((p, i) => (
+                    <span key={p.id}>
+                      {i > 0 && ", "}
+                      <span
+                        className={clsx(
+                          "font-semibold",
+                          p.id === me?.id ? "text-court" : "text-text",
+                        )}
+                      >
+                        {name(p)}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+                <ChevronDown
+                  size={15}
+                  className={clsx(
+                    "shrink-0 text-faint transition-transform duration-200",
+                    isOpen && "rotate-180",
+                  )}
+                  aria-hidden
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.ul
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+                    className="flex flex-wrap gap-1.5 overflow-hidden pl-1 pt-1.5"
+                  >
+                    {g.players.map((p) => (
+                      <li
+                        key={p.id}
+                        className={clsx(
+                          "flex items-center gap-1.5 rounded-full border-2 border-line-strong bg-surface py-0.5 pl-0.5 pr-2.5 text-[13px] font-semibold",
+                          p.id === me?.id && "!border-court bg-court-soft",
+                        )}
+                      >
+                        <Avatar player={p} size={22} href={false} ring="none" />
+                        {name(p)}
+                      </li>
+                    ))}
+                  </motion.ul>
+                )}
+              </AnimatePresence>
+            </section>
+          );
+        })}
     </div>
   );
 }
