@@ -10,7 +10,7 @@ import {
 } from "../periods";
 import type { Match } from "../types";
 import { computeElo, eloDelta, type EloResult } from "./elo";
-import { computePlayerStats, type PlayerStats } from "./player";
+import { computePlayerStats, defenseAvg, type PlayerStats } from "./player";
 
 export const MVP_MIN_GAMES = 3;
 /** Per entrare in una classifica "a partita" serve almeno questa quota delle partite di chi ha giocato di più. */
@@ -208,8 +208,8 @@ export function categoryKings(
   );
   pick(
     "difesa",
-    (s) => s.avg.stl + s.avg.blk,
-    (v) => `${v.toFixed(1)} rubate + stoppate`,
+    (s) => defenseAvg(s),
+    (v) => `${v.toFixed(1).replace(".", ",")} punti difesa a partita`,
   );
   pick(
     "tiro3",

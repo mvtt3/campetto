@@ -251,3 +251,12 @@ export function doubleDigits(b: Box): (typeof DOUBLE_KEYS)[number][] {
   };
   return DOUBLE_KEYS.filter((k) => v[k] >= 10);
 }
+
+/**
+ * Punti difesa a partita: rubate e stoppate valgono 1 (tolgono la palla agli altri),
+ * un rimbalzo in difesa mezzo punto (chiude l'azione degli avversari). Così il miglior
+ * difensore non è solo chi stoppa, ma anche chi ruba e chi pulisce il tabellone.
+ */
+export function defenseAvg(s: PlayerStats): number {
+  return s.avg.stl + s.avg.blk + 0.5 * s.avg.dreb;
+}

@@ -109,6 +109,12 @@ const LEADERS: { stat: StatKey; who: string; unit: string; one: string }[] = [
     one: "assist a partita",
   },
   {
+    stat: "difesa",
+    who: "il miglior difensore",
+    unit: "punti difesa a partita",
+    one: "punto difesa a partita",
+  },
+  {
     stat: "rubate",
     who: "il miglior ladro di palloni",
     unit: "palle rubate a partita",

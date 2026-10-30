@@ -1,7 +1,7 @@
 import { minGamesFor } from "./awards";
 import type { EloResult } from "./elo";
 import { eloDelta } from "./elo";
-import type { PlayerStats } from "./player";
+import { defenseAvg, type PlayerStats } from "./player";
 
 export type StatKey =
   | "vittorie"
@@ -12,6 +12,7 @@ export type StatKey =
   | "rimbalzi"
   | "rubate"
   | "stoppate"
+  | "difesa"
   | "triple"
   | "tre"
   | "campo"
@@ -108,6 +109,15 @@ export const STATS: StatDef[] = [
     short: "Stoppate",
     value: (s) => (s.statGames ? s.avg.blk : null),
     format: avg,
+    qualify: { by: "statGames", min: 2 },
+  },
+  {
+    key: "difesa",
+    label: "Punti difesa a partita",
+    short: "Difesa",
+    value: (s) => (s.statGames ? defenseAvg(s) : null),
+    format: avg,
+    note: "Rubata o stoppata: 1 punto difesa. Rimbalzo in difesa: mezzo punto",
     qualify: { by: "statGames", min: 2 },
   },
   {

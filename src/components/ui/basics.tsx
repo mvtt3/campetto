@@ -218,19 +218,37 @@ export function Chips<T extends string>({
   options,
   onChange,
   className,
+  scroll,
 }: {
   value: T;
   options: { value: T; label: ReactNode }[];
   onChange: (v: T) => void;
   className?: string;
+  /**
+   * Una riga sola che scorre di lato, come i filtri delle app di oggi: occupa meno spazio e
+   * c'è posto per tutte. Quella scelta resta sempre in vista.
+   */
+  scroll?: boolean;
 }) {
   // Come Segmented: la tessera si accende subito, la classifica si ridisegna subito dopo.
   const [shown, setShown] = useOptimistic(value);
+  const row = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!scroll) return;
+    const el = row.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    const box = row.current;
+    if (!el || !box) return;
+    const left = el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2;
+    box.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [scroll, value]);
   return (
     // Tessere della stessa larghezza, quattro per riga e centrate: ordinate anche quando vanno a capo.
     <div
+      ref={row}
       className={clsx(
-        "flex flex-wrap justify-center gap-2 pb-0.5 pr-0.5",
+        scroll
+          ? "scroll-x -mx-5 flex snap-x gap-2 px-5 pb-1.5 pt-0.5 [-webkit-mask-image:linear-gradient(to_right,transparent_0,#000_14px,#000_calc(100%-28px),transparent)] [mask-image:linear-gradient(to_right,transparent_0,#000_14px,#000_calc(100%-28px),transparent)]"
+          : "flex flex-wrap justify-center gap-2 pb-0.5 pr-0.5",
         className,
       )}
     >
@@ -246,7 +264,8 @@ export function Chips<T extends string>({
             });
           }}
           className={clsx(
-            "press h-9 shrink-0 basis-[calc((100%-1.5rem)/4)] rounded-full px-1 text-[13.5px] font-bold transition-colors duration-300",
+            "press h-9 shrink-0 rounded-full text-[13.5px] font-bold transition-colors duration-300",
+            scroll ? "snap-start px-4" : "basis-[calc((100%-1.5rem)/4)] px-1",
             o.value === shown
               ? "sticker-sm bg-volt text-volt-ink"
               : "sticker-sm bg-surface text-muted",

@@ -38,6 +38,7 @@ const BOARDS: { value: Board; label: string }[] = [
   { value: "punti", label: "Punti" },
   { value: "assist", label: "Assist" },
   { value: "rimbalzi", label: "Rimbalzi" },
+  { value: "difesa", label: "Difesa" },
   { value: "tre", label: "Da tre" },
   { value: "elo", label: "ELO" },
   { value: "squadre", label: "Squadre" },
@@ -63,6 +64,8 @@ function boardInfo(board: Board, minGames: number | null): string {
     return "Le vittorie nel periodo: più giochi, più ne puoi mettere insieme";
   if (board === "elo")
     return "Il punteggio di forza: sale quando vinci, scende quando perdi, di più contro chi è forte. Nel mese e nella stagione vedi di quanto è salito o sceso";
+  if (board === "difesa")
+    return `Chi difende meglio: rubata o stoppata vale 1 punto difesa, un rimbalzo in difesa mezzo punto. È la media a partita: servono almeno ${minGames ?? 2} partite con il tabellino`;
   const extra = board === "tre" ? " e 5 tiri da tre" : "";
   return `La media a partita. Per entrare in classifica servono almeno ${minGames ?? 2} partite con il tabellino${extra}: così chi gioca una volta sola non scavalca chi c'è sempre. Chi tira poco compare in fondo`;
 }
@@ -449,7 +452,7 @@ export function RankingScreen() {
           />
         </div>
         <div data-tour="rank-boards">
-          <Chips value={board} onChange={setBoard} options={BOARDS} />
+          <Chips value={board} onChange={setBoard} options={BOARDS} scroll />
         </div>
       </div>
 
