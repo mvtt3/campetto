@@ -25,7 +25,7 @@ const STONE = "#9C9488";
 const SILVER = "#C9D3E0";
 
 /**
- * I personaggi. I primi sei sono di tutti; gli altri si sbloccano con i badge,
+ * I personaggi. I primi sei sono comuni (di tutti); gli altri si sbloccano con i badge,
  * a livelli come nei giochi di carte: rari, epici, mitici e leggendari.
  * Tutti originali, ispirati ai ruoli del basket: nessun giocatore vero.
  */
@@ -346,8 +346,8 @@ export const RARITY: Record<
   { label: string; one: string; ring: string; rule: string }
 > = {
   base: {
-    label: "Di tutti",
-    one: "Di tutti",
+    label: "Comuni",
+    one: "Comune",
     ring: "#1D1A16",
     rule: "Disponibili da subito",
   },

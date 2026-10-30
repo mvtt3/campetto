@@ -536,11 +536,14 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   await card.getByRole("button", { name: "Inizia" }).click();
   const tour = page.locator('[data-tour-overlay] [role="dialog"]');
   await expect(tour).toContainText("Il tuo mese");
-  await expect(tour).toContainText("Home · 1 di 4");
+  await expect(tour).toContainText("Home · 1 di 5");
   await tour.getByRole("button", { name: "Avanti" }).click();
   await expect(tour).toContainText("Chi viene a giocare");
   await tour.getByRole("button", { name: "Salta Home" }).click();
-  // Dalla Home alla Classifica la guida mostra lo swipe: un attimo, poi riparte.
+  // Dalla Home alla Classifica la guida mostra prima "tira giù per aggiornare", poi lo swipe.
+  await expect(
+    page.getByRole("status").filter({ hasText: "Tira giù per aggiornare" }),
+  ).toBeVisible();
   await expect(
     page
       .getByRole("status")

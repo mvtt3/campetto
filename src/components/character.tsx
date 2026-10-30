@@ -91,7 +91,7 @@ export function characterProgress(
   if (!g)
     return {
       unlocked: true,
-      goal: "Di tutti",
+      goal: "Comune",
       detail: "Disponibile da subito",
       steps: [],
       pct: 1,

@@ -105,12 +105,12 @@ export function NewsButton({
     <button
       onClick={onOpen}
       data-tour="home-news"
-      aria-label={unseen ? `Notizie, ${unseen} nuove` : "Notizie"}
+      aria-label={unseen ? `Notizie, ${unseen > 9 ? "9+" : unseen} nuove` : "Notizie"}
       className="sticker-sm press relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface"
     >
       <Newspaper size={20} />
       {unseen > 0 && (
-        <span className="new-dot absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full border-2 border-surface bg-danger px-1 text-[10px] font-bold leading-none text-white">
+        <span aria-hidden className="new-dot absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full border-2 border-surface bg-danger px-1 text-[10px] font-bold leading-none text-white">
           {unseen > 9 ? "9+" : unseen}
         </span>
       )}
