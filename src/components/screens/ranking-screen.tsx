@@ -110,7 +110,14 @@ function Podium({ rows }: { rows: Row[] }) {
                   title={shortName(p, data.players)}
                 />
               )}
-              <p className="title mt-1.5 line-clamp-2 w-full break-words text-center text-[14px] leading-tight">
+              <p
+                className={clsx(
+                  "title mt-1.5 w-full text-center leading-tight",
+                  shortName(p, data.players).length > 11
+                    ? "line-clamp-3 text-[12.5px] [overflow-wrap:anywhere]"
+                    : "line-clamp-2 break-words text-[14px]",
+                )}
+              >
                 {shortName(p, data.players)}
               </p>
               <p className="num text-[20px]">{r.value}</p>

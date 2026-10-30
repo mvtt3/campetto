@@ -103,7 +103,15 @@ export function ProfileHeader({
           <Avatar player={player} size={68} href={false} />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="display line-clamp-2 break-words text-[20px] short:text-[18px]">
+          <h1
+            className={clsx(
+              "display line-clamp-2",
+              // I nomi lunghi (fino a 16 lettere) scendono di misura invece di tagliarsi.
+              displayName(player).length > 12
+                ? "text-[16px] [overflow-wrap:anywhere] short:text-[14.5px]"
+                : "break-words text-[20px] short:text-[18px]",
+            )}
+          >
             {displayName(player)}
           </h1>
           {/* Fino a tre ruoli: vanno a capo invece di tagliarsi a metà parola. */}

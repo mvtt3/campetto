@@ -260,7 +260,9 @@ export function HomeScreen() {
                 </h2>
               ) : (
                 <h2 className="title text-[16px]">
-                  {nextPhase === "live" ? "Si gioca adesso" : "Prossima partita"}
+                  {nextPhase === "live"
+                    ? "Si gioca adesso"
+                    : "Prossima partita"}
                 </h2>
               )}
               <Link
@@ -326,7 +328,17 @@ export function HomeScreen() {
                         <Avatar player={mvpPlayer} size={34} href={false} />
                       </span>
                       <div className="min-w-0">
-                        <p className="title line-clamp-2 break-words text-[17px] leading-tight">
+                        <p
+                          className={clsx(
+                            "title leading-tight",
+                            // Un nome lungo (fino a 16 lettere) scende di misura invece di tagliarsi.
+                            shortName(mvpPlayer, data.players).length > 13
+                              ? "line-clamp-3 text-[12.5px] [overflow-wrap:anywhere]"
+                              : shortName(mvpPlayer, data.players).length > 11
+                                ? "line-clamp-3 text-[14px] [overflow-wrap:anywhere]"
+                                : "line-clamp-2 break-words text-[17px]",
+                          )}
+                        >
                           {shortName(mvpPlayer, data.players)}
                         </p>
                         <p className="text-[12.5px] font-semibold opacity-75">

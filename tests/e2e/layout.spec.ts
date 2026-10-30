@@ -5,6 +5,7 @@ import {
   openApp,
   pageScrolls,
   screenProblems,
+  skipTour,
   staticContentOverflows,
   truncatedTitles,
 } from "./helpers";
@@ -92,6 +93,43 @@ for (const vp of VIEWPORTS) {
       }
     });
   }
+}
+
+// I nomi più lunghi e larghi che si possono scegliere (16 caratteri), sui telefoni più stretti,
+// anche con la partita confermata e in corso.
+for (const vp of [VIEWPORTS[0], VIEWPORTS[2]]) {
+  test(`${vp.name}: nomi lunghissimi non escono da nessuna parte`, async ({
+    page,
+  }) => {
+    test.setTimeout(150_000);
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await skipTour(page);
+    for (const fase of ["", "confermata", "incorso"]) {
+      await page.goto(`/?mock=pieno&nomi=lunghi&as=p4&partita=${fase}`);
+      await page
+        .getByRole("navigation", { name: "Navigazione principale" })
+        .waitFor();
+      for (const path of fase ? ["/", "/organizza"] : STATIC) {
+        await page.goto(path);
+        await page
+          .getByRole("navigation", { name: "Navigazione principale" })
+          .waitFor();
+        await page.waitForTimeout(300);
+        const where = `${path} ${fase || "normale"}`;
+        expect(await pageScrolls(page), `${where} fa scorrere la pagina`).toBe(
+          false,
+        );
+        expect(
+          await staticContentOverflows(page),
+          `${where} taglia il contenuto`,
+        ).toEqual([]);
+        expect(
+          await screenProblems(page),
+          `${where} ha testi o controlli sovrapposti`,
+        ).toEqual([]);
+      }
+    }
+  });
 }
 
 test("login: schermata d'ingresso senza scroll", async ({ page }) => {

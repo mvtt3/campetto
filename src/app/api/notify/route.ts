@@ -250,25 +250,41 @@ async function proposalSummary(
   return { threshold: decision.threshold };
 }
 
-/** A chi ha proposto: ogni volta che qualcuno dice "ci sono" (una volta per persona). */
+/**
+ * Ogni volta che qualcuno dice "ci sono" (una volta per persona): lo sa chi ha proposto e lo
+ * sanno tutti quelli che hanno già detto sì, così vedono la squadra che si riempie.
+ */
 async function proposalJoined(ctx: Ctx, p: Proposal, players: Player[]) {
-  if (ctx.me === p.createdBy || p.status !== "aperta") return;
+  if (p.status !== "aperta") return;
   if (new Date(p.startsAt).getTime() < Date.now()) return;
   const mine = p.responses.find((r) => r.playerId === ctx.me);
-  if (mine?.response !== "si") return;
+  if (mine?.response !== "si" || ctx.me === p.createdBy) return;
   if (!(await ctx.claim(`adesione:${p.id}:${ctx.me}`))) return;
   const who = shortName(
     players.find((x) => x.id === ctx.me),
     players,
   );
-  const yes = p.responses.filter((r) => r.response === "si").length;
+  const yes = p.responses.filter((r) => r.response === "si");
   const need = neededPlayers(p.format);
+  const when = dayLabel(p.startsAt);
+  const count =
+    yes.length >= need
+      ? "siete al completo, si gioca"
+      : `siete in ${yes.length} di ${need}`;
+  // Chi ha proposto: "la tua partita".
   await ctx.send(await ctx.targets("adesioni", [p.createdBy]), {
     title: `${who} c'è!`,
-    body:
-      yes >= need
-        ? `Ha detto sì alla tua partita di ${dayLabel(p.startsAt)}: siete al completo, si gioca`
-        : `Ha detto sì alla tua partita di ${dayLabel(p.startsAt)}. Siete in ${yes} di ${need}`,
+    body: `Ha detto sì alla tua partita di ${when}: ${count}`,
+    url: "/organizza",
+    tag: `proposal-${p.id}`,
+  });
+  // Gli altri che hanno già detto sì.
+  const others = yes
+    .map((r) => r.playerId)
+    .filter((id) => id !== ctx.me && id !== p.createdBy);
+  await ctx.send(await ctx.targets("adesioni", others), {
+    title: `${who} c'è!`,
+    body: `Si unisce alla partita di ${when}${atPlace(p.place)}: ${count}`,
     url: "/organizza",
     tag: `proposal-${p.id}`,
   });
@@ -403,25 +419,23 @@ async function matchSaved(ctx: Ctx, matchId: string) {
   ]);
   // Le righe degli ospiti escono dai conti (statistiche, MVP, record, badge).
   const guestIds = new Set(
-    ((await ctx.sb.from("players").select("id").eq("guest", true)).data ?? []).map(
-      (r: { id: string }) => r.id,
-    ),
+    (
+      (await ctx.sb.from("players").select("id").eq("guest", true)).data ?? []
+    ).map((r: { id: string }) => r.id),
   );
-  const matches: Match[] = (data ?? [])
-    .map(mapMatch)
-    .map((x) =>
-      guestIds.size
-        ? {
-            ...x,
-            players: x.players.filter((l) => !guestIds.has(l.playerId)),
-            events: x.events.filter(
-              (e) =>
-                !guestIds.has(e.playerId) &&
-                !(e.targetPlayerId && guestIds.has(e.targetPlayerId)),
-            ),
-          }
-        : x,
-    );
+  const matches: Match[] = (data ?? []).map(mapMatch).map((x) =>
+    guestIds.size
+      ? {
+          ...x,
+          players: x.players.filter((l) => !guestIds.has(l.playerId)),
+          events: x.events.filter(
+            (e) =>
+              !guestIds.has(e.playerId) &&
+              !(e.targetPlayerId && guestIds.has(e.targetPlayerId)),
+          ),
+        }
+      : x,
+  );
   const m = matches.find((x) => x.id === matchId);
   if (!m) return;
   const name = (id: string) =>

@@ -96,8 +96,8 @@ export const NOTIFY_GROUPS: {
       },
       {
         kind: "adesioni",
-        label: "Risposte alle tue proposte",
-        hint: "Chi dice che c'è o propone un altro orario o campetto",
+        label: "Chi si unisce",
+        hint: "Chi dice che c'è a una partita tua o a cui vai anche tu, e chi propone un altro orario",
       },
       {
         kind: "annullate",

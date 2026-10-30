@@ -363,6 +363,23 @@ function initialState(demo: boolean, full = false): MockState {
       p.jerseyNumber = [23, 7, 11, 3, 0, 33, 14, 9, 21][i] ?? null;
     });
   }
+  // ?nomi=lunghi: tutti col nome più lungo (e largo) possibile, per provare gli spazi.
+  if (new URLSearchParams(window.location.search).get("nomi") === "lunghi") {
+    const wide = [
+      "Massimiliano MW",
+      "WWWWWWWWWWWWWWWW",
+      "Bartolomeo Magno",
+      "MMMMMMMMMMMMMMMM",
+      "Supermegabomber",
+      "Mocciarissimo XL",
+      "Gianmarco Wolfgg",
+      "Lo Stoppatore 99",
+      "Il Re del Ferro",
+    ];
+    players.forEach((p, i) => {
+      p.nickname = wide[i] ?? p.nickname;
+    });
+  }
   return {
     meId: "p1",
     signedIn: false,
