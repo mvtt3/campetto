@@ -2070,6 +2070,12 @@ html[data-shot="3"] .intro-ball-x {
     transform: translateY(18px) scale(0.94);
   }
 }
+/* Telefono in orizzontale: l'apertura senza Spicchio, che non ci sta. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .hl-intro-stage {
+    display: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .hl-intro,
   .hl-intro-body {

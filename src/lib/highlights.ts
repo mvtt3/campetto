@@ -45,6 +45,18 @@ function teamNames(m: Match, team: "A" | "B", players: Player[]): string {
   return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
 }
 
+/** Per l'apertura del video: le due squadre e il risultato, su righe separate. */
+export function scoreOf(
+  m: Match,
+  players: Player[],
+): { a: string; b: string; score: string } {
+  return {
+    a: teamNames(m, "A", players),
+    b: teamNames(m, "B", players),
+    score: `${m.scoreA}–${m.scoreB}`,
+  };
+}
+
 /**
  * La striscia di numeri che scorre sotto al video: risultato, MVP e i migliori della
  * partita. Solo quello che c'è davvero nel tabellino (niente zeri).

@@ -13,7 +13,7 @@ import {
 import { haptic } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
-import { highlightTitle, tickerItems } from "@/lib/highlights";
+import { highlightTitle, scoreOf, tickerItems } from "@/lib/highlights";
 import type { Highlight, HighlightSocial } from "@/lib/types";
 import { CommentsPanel, type ShownComment } from "./comments";
 import type { Music } from "./provider";
@@ -398,6 +398,7 @@ export default function HighlightsFeed({
         return {
           title: m ? highlightTitle(m, data.matches) : "Highlights",
           ticker: m ? tickerItems(m, data.players) : [],
+          score: m ? scoreOf(m, data.players) : null,
         };
       }),
     [items, matchOf, data.matches, data.players],
@@ -436,6 +437,7 @@ export default function HighlightsFeed({
                 preload={i > active ? "auto" : "metadata"}
                 title={meta[i].title}
                 ticker={meta[i].ticker}
+                score={meta[i].score}
                 likes={li.count}
                 liked={li.liked}
                 comments={commentsOf(h.id).length}

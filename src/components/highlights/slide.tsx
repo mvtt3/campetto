@@ -26,6 +26,8 @@ export interface SlideProps {
   preload: "auto" | "metadata";
   title: string;
   ticker: string[];
+  /** Squadre e risultato per l'apertura. */
+  score: { a: string; b: string; score: string } | null;
   likes: number;
   liked: boolean;
   comments: number;
@@ -415,30 +417,39 @@ export const Slide = memo(function Slide(p: SlideProps) {
       {active && intro !== "off" && (
         <div
           className={clsx(
-            "hl-intro absolute inset-0 z-[15] grid place-items-center px-8 text-center",
+            "hl-intro absolute inset-0 z-[15] grid place-items-center px-16 text-center",
             intro === "out" && "hl-intro-out",
           )}
           onClick={() => setIntro("off")}
           data-testid="hl-intro"
         >
-          <div className="hl-intro-body flex flex-col items-center">
+          <div className="hl-intro-body flex w-full min-w-0 flex-col items-center">
             <span className="text-[12px] font-extrabold uppercase tracking-[0.22em] text-[#ef7d2d]">
               Highlights
             </span>
+            {/* Spicchio alza le braccia sopra la sua scatola: spazio sopra, così non tocca la scritta. */}
             <div
-              className="live-stage relative mt-2 h-[112px] w-[96px]"
+              className="hl-intro-stage live-stage relative mt-8 h-[104px] w-[96px]"
               aria-hidden
             >
               <span className="live-shadow absolute bottom-0 left-1/2 h-2.5 w-3/5 -translate-x-1/2 rounded-[50%] bg-black/55" />
               <span className="live-bounce absolute inset-x-0 bottom-2 flex justify-center">
-                <Mascot pose="esulta" size={92} animate={false} />
+                <Mascot pose="esulta" size={88} animate={false} />
               </span>
             </div>
-            <p className="display mt-3 text-[26px] leading-tight">{p.title}</p>
-            {p.ticker[0] && (
-              <p className="title mt-1.5 max-w-[30ch] text-[15px] leading-snug text-white/85">
-                {p.ticker[0]}
-              </p>
+            <p className="display mt-3 max-w-full text-[26px] leading-tight">{p.title}</p>
+            {p.score && (
+              <div className="mt-2 flex w-full max-w-[30ch] flex-col items-center">
+                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-white/85 [overflow-wrap:anywhere]">
+                  {p.score.a}
+                </span>
+                <span className="score my-0.5 text-[34px] leading-none text-[#ef7d2d]">
+                  {p.score.score}
+                </span>
+                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-white/85 [overflow-wrap:anywhere]">
+                  {p.score.b}
+                </span>
+              </div>
             )}
             {h.clips.length > 0 && (
               <p className="mt-2 text-[13px] font-semibold text-white/65">
