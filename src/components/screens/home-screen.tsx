@@ -338,14 +338,19 @@ export function HomeScreen() {
               <Link
                 href={last ? `/partite?m=${last.id}` : "/partite"}
                 onClick={() => last && markMatchOpenedFromElsewhere()}
-                className="card flex h-full flex-col overflow-hidden p-4 short:p-3.5"
+                // Si adatta all'altezza che resta (container query): su un telefono basso spariscono
+                // prima "Hai vinto", poi la figurina, mai il risultato tagliato.
+                className="last-card card flex h-full flex-col overflow-hidden p-4 short:p-3.5"
               >
                 <h2 className="text-[13.5px] font-semibold text-muted">
                   Ultima partita
                 </h2>
                 {lastMvpPlayer && (
-                  <div className="mt-1.5 flex min-w-0 items-end gap-1.5">
-                    <span className="shrink-0 short:hidden" aria-hidden>
+                  <div className="last-mvp mt-1.5 flex min-w-0 items-end gap-1.5">
+                    <span
+                      className="last-mvp-art shrink-0 short:hidden"
+                      aria-hidden
+                    >
                       <Character
                         id={characterOf(lastMvpPlayer)}
                         number={lastMvpPlayer.jerseyNumber}
@@ -385,7 +390,7 @@ export function HomeScreen() {
                     {lastTeam && (
                       <span
                         className={clsx(
-                          "sticker-sm mt-2 w-fit rounded-full px-2.5 py-0.5 text-[12px] font-bold short:hidden",
+                          "last-pill sticker-sm mt-2 w-fit rounded-full px-2.5 py-0.5 text-[12px] font-bold short:hidden",
                           winnerOf(last) === lastTeam
                             ? "bg-volt text-volt-ink"
                             : "bg-raised text-muted",

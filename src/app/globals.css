@@ -1705,3 +1705,24 @@ html[data-shot="3"] .intro-ball-x {
     animation: none;
   }
 }
+
+/* "Ultima partita" nella Home: decide l'altezza che resta. Si tolgono le cose in quest'ordine
+   (prima "Hai vinto", poi la figurina, poi la riga MVP), così il risultato non si taglia mai. */
+.last-card {
+  container: last / size;
+}
+@container last (max-height: 228px) {
+  .last-pill {
+    display: none;
+  }
+}
+@container last (max-height: 186px) {
+  .last-mvp-art {
+    display: none;
+  }
+}
+@container last (max-height: 138px) {
+  .last-mvp {
+    display: none;
+  }
+}

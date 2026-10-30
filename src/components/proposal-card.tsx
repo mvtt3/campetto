@@ -150,9 +150,6 @@ export function ProposalCard({
       ? `${new Date(myResp.altStartsAt ?? proposal.startsAt).getTime()}|${myResp.altPlace ?? proposal.place ?? ""}`
       : null;
   const alts = compact ? [] : alternativesOf(proposal);
-  const yesNames = yes.map((p) =>
-    p.id === me?.id ? "tu" : shortName(p, data.players),
-  );
 
   const openAlt = (mode: "alt" | "move") =>
     setAltForm((s) => ({ mode, n: s.n + 1, open: true }));
@@ -245,35 +242,34 @@ export function ProposalCard({
         <div className="min-w-0">
           <p className="title truncate text-[19px]">
             {proposalWhen(proposal.startsAt)}
-          </p>
-          <p className="mt-0.5 truncate text-[13px] text-muted">
-            {proposal.place && (
-              <span className="font-bold text-text">
-                <MapPin
-                  size={13}
-                  strokeWidth={2.6}
-                  className="-mt-0.5 mr-0.5 inline text-ball"
-                  aria-hidden
-                />
-                {placeLabel(proposal.place)}
-              </span>
+            {/* Nella Home il campetto sta sulla riga dell'ora: la scheda non si allunga. */}
+            {compact && proposal.place && (
+              <PlaceTag place={proposal.place} inline />
             )}
-            <span className={clsx(compact && proposal.place && "short:hidden")}>
-              {proposal.place ? " · " : ""}
-              {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
-              {shortName(creator, data.players)}
-              {proposal.note ? `. ${proposal.note}` : ""}
-            </span>
+          </p>
+          <p
+            className={clsx(
+              "mt-0.5 truncate text-[13px] text-muted",
+              // Nella Home, sui telefoni non alti, la riga in più toglieva spazio all'ultima partita.
+              compact && "[@media(max-height:820px)]:hidden",
+            )}
+          >
+            {!compact && proposal.place && (
+              <>
+                <PlaceTag place={proposal.place} />
+                {" · "}
+              </>
+            )}
+            {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
+            {shortName(creator, data.players)}
+            {proposal.note ? `. ${proposal.note}` : ""}
           </p>
         </div>
         <WeatherChip at={proposal.startsAt} className="shrink-0" />
       </div>
 
       {/* Chi c'è: facce e conta. Nella Home porta al calendario, dove ci sono tutti i nomi. */}
-      <WhoRow
-        compact={compact}
-        label={`Chi c'è: ${yesNames.length ? namesList(yesNames, 6) : "ancora nessuno"}. Apri il calendario`}
-      >
+      <WhoRow compact={compact}>
         {yes.length ? (
           <AvatarStack players={yes} size={compact ? 28 : 32} />
         ) : null}
@@ -319,18 +315,6 @@ export function ProposalCard({
               transition={{ type: "spring", stiffness: 200, damping: 26 }}
             />
           </div>
-          {compact && yesNames.length > 0 && (
-            <p className="mt-1 truncate text-[12.5px] text-muted short:hidden">
-              <span className="font-semibold text-text">
-                {namesList(
-                  yesNames.map((n, i) =>
-                    i === 0 ? n.charAt(0).toUpperCase() + n.slice(1) : n,
-                  ),
-                )}
-              </span>{" "}
-              {yes.length === 1 && yesNames[0] !== "tu" ? "c'è" : "ci siete"}
-            </p>
-          )}
         </div>
         {compact && (
           <ChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
@@ -526,22 +510,41 @@ export function ProposalCard({
 /** La riga di chi c'è: nella Home è un collegamento al calendario, nel calendario è solo da leggere. */
 function WhoRow({
   compact,
-  label,
   children,
 }: {
   compact?: boolean;
-  label: string;
   children: ReactNode;
 }) {
   return compact ? (
     <Link
       href="/organizza"
-      aria-label={label}
       className="press -mx-1 flex items-center gap-3 rounded-2xl px-1 text-left"
     >
+      <span className="sr-only">Chi c&apos;è, apri il calendario: </span>
       {children}
     </Link>
   ) : (
     <div className="flex items-center gap-3">{children}</div>
+  );
+}
+
+/** Il campetto: puntina arancione e nome, ben leggibile. */
+function PlaceTag({
+  place,
+  inline,
+}: {
+  place: NonNullable<Proposal["place"]>;
+  inline?: boolean;
+}) {
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-0.5 text-[13px] font-bold text-text [font-family:var(--font-sans)]",
+        inline && "ml-2 align-[0.15em]",
+      )}
+    >
+      <MapPin size={13} strokeWidth={2.6} className="text-ball" aria-hidden />
+      {placeLabel(place)}
+    </span>
   );
 }
