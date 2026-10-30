@@ -5,6 +5,7 @@ import type {
   Format,
   NotifyPrefs,
   Player,
+  Place,
   ResponseKind,
   StatsSource,
   Team,
@@ -79,6 +80,8 @@ export type NotifyBody =
   | { type: "proposal_new"; proposalId: string }
   | { type: "proposal_response"; proposalId: string }
   | { type: "proposal_cancelled"; proposalId: string }
+  | { type: "proposal_alternative"; proposalId: string }
+  | { type: "proposal_moved"; proposalId: string }
   | { type: "feedback"; kind: string }
   | { type: "match_saved"; matchId: string; isNew: boolean }
   | { type: "flush" }
@@ -109,9 +112,21 @@ export interface Backend {
     startsAt: string;
     format: Format | null;
     note: string | null;
+    place: Place | null;
   }): Promise<string>;
   cancelProposal(id: string): Promise<void>;
   respond(proposalId: string, response: ResponseKind | null): Promise<void>;
+  /** La mia controproposta (stesso giorno): null la toglie. */
+  setAlternative(
+    proposalId: string,
+    alt: { startsAt: string | null; place: Place | null } | null,
+  ): Promise<void>;
+  /** Sposta la partita su un altro orario e/o campetto, stesso giorno. */
+  moveProposal(
+    proposalId: string,
+    startsAt: string,
+    place: Place | null,
+  ): Promise<void>;
 
   updateMe(patch: MePatch): Promise<void>;
   uploadAvatar(file: Blob): Promise<string>;

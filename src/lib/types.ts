@@ -45,7 +45,8 @@ export type NotifyKind =
   | "record"
   | "ritorno"
   | "primati"
-  | "notizie";
+  | "notizie"
+  | "adesioni";
 /** Un interruttore per ogni tipo di notifica, più il silenzio di notte (23–8). */
 export type NotifyPrefs = Record<NotifyKind, boolean> & { notte: boolean };
 export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
@@ -61,6 +62,7 @@ export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
   ritorno: true,
   primati: true,
   notizie: true,
+  adesioni: true,
   notte: true,
 };
 
@@ -93,9 +95,14 @@ export const NOTIFY_GROUPS: {
         hint: "Un'ora prima della partita, se hai detto che ci sei",
       },
       {
+        kind: "adesioni",
+        label: "Risposte alle tue proposte",
+        hint: "Chi dice che c'è o propone un altro orario o campetto",
+      },
+      {
         kind: "annullate",
-        label: "Partite annullate",
-        hint: "Se salta una partita a cui avevi risposto",
+        label: "Partite spostate o annullate",
+        hint: "Se cambia o salta una partita a cui avevi risposto",
       },
       {
         kind: "ritorno",
@@ -254,15 +261,34 @@ export interface Match {
 
 export type ResponseKind = "si" | "forse" | "no";
 
+/** I due campetti dove si gioca: conta solo per organizzarsi, non per le statistiche. */
+export type Place = "niche" | "decathlon";
+export const PLACES: { value: Place; label: string; hint: string }[] = [
+  { value: "niche", label: "Niche", hint: "Nichelino" },
+  { value: "decathlon", label: "Decathlon", hint: "Il campetto del Decathlon" },
+];
+export const placeLabel = (p: Place | null | undefined): string =>
+  PLACES.find((x) => x.value === p)?.label ?? "";
+
+export interface ProposalResponse {
+  playerId: string;
+  response: ResponseKind;
+  updatedAt: string;
+  /** Controproposta di chi ha detto sì: stesso giorno, un altro orario e/o un altro campetto. */
+  altStartsAt?: string | null;
+  altPlace?: Place | null;
+}
+
 export interface Proposal {
   id: string;
   startsAt: string;
   format: Format | null;
   note: string | null;
+  place?: Place | null;
   createdBy: string;
   status: "aperta" | "annullata";
   createdAt: string;
-  responses: { playerId: string; response: ResponseKind; updatedAt: string }[];
+  responses: ProposalResponse[];
 }
 
 export interface Dataset {

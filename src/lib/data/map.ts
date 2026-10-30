@@ -102,6 +102,7 @@ export function mapProposal(r: any): Proposal {
     startsAt: r.starts_at,
     format: r.format,
     note: r.note,
+    place: r.place ?? null,
     createdBy: r.created_by,
     status: r.status,
     createdAt: r.created_at,
@@ -109,6 +110,8 @@ export function mapProposal(r: any): Proposal {
       playerId: x.player_id,
       response: x.response,
       updatedAt: x.updated_at,
+      altStartsAt: x.alt_starts_at ?? null,
+      altPlace: x.alt_place ?? null,
     })),
   };
 }

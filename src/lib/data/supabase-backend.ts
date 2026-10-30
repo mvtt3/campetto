@@ -186,6 +186,7 @@ export function createSupabaseBackend(): Backend {
           starts_at: input.startsAt,
           format: input.format,
           note: input.note,
+          place: input.place,
           created_by: meId,
         })
         .select("id")
@@ -233,6 +234,33 @@ export function createSupabaseBackend(): Backend {
             response,
             notified: false,
             updated_at: new Date().toISOString(),
+          })
+        ).error,
+      );
+    },
+
+    async setAlternative(proposalId, alt) {
+      fail(
+        (
+          await sb
+            .from("proposal_responses")
+            .update({
+              alt_starts_at: alt?.startsAt ?? null,
+              alt_place: alt?.place ?? null,
+            })
+            .eq("proposal_id", proposalId)
+            .eq("player_id", meId!)
+        ).error,
+      );
+    },
+
+    async moveProposal(proposalId, startsAt, place) {
+      fail(
+        (
+          await sb.rpc("move_proposal", {
+            p_id: proposalId,
+            p_starts_at: startsAt,
+            p_place: place,
           })
         ).error,
       );

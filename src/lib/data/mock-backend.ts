@@ -195,13 +195,21 @@ function demoProposals() {
       startsAt: d.toISOString(),
       format: "3v3" as Format,
       note: "Porto io il pallone nuovo",
+      place: "decathlon" as const,
       createdBy: "p2",
       status: "aperta" as const,
       createdAt: at,
       responses: [
         { playerId: "p2", response: "si" as const, updatedAt: at },
         { playerId: "p4", response: "si" as const, updatedAt: at },
-        { playerId: "p7", response: "si" as const, updatedAt: at },
+        {
+          playerId: "p7",
+          response: "si" as const,
+          updatedAt: at,
+          // Una controproposta di prova: un'ora dopo, al Niche.
+          altStartsAt: new Date(d.getTime() + 3_600_000).toISOString(),
+          altPlace: "niche" as const,
+        },
         { playerId: "p5", response: "forse" as const, updatedAt: at },
       ],
     },
@@ -499,6 +507,7 @@ export function createMockBackend(): Backend {
         startsAt: input.startsAt,
         format: input.format,
         note: input.note,
+        place: input.place,
         createdBy: state.meId,
         status: "aperta",
         createdAt: new Date().toISOString(),
@@ -521,13 +530,54 @@ export function createMockBackend(): Backend {
     async respond(proposalId, response) {
       const p = state.proposals.find((x) => x.id === proposalId);
       if (!p) return;
+      const prev = p.responses.find((r) => r.playerId === state.meId);
       p.responses = p.responses.filter((r) => r.playerId !== state.meId);
       if (response)
         p.responses.push({
           playerId: state.meId,
           response,
           updatedAt: new Date().toISOString(),
+          // Come nel database: la controproposta resta solo con il "sì".
+          ...(response === "si" && prev
+            ? { altStartsAt: prev.altStartsAt, altPlace: prev.altPlace }
+            : {}),
         });
+      save();
+    },
+    async setAlternative(proposalId, alt) {
+      const p = state.proposals.find((x) => x.id === proposalId);
+      const r = p?.responses.find((x) => x.playerId === state.meId);
+      if (!p || !r || r.response !== "si") return;
+      if (
+        alt?.startsAt &&
+        new Date(alt.startsAt).toDateString() !==
+          new Date(p.startsAt).toDateString()
+      )
+        throw new Error(
+          "Per cambiare giorno fai una nuova proposta dal calendario",
+        );
+      const same =
+        (alt?.startsAt ?? p.startsAt) === p.startsAt &&
+        (alt?.place ?? p.place ?? null) === (p.place ?? null);
+      r.altStartsAt = alt && !same ? alt.startsAt : null;
+      r.altPlace = alt && !same ? alt.place : null;
+      save();
+    },
+    async moveProposal(proposalId, startsAt, place) {
+      const p = state.proposals.find((x) => x.id === proposalId);
+      if (!p) return;
+      if (p.createdBy !== state.meId && !me().isAdmin)
+        throw new Error("Può spostarla solo chi l'ha proposta");
+      p.startsAt = startsAt;
+      if (place) p.place = place;
+      for (const r of p.responses)
+        if (
+          (r.altStartsAt ?? startsAt) === startsAt &&
+          (r.altPlace ?? p.place ?? null) === (p.place ?? null)
+        ) {
+          r.altStartsAt = null;
+          r.altPlace = null;
+        }
       save();
     },
     async updateMe(patch) {

@@ -17,7 +17,7 @@ import { DayStrip, dayLabel, TimeField } from "@/components/ui/pickers";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
-import { FORMATS, type Format } from "@/lib/types";
+import { FORMATS, PLACES, type Format, type Place } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { say } from "@/lib/voice";
 
@@ -30,6 +30,8 @@ function startOfWeek(d: Date): Date {
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const localIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const PLACE_KEY = "campetto:ultimo-campetto";
 
 function NewProposalSheet({
   open,
@@ -53,6 +55,15 @@ function NewProposalSheet({
   const [format, setFormat] = useState<Format | "any">("any");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  // Il campetto: si riparte dall'ultimo scelto, quasi sempre è quello.
+  const [place, setPlace] = useState<Place>(() => {
+    try {
+      const v = localStorage.getItem(PLACE_KEY);
+      return v === "decathlon" || v === "niche" ? v : "niche";
+    } catch {
+      return "niche";
+    }
+  });
 
   // Da oggi a sei settimane avanti (o oltre il giorno scelto nel calendario).
   const days = useMemo(() => {
@@ -88,7 +99,13 @@ function NewProposalSheet({
         startsAt: startsAt.toISOString(),
         format: format === "any" ? null : format,
         note: note.trim() || null,
+        place,
       };
+      try {
+        localStorage.setItem(PLACE_KEY, place);
+      } catch {
+        /* ignore */
+      }
       const id = await backend.createProposal(input);
       void backend.notify({ type: "proposal_new", proposalId: id });
       // Compare subito nel calendario: i dati del server arrivano dopo, senza farti aspettare.
@@ -156,6 +173,14 @@ function NewProposalSheet({
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Ora</h3>
           <TimeField value={time} onChange={setTime} />
+        </section>
+        <section>
+          <h3 className="mb-2 text-[13px] font-semibold text-muted">Dove</h3>
+          <Segmented
+            value={place}
+            onChange={setPlace}
+            options={PLACES.map((x) => ({ value: x.value, label: x.label }))}
+          />
         </section>
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Formato</h3>

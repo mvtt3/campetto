@@ -1,4 +1,4 @@
-import { TEAM_SIZE, type Format } from "../types";
+import { placeLabel, TEAM_SIZE, type Format, type Place } from "../types";
 
 export const SUMMARY_INTERVAL_MIN = 30;
 export const DEFAULT_NEEDED = 6;
@@ -77,4 +77,18 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
     timeZone: "Europe/Rome",
   });
   return `${wd} ${date} alle ${time}`;
+}
+
+/** " al Decathlon", " al Niche" oppure niente: per le frasi delle notifiche. */
+export function atPlace(place: Place | null | undefined): string {
+  return place ? ` al ${placeLabel(place)}` : "";
+}
+
+/** L'ora di una partita, sempre all'ora italiana: "18:30". */
+export function timeLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Rome",
+  });
 }

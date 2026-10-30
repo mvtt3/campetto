@@ -2,13 +2,21 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import { Shuffle, X } from "lucide-react";
+import { ChevronRight, MapPin, Repeat2, Shuffle, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { TeamsSheet } from "./teams-sheet";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
-import { shortName, type Proposal, type ResponseKind } from "@/lib/types";
+import { useNow } from "@/lib/use-now";
+import { alternativesOf, altLabel, namesList } from "@/lib/proposals";
+import {
+  placeLabel,
+  shortName,
+  type Proposal,
+  type ResponseKind,
+} from "@/lib/types";
+import { AltSheet, RosterSheet } from "./proposal-sheets";
 import { AvatarStack } from "./ui/avatar";
 import { haptic } from "./ui/basics";
 import { useToast } from "./ui/toast";
@@ -104,6 +112,7 @@ export function ProposalCard({
   const { data, me, backend, mutate } = useData();
   const respond = useRespond();
   const toast = useToast();
+  const now = useNow();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const byId = new Map(data.players.map((p) => [p.id, p]));
   const yes = proposal.responses
@@ -123,7 +132,109 @@ export function ProposalCard({
   const canCancel = me && (me.id === proposal.createdBy || me.isAdmin);
 
   const [teamsOpen, setTeamsOpen] = useState(false);
+  const [rosterOpen, setRosterOpen] = useState(false);
+  // Ogni apertura riparte dai valori attuali della partita.
+  const [altSheet, setAltSheet] = useState<{
+    mode: "alt" | "move";
+    n: number;
+    open: boolean;
+  }>({ mode: "alt", n: 0, open: false });
+  const [confirmMove, setConfirmMove] = useState<string | null>(null);
   const progress = Math.min(1, yes.length / needed);
+  const future = new Date(proposal.startsAt).getTime() > now.getTime();
+  const isCreator = me?.id === proposal.createdBy;
+  const canMove = !!me && (isCreator || me.isAdmin) && future;
+  const myResp = proposal.responses.find((r) => r.playerId === me?.id);
+  const myAltKey =
+    myResp?.altStartsAt || myResp?.altPlace
+      ? `${new Date(myResp.altStartsAt ?? proposal.startsAt).getTime()}|${myResp.altPlace ?? proposal.place ?? ""}`
+      : null;
+  const alts = compact ? [] : alternativesOf(proposal);
+  const yesNames = yes.map((p) =>
+    p.id === me?.id ? "tu" : shortName(p, data.players),
+  );
+
+  const openAlt = (mode: "alt" | "move") =>
+    setAltSheet((s) => ({ mode, n: s.n + 1, open: true }));
+
+  // "Anch'io" su una controproposta, o la ritiro se è già la mia.
+  const backAlt = async (startsAt: string, place: Proposal["place"]) => {
+    if (!me) return;
+    const mineToo =
+      myAltKey ===
+      `${new Date(startsAt).getTime()}|${place ?? proposal.place ?? ""}`;
+    const alt = mineToo
+      ? null
+      : {
+          startsAt:
+            new Date(startsAt).getTime() ===
+            new Date(proposal.startsAt).getTime()
+              ? null
+              : startsAt,
+          place: place === (proposal.place ?? null) ? null : (place ?? null),
+        };
+    haptic(8);
+    mutate((d) => ({
+      ...d,
+      proposals: d.proposals.map((x) =>
+        x.id !== proposal.id
+          ? x
+          : {
+              ...x,
+              responses: x.responses.map((r) =>
+                r.playerId === me.id
+                  ? {
+                      ...r,
+                      altStartsAt: alt?.startsAt ?? null,
+                      altPlace: alt?.place ?? null,
+                    }
+                  : r,
+              ),
+            },
+      ),
+    }));
+    try {
+      await backend.setAlternative(proposal.id, alt);
+      if (alt)
+        void backend.notify({
+          type: "proposal_alternative",
+          proposalId: proposal.id,
+        });
+    } catch (e) {
+      toast(say(e), "error");
+    }
+  };
+
+  const moveTo = async (startsAt: string, place: Proposal["place"]) => {
+    setConfirmMove(null);
+    const next = place ?? proposal.place ?? null;
+    mutate((d) => ({
+      ...d,
+      proposals: d.proposals.map((x) =>
+        x.id !== proposal.id
+          ? x
+          : {
+              ...x,
+              startsAt,
+              place: next,
+              responses: x.responses.map((r) =>
+                new Date(r.altStartsAt ?? startsAt).getTime() ===
+                  new Date(startsAt).getTime() && (r.altPlace ?? next) === next
+                  ? { ...r, altStartsAt: null, altPlace: null }
+                  : r,
+              ),
+            },
+      ),
+    }));
+    try {
+      await backend.moveProposal(proposal.id, startsAt, next);
+      void backend.notify({ type: "proposal_moved", proposalId: proposal.id });
+      play("success");
+      toast("Spostata, ho avvisato chi c'è");
+    } catch (e) {
+      toast(say(e), "error");
+    }
+  };
 
   return (
     <div
@@ -135,21 +246,36 @@ export function ProposalCard({
           <p className="title truncate text-[19px]">
             {proposalWhen(proposal.startsAt)}
           </p>
-          <p
-            className={clsx(
-              "mt-0.5 truncate text-[13px] text-muted",
-              compact && "short:hidden",
+          <p className="mt-0.5 truncate text-[13px] text-muted">
+            {proposal.place && (
+              <span className="font-bold text-text">
+                <MapPin
+                  size={13}
+                  strokeWidth={2.6}
+                  className="-mt-0.5 mr-0.5 inline text-ball"
+                  aria-hidden
+                />
+                {placeLabel(proposal.place)}
+              </span>
             )}
-          >
-            {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
-            {shortName(creator, data.players)}
-            {proposal.note ? `. ${proposal.note}` : ""}
+            <span className={clsx(compact && proposal.place && "short:hidden")}>
+              {proposal.place ? " · " : ""}
+              {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
+              {shortName(creator, data.players)}
+              {proposal.note ? `. ${proposal.note}` : ""}
+            </span>
           </p>
         </div>
         <WeatherChip at={proposal.startsAt} className="shrink-0" />
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Chi c'è: facce, conta e nomi. Un tocco apre l'elenco completo. */}
+      <button
+        type="button"
+        onClick={() => setRosterOpen(true)}
+        aria-label={`Chi c'è: ${yesNames.length ? namesList(yesNames, 6) : "ancora nessuno"}. Vedi tutte le risposte`}
+        className="press -mx-1 flex items-center gap-3 rounded-2xl px-1 text-left"
+      >
         {yes.length ? (
           <AvatarStack players={yes} size={compact ? 28 : 32} />
         ) : null}
@@ -195,8 +321,26 @@ export function ProposalCard({
               transition={{ type: "spring", stiffness: 200, damping: 26 }}
             />
           </div>
+          {yesNames.length > 0 && (
+            <p
+              className={clsx(
+                "mt-1 truncate text-[12.5px] text-muted",
+                compact && "short:hidden",
+              )}
+            >
+              <span className="font-semibold text-text">
+                {namesList(
+                  yesNames.map((n, i) =>
+                    i === 0 ? n.charAt(0).toUpperCase() + n.slice(1) : n,
+                  ),
+                )}
+              </span>{" "}
+              {yes.length === 1 && yesNames[0] !== "tu" ? "c'è" : "ci siete"}
+            </p>
+          )}
         </div>
-      </div>
+        <ChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
+      </button>
 
       <div className="flex gap-2" role="group" aria-label="La tua risposta">
         {RESPONSES.map((r) => {
@@ -222,6 +366,82 @@ export function ProposalCard({
           );
         })}
       </div>
+
+      {/* Le controproposte: piccole, sotto le risposte. Chi ha proposto la sposta con un tocco. */}
+      {alts.length > 0 && (
+        <ul className="flex flex-col gap-1.5" aria-label="Controproposte">
+          {alts.map((g) => {
+            const mineToo = myAltKey === g.key;
+            const names = g.playerIds.map((id) =>
+              id === me?.id ? "tu" : shortName(byId.get(id), data.players),
+            );
+            return (
+              <li
+                key={g.key}
+                className="flex items-center gap-2.5 rounded-2xl border-2 border-dashed border-line-strong px-2.5 py-2"
+              >
+                <Repeat2 size={18} className="shrink-0 text-ball" aria-hidden />
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="truncate text-[14px] font-bold">
+                    {altLabel(proposal, g)}
+                  </p>
+                  <p className="truncate text-[12px] text-muted">
+                    {g.playerIds.length === 1
+                      ? "La preferisce"
+                      : "La preferiscono"}{" "}
+                    {namesList(names)}
+                  </p>
+                </div>
+                {canMove ? (
+                  <button
+                    onClick={() =>
+                      confirmMove === g.key
+                        ? void moveTo(g.startsAt, g.place)
+                        : setConfirmMove(g.key)
+                    }
+                    className={clsx(
+                      "sticker-sm press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-bold",
+                      confirmMove === g.key
+                        ? "bg-ok text-white"
+                        : "bg-court text-court-ink",
+                    )}
+                  >
+                    {confirmMove === g.key ? "Confermi?" : "Sposta qui"}
+                  </button>
+                ) : mine === "si" && future ? (
+                  <button
+                    onClick={() => void backAlt(g.startsAt, g.place)}
+                    aria-pressed={mineToo}
+                    className={clsx(
+                      "sticker-sm press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-bold",
+                      mineToo
+                        ? "bg-surface text-muted"
+                        : "bg-volt text-volt-ink",
+                    )}
+                  >
+                    {mineToo ? "Ritira" : "Anch'io"}
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {/* Un altro orario o l'altro campetto, stesso giorno: per chi c'è, e per chi l'ha proposta. */}
+      {!compact && future && (canMove || mine === "si") && (
+        <button
+          type="button"
+          onClick={() => openAlt(canMove ? "move" : "alt")}
+          className="press -my-1 self-center rounded-full px-3 py-1.5 text-[13px] font-semibold text-court underline decoration-2 underline-offset-4"
+        >
+          {canMove
+            ? "Cambia orario o campetto"
+            : myAltKey
+              ? "Cambia la tua alternativa"
+              : "Meglio un altro orario o campetto?"}
+        </button>
+      )}
 
       {!compact && (((isToday || full) && yes.length >= 2) || canCancel) && (
         <div className="flex gap-2">
@@ -276,6 +496,20 @@ export function ProposalCard({
               </button>
             ))}
         </div>
+      )}
+      <RosterSheet
+        proposal={proposal}
+        open={rosterOpen}
+        onClose={() => setRosterOpen(false)}
+      />
+      {!compact && (
+        <AltSheet
+          key={`${altSheet.mode}-${altSheet.n}`}
+          proposal={proposal}
+          mode={altSheet.mode}
+          open={altSheet.open}
+          onClose={() => setAltSheet((s) => ({ ...s, open: false }))}
+        />
       )}
       {teamsOpen && (
         <TeamsSheet

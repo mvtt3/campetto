@@ -17,7 +17,9 @@ import {
 } from "@/lib/data/map";
 import {
   decideProposalNotifications,
+  atPlace,
   dayLabel,
+  timeLabel,
   neededPlayers,
   summaryText,
 } from "@/lib/notifications/grouping";
@@ -38,6 +40,7 @@ import {
   shortName,
   type Match,
   type NotifyKind,
+  type Place,
   type Player,
   type Proposal,
 } from "@/lib/types";
@@ -49,6 +52,8 @@ const Body = z.discriminatedUnion("type", [
   z.object({ type: z.literal("proposal_new"), proposalId: z.uuid() }),
   z.object({ type: z.literal("proposal_response"), proposalId: z.uuid() }),
   z.object({ type: z.literal("proposal_cancelled"), proposalId: z.uuid() }),
+  z.object({ type: z.literal("proposal_alternative"), proposalId: z.uuid() }),
+  z.object({ type: z.literal("proposal_moved"), proposalId: z.uuid() }),
   z.object({ type: z.literal("tick") }),
   z.object({ type: z.literal("feedback"), kind: z.string().max(20) }),
   z.object({
@@ -154,9 +159,13 @@ async function loadPlayers(sb: SupabaseClient): Promise<Player[]> {
   return (data ?? []).map(mapPlayer);
 }
 
-async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
+async function proposalSummary(
+  ctx: Ctx,
+  p: Proposal,
+  players: Player[],
+): Promise<{ threshold: boolean }> {
   if (p.status !== "aperta" || new Date(p.startsAt).getTime() < Date.now())
-    return;
+    return { threshold: false };
   const { data } = await ctx.sb.rpc("proposal_notify_state", { p_id: p.id });
   const st = (
     data as
@@ -167,7 +176,7 @@ async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
         }[]
       | null
   )?.[0];
-  if (!st) return;
+  if (!st) return { threshold: false };
   const yes = p.responses
     .filter((r) => r.response === "si")
     .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
@@ -190,7 +199,7 @@ async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
     const to = await ctx.targets("completa", yes);
     await ctx.send(to, {
       title: "Si gioca!",
-      body: `Ho fatto la conta: siete in ${yes.length} ${when}${p.format ? ` per il ${p.format}` : ""}. Ci vediamo al campetto`,
+      body: `Ho fatto la conta: siete in ${yes.length} ${when}${p.format ? ` per il ${p.format}` : ""}. Ci vediamo${p.place ? atPlace(p.place) : " al campetto"}`,
       url: "/organizza",
       tag: `proposal-${p.id}`,
     });
@@ -201,7 +210,7 @@ async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
       .map((x) => x.id);
     await ctx.send(await ctx.targets("completa", others), {
       title: "Si gioca!",
-      body: `Ho già ${yes.length} giocatori ${when}. Vuoi esserci anche tu?`,
+      body: `Ho già ${yes.length} giocatori ${when}${atPlace(p.place)}. Vuoi esserci anche tu?`,
       url: "/organizza",
       tag: `proposal-${p.id}`,
       actions: [
@@ -237,6 +246,72 @@ async function proposalSummary(ctx: Ctx, p: Proposal, players: Player[]) {
       p_summary: decision.summary,
     });
   }
+  return { threshold: decision.threshold };
+}
+
+/** A chi ha proposto: ogni volta che qualcuno dice "ci sono" (una volta per persona). */
+async function proposalJoined(ctx: Ctx, p: Proposal, players: Player[]) {
+  if (ctx.me === p.createdBy || p.status !== "aperta") return;
+  if (new Date(p.startsAt).getTime() < Date.now()) return;
+  const mine = p.responses.find((r) => r.playerId === ctx.me);
+  if (mine?.response !== "si") return;
+  if (!(await ctx.claim(`adesione:${p.id}:${ctx.me}`))) return;
+  const who = shortName(
+    players.find((x) => x.id === ctx.me),
+    players,
+  );
+  const yes = p.responses.filter((r) => r.response === "si").length;
+  const need = neededPlayers(p.format);
+  await ctx.send(await ctx.targets("adesioni", [p.createdBy]), {
+    title: `${who} c'è!`,
+    body:
+      yes >= need
+        ? `Ha detto sì alla tua partita di ${dayLabel(p.startsAt)}: siete al completo, si gioca`
+        : `Ha detto sì alla tua partita di ${dayLabel(p.startsAt)}. Siete in ${yes} di ${need}`,
+    url: "/organizza",
+    tag: `proposal-${p.id}`,
+  });
+}
+
+/** A chi ha proposto: qualcuno preferisce un altro orario o l'altro campetto. */
+async function proposalAlternative(ctx: Ctx, p: Proposal, players: Player[]) {
+  const mine = p.responses.find((r) => r.playerId === ctx.me);
+  if (!mine || mine.response !== "si") return;
+  if (!mine.altStartsAt && !mine.altPlace) return;
+  if (ctx.me === p.createdBy) return;
+  const key = `alt:${p.id}:${ctx.me}:${mine.altStartsAt ?? ""}:${mine.altPlace ?? ""}`;
+  if (!(await ctx.claim(key))) return;
+  const who = shortName(
+    players.find((x) => x.id === ctx.me),
+    players,
+  );
+  const time = timeLabel(mine.altStartsAt ?? p.startsAt);
+  const place = mine.altPlace ?? p.place;
+  await ctx.send(await ctx.targets("adesioni", [p.createdBy]), {
+    title: `${who} propone un'alternativa`,
+    body: `Per ${dayOnly(p.startsAt)} meglio alle ${time}${atPlace(place)}. Se va bene anche a te, sposti la partita con un tocco`,
+    url: "/organizza",
+    tag: `proposal-${p.id}`,
+  });
+}
+
+/** A chi ha detto "ci sono": la partita è stata spostata (stesso giorno). */
+async function proposalMoved(ctx: Ctx, p: Proposal, players: Player[]) {
+  if (!(await ctx.claim(`moved:${p.id}:${p.startsAt}:${p.place ?? ""}`)))
+    return;
+  const who = shortName(
+    players.find((x) => x.id === ctx.me),
+    players,
+  );
+  const ids = p.responses
+    .filter((r) => r.response !== "no" && r.playerId !== ctx.me)
+    .map((r) => r.playerId);
+  await ctx.send(await ctx.targets("annullate", ids), {
+    title: "Cambio di programma",
+    body: `${who} ha spostato la partita di ${dayOnly(p.startsAt)}: ora è alle ${timeLabel(p.startsAt)}${atPlace(p.place)}`,
+    url: "/organizza",
+    tag: `proposal-${p.id}`,
+  });
 }
 
 const LEADERS: { stat: StatKey; who: string; unit: string }[] = [
@@ -481,6 +556,7 @@ interface Reminder {
   format: string | null;
   yes_count: number;
   quiet: boolean;
+  place?: string | null;
 }
 
 /** Chiamato ogni 10 minuti dal database: i promemoria un'ora prima della partita. */
@@ -521,7 +597,7 @@ async function tick(req: Request) {
         { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
         JSON.stringify({
           title: "Tra un'ora si gioca",
-          body: `Ti aspetto al campetto alle ${time}: siete in ${r.yes_count}${r.format ? ` per il ${r.format}` : ""}`,
+          body: `Ti aspetto${r.place ? atPlace(r.place as Place) : " al campetto"} alle ${time}: siete in ${r.yes_count}${r.format ? ` per il ${r.format}` : ""}`,
           url: "/organizza",
           tag: `reminder-${r.proposal_id}`,
         }),
@@ -668,7 +744,7 @@ export async function POST(req: Request) {
         );
         await ctx.send(await ctx.targets("proposte", null, p.createdBy), {
           title: "Si gioca?",
-          body: `${who} propone ${dayLabel(p.startsAt)}${p.format ? ` per un ${p.format}` : ""}. Ti tengo un posto?`,
+          body: `${who} propone ${dayLabel(p.startsAt)}${atPlace(p.place)}${p.format ? ` per un ${p.format}` : ""}. Ti tengo un posto?`,
           url: "/organizza",
           tag: `proposal-${p.id}`,
           actions: [
@@ -687,7 +763,30 @@ export async function POST(req: Request) {
           .eq("id", body.proposalId)
           .single(),
       ]);
-      if (data) await proposalSummary(ctx, mapProposal(data), players);
+      if (data) {
+        const p = mapProposal(data);
+        const { threshold } = await proposalSummary(ctx, p, players);
+        // Se si è appena arrivati al completo, "Si gioca!" l'ha già ricevuto anche lui.
+        if (!threshold) await proposalJoined(ctx, p, players);
+      }
+    } else if (
+      body.type === "proposal_alternative" ||
+      body.type === "proposal_moved"
+    ) {
+      const [players, { data }] = await Promise.all([
+        loadPlayers(sb),
+        sb
+          .from("proposals")
+          .select(PROPOSAL_SELECT)
+          .eq("id", body.proposalId)
+          .single(),
+      ]);
+      if (data) {
+        const p = mapProposal(data);
+        if (body.type === "proposal_alternative")
+          await proposalAlternative(ctx, p, players);
+        else await proposalMoved(ctx, p, players);
+      }
     } else if (body.type === "proposal_cancelled") {
       const [players, { data }] = await Promise.all([
         loadPlayers(sb),

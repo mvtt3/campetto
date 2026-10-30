@@ -175,10 +175,12 @@ test("proponi una partita e rispondi", async ({ page }) => {
   await page.getByRole("button", { name: "Domani" }).click();
   await page.getByRole("button", { name: "18:00" }).click();
   await page.getByRole("tab", { name: "3v3" }).click();
+  await page.getByRole("tab", { name: "Decathlon" }).click();
   await page.getByRole("button", { name: "Proponi", exact: true }).click();
   // Le schede principali restano montate (nascoste): si guarda solo la scheda visibile.
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
   await expect(card).toContainText("1 di 6");
+  await expect(card).toContainText("Decathlon");
   await card.getByRole("button", { name: "Forse" }).click();
   await expect(card.getByRole("button", { name: "Forse" })).toHaveAttribute(
     "aria-pressed",
@@ -188,6 +190,56 @@ test("proponi una partita e rispondi", async ({ page }) => {
   await expect(card).toContainText("1 di 6");
   await page.getByRole("link", { name: "Home" }).click();
   await expect(page.getByTestId("proposal-card")).toBeVisible();
+});
+
+test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
+  page,
+}) => {
+  // Davide (p4) ha detto che c'è alla partita di domani al Decathlon proposta da Valerio.
+  await openApp(page, "demo", "light", "p4");
+  await page.goto("/organizza");
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
+  await expect(card).toContainText("Decathlon");
+  // Chi c'è: i nomi sotto la barra, e l'elenco completo con un tocco.
+  await card.getByRole("button", { name: /^Chi c'è/ }).click();
+  const roster = page.getByRole("dialog", { name: "Chi c'è" });
+  await expect(roster.getByRole("region", { name: "Ci sono" })).toContainText(
+    "Tu",
+  );
+  await expect(
+    roster.getByRole("region", { name: "Non hanno ancora risposto" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  // La controproposta di prova (un'ora dopo, al Niche): "Anch'io".
+  const alts = card.getByRole("list", { name: "Controproposte" });
+  await expect(alts).toContainText("al Niche");
+  await alts.getByRole("button", { name: "Anch'io" }).click();
+  await expect(alts).toContainText("La preferiscono");
+  await expect(alts.getByRole("button", { name: "Ritira" })).toBeVisible();
+  // La propria: stesso giorno, un altro orario.
+  await alts.getByRole("button", { name: "Ritira" }).click();
+  await card
+    .getByRole("button", { name: "Meglio un altro orario o campetto?" })
+    .click();
+  const sheet = page.getByRole("dialog", { name: "Proponi un'alternativa" });
+  await sheet.getByRole("button", { name: "17:30" }).click();
+  await sheet.getByRole("button", { name: "Proponi", exact: true }).click();
+  await expect(alts).toContainText("Alle 17:30");
+});
+
+test("chi ha proposto sposta la partita su una controproposta", async ({
+  page,
+}) => {
+  // Springs è l'amministratore: può spostarla anche se non l'ha proposta lui.
+  await openApp(page, "demo");
+  await page.goto("/organizza");
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
+  const alts = card.getByRole("list", { name: "Controproposte" });
+  await alts.getByRole("button", { name: "Sposta qui" }).click();
+  await alts.getByRole("button", { name: "Confermi?" }).click();
+  await expect(card).toContainText("Niche");
+  await expect(card).toContainText("19:00");
+  await expect(alts).toHaveCount(0);
 });
 
 test("importa statistiche da testo", async ({ page }) => {
