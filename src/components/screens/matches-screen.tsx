@@ -3,10 +3,20 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Crown, Plus } from "lucide-react";
-import { memo, Suspense, useCallback, useMemo, useRef } from "react";
+import { ChevronDown, Crown, Plus } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MatchSheet } from "@/components/match-sheet";
-import { EmptyState, ScreenHeader } from "@/components/ui/basics";
+import { EmptyState, ScreenHeader, Segmented } from "@/components/ui/basics";
+import { AvatarStack } from "@/components/ui/avatar";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { monthLabel, monthOf } from "@/lib/periods";
@@ -25,9 +35,12 @@ export function markMatchOpenedFromElsewhere() {
 const MatchRow = memo(function MatchRow({
   m,
   onOpen,
+  flat,
 }: {
   m: Match;
   onOpen: (id: string) => void;
+  /** Dentro una serata: senza ombra, per non avere una scheda dentro l'altra. */
+  flat?: boolean;
 }) {
   const { data, me } = useData();
   // I cambi in fondo, con il "+": "Matteo, Simone + Cande".
@@ -56,7 +69,10 @@ const MatchRow = memo(function MatchRow({
       onClick={() => onOpen(m.id)}
       data-testid="match-row"
       // Le righe fuori dallo schermo non si impaginano finché non ci arrivi: la lista resta leggera anche con centinaia di partite.
-      className="card press flex w-full items-stretch gap-3 overflow-hidden p-0 text-left [contain-intrinsic-size:auto_86px] [content-visibility:auto]"
+      className={clsx(
+        "press flex w-full items-stretch gap-3 overflow-hidden p-0 text-left [contain-intrinsic-size:auto_86px] [content-visibility:auto]",
+        flat ? "rounded-[18px] border-2 border-line-strong bg-surface" : "card",
+      )}
     >
       <div
         className={clsx(
@@ -131,6 +147,105 @@ const MatchRow = memo(function MatchRow({
   );
 });
 
+const ONLY_KEY = "campetto:partite-solo-mie";
+
+interface Night {
+  key: string;
+  items: Match[];
+}
+
+const NIGHT_DAY = new Intl.DateTimeFormat("it-IT", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+/**
+ * Una serata al campetto: il riassunto (giorno, quante partite, chi c'era, il tuo bilancio) e,
+ * con un tocco, le partite di quella sera.
+ */
+function NightCard({
+  night,
+  open,
+  onToggle,
+  onOpen,
+}: {
+  night: Night;
+  open: boolean;
+  onToggle: () => void;
+  onOpen: (id: string) => void;
+}) {
+  const { data, me } = useData();
+  const day = NIGHT_DAY.format(new Date(night.items[0].playedAt));
+  const ids = new Set(
+    night.items.flatMap((m) => m.players.map((l) => l.playerId)),
+  );
+  const people = data.players.filter((p) => ids.has(p.id));
+  let won = 0;
+  let lost = 0;
+  if (me)
+    for (const m of night.items) {
+      const t = teamOf(m, me.id);
+      if (!t) continue;
+      if (winnerOf(m) === t) won++;
+      else lost++;
+    }
+  const n = night.items.length;
+  return (
+    <div className="card overflow-hidden" data-testid="night">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="press flex w-full items-center gap-3 px-3.5 py-3 text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="title truncate text-[16px] first-letter:uppercase">
+            {day}
+          </p>
+          <p className="mt-0.5 truncate text-[12.5px] text-muted">
+            {n} {n === 1 ? "partita" : "partite"}
+            {won + lost > 0 && (
+              <>
+                {" · "}
+                <span className="font-bold text-text">
+                  tu {won}V {lost}S
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+        <AvatarStack players={people} size={24} max={3} />
+        <ChevronDown
+          size={18}
+          className={clsx(
+            "shrink-0 text-faint transition-transform duration-200",
+            open && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-2 border-t-2 border-dashed border-line-strong px-2.5 pb-2.5 pt-2.5">
+              {night.items.map((m) => (
+                <MatchRow key={m.id} m={m} onOpen={onOpen} flat />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function MatchesInner() {
   const { data, loading, me } = useData();
   const router = useRouter();
@@ -139,17 +254,58 @@ function MatchesInner() {
   // La scheda resta montata anche quando è nascosta: il dettaglio si apre solo qui.
   const openId = path === "/partite" ? params.get("m") : null;
 
+  // "Tutte" o solo "Le mie": si ricorda la scelta.
+  const [only, setOnly] = useState<"tutte" | "mie">("tutte");
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (localStorage.getItem(ONLY_KEY) === "mie") setOnly("mie");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const pickOnly = (v: "tutte" | "mie") => {
+    setOnly(v);
+    try {
+      localStorage.setItem(ONLY_KEY, v);
+    } catch {
+      /* ignore */
+    }
+  };
+  const shown = useMemo(
+    () =>
+      only === "mie" && me
+        ? data.matches.filter((m) => teamOf(m, me.id))
+        : data.matches,
+    [data.matches, only, me],
+  );
+  // Mese → serate (un giorno al campetto) → partite.
   const groups = useMemo(() => {
-    const out: { label: string; items: Match[] }[] = [];
-    for (const m of data.matches) {
+    const out: { label: string; nights: Night[] }[] = [];
+    for (const m of shown) {
       const { year, month } = monthOf(m.playedAt);
       const label = monthLabel(year, month);
-      const g = out[out.length - 1];
-      if (g?.label === label) g.items.push(m);
-      else out.push({ label, items: [m] });
+      let g = out[out.length - 1];
+      if (g?.label !== label) out.push((g = { label, nights: [] }));
+      const key = new Date(m.playedAt).toDateString();
+      const n = g.nights[g.nights.length - 1];
+      if (n?.key === key) n.items.push(m);
+      else g.nights.push({ key, items: [m] });
     }
     return out;
-  }, [data.matches]);
+  }, [shown]);
+  // Aperta di partenza: la serata più recente. Le altre si aprono con un tocco.
+  const latest = groups[0]?.nights[0]?.key ?? null;
+  const [openNights, setOpenNights] = useState<Set<string> | null>(null);
+  const isOpen = (key: string) =>
+    openNights ? openNights.has(key) : key === latest;
+  const toggleNight = (key: string) =>
+    setOpenNights((cur) => {
+      const next = new Set(cur ?? (latest ? [latest] : []));
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const open = data.matches.find((m) => m.id === openId) ?? null;
   // Aperto da qui: chiudere torna indietro, così il tasto "indietro" del telefono non ripassa dalla stessa pagina.
@@ -196,6 +352,19 @@ function MatchesInner() {
           ) : undefined
         }
       />
+      {data.matches.length > 0 && me && (
+        <div className="shrink-0 px-5 pb-2">
+          <Segmented
+            size="sm"
+            value={only}
+            onChange={pickOnly}
+            options={[
+              { value: "tutte" as const, label: "Tutte" },
+              { value: "mie" as const, label: "Le mie" },
+            ]}
+          />
+        </div>
+      )}
       <PullToRefresh className="px-5 pb-4 pt-1">
         <div data-tour="matches-list">
           {loading && !data.matches.length ? (
@@ -204,6 +373,19 @@ function MatchesInner() {
                 <div key={i} className="skeleton h-[84px]" />
               ))}
             </div>
+          ) : groups.length === 0 && data.matches.length > 0 ? (
+            <EmptyState
+              title="Non hai ancora giocato"
+              text="Le partite in cui giochi le trovi qui. Intanto guarda tutte quelle del gruppo"
+              action={
+                <button
+                  onClick={() => pickOnly("tutte")}
+                  className="sticker press inline-flex h-12 items-center rounded-full bg-ball px-6 font-bold text-ball-ink"
+                >
+                  Vedi tutte
+                </button>
+              }
+            />
           ) : groups.length === 0 ? (
             <EmptyState
               title="Ancora nessuna partita"
@@ -225,11 +407,20 @@ function MatchesInner() {
             />
           ) : (
             groups.map((g) => (
-              <section key={g.label} className="mb-5">
-                <h2 className="title mb-2 px-1 text-[16px]">{g.label}</h2>
-                <div className="flex flex-col gap-2">
-                  {g.items.map((m) => (
-                    <MatchRow key={m.id} m={m} onOpen={openMatch} />
+              <section key={g.label} className="mb-4">
+                {/* Il mese resta in cima mentre scorri, come nei calendari. */}
+                <h2 className="title sticky -top-1 z-10 -mx-1 mb-2 bg-bg/95 px-2 pb-1.5 pt-2.5 text-[16px] backdrop-blur-sm">
+                  {g.label}
+                </h2>
+                <div className="flex flex-col gap-2.5">
+                  {g.nights.map((n) => (
+                    <NightCard
+                      key={n.key}
+                      night={n}
+                      open={isOpen(n.key)}
+                      onToggle={() => toggleNight(n.key)}
+                      onOpen={openMatch}
+                    />
                   ))}
                 </div>
               </section>
