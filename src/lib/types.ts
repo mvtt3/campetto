@@ -167,6 +167,8 @@ export interface Player {
   notifyPrefs: NotifyPrefs;
   archived: boolean;
   createdAt: string;
+  /** Ospite di una partita (uno trovato al campetto): gioca, ma non conta per il gruppo. */
+  guest?: boolean;
 }
 
 export const BOX_KEYS = [
@@ -257,6 +259,11 @@ export interface Match {
   createdAt: string;
   players: MatchPlayer[];
   events: MatchEvent[];
+  /**
+   * Gli ospiti della partita: si vedono nel tabellino, ma restano fuori da statistiche,
+   * classifiche, MVP, record e badge (in `players` ci sono solo quelli del gruppo).
+   */
+  guests?: MatchPlayer[];
 }
 
 export type ResponseKind = "si" | "forse" | "no";
@@ -293,6 +300,8 @@ export interface Proposal {
 
 export interface Dataset {
   players: Player[];
+  /** Gli ospiti delle partite: servono solo per i nomi nel tabellino. */
+  guests?: Player[];
   matches: Match[];
   proposals: Proposal[];
   /** Le notizie scritte a mano (annunci); quelle dalle partite si calcolano nell'app. */

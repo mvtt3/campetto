@@ -17,6 +17,7 @@ import type {
   PlayerPrivate,
 } from "./backend";
 import { say } from "../voice";
+import { splitGuests } from "../guests";
 
 function fail(error: { message: string } | null): void {
   if (error) throw new Error(friendly(error.message));
@@ -94,9 +95,15 @@ export function createSupabaseBackend(): Backend {
       fail(p.error);
       fail(m.error);
       fail(pr.error);
+      // Gli ospiti restano fuori dal gruppo: solo nel tabellino delle loro partite.
+      const split = splitGuests(
+        (p.data ?? []).map(mapPlayer),
+        (m.data ?? []).map(mapMatch),
+      );
       return {
-        players: (p.data ?? []).map(mapPlayer),
-        matches: (m.data ?? []).map(mapMatch),
+        players: split.players,
+        guests: split.guests,
+        matches: split.matches,
         proposals: (pr.data ?? []).map(mapProposal),
         // Le notizie non devono mai bloccare l'app: se non arrivano, se ne fa a meno.
         news: nw.error
@@ -285,6 +292,16 @@ export function createSupabaseBackend(): Backend {
         .upload(path, file, { contentType: "image/webp", upsert: true });
       fail(error);
       return sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+    },
+
+    async createGuest(name) {
+      const { data, error } = await sb
+        .from("players")
+        .insert({ first_name: name.trim().slice(0, 40) || "Ospite", guest: true })
+        .select("id")
+        .single();
+      fail(error);
+      return data!.id as string;
     },
 
     async upsertPlayer(input) {

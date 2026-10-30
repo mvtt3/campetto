@@ -1,6 +1,7 @@
 "use client";
 
 import { BOX_KEYS, IERI } from "./mock-ieri";
+import { splitGuests } from "../guests";
 import {
   DEFAULT_NOTIFY_PREFS,
   emptyBox,
@@ -445,12 +446,37 @@ export function createMockBackend(): Backend {
       return () => {};
     },
     async loadAll() {
+      const split = splitGuests(state.players, state.matches);
       return structuredClone({
-        players: state.players,
-        matches: state.matches,
+        players: split.players,
+        guests: split.guests,
+        matches: split.matches,
         proposals: state.proposals,
         news: state.news ?? [],
       });
+    },
+    async createGuest(name) {
+      const id = `ospite-${rid().slice(0, 8)}`;
+      state.players.push({
+        id,
+        firstName: name.trim() || "Ospite",
+        lastName: null,
+        nickname: null,
+        roles: [],
+        jerseyNumber: null,
+        cardColor: null,
+        avatarUrl: null,
+        character: null,
+        userId: null,
+        isAdmin: false,
+        showcase: [],
+        notifyPrefs: DEFAULT_NOTIFY_PREFS,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        guest: true,
+      });
+      save();
+      return id;
     },
     subscribe(cb) {
       listeners.add(cb);

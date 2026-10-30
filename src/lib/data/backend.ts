@@ -132,6 +132,8 @@ export interface Backend {
   uploadAvatar(file: Blob): Promise<string>;
 
   upsertPlayer(input: PlayerInput): Promise<string>;
+  /** Un ospite per una partita: fuori dal gruppo e dalle statistiche. */
+  createGuest(name: string): Promise<string>;
   listPrivate(): Promise<PlayerPrivate[]>;
   setLinkEmail(playerId: string, email: string | null): Promise<void>;
   regenerateInvite(playerId: string): Promise<string>;

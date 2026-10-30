@@ -21,6 +21,7 @@ import type { SaveMatchInput } from "@/lib/data/backend";
 import { useData } from "@/lib/data/provider";
 import { teamBoxPoints } from "@/lib/stats/player";
 import {
+  DEFAULT_NOTIFY_PREFS,
   emptyBox,
   FORMATS,
   maxPerTeam,
@@ -29,6 +30,7 @@ import {
   withSubs,
   type Box,
   type Format,
+  type Player,
   type Team,
 } from "@/lib/types";
 import { DateTimeField } from "@/components/ui/pickers";
@@ -136,6 +138,38 @@ function NewMatchInner() {
   const [current, setCurrent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [maxDate] = useState(() => new Date());
+  // Gli ospiti di questa partita: quelli nuovi hanno un id provvisorio finché non si salva.
+  const [guests, setGuests] = useState<Player[]>([]);
+  const allPlayers = useMemo(
+    () => [...data.players, ...guests],
+    [data.players, guests],
+  );
+  const addGuest = () => {
+    const n = guests.length + 1;
+    const id = `nuovo-ospite-${Date.now()}-${n}`;
+    setGuests((g) => [
+      ...g,
+      {
+        id,
+        firstName: n === 1 ? "Ospite" : `Ospite ${n}`,
+        lastName: null,
+        nickname: null,
+        roles: [],
+        jerseyNumber: null,
+        cardColor: null,
+        avatarUrl: null,
+        character: null,
+        userId: null,
+        isAdmin: false,
+        showcase: [],
+        notifyPrefs: DEFAULT_NOTIFY_PREFS,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        guest: true,
+      },
+    ]);
+    return id;
+  };
   const init = useRef(false);
 
   // Prefill: from an existing match (edit) or from the players who said yes.
@@ -145,24 +179,29 @@ function NewMatchInner() {
     init.current = true;
     /* eslint-disable react-hooks/set-state-in-effect */
     if (editing) {
+      // Gli ospiti tornano nella partita, con il loro tabellino.
+      const lines = [...editing.players, ...(editing.guests ?? [])];
+      setGuests(
+        (data.guests ?? []).filter((g) =>
+          editing.guests?.some((l) => l.playerId === g.id),
+        ),
+      );
       setFormat(editing.format);
       setPlayedAt(toLocalInput(new Date(editing.playedAt)));
       setTarget(editing.targetPoints);
       // Prima chi era in campo, poi i cambi: l'ordine dice chi è il cambio.
       setAssign(
         Object.fromEntries(
-          [...editing.players]
+          [...lines]
             .sort((x, y) => Number(!!x.sub) - Number(!!y.sub))
             .map((p) => [p.playerId, p.team]),
         ),
       );
       setScoreA(editing.scoreA);
       setScoreB(editing.scoreB);
-      const has = editing.players.some((p) => p.hasStats);
+      const has = lines.some((p) => p.hasStats);
       setWithBox(has);
-      setBoxes(
-        Object.fromEntries(editing.players.map((p) => [p.playerId, p.box])),
-      );
+      setBoxes(Object.fromEntries(lines.map((p) => [p.playerId, p.box])));
       setStep(2);
       return;
     }
@@ -207,7 +246,7 @@ function NewMatchInner() {
       }
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [data.players, editId, editing, params, engine.elo.ratings]);
+  }, [data.players, data.guests, editId, editing, params, engine.elo.ratings]);
 
   const size = TEAM_SIZE[format];
   const a = teamIds(assign, "A");
@@ -216,7 +255,7 @@ function NewMatchInner() {
   const subs = subsOf(assign, format);
   const name = (id: string) =>
     shortName(
-      data.players.find((p) => p.id === id),
+      allPlayers.find((p) => p.id === id),
       data.players,
     );
   const teamNames = (ids: string[]) =>
@@ -277,10 +316,25 @@ function NewMatchInner() {
   const save = async () => {
     if (!me || !teamsOk || !scoreOk) return;
     setBusy(true);
+    const editLines = editing
+      ? [...editing.players, ...(editing.guests ?? [])]
+      : [];
     const sameRoster =
       editing &&
-      editing.players.length === ordered.length &&
-      editing.players.every((p) => assign[p.playerId] === p.team);
+      editLines.length === ordered.length &&
+      editLines.every((p) => assign[p.playerId] === p.team);
+    // Gli ospiti nuovi diventano veri solo adesso (se si annulla, non restano in giro).
+    const realId = new Map<string, string>();
+    try {
+      for (const g of guests)
+        if (g.id.startsWith("nuovo-ospite-") && assign[g.id])
+          realId.set(g.id, await backend.createGuest(g.firstName));
+    } catch (e) {
+      toast(say(e), "error");
+      setBusy(false);
+      return;
+    }
+    const idOf = (id: string) => realId.get(id) ?? id;
     const input: SaveMatchInput = {
       id: editing?.id,
       playedAt: new Date(playedAt).toISOString(),
@@ -299,7 +353,7 @@ function NewMatchInner() {
       players: withSubs(
         format,
         ordered.map((id) => ({
-          playerId: id,
+          playerId: idOf(id),
           team: assign[id],
           hasStats: withBox,
           box: withBox
@@ -447,7 +501,16 @@ function NewMatchInner() {
         )}
 
         {step === 1 && (
-          <TeamPicker format={format} value={assign} onChange={setAssign} />
+          <TeamPicker
+            format={format}
+            value={assign}
+            onChange={setAssign}
+            guests={guests}
+            onAddGuest={addGuest}
+            onRemoveGuest={(id) =>
+              setGuests((g) => g.filter((x) => x.id !== id))
+            }
+          />
         )}
 
         {step === 2 && (
@@ -515,7 +578,7 @@ function NewMatchInner() {
                   )}
                 >
                   <Avatar
-                    player={data.players.find((p) => p.id === id)}
+                    player={allPlayers.find((p) => p.id === id)}
                     size={32}
                     href={false}
                     ring="none"

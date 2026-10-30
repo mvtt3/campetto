@@ -2,7 +2,14 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import { RefreshCw, Scale, Shuffle } from "lucide-react";
+import {
+  RefreshCw,
+  Scale,
+  Shuffle,
+  UserPlus,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useData } from "@/lib/data/provider";
 import { winProbability } from "@/lib/stats/elo";
 import { balanceTeams } from "@/lib/stats/teams";
@@ -12,6 +19,7 @@ import {
   shortName,
   TEAM_SIZE,
   type Format,
+  type Player,
   type Team,
 } from "@/lib/types";
 import { Avatar } from "./ui/avatar";
@@ -70,10 +78,18 @@ export function TeamPicker({
   format,
   value,
   onChange,
+  guests = [],
+  onAddGuest,
+  onRemoveGuest,
 }: {
   format: Format;
   value: Assignment;
   onChange: (a: Assignment) => void;
+  /** Gli ospiti di questa partita (uno trovato al campetto): giocano ma non contano. */
+  guests?: Player[];
+  /** Aggiunge un ospite e restituisce il suo id, così entra subito in una squadra. */
+  onAddGuest?: () => string;
+  onRemoveGuest?: (id: string) => void;
 }) {
   const { data, engine } = useData();
   const size = TEAM_SIZE[format];
@@ -89,7 +105,7 @@ export function TeamPicker({
   // Un tocco: A, poi B, poi fuori. Chi va oltre il formato entra come cambio.
   const cycle = (id: string) => {
     haptic(6);
-    const cur = value[id];
+    const cur = value[id] as Team | undefined;
     const next = { ...value };
     // Chi cambia squadra passa in fondo: se la squadra è già piena, fa il cambio.
     delete next[id];
@@ -185,6 +201,77 @@ export function TeamPicker({
             </button>
           );
         })}
+        {/* Gli ospiti: bordo tratteggiato, "ospite" sotto il nome. Con la X si tolgono. */}
+        {guests.map((p) => {
+          const t = value[p.id];
+          return (
+            <div key={p.id} className="relative">
+              <button
+                onClick={() => cycle(p.id)}
+                data-testid={`pick-${p.id}`}
+                aria-label={`${shortName(p)}, ospite${t ? `, squadra ${t}` : ""}`}
+                className={clsx(
+                  "flex h-14 w-full items-center gap-2.5 rounded-2xl border-2 border-dashed px-2.5 text-left transition-colors",
+                  t === "A" && "border-ball-ink/40 bg-ball text-ball-ink",
+                  t === "B" && "border-bg/40 bg-text text-bg",
+                  !t && "border-line-strong bg-raised",
+                )}
+              >
+                <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full border-2 border-dashed border-current opacity-80">
+                  <UserRound size={18} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block truncate text-[14px] font-semibold">
+                    {shortName(p)}
+                  </span>
+                  <span className="block text-[11.5px] font-bold opacity-75">
+                    {subs.has(p.id) ? "ospite · cambio" : "ospite, non conta"}
+                  </span>
+                </span>
+                {t && <span className="num mr-4 text-[18px]">{t}</span>}
+              </button>
+              {onRemoveGuest && (
+                <button
+                  aria-label={`Togli ${shortName(p)}`}
+                  onClick={() => {
+                    const next = { ...value };
+                    delete next[p.id];
+                    onChange(next);
+                    onRemoveGuest(p.id);
+                  }}
+                  className="press absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full border-2 border-edge bg-surface text-text"
+                >
+                  <X size={13} strokeWidth={3} />
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {onAddGuest && (
+          <button
+            onClick={() => {
+              const id = onAddGuest();
+              // Entra subito nella squadra a cui manca qualcuno.
+              const next = { ...value };
+              if (a.length < size) next[id] = "A";
+              else if (b.length < size) next[id] = "B";
+              else if (a.length < max && a.length <= b.length) next[id] = "A";
+              else if (b.length < max) next[id] = "B";
+              onChange(next);
+            }}
+            className="press flex h-14 items-center gap-2.5 rounded-2xl border-2 border-dashed border-line-strong px-2.5 text-left text-muted"
+          >
+            <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-raised">
+              <UserPlus size={18} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block text-[14px] font-semibold text-text">
+                Un ospite
+              </span>
+              <span className="block text-[11.5px]">gioca, ma non conta</span>
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-col gap-2">

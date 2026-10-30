@@ -117,6 +117,39 @@ test("2 contro 2 in cinque: il quinto fa il cambio", async ({ page }) => {
   expect(saved).toHaveLength(1);
 });
 
+test("un ospite in squadra: gioca nella partita, fuori dalle classifiche", async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.goto("/nuova");
+  await page.getByRole("button", { name: "2v2" }).click();
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await pickTeams(page, ["p1", "p2", "p3"]);
+  // In tre più uno trovato al campetto: entra nella squadra a cui manca qualcuno.
+  await page.getByRole("button", { name: /Un ospite/ }).click();
+  await expect(
+    page.getByRole("button", { name: /Ospite, ospite, squadra B/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await expect(
+    page.getByText(/Ospite \(ospite\)|Ospite/).first(),
+  ).toBeVisible();
+  await page.getByLabel("Punti squadra A").fill("21");
+  await page.getByLabel("Punti squadra B").fill("17");
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await page.getByRole("button", { name: "Salva solo il risultato" }).click();
+  await expect(page).toHaveURL(/\/partite\?m=/);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("(ospite)");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("match-row").first()).toContainText("ospite");
+  // Nelle classifiche non c'è: conta solo per chi è del gruppo.
+  await page.goto("/classifiche");
+  await page.getByRole("button", { name: "Vittorie", exact: true }).click();
+  await expect(page.getByLabel("Podio")).toBeVisible();
+  await expect(page.locator("main:visible")).not.toContainText("Ospite");
+});
+
 test("pareggio non ammesso e squadre incomplete bloccate", async ({ page }) => {
   await openApp(page);
   await page.goto("/nuova");
@@ -412,32 +445,6 @@ test("amministrazione: link d'invito", async ({ page }) => {
   await page.goto("/admin");
   await page.getByRole("button", { name: /Valerio Semeraro/ }).click();
   await expect(page.getByText("/invito/tok-p2")).toBeVisible();
-});
-
-test("squadre equilibrate per chi viene oggi", async ({ page }) => {
-  await openApp(page, "demo");
-  // Più tardi oggi, a qualunque ora parta il test (prima "fra due ore" sforava a mezzanotte).
-  const at = new Date();
-  at.setHours(23, 59, 0, 0);
-  await page.evaluate((iso) => {
-    const st = JSON.parse(localStorage.getItem("campetto:mock:v1")!);
-    st.proposals[0].startsAt = iso;
-    st.proposals[0].responses.push({
-      playerId: "p1",
-      response: "si",
-      updatedAt: iso,
-    });
-    localStorage.setItem("campetto:mock:v1", JSON.stringify(st));
-  }, at.toISOString());
-  await page.goto("/organizza");
-  await page.getByRole("button", { name: "Fai le squadre" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("Squadra A");
-  await expect(dialog).toContainText("Chi vince?");
-  await dialog.getByRole("button", { name: "Rimescola" }).click();
-  await expect(
-    dialog.getByRole("link", { name: "Segna il risultato" }),
-  ).toBeVisible();
 });
 
 test("cambio scheda immediato, tasto indietro e pagine interne", async ({

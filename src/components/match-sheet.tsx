@@ -7,6 +7,7 @@ import { Crown, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useData } from "@/lib/data/provider";
 import { matchRecap } from "@/lib/recap";
+import { withGuestLines } from "@/lib/guests";
 import { normalizeBox } from "@/lib/stats/player";
 import {
   shortName,
@@ -47,11 +48,10 @@ function TeamBlock({
     .sort((x, y) => Number(!!x.sub) - Number(!!y.sub));
   const starters = ids.filter((l) => !l.sub);
   const subs = ids.filter((l) => l.sub);
-  const nm = (id: string) =>
-    shortName(
-      players.find((p) => p.id === id),
-      players,
-    );
+  const nm = (id: string) => {
+    const p = players.find((x) => x.id === id);
+    return p?.guest ? `${shortName(p)} (ospite)` : shortName(p, players);
+  };
   return (
     <div
       className={clsx(
@@ -115,6 +115,8 @@ export function MatchSheet({
   const [busy, setBusy] = useState(false);
   const m = match;
   const players = data.players;
+  // Nel tabellino ci sono anche gli ospiti (solo lì: fuori dai conti del gruppo).
+  const everyone = [...data.players, ...(data.guests ?? [])];
   const withStats = m?.players.filter((p) => p.hasStats) ?? [];
   const date = m ? new Date(m.playedAt) : null;
   const mvp = m ? matchMvp(m) : null;
@@ -229,8 +231,8 @@ export function MatchSheet({
             Risultato {m.scoreA}–{m.scoreB}
           </p>
           <div className="flex items-stretch gap-2 pt-2">
-            <TeamBlock m={m} team="A" players={players} />
-            <TeamBlock m={m} team="B" players={players} />
+            <TeamBlock m={withGuestLines(m)} team="A" players={everyone} />
+            <TeamBlock m={withGuestLines(m)} team="B" players={everyone} />
           </div>
 
           {mvp && mvpPlayer && mvpLine ? (
@@ -276,8 +278,8 @@ export function MatchSheet({
 
           {withStats.length > 0 && (
             <BoxTable
-              match={m}
-              players={players}
+              match={withGuestLines(m)}
+              players={everyone}
               mvpId={mvp?.playerId ?? null}
             />
           )}

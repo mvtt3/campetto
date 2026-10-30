@@ -2,18 +2,10 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import {
-  ChevronRight,
-  CircleCheck,
-  MapPin,
-  Repeat2,
-  Shuffle,
-  X,
-} from "lucide-react";
+import { ChevronRight, CircleCheck, MapPin, Repeat2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { TeamsSheet } from "./teams-sheet";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
 import { useNow } from "@/lib/use-now";
@@ -141,11 +133,8 @@ export function ProposalCard({
   const needed = neededPlayers(proposal.format);
   const full = yes.length >= needed;
   const creator = byId.get(proposal.createdBy);
-  const isToday =
-    new Date(proposal.startsAt).toDateString() === new Date().toDateString();
   const canCancel = me && (me.id === proposal.createdBy || me.isAdmin);
 
-  const [teamsOpen, setTeamsOpen] = useState(false);
   // L'alternativa si scrive lì dentro la scheda, senza finestre: ogni apertura riparte da capo.
   const [altForm, setAltForm] = useState<{
     mode: "alt" | "move";
@@ -246,7 +235,6 @@ export function ProposalCard({
     }
   };
 
-  const canTeams = (isToday || full) && yes.length >= 2;
   const showAlt = !altForm.open && future && (canMove || mine === "si");
   const altAria = canMove
     ? "Cambia orario o campetto"
@@ -263,7 +251,10 @@ export function ProposalCard({
     <div
       data-testid="proposal-card"
       data-phase={phase}
-      className={clsx("flex flex-col", compact ? "gap-3 short:gap-2" : "gap-3 short:gap-2.5")}
+      className={clsx(
+        "flex flex-col",
+        compact ? "gap-3 short:gap-2" : "gap-3 short:gap-2.5",
+      )}
     >
       {phase === "confirmed" && !compact && (
         <div
@@ -465,16 +456,8 @@ export function ProposalCard({
         )}
       </AnimatePresence>
       {/* Una riga sola per le azioni: squadre, orario o campetto, annulla. */}
-      {!compact && (canTeams || showAlt || canCancel) && (
+      {!compact && (showAlt || canCancel) && (
         <div className="flex gap-2">
-          {canTeams && !confirmCancel && (
-            <button
-              onClick={() => setTeamsOpen(true)}
-              className="sticker press flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-court text-[14px] font-bold text-court-ink"
-            >
-              <Shuffle size={17} className="shrink-0" /> Fai le squadre
-            </button>
-          )}
           {showAlt && !confirmCancel && (
             <button
               type="button"
@@ -482,13 +465,11 @@ export function ProposalCard({
               aria-label={altAria}
               className={clsx(
                 "sticker-sm press flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-full bg-surface px-3.5 text-[13.5px] font-bold",
-                !canTeams && "flex-1",
+                "flex-1",
               )}
             >
               <Repeat2 size={16} className="shrink-0 text-ball" aria-hidden />
-              <span className="truncate">
-                {canTeams ? (canMove ? "Sposta" : "Proponi") : altAria}
-              </span>
+              <span className="truncate">{altAria}</span>
             </button>
           )}
           {canCancel &&
@@ -532,27 +513,18 @@ export function ProposalCard({
                 aria-label="Annulla la proposta"
                 className={clsx(
                   "sticker-sm press flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-surface text-muted",
-                  canTeams || showAlt
-                    ? "w-10"
-                    : "flex-1 px-4 text-[13.5px] font-semibold",
+                  showAlt ? "w-10" : "flex-1 px-4 text-[13.5px] font-semibold",
                 )}
                 onClick={() => setConfirmCancel(true)}
               >
                 <X size={18} />
-                {!(canTeams || showAlt) && "Annulla la proposta"}
+                {!showAlt && "Annulla la proposta"}
               </button>
             ))}
         </div>
       )}
       {/* Tutti i nomi, sotto, nello spazio del calendario: niente da aprire. */}
       {!compact && <RosterPanel proposal={proposal} />}
-      {teamsOpen && (
-        <TeamsSheet
-          playerIds={yes.map((p) => p.id)}
-          format={proposal.format}
-          onClose={() => setTeamsOpen(false)}
-        />
-      )}
     </div>
   );
 }

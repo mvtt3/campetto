@@ -157,6 +157,11 @@ export function BoxTable({
                     )}
                   />
                   {shortName(p, players)}
+                  {p?.guest && (
+                    <span className="ml-1 rounded-full bg-raised px-1.5 text-[10px] font-bold uppercase text-muted">
+                      ospite
+                    </span>
+                  )}
                   {l.sub && (
                     <RefreshCw
                       size={11}

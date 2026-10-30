@@ -154,9 +154,10 @@ class Ctx {
   }
 }
 
+/** Solo il gruppo: gli ospiti non ricevono notifiche e non entrano nei conti. */
 async function loadPlayers(sb: SupabaseClient): Promise<Player[]> {
   const { data } = await sb.from("players").select("*");
-  return (data ?? []).map(mapPlayer);
+  return (data ?? []).map(mapPlayer).filter((p) => !p.guest);
 }
 
 async function proposalSummary(
@@ -400,7 +401,27 @@ async function matchSaved(ctx: Ctx, matchId: string) {
     loadPlayers(ctx.sb),
     ctx.sb.from("matches").select(MATCH_SELECT).order("played_at"),
   ]);
-  const matches: Match[] = (data ?? []).map(mapMatch);
+  // Le righe degli ospiti escono dai conti (statistiche, MVP, record, badge).
+  const guestIds = new Set(
+    ((await ctx.sb.from("players").select("id").eq("guest", true)).data ?? []).map(
+      (r: { id: string }) => r.id,
+    ),
+  );
+  const matches: Match[] = (data ?? [])
+    .map(mapMatch)
+    .map((x) =>
+      guestIds.size
+        ? {
+            ...x,
+            players: x.players.filter((l) => !guestIds.has(l.playerId)),
+            events: x.events.filter(
+              (e) =>
+                !guestIds.has(e.playerId) &&
+                !(e.targetPlayerId && guestIds.has(e.targetPlayerId)),
+            ),
+          }
+        : x,
+    );
   const m = matches.find((x) => x.id === matchId);
   if (!m) return;
   const name = (id: string) =>

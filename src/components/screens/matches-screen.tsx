@@ -38,10 +38,12 @@ const MatchRow = memo(function MatchRow({
         data.players.find((x) => x.id === id),
         data.players,
       );
-    const base = line
-      .filter((p) => !p.sub)
-      .map((p) => nm(p.playerId))
-      .join(", ");
+    // L'ospite si vede come tale: "Matteo, ospite".
+    const guests = (m.guests ?? []).filter((p) => p.team === t).length;
+    const base = [
+      ...line.filter((p) => !p.sub).map((p) => nm(p.playerId)),
+      ...Array.from({ length: guests }, () => "ospite"),
+    ].join(", ");
     const subs = line.filter((p) => p.sub).map((p) => nm(p.playerId));
     return subs.length ? `${base} + ${subs.join(", ")}` : base;
   };
