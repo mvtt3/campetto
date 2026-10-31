@@ -270,8 +270,10 @@ test.describe("rete", () => {
   test("rete lenta: Spicchio palleggia finché il video arriva", async ({
     page,
   }) => {
+    // Il secondo video si scarica già mentre si guarda il primo: il ritardo deve coprire anche
+    // l'apertura del feed sotto carico, se no arriva prima dello scorrimento.
     await page.route("**/mock/hl-2.mp4", async (route) => {
-      await new Promise((r) => setTimeout(r, 3500));
+      await new Promise((r) => setTimeout(r, 7000));
       await route.continue();
     });
     await openFeed(page);
@@ -282,7 +284,7 @@ test.describe("rete", () => {
       );
     await expect(active(page).getByTestId("hl-loading")).toBeVisible();
     await expect(active(page).getByTestId("hl-loading")).toHaveCount(0, {
-      timeout: 10_000,
+      timeout: 15_000,
     });
     await waitPlaying(page);
   });
@@ -688,4 +690,61 @@ test("il racconto della partita: due righe, il resto con un tocco", async ({
     "aria-label",
     /^Finale .+ · MVP /,
   );
+});
+
+for (const width of [320, 360, 384])
+  test(`Home a ${width}px: col ciak c'è sempre la tua foto, e dal profilo la cambi`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 780 });
+    await openApp(page, "demo");
+    const header = page.locator("header").first();
+    await expect(header.getByTestId("hl-home")).toBeVisible();
+    const photo = header.getByRole("link", { name: /^Profilo di / });
+    await expect(photo).toBeVisible();
+    // Niente si accavalla nell'intestazione.
+    const boxes = await Promise.all(
+      [
+        header.getByTestId("hl-home"),
+        header.locator("[data-tour=home-news]"),
+        photo,
+      ].map(async (l) => (await l.boundingBox())!),
+    );
+    for (const b of boxes) expect(b.x + b.width).toBeLessThanOrEqual(width);
+    for (let i = 1; i < boxes.length; i++)
+      expect(boxes[i].x).toBeGreaterThanOrEqual(
+        boxes[i - 1].x + boxes[i - 1].width,
+      );
+    await photo.click();
+    await expect(page).toHaveURL(/\/profilo$/);
+    await page.getByRole("link", { name: "Impostazioni" }).click();
+    await page.getByRole("button", { name: /Foto profilo/ }).click();
+    await expect(page.getByRole("dialog")).toContainText("Scegli una figurina");
+  });
+
+test("notizie nuove: il pallino sulla scheda la prima volta, poi spariscono tutti", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  const button = page.getByRole("button", { name: /^Notizie/ });
+  await expect(button).toHaveAttribute("aria-label", /nuove/);
+  await button.click();
+  // La novità degli highlights è di un'ora fa: è nuova, ha il pallino.
+  const hl = page.getByTestId("news-highlights");
+  await expect(hl).toHaveAttribute("data-fresh", "true");
+  await expect(hl.locator(".new-dot")).toBeVisible();
+  await expect(hl).toContainText("Nuova:");
+  // Quelle vecchie (oltre la settimana) no.
+  const fresh = await page.locator("[data-fresh]").count();
+  const all = await page
+    .locator("[data-testid=news-story], [data-testid=news-highlights]")
+    .count();
+  expect(fresh).toBeGreaterThan(0);
+  expect(fresh).toBeLessThan(all);
+  await page.getByRole("button", { name: "Chiudi" }).click();
+  await expect(button).toHaveAttribute("aria-label", "Notizie");
+  // Riaperto: già viste, niente pallini.
+  await button.click();
+  await expect(page.getByTestId("news-highlights")).toBeVisible();
+  await expect(page.locator("[data-fresh]")).toHaveCount(0);
 });

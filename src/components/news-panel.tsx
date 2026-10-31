@@ -27,6 +27,7 @@ import {
 } from "@/lib/news";
 import { useNow } from "@/lib/use-now";
 import { useHighlights } from "@/components/highlights/provider";
+import { NewDot } from "@/components/new-dot";
 
 const ICON: Record<NewsIcon, typeof Flame> = {
   record: Trophy,
@@ -67,6 +68,8 @@ function readSeen(id: string): string {
 export function useNews(): {
   stories: NewsStory[];
   unseen: number;
+  /** Da quando le notizie contano come nuove (prima di segnarle viste): per i pallini sulle schede. */
+  since: string;
   markSeen: () => void;
 } {
   const { data, me, engine } = useData();
@@ -83,7 +86,8 @@ export function useNews(): {
   }, [me]);
   // Chi entra per la prima volta non trova decine di "nuove": conta solo l'ultima settimana.
   const floor = new Date(now.getTime() - 7 * 86_400_000).toISOString();
-  const unseen = stories.filter((s) => s.date > (seen || floor)).length;
+  const since = seen || floor;
+  const unseen = stories.filter((s) => s.date > since).length;
   const markSeen = () => {
     if (!me) return;
     const at = new Date().toISOString();
@@ -94,7 +98,7 @@ export function useNews(): {
     }
     setSeen(at);
   };
-  return { stories, unseen, markSeen };
+  return { stories, unseen, since, markSeen };
 }
 
 /** Il tasto del giornale nella Home, con il pallino quando c'è qualcosa di nuovo. */
@@ -180,11 +184,26 @@ function SeasonPreview() {
   );
 }
 
-function StoryCard({ s, onGo }: { s: NewsStory; onGo: () => void }) {
+function StoryCard({
+  s,
+  fresh,
+  onGo,
+}: {
+  s: NewsStory;
+  /** Mai vista prima di aprire il pannello questa volta: il pallino rosso sulla scheda. */
+  fresh: boolean;
+  onGo: () => void;
+}) {
   const Icon = ICON[s.icon];
   const hl = useHighlights();
   const body = (
     <>
+      {fresh && (
+        <>
+          <NewDot className="absolute right-3 top-3" />
+          <span className="sr-only">Nuova: </span>
+        </>
+      )}
       <span
         className={clsx(
           "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-edge",
@@ -194,7 +213,12 @@ function StoryCard({ s, onGo }: { s: NewsStory; onGo: () => void }) {
         <Icon size={18} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[14.5px] font-bold leading-snug">
+        <span
+          className={clsx(
+            "block text-[14.5px] font-bold leading-snug",
+            fresh && "pr-4",
+          )}
+        >
           {s.title}
         </span>
         <span className="mt-0.5 block text-[13px] leading-snug text-muted">
@@ -214,8 +238,9 @@ function StoryCard({ s, onGo }: { s: NewsStory; onGo: () => void }) {
           onGo();
           if (hl.latest) hl.open(hl.latest);
         }}
-        className="card press flex w-full items-start gap-3 p-3 text-left"
+        className="card press relative flex w-full items-start gap-3 p-3 text-left"
         data-testid="news-highlights"
+        data-fresh={fresh || undefined}
       >
         {body}
       </button>
@@ -224,12 +249,20 @@ function StoryCard({ s, onGo }: { s: NewsStory; onGo: () => void }) {
     <Link
       href={s.href}
       onClick={onGo}
-      className="card press flex items-start gap-3 p-3 text-left"
+      className="card press relative flex items-start gap-3 p-3 text-left"
+      data-testid="news-story"
+      data-fresh={fresh || undefined}
     >
       {body}
     </Link>
   ) : (
-    <div className="card flex items-start gap-3 p-3">{body}</div>
+    <div
+      className="card relative flex items-start gap-3 p-3"
+      data-testid="news-story"
+      data-fresh={fresh || undefined}
+    >
+      {body}
+    </div>
   );
 }
 
@@ -256,10 +289,13 @@ export function NewsPanel({
   open,
   onClose,
   stories,
+  freshSince = null,
 }: {
   open: boolean;
   onClose: () => void;
   stories: NewsStory[];
+  /** Le notizie dopo questo momento hanno il pallino (solo per questa apertura del pannello). */
+  freshSince?: string | null;
 }) {
   const now = useNow();
   const before = now < SEASONS_START;
@@ -326,7 +362,14 @@ export function NewsPanel({
                 va più forte
               </p>
             ) : (
-              stories.map((s) => <StoryCard key={s.id} s={s} onGo={onClose} />)
+              stories.map((s) => (
+                <StoryCard
+                  key={s.id}
+                  s={s}
+                  fresh={!!freshSince && s.date > freshSince}
+                  onGo={onClose}
+                />
+              ))
             )}
           </div>
         </Drawer.Content>

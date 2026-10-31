@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { proposalPhase } from "@/lib/proposals";
 import { neededPlayers } from "@/lib/notifications/grouping";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NewsButton, NewsPanel, useNews } from "@/components/news-panel";
 import { Logo, Mascot } from "@/components/mascot";
 import { ProposalCard } from "@/components/proposal-card";
@@ -55,18 +55,24 @@ export function HomeScreen() {
   const router = useNav();
   const news = useNews();
   const [newsOpen, setNewsOpen] = useState(false);
-  // Dalla notifica di una notizia: la Home si apre con il pannello già aperto.
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("notizie") === "1") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNewsOpen(true);
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-  }, []);
+  // Le notizie nuove di questa apertura: hanno il pallino sulla scheda. Alla prossima, niente.
+  const [freshSince, setFreshSince] = useState<string | null>(null);
   const openNews = () => {
+    setFreshSince(news.since);
     setNewsOpen(true);
     news.markSeen();
   };
+  // Dalla notifica di una notizia: la Home si apre con il pannello già aperto.
+  const fromPush = useRef(false);
+  useEffect(() => {
+    if (fromPush.current || !me) return;
+    if (new URLSearchParams(window.location.search).get("notizie") === "1") {
+      fromPush.current = true;
+      window.history.replaceState(null, "", window.location.pathname);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      openNews();
+    }
+  });
 
   const next = useMemo(
     () =>
@@ -120,10 +126,15 @@ export function HomeScreen() {
       <header className="safe-top shrink-0 px-5">
         <div className={"flex h-16 items-center justify-between short:h-14"}>
           <div className="flex min-w-0 items-center gap-3">
+            {/* Sui telefoni stretti, col ciak degli highlights, il marchio lascia spazio al nome:
+                la tua foto resta sempre in alto a destra (un tocco e sei nel profilo). */}
             <Logo
               size={46}
               text={false}
-              className="shrink-0 short:h-10 short:w-10"
+              className={clsx(
+                "shrink-0 short:h-10 short:w-10",
+                hl.available && "max-[389px]:hidden",
+              )}
             />
             <h1 className="min-w-0">
               <span className="block text-[14px] font-bold text-muted">
@@ -141,17 +152,14 @@ export function HomeScreen() {
           <div className="flex shrink-0 items-center gap-2">
             <HighlightsHomeButton />
             <NewsButton unseen={news.unseen} onOpen={openNews} />
-            {/* Sui telefoni stretti, col ciak degli highlights, la figurina lascia spazio al nome
-                (il profilo resta a un tocco, in basso). */}
-            <span className={clsx(hl.available && "max-[389px]:hidden")}>
-              <Avatar player={me} size={44} />
-            </span>
+            <Avatar player={me} size={44} />
           </div>
         </div>
         <NewsPanel
           open={newsOpen}
           onClose={() => setNewsOpen(false)}
           stories={news.stories}
+          freshSince={freshSince}
         />
       </header>
 
