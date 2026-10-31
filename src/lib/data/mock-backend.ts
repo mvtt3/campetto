@@ -983,7 +983,7 @@ function seedHighlights(state: MockState, params: URLSearchParams) {
       id: "n-highlights",
       kind: "novita",
       title: "Arrivano gli highlights",
-      body: "Tutti i canestri di ogni partita in un video da mezzo minuto, con la musica. Scorri in su per la partita dopo, metti il cuore e commenta. Tocca qui o il ciak in alto nella Home",
+      body: "I canestri più belli di ogni serata in un video da mezzo minuto, con la musica. Scorri in su per il prossimo, metti il cuore e commenta. Tocca qui o il ciak in alto nella Home",
       createdAt: new Date(Date.now() - 3_600_000).toISOString(),
     },
   ];
