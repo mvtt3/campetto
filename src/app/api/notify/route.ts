@@ -787,9 +787,10 @@ async function tick(req: Request) {
       }
     }
   }
-  // Le notizie nuove (annunci): di giorno, a chi ha acceso "Notizie", una volta sola.
+  // Le notizie nuove (annunci): subito, a qualsiasi ora, a tutti quelli con le notifiche;
+  // chi le attiva dopo riceve quelle degli ultimi 7 giorni. Una volta sola per telefono.
   let news = 0;
-  if (h >= 9 && h < 22) {
+  {
     const { data: due } = await sb.rpc("cron_due_news", { p_secret: secret });
     for (const r of (due as DueNews[] | null) ?? []) {
       try {
@@ -801,7 +802,7 @@ async function tick(req: Request) {
             url: "/?notizie=1",
             tag: `news-${r.news_id}`,
           }),
-          { TTL: 12 * 3600, urgency: "low" },
+          { TTL: 24 * 3600, urgency: "normal" },
         );
         news++;
       } catch {
