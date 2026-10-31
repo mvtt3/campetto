@@ -99,6 +99,72 @@ function seedPlayers(): Player[] {
 }
 
 /** Deterministic pseudo-random history for visual checks (?mock=demo). */
+/**
+ * Sistema i canestri di una squadra finché la somma dei punti è esattamente il risultato:
+ * aggiunge o toglie canestri da 2 e da 3 a turno, poi rimette in ordine tentativi e zone.
+ */
+function settlePoints(
+  boxes: Match["players"][number]["box"][],
+  target: number,
+) {
+  const pts = () => boxes.reduce((s, b) => s + b.fg2m * 2 + b.fg3m * 3, 0);
+  const pick = (ok: (b: (typeof boxes)[number]) => boolean, i: number) => {
+    for (let k = 0; k < boxes.length; k++) {
+      const b = boxes[(i + k) % boxes.length];
+      if (ok(b)) return b;
+    }
+    return null;
+  };
+  for (let i = 0; i < 400; i++) {
+    const d = target - pts();
+    if (d === 0) break;
+    const next = boxes[i % boxes.length];
+    if (d === 3) next.fg3m++;
+    else if (d >= 2) next.fg2m++;
+    else if (d === 1) {
+      // Un punto in più: un canestro da 2 diventa da 3 (o se ne aggiunge uno da 2 e si sistema dopo).
+      const b = pick((x) => x.fg2m > 0, i);
+      const t = b ? null : pick((x) => x.fg3m > 0, i);
+      if (b) {
+        b.fg2m--;
+        b.fg3m++;
+      } else if (t) {
+        // Solo triple: una tripla diventa due canestri da 2.
+        t.fg3m--;
+        t.fg2m += 2;
+      } else next.fg3m++;
+    } else if (d === -1) {
+      const b = pick((x) => x.fg3m > 0, i);
+      const t = b ? null : pick((x) => x.fg2m > 1, i);
+      if (b) {
+        b.fg3m--;
+        b.fg2m++;
+      } else if (t) {
+        // Solo canestri da 2: due diventano una tripla.
+        t.fg2m -= 2;
+        t.fg3m++;
+      } else {
+        const one = pick((x) => x.fg2m > 0, i);
+        if (one) one.fg2m--;
+      }
+    } else {
+      const b2 = pick((x) => x.fg2m > 0, i);
+      if (b2) b2.fg2m--;
+      else {
+        const b3 = pick((x) => x.fg3m > 0, i);
+        if (b3) b3.fg3m--;
+      }
+    }
+  }
+  for (const b of boxes) {
+    b.fg2a = Math.max(b.fg2a, b.fg2m);
+    b.fg3a = Math.max(b.fg3a, b.fg3m);
+    if (b.fgra != null) b.fgra = Math.min(b.fgra, b.fg2a);
+    if (b.fgrm != null) b.fgrm = Math.min(b.fgrm, b.fg2m, b.fgra ?? b.fg2m);
+    b.pts = b.fg2m * 2 + b.fg3m * 3;
+  }
+}
+
 export function demoMatches(
   players: Player[],
   now = new Date(),
@@ -169,6 +235,13 @@ export function demoMatches(
         ...(sub ? { sub: true } : {}),
       };
     });
+    // Il tabellino deve tornare col risultato, come nelle partite vere.
+    if (withStats)
+      for (const t of ["A", "B"] as const)
+        settlePoints(
+          lines.filter((l) => l.team === t).map((l) => l.box),
+          t === "A" ? scoreA : scoreB,
+        );
     out.push({
       id,
       playedAt: d.toISOString(),
@@ -538,6 +611,21 @@ export function createMockBackend(): Backend {
       }
       if (input.scoreA === input.scoreB)
         throw new Error("Il risultato non può essere un pareggio");
+      // Come nel database: il tabellino deve tornare col risultato (se ce l'hanno tutti).
+      for (const t of ["A", "B"] as const) {
+        const line = input.players.filter((p) => p.team === t);
+        if (!line.length || line.some((p) => !p.hasStats)) continue;
+        const pts = line.reduce((s, p) => {
+          const b = p.box;
+          const shots = b.fg2m * 2 + b.fg3m * 3;
+          return s + (b.fg2m + b.fg2a > 0 ? shots : Math.max(b.pts, shots));
+        }, 0);
+        const score = t === "A" ? input.scoreA : input.scoreB;
+        if (pts !== score)
+          throw new Error(
+            `Il tabellino non torna: la squadra ${t} fa ${pts} punti, ma il risultato dice ${score}. Sistema i punti prima di salvare.`,
+          );
+      }
       const id = input.id ?? rid();
       const existing = state.matches.find((m) => m.id === id);
       const m: Match = {

@@ -313,8 +313,12 @@ function NewMatchInner() {
     return { pa: pa ?? 0, pb: pb ?? 0 };
   }, [withBox, ordered, assign, boxes]);
 
+  // Il tabellino deve tornare col risultato: niente squadre che fanno più (o meno) punti del finale.
+  const pointsBad =
+    !!pointsCheck && (pointsCheck.pa !== scoreA || pointsCheck.pb !== scoreB);
+
   const save = async () => {
-    if (!me || !teamsOk || !scoreOk) return;
+    if (!me || !teamsOk || !scoreOk || pointsBad) return;
     setBusy(true);
     const editLines = editing
       ? [...editing.players, ...(editing.guests ?? [])]
@@ -604,20 +608,36 @@ function NewMatchInner() {
               />
             </div>
             {pointsCheck && (
-              <p
+              <div
                 className={clsx(
-                  "shrink-0 text-center text-[12.5px]",
-                  pointsCheck.pa === scoreA && pointsCheck.pb === scoreB
-                    ? "text-ok"
-                    : "text-muted",
+                  "flex shrink-0 flex-col items-center gap-1.5 text-center text-[12.5px]",
+                  pointsBad ? "text-danger" : "text-ok",
                 )}
+                role={pointsBad ? "alert" : undefined}
+                data-testid="points-check"
               >
-                Dal tabellino: A {pointsCheck.pa} su {scoreA}, B{" "}
-                {pointsCheck.pb} su {scoreB}
-                {pointsCheck.pa === scoreA && pointsCheck.pb === scoreB
-                  ? " · tutto torna"
-                  : ""}
-              </p>
+                <p>
+                  Dal tabellino: A {pointsCheck.pa} su {scoreA}, B{" "}
+                  {pointsCheck.pb} su {scoreB}
+                  {pointsBad
+                    ? ". I punti devono tornare col risultato"
+                    : " · tutto torna"}
+                </p>
+                {/* Se il tabellino è giusto e il risultato no, un tocco lo sistema. */}
+                {pointsBad &&
+                  pointsCheck.pa !== pointsCheck.pb &&
+                  pointsCheck.pa + pointsCheck.pb > 0 && (
+                    <button
+                      onClick={() => {
+                        setScoreA(pointsCheck.pa);
+                        setScoreB(pointsCheck.pb);
+                      }}
+                      className="press rounded-full border-2 border-edge bg-surface px-3 py-1 text-[12.5px] font-bold text-text"
+                    >
+                      Usa {pointsCheck.pa}–{pointsCheck.pb} come risultato
+                    </button>
+                  )}
+              </div>
             )}
           </div>
         )}
@@ -651,7 +671,7 @@ function NewMatchInner() {
               variant="primary"
               className="flex-1"
               onClick={save}
-              disabled={busy || !teamsOk || !scoreOk}
+              disabled={busy || !teamsOk || !scoreOk || (withBox && pointsBad)}
             >
               {busy
                 ? "Salvataggio…"

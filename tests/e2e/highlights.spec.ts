@@ -666,3 +666,26 @@ test("dalla Home: il ciak in alto apre l'ultimo video e perde il pallino", async
   await page.goBack();
   await expect(page.getByTestId("hl-feed")).toHaveCount(0);
 });
+
+test("il racconto della partita: due righe, il resto con un tocco", async ({
+  page,
+}) => {
+  await openFeed(page);
+  const desc = active(page).getByTestId("hl-desc");
+  await expect(desc).toBeVisible();
+  // Il racconto viene dai numeri della partita: com'è finita e chi l'ha decisa.
+  await expect(desc).toContainText(/\d+–\d+/);
+  const lineH = await desc.evaluate(
+    (el) => parseFloat(getComputedStyle(el).lineHeight) || 20,
+  );
+  const closed = (await desc.boundingBox())!.height;
+  expect(closed).toBeLessThanOrEqual(lineH * 2 + 2);
+  await desc.click();
+  await expect(desc).toHaveAttribute("aria-expanded", "true");
+  expect((await desc.boundingBox())!.height).toBeGreaterThan(closed);
+  // La striscia dei numeri: etichetta e dato, letti di fila dai lettori di schermo.
+  await expect(active(page).locator(".hl-ticker")).toHaveAttribute(
+    "aria-label",
+    /^Finale .+ · MVP /,
+  );
+});

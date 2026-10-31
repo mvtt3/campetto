@@ -57,63 +57,56 @@ export function scoreOf(
   };
 }
 
+/** Una voce della striscia: l'etichetta piccola e il dato grande ("PUNTI · Paolo 14"). */
+export interface TickerItem {
+  k: string;
+  v: string;
+}
+
 /**
  * La striscia di numeri che scorre sotto al video: risultato, MVP e i migliori della
  * partita. Solo quello che c'è davvero nel tabellino (niente zeri).
  */
-export function tickerItems(m: Match, players: Player[]): string[] {
+export function tickerItems(m: Match, players: Player[]): TickerItem[] {
   const name = (id: string) =>
     shortName(
       players.find((p) => p.id === id),
       players,
     );
-  const items = [
-    `${teamNames(m, "A", players)} ${m.scoreA}–${m.scoreB} ${teamNames(m, "B", players)}`,
+  const items: TickerItem[] = [
+    {
+      k: "Finale",
+      v: `${teamNames(m, "A", players)} ${m.scoreA}–${m.scoreB} ${teamNames(m, "B", players)}`,
+    },
   ];
   const mvp = matchMvp(m);
-  if (mvp) items.push(`MVP ${name(mvp.playerId)}`);
+  if (mvp) items.push({ k: "MVP", v: name(mvp.playerId) });
   const lines = m.players
     .filter((p) => p.hasStats)
     .map((p) => ({ id: p.playerId, b: normalizeBox(p.box) }));
   const best = (
-    label: string,
+    k: string,
     pick: (b: ReturnType<typeof normalizeBox>) => number,
-    unit: (n: number) => string,
   ) => {
     const top = [...lines].sort(
       (x, y) => pick(y.b) - pick(x.b) || x.id.localeCompare(y.id),
     )[0];
     if (top && pick(top.b) > 0)
-      items.push(`${label} ${name(top.id)} · ${unit(pick(top.b))}`);
+      items.push({ k, v: `${name(top.id)} ${pick(top.b)}` });
   };
-  best(
-    "Più punti",
-    (b) => b.pts,
-    (n) => `${n} punti`,
-  );
-  best(
-    "Più rimbalzi",
-    (b) => b.oreb + b.dreb,
-    (n) => `${n}`,
-  );
-  best(
-    "Più assist",
-    (b) => b.ast,
-    (n) => `${n}`,
-  );
-  best(
-    "Più rubate",
-    (b) => b.stl,
-    (n) => `${n}`,
-  );
-  best(
-    "Più stoppate",
-    (b) => b.blk,
-    (n) => `${n}`,
-  );
+  best("Punti", (b) => b.pts);
+  best("Rimbalzi", (b) => b.oreb + b.dreb);
+  best("Assist", (b) => b.ast);
+  best("Rubate", (b) => b.stl);
+  best("Stoppate", (b) => b.blk);
   const threes = lines.reduce((s, l) => s + l.b.fg3m, 0);
-  if (threes > 0) items.push(threes === 1 ? "1 tripla" : `${threes} triple`);
+  if (threes > 0) items.push({ k: "Triple", v: String(threes) });
   return items;
+}
+
+/** La striscia letta tutta di fila (per i lettori di schermo). */
+export function tickerText(items: TickerItem[]): string {
+  return items.map((t) => `${t.k} ${t.v}`).join(" · ");
 }
 
 /** Da quanto è stato scritto un commento: "adesso", "5 min", "2 h", "ieri", "3 g", poi la data. */

@@ -6,6 +6,7 @@ import {
   feedOrder,
   highlightTitle,
   tickerItems,
+  tickerText,
   timeAgo,
 } from "@/lib/highlights";
 import { emptyBox, type Highlight, type Match, type Player } from "@/lib/types";
@@ -94,14 +95,20 @@ describe("la striscia coi numeri", () => {
   } as unknown as Match;
   it("risultato, MVP e i migliori, senza gli zeri", () => {
     const t = tickerItems(m, players);
-    expect(t[0]).toBe("Paolo e Simone 22–10 Vale e Mori");
-    expect(t).toContain("Più punti Paolo · 14 punti");
-    expect(t).toContain("Più rimbalzi Vale · 8");
-    expect(t).toContain("Più assist Simone · 5");
-    expect(t).toContain("Più rubate Simone · 2");
-    expect(t.some((x) => x.startsWith("Più stoppate"))).toBe(false);
-    expect(t.some((x) => x.includes("tripl"))).toBe(false);
-    expect(t.some((x) => x.startsWith("MVP "))).toBe(true);
+    expect(t[0]).toEqual({
+      k: "Finale",
+      v: "Paolo e Simone 22–10 Vale e Mori",
+    });
+    expect(t).toContainEqual({ k: "Punti", v: "Paolo 14" });
+    expect(t).toContainEqual({ k: "Rimbalzi", v: "Vale 8" });
+    expect(t).toContainEqual({ k: "Assist", v: "Simone 5" });
+    expect(t).toContainEqual({ k: "Rubate", v: "Simone 2" });
+    expect(t.some((x) => x.k === "Stoppate")).toBe(false);
+    expect(t.some((x) => x.k === "Triple")).toBe(false);
+    expect(t.some((x) => x.k === "MVP")).toBe(true);
+    expect(tickerText(t)).toMatch(
+      /^Finale Paolo e Simone 22–10 Vale e Mori · MVP /,
+    );
   });
 });
 

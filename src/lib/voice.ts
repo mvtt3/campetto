@@ -52,6 +52,11 @@ const RULES: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
   ],
   [/Punteggio non valido/i, "Il punteggio non mi torna: controllalo"],
   [
+    /tabellino non torna: la squadra ([AB]) fa (\d+) punti, ma il risultato dice (\d+)/i,
+    (m) =>
+      `Il tabellino non torna: la squadra ${m[1]} fa ${m[2]} punti, il risultato dice ${m[3]}. Sistema i punti`,
+  ],
+  [
     /in campo due volte/i,
     "Ho visto lo stesso giocatore in tutte e due le squadre: controlla",
   ],

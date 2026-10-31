@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { Mascot } from "@/components/mascot";
-import { compactCount } from "@/lib/highlights";
+import { compactCount, tickerText, type TickerItem } from "@/lib/highlights";
 import type { Highlight } from "@/lib/types";
 import { BallIcon } from "./ball-icon";
 
@@ -25,7 +25,9 @@ export interface SlideProps {
   /** Il prossimo si scarica tutto in anticipo, il precedente solo l'inizio. */
   preload: "auto" | "metadata";
   title: string;
-  ticker: string[];
+  ticker: TickerItem[];
+  /** Il racconto della partita (scritto dai numeri); se manca, la descrizione salvata. */
+  story: string | null;
   /** Squadre e risultato per l'apertura. */
   score: { a: string; b: string; score: string } | null;
   likes: number;
@@ -50,10 +52,11 @@ const INTRO_OUT_MS = 220;
  */
 export const Slide = memo(function Slide(p: SlideProps) {
   const { h, index, active, near, onEnded, onHold, onLike } = p;
+  const description = p.story ?? h.description;
   const video = useRef<HTMLVideoElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
-  const [showLoader, setShowLoader] = useState(false);
+  const [loaderDue, setLoaderDue] = useState(false);
   const [failed, setFailed] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
   const [portrait, setPortrait] = useState(false);
@@ -75,13 +78,14 @@ export const Slide = memo(function Slide(p: SlideProps) {
 
   // Il caricamento si mostra solo se dura: niente lampi di Spicchio a ogni video.
   useEffect(() => {
-    if (!loading || !active || intro !== "off") {
-      setShowLoader(false);
-      return;
-    }
-    const t = window.setTimeout(() => setShowLoader(true), LOADER_DELAY);
-    return () => window.clearTimeout(t);
+    if (!loading || !active || intro !== "off") return;
+    const t = window.setTimeout(() => setLoaderDue(true), LOADER_DELAY);
+    return () => {
+      window.clearTimeout(t);
+      setLoaderDue(false);
+    };
   }, [loading, active, intro]);
+  const showLoader = loaderDue && loading && active && intro === "off";
 
   // I video sono sempre muti: sotto c'è la musica del feed.
   const play = useCallback(async () => {
@@ -511,26 +515,27 @@ export const Slide = memo(function Slide(p: SlideProps) {
         <h2 className="hl-title title truncate text-[17px] leading-tight">
           {p.title}
         </h2>
-        {h.description && (
+        {description && (
           <button
-            className={clsx(
-              "pointer-events-auto mt-1 block w-full text-left text-[14px] leading-snug text-[#f6eedc]/90",
-              !expanded && "line-clamp-2",
-            )}
+            className="pointer-events-auto mt-1 block w-full text-left text-[14px] leading-snug text-[#f6eedc]/90"
             onClick={() => setExpanded((x) => !x)}
             aria-expanded={expanded}
             data-testid="hl-desc"
           >
-            {h.description}
+            {/* Due righe, il resto con un tocco (sul bottone il taglio non funziona: serve lo span). */}
+            <span className={clsx(!expanded && "line-clamp-2")}>
+              {description}
+            </span>
           </button>
         )}
       </div>
 
-      {/* La striscia coi numeri della partita, che scorre. */}
+      {/* La striscia coi numeri della partita, che scorre: un nastro da manifesto, inchiostro e
+          crema, con l'etichetta arancione e un pallone tra una voce e l'altra. */}
       {p.ticker.length > 0 && (
         <div
-          className="hl-ticker absolute inset-x-0 z-10 overflow-hidden border-t-2 border-[#1d1a16] bg-[#f47a2e] text-[#fffaf0]"
-          aria-label={p.ticker.join(" · ")}
+          className="hl-ticker absolute inset-x-0 z-10 overflow-hidden text-[#f6eedc]"
+          aria-label={tickerText(p.ticker)}
           role="marquee"
         >
           <div
@@ -539,7 +544,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
               !active && "hl-still",
             )}
             style={{
-              animationDuration: `${Math.max(14, p.ticker.join("").length * 0.32)}s`,
+              animationDuration: `${Math.max(16, tickerText(p.ticker).length * 0.34)}s`,
             }}
             aria-hidden
           >
@@ -548,10 +553,13 @@ export const Slide = memo(function Slide(p: SlideProps) {
                 {p.ticker.map((t, i) => (
                   <span
                     key={i}
-                    className="flex items-center whitespace-nowrap px-3 text-[13px] font-extrabold uppercase tracking-wide"
+                    className="flex items-center whitespace-nowrap pl-4"
                   >
-                    {t}
-                    <span className="ml-6 inline-block h-1.5 w-1.5 rounded-full bg-[#fffaf0]/70" />
+                    <span className="hl-ticker-k text-[10.5px] font-extrabold uppercase tracking-[0.2em] text-[#ef7d2d]">
+                      {t.k}
+                    </span>
+                    <span className="display ml-2 text-[14.5px]">{t.v}</span>
+                    <TickerBall />
                   </span>
                 ))}
               </span>
@@ -569,3 +577,22 @@ export const Slide = memo(function Slide(p: SlideProps) {
     </section>
   );
 });
+
+/** Il pallino tra una voce e l'altra della striscia: un piccolo pallone a spicchi. */
+function TickerBall() {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      width={11}
+      height={11}
+      className="ml-4"
+      aria-hidden
+    >
+      <circle cx="6" cy="6" r="5.4" fill="#ef7d2d" />
+      <g fill="none" stroke="#17130f" strokeWidth="0.9" strokeLinecap="round">
+        <path d="M6 0.8v10.4M0.8 6h10.4" />
+        <path d="M2.6 2.4c1.3 1 2 2.2 2 3.6s-.7 2.6-2 3.6M9.4 2.4c-1.3 1-2 2.2-2 3.6s.7 2.6 2 3.6" />
+      </g>
+    </svg>
+  );
+}

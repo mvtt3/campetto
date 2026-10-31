@@ -201,6 +201,38 @@ test("nuova partita con tabellino", async ({ page }) => {
   );
 });
 
+test("il tabellino deve tornare col risultato", async ({ page }) => {
+  await openApp(page);
+  await page.goto("/nuova");
+  await page.getByRole("button", { name: "1v1" }).click();
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await pickTeams(page, ["p5", "p7"]);
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await page.getByLabel("Punti squadra A").fill("8");
+  await page.getByLabel("Punti squadra B").fill("2");
+  await page.getByRole("button", { name: "Avanti" }).click();
+  await page.getByRole("button", { name: "Aggiungi il tabellino" }).click();
+  // Due canestri da 2 e una tripla fanno 7, non 8: non si salva.
+  await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
+  await page
+    .getByRole("button", { name: "Aggiungi Dalla media segnati" })
+    .click();
+  await page.getByRole("button", { name: "Aggiungi Da 3 segnati" }).click();
+  await page.getByRole("button", { name: /Simone/ }).click();
+  await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
+  const check = page.getByTestId("points-check");
+  await expect(check).toContainText("devono tornare col risultato");
+  await expect(
+    page.getByRole("button", { name: "Salva partita" }),
+  ).toBeDisabled();
+  // Se il tabellino è giusto, un tocco sistema il risultato.
+  await page.getByRole("button", { name: "Usa 7–2 come risultato" }).click();
+  await expect(check).toContainText("tutto torna");
+  await expect(
+    page.getByRole("button", { name: "Salva partita" }),
+  ).toBeEnabled();
+});
+
 test("proponi una partita e rispondi", async ({ page }) => {
   await openApp(page);
   await page.goto("/organizza?nuova=1");

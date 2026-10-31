@@ -14,6 +14,8 @@ import { haptic } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { highlightTitle, scoreOf, tickerItems } from "@/lib/highlights";
+import { computeElo } from "@/lib/stats/elo";
+import { matchStory } from "@/lib/story";
 import type { Highlight, HighlightSocial } from "@/lib/types";
 import { CommentsPanel, type ShownComment } from "./comments";
 import type { Music } from "./provider";
@@ -449,6 +451,8 @@ export default function HighlightsFeed({
     () => new Map(data.matches.map((m) => [m.id, m])),
     [data.matches],
   );
+  // Una volta sola per tutto il feed: serve al racconto (chi partiva favorito).
+  const elo = useMemo(() => computeElo(data.matches), [data.matches]);
   const meta = useMemo(
     () =>
       items.map((h) => {
@@ -456,10 +460,11 @@ export default function HighlightsFeed({
         return {
           title: m ? highlightTitle(m, data.matches) : "Highlights",
           ticker: m ? tickerItems(m, data.players) : [],
+          story: m ? matchStory(m, data.matches, data.players, elo) : null,
           score: m ? scoreOf(m, data.players) : null,
         };
       }),
-    [items, matchOf, data.matches, data.players],
+    [items, matchOf, data.matches, data.players, elo],
   );
 
   if (!me) return null;
@@ -497,6 +502,7 @@ export default function HighlightsFeed({
                 preload={i > active ? "auto" : "metadata"}
                 title={meta[i].title}
                 ticker={meta[i].ticker}
+                story={meta[i].story}
                 score={meta[i].score}
                 likes={li.count}
                 liked={li.liked}
