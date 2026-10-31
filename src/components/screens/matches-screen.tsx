@@ -15,7 +15,11 @@ import {
   useState,
 } from "react";
 import { MatchSheet } from "@/components/match-sheet";
-import { NightHighlightsButton } from "@/components/highlights/entry";
+import {
+  NightHighlightsButton,
+  PlayBadge,
+} from "@/components/highlights/entry";
+import { useHighlights } from "@/components/highlights/provider";
 import { EmptyState, ScreenHeader, Segmented } from "@/components/ui/basics";
 import { AvatarStack } from "@/components/ui/avatar";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -65,9 +69,18 @@ const MatchRow = memo(function MatchRow({
   const mine = me ? teamOf(m, me.id) : null;
   const mvp = matchMvp(m);
   const d = new Date(m.playedAt);
+  const hl = useHighlights();
+  const video = Boolean(hl.forMatch(m.id));
   return (
     <button
-      onClick={() => onOpen(m.id)}
+      onClick={(e) => {
+        // Il bollino ▶ della riga apre subito il video di questa partita.
+        if (video && (e.target as Element).closest("[data-hl-badge]")) {
+          hl.open(m.id);
+          return;
+        }
+        onOpen(m.id);
+      }}
       data-testid="match-row"
       // Le righe fuori dallo schermo non si impaginano finché non ci arrivi: la lista resta leggera anche con centinaia di partite.
       className={clsx(
@@ -143,7 +156,13 @@ const MatchRow = memo(function MatchRow({
           </span>
         </p>
       </div>
-      <span className="w-3 shrink-0" />
+      {video ? (
+        <span className="flex shrink-0 items-center pr-2.5">
+          <PlayBadge matchId={m.id} />
+        </span>
+      ) : (
+        <span className="w-3 shrink-0" />
+      )}
     </button>
   );
 });

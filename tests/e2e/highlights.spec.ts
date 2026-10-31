@@ -454,7 +454,11 @@ test("dalla Home: il bollino sull'ultima partita apre il suo video", async ({
   page,
 }) => {
   await openApp(page, "demo");
-  await page.getByTestId("hl-badge").click();
+  // Quello nella scheda "Ultima partita" (anche le righe della lista hanno il loro ▶).
+  await page
+    .getByRole("link", { name: /Ultima partita/ })
+    .getByTestId("hl-badge")
+    .click();
   await expect(page.getByTestId("hl-feed")).toBeVisible();
   expect(await activeIndex(page)).toBe(0);
   await page.goBack();
@@ -747,4 +751,32 @@ test("notizie nuove: il pallino sulla scheda la prima volta, poi spariscono tutt
   await button.click();
   await expect(page.getByTestId("news-highlights")).toBeVisible();
   await expect(page.locator("[data-fresh]")).toHaveCount(0);
+});
+
+test("nella lista ogni partita col video ha il suo ▶: apre quel video, il resto della riga la partita", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  await page.getByRole("link", { name: "Partite", exact: true }).click();
+  const row = page
+    .locator("[data-testid=match-row]:visible")
+    .filter({ has: page.getByTestId("hl-badge") })
+    .first();
+  await expect(row).toBeVisible();
+  await expect(row).toHaveAccessibleName(/con gli highlights/);
+  // Il ▶ sta dentro la riga, senza coprire il risultato.
+  const [r, b] = [
+    (await row.boundingBox())!,
+    (await row.getByTestId("hl-badge").boundingBox())!,
+  ];
+  expect(b.x + b.width).toBeLessThanOrEqual(r.x + r.width);
+  await row.getByTestId("hl-badge").click();
+  await expect(page.getByTestId("hl-feed")).toBeVisible();
+  await expect(page).toHaveURL(/[?&]h=/);
+  await page.goBack();
+  await expect(page.getByTestId("hl-feed")).toHaveCount(0);
+  // Toccando la riga (non il ▶) si apre la partita, con il suo video dentro.
+  await row.click({ position: { x: 30, y: 20 } });
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog").getByTestId("hl-open")).toBeVisible();
 });
