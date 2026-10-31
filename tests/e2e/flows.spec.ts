@@ -644,7 +644,8 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   await card.getByRole("button", { name: "Inizia" }).click();
   const tour = page.locator('[data-tour-overlay] [role="dialog"]');
   await expect(tour).toContainText("Il tuo mese");
-  await expect(tour).toContainText("Home · 1 di 5");
+  // Sei passi: c'è anche il ciak degli highlights.
+  await expect(tour).toContainText("Home · 1 di 6");
   await tour.getByRole("button", { name: "Avanti" }).click();
   await expect(tour).toContainText("Chi viene a giocare");
   await tour.getByRole("button", { name: "Salta Home" }).click();
