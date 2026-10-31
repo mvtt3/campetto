@@ -494,14 +494,23 @@ export function createSupabaseBackend(): Backend {
       fail((await q).error);
     },
 
-    async addHighlightComment(highlightId, body) {
+    async addHighlightComment(highlightId, body, replyTo) {
       const { data, error } = await sb
         .from("highlight_comments")
-        .insert({ highlight_id: highlightId, player_id: meId, body })
+        .insert({
+          highlight_id: highlightId,
+          player_id: meId,
+          body,
+          reply_to: replyTo ?? null,
+        })
         .select("*")
         .single();
       fail(error);
-      return mapHighlightComment(data);
+      const saved = mapHighlightComment(data);
+      // Chi riceve la risposta viene avvisato (se non è un extra che fallisce in silenzio).
+      if (saved.replyTo)
+        void this.notify({ type: "highlight_reply", commentId: saved.id });
+      return saved;
     },
 
     async deleteHighlightComment(id) {

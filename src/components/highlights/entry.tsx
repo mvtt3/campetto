@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Play } from "lucide-react";
+import { Clapperboard, Play } from "lucide-react";
 import { NewDot } from "@/components/new-dot";
 import type { Highlight } from "@/lib/types";
 import { useHighlights } from "./provider";
@@ -37,11 +37,11 @@ export function HighlightCard({
         onOpen?.(replace);
         hl.open(matchId, { replace });
       }}
-      className="sticker press relative flex w-full items-center gap-3 overflow-hidden rounded-[20px] bg-[#1d1a16] p-1.5 pr-3 text-left text-[#f6eedf]"
+      className="sticker press relative flex w-full items-center gap-3 overflow-hidden rounded-[20px] bg-surface p-1.5 pr-3 text-left text-text"
       data-testid="hl-open"
       data-tour="match-highlights"
     >
-      <span className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded-[14px] bg-black">
+      <span className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded-[14px] border-2 border-edge bg-[#17130f]">
         {h.posterUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -52,11 +52,11 @@ export function HighlightCard({
           />
         )}
         <span className="absolute inset-0 grid place-items-center">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#ef7d2d] text-[#1d1a16] ring-2 ring-[#1d1a16]">
+          <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-[#1d1a16] bg-ball text-ball-ink">
             <Play size={15} fill="currentColor" className="ml-0.5" />
           </span>
         </span>
-        <span className="absolute bottom-1 right-1 rounded-md bg-black/70 px-1 text-[10.5px] font-bold tnum">
+        <span className="absolute bottom-1 right-1 rounded-md bg-[#17130f]/80 px-1 text-[10.5px] font-bold text-[#f6eedc] tnum">
           {length(h)}
         </span>
       </span>
@@ -64,7 +64,7 @@ export function HighlightCard({
         <span className="title block text-[16px] leading-tight">
           Guarda gli highlights
         </span>
-        <span className="mt-0.5 block truncate text-[12.5px] text-[#f6eedf]/70">
+        <span className="mt-0.5 block truncate text-[12.5px] text-muted">
           {baskets(h)}
         </span>
       </span>
@@ -82,11 +82,11 @@ export function NightHighlightsButton({ matchIds }: { matchIds: string[] }) {
   return (
     <button
       onClick={() => hl.open(withVideo[0])}
-      className="sticker press relative flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1d1a16] text-[14px] font-bold text-[#f6eedf]"
+      className="sticker press relative flex h-11 w-full items-center justify-center gap-2 rounded-full bg-ball text-[14px] font-bold text-ball-ink"
       data-testid="hl-night"
       data-tour="matches-highlights"
     >
-      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#ef7d2d] text-[#1d1a16]">
+      <span className="grid h-6 w-6 place-items-center rounded-full bg-ball-ink text-ball">
         <Play size={12} fill="currentColor" className="ml-px" />
       </span>
       {withVideo.length === 1
@@ -116,7 +116,7 @@ export function PlayBadge({
       data-hl-badge
       title="Guarda gli highlights"
       className={clsx(
-        "sticker-sm press relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#ef7d2d] text-[#1d1a16]",
+        "sticker-sm press relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ball text-ball-ink",
         className,
       )}
       data-testid="hl-badge"
@@ -127,5 +127,32 @@ export function PlayBadge({
         <NewDot className="absolute -right-1 -top-1 !h-3 !w-3" />
       )}
     </span>
+  );
+}
+
+/**
+ * Il tasto degli highlights nella barra della Home, accanto alle notizie (come era IGTV su
+ * Instagram): secondario, sempre lì, apre il video più recente. Pallino finché c'è da vedere.
+ */
+export function HighlightsHomeButton() {
+  const hl = useHighlights();
+  if (!hl.latest) return null;
+  return (
+    <button
+      onClick={() => hl.latest && hl.open(hl.latest)}
+      aria-label={
+        hl.unseenCount
+          ? `Highlights, ${hl.unseenCount} da vedere`
+          : "Highlights"
+      }
+      className="sticker-sm press relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface"
+      data-testid="hl-home"
+      data-tour="home-highlights"
+    >
+      <Clapperboard size={20} aria-hidden />
+      {hl.unseenCount > 0 && (
+        <NewDot className="absolute -right-0.5 -top-0.5 !border-surface" />
+      )}
+    </button>
   );
 }

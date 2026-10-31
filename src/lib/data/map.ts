@@ -139,5 +139,6 @@ export function mapHighlightComment(r: any): HighlightComment {
     playerId: r.player_id,
     body: r.body,
     createdAt: r.created_at,
+    replyTo: r.reply_to ?? null,
   };
 }

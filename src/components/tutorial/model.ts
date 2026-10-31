@@ -27,8 +27,8 @@ export type SectionId = "home" | "classifica" | "partite" | "profilo";
 
 export function sections(
   isAdmin: boolean,
-  /** Ci sono gli highlights dell'ultima serata: un passo in più in Partite. */
-  highlights = false,
+  /** Highlights: il tasto nella Home (home) e quelli dell'ultima serata in Partite (night). */
+  highlights: { home?: boolean; night?: boolean } = {},
 ): Record<SectionId, TourSection> {
   return {
     home: {
@@ -50,6 +50,15 @@ export function sections(
           "L'MVP in carica",
           "Il migliore del mese. Tocca la i per sapere come si diventa",
         ),
+        ...(highlights.home
+          ? [
+              step(
+                "home-highlights",
+                "Gli highlights",
+                "Tutti i canestri delle partite in video. Scorri in su per la partita dopo, due tocchi per il mi piace",
+              ),
+            ]
+          : []),
         step(
           "home-news",
           "Le notizie",
@@ -92,12 +101,12 @@ export function sections(
           "Tutte le partite",
           "Tocca una partita per vedere risultato, MVP e tabellino",
         ),
-        ...(highlights
+        ...(highlights.night
           ? [
               step(
                 "matches-highlights",
                 "Gli highlights",
-                "Tutti i canestri della serata in un video. Scorri in su per la partita dopo, due tocchi per dare il pallone",
+                "Tutti i canestri della serata in un video. Toccalo per guardarli",
               ),
             ]
           : []),

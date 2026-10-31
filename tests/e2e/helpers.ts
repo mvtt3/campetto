@@ -5,6 +5,8 @@ import type { Page } from "@playwright/test";
 export async function skipTour(page: Page) {
   await page.addInitScript(() => {
     try {
+      // Anche la guida della prima volta negli highlights (c'è una prova apposta).
+      localStorage.setItem("campetto:highlights-guida", "1");
       for (let i = 1; i <= 7; i++)
         localStorage.setItem(
           `campetto:tour:p${i}`,

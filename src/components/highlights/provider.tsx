@@ -27,6 +27,10 @@ interface HighlightsApi {
   open: (matchId: string, opts?: { replace?: boolean }) => void;
   /** Mai aperto su questo telefono: pallino delle novità. */
   unseen: (matchId: string) => boolean;
+  /** La partita dell'highlight più recente (per il tasto nella Home). */
+  latest: string | null;
+  /** Quanti highlights non hai ancora aperto. */
+  unseenCount: number;
 }
 
 const Ctx = createContext<HighlightsApi>({
@@ -34,6 +38,8 @@ const Ctx = createContext<HighlightsApi>({
   forMatch: () => undefined,
   open: () => {},
   unseen: () => false,
+  latest: null,
+  unseenCount: 0,
 });
 export const useHighlights = () => useContext(Ctx);
 
@@ -307,8 +313,10 @@ export function HighlightsProvider({ children }: { children: ReactNode }) {
       forMatch: (id) => byMatch.get(id),
       open,
       unseen: (id) => byMatch.has(id) && !seen.includes(id),
+      latest: items[0]?.matchId ?? null,
+      unseenCount: items.filter((h) => !seen.includes(h.matchId)).length,
     }),
-    [items.length, byMatch, open, seen],
+    [items, byMatch, open, seen],
   );
 
   return (

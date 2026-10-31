@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { MessageCircle, Play, RotateCcw } from "lucide-react";
+import { Heart, MessageCircle, Play, RotateCcw } from "lucide-react";
 import {
   memo,
   useCallback,
@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { Mascot } from "@/components/mascot";
-import { clipIndexAt, compactCount } from "@/lib/highlights";
+import { compactCount } from "@/lib/highlights";
 import type { Highlight } from "@/lib/types";
 import { BallIcon } from "./ball-icon";
 
@@ -56,7 +56,6 @@ export const Slide = memo(function Slide(p: SlideProps) {
   const [showLoader, setShowLoader] = useState(false);
   const [failed, setFailed] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
-  const [clip, setClip] = useState(-1);
   const [portrait, setPortrait] = useState(false);
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number }[]>(
     [],
@@ -236,11 +235,9 @@ export const Slide = memo(function Slide(p: SlideProps) {
     }
   };
 
-  const current = clip >= 0 ? h.clips[clip] : null;
-
   return (
     <section
-      className="hl-slide relative h-full w-full shrink-0 snap-start snap-always overflow-hidden bg-[#0b0907]"
+      className="hl-slide relative h-full w-full shrink-0 snap-start snap-always overflow-hidden bg-[#17130f]"
       aria-roledescription="video"
       aria-label={p.title}
       data-testid="hl-slide"
@@ -300,10 +297,6 @@ export const Slide = memo(function Slide(p: SlideProps) {
               )
                 void play();
             }}
-            onTimeUpdate={(e) => {
-              const i = clipIndexAt(h.clips, e.currentTarget.currentTime);
-              if (i !== clip) setClip(i);
-            }}
             onEnded={() => onEnded(index)}
             onError={() => {
               // Un intoppo di rete: si riprova una volta da soli, poi si chiede.
@@ -333,18 +326,6 @@ export const Slide = memo(function Slide(p: SlideProps) {
           )
         )}
 
-        {/* Il canestro che stai vedendo. */}
-        {active && current && !failed && (
-          <span
-            key={clip}
-            className="hl-chip pointer-events-none absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold text-white backdrop-blur-sm"
-            data-testid="hl-clip"
-          >
-            {current.punti === 3 ? "Tripla" : "Canestro"} {clip + 1}/
-            {h.clips.length}
-          </span>
-        )}
-
         {bursts.map((b) => (
           <span
             key={b.id}
@@ -357,7 +338,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
         ))}
 
         {active && userPaused && !failed && (
-          <span className="hl-paused pointer-events-none absolute left-1/2 top-1/2 grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white">
+          <span className="hl-paused pointer-events-none absolute left-1/2 top-1/2 grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#17130f]/45 text-[#f6eedc]">
             <Play size={34} fill="currentColor" aria-hidden />
           </span>
         )}
@@ -369,14 +350,14 @@ export const Slide = memo(function Slide(p: SlideProps) {
             role="status"
             data-testid="hl-loading"
           >
-            <div className="flex flex-col items-center gap-1.5 rounded-[22px] bg-black/45 px-5 pb-3 pt-2 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-1.5 rounded-[22px] bg-[#17130f]/45 px-5 pb-3 pt-2 backdrop-blur-sm">
               <div className="live-stage relative h-[76px] w-[66px]">
-                <span className="live-shadow absolute bottom-0 left-1/2 h-2 w-3/5 -translate-x-1/2 rounded-[50%] bg-black/50" />
+                <span className="live-shadow absolute bottom-0 left-1/2 h-2 w-3/5 -translate-x-1/2 rounded-[50%] bg-[#17130f]/50" />
                 <span className="live-bounce absolute inset-x-0 bottom-1.5 flex justify-center">
                   <Mascot pose="esulta" size={62} animate={false} />
                 </span>
               </div>
-              <span className="text-[13px] font-semibold text-white/90">
+              <span className="text-[13px] font-semibold text-[#f6eedc]/90">
                 Arriva il video
                 <span className="typing-dots ml-1 inline-flex gap-[3px] align-middle">
                   <span />
@@ -394,7 +375,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
             role="alert"
             data-testid="hl-error"
           >
-            <div className="flex flex-col items-center gap-2 rounded-[22px] bg-black/60 px-5 py-4 text-center text-white">
+            <div className="flex flex-col items-center gap-2 rounded-[22px] bg-[#17130f]/60 px-5 py-4 text-center text-[#f6eedc]">
               <Mascot pose="boh" size={64} animate={false} />
               <p className="text-[14px] font-semibold">
                 Il video non vuole partire
@@ -404,7 +385,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
                   e.stopPropagation();
                   retry();
                 }}
-                className="press flex h-10 items-center gap-1.5 rounded-full bg-[#ef7d2d] px-4 text-[14px] font-bold text-[#1d1a16]"
+                className="press flex h-10 items-center gap-1.5 rounded-full bg-[#f47a2e] px-4 text-[14px] font-bold text-[#fffaf0]"
               >
                 <RotateCcw size={16} aria-hidden /> Riprova
               </button>
@@ -432,27 +413,29 @@ export const Slide = memo(function Slide(p: SlideProps) {
               className="hl-intro-stage live-stage relative mt-8 h-[104px] w-[96px]"
               aria-hidden
             >
-              <span className="live-shadow absolute bottom-0 left-1/2 h-2.5 w-3/5 -translate-x-1/2 rounded-[50%] bg-black/55" />
+              <span className="live-shadow absolute bottom-0 left-1/2 h-2.5 w-3/5 -translate-x-1/2 rounded-[50%] bg-[#17130f]/55" />
               <span className="live-bounce absolute inset-x-0 bottom-2 flex justify-center">
                 <Mascot pose="esulta" size={88} animate={false} />
               </span>
             </div>
-            <p className="display mt-3 max-w-full text-[26px] leading-tight">{p.title}</p>
+            <p className="display mt-3 max-w-full text-[26px] leading-tight">
+              {p.title}
+            </p>
             {p.score && (
               <div className="mt-2 flex w-full max-w-[30ch] flex-col items-center">
-                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-white/85 [overflow-wrap:anywhere]">
+                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-[#f6eedc]/85 [overflow-wrap:anywhere]">
                   {p.score.a}
                 </span>
                 <span className="score my-0.5 text-[34px] leading-none text-[#ef7d2d]">
                   {p.score.score}
                 </span>
-                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-white/85 [overflow-wrap:anywhere]">
+                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-[#f6eedc]/85 [overflow-wrap:anywhere]">
                   {p.score.b}
                 </span>
               </div>
             )}
             {h.clips.length > 0 && (
-              <p className="mt-2 text-[13px] font-semibold text-white/65">
+              <p className="mt-2 text-[13px] font-semibold text-[#f6eedc]/65">
                 {h.clips.length === 1
                   ? "1 canestro"
                   : `${h.clips.length} canestri`}
@@ -466,7 +449,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
       {active && (
         <div
           className={clsx(
-            "hl-progress pointer-events-none absolute inset-x-0 h-[3px] bg-white/20",
+            "hl-progress pointer-events-none absolute inset-x-0 h-[3px] bg-[#f6eedc]/25",
             portrait && "hl-progress-full",
           )}
           aria-hidden
@@ -480,52 +463,58 @@ export const Slide = memo(function Slide(p: SlideProps) {
       )}
 
       {/* Pallone e commenti, a destra come nelle app di video. */}
-      <div className="hl-rail absolute right-2 z-[16] flex flex-col items-center gap-4">
+      {/* Come nelle app di video del 2026: icone leggere a contorno, numero sotto, tocco ampio. */}
+      <div className="hl-rail absolute right-1.5 z-[16] flex flex-col items-center gap-3">
         <button
           onClick={() => onLike(h.id, !p.liked)}
           aria-pressed={p.liked}
-          aria-label={`${p.liked ? "Togli il pallone" : "Dai il pallone"}: ${compactCount(p.likes)}`}
-          className="press flex w-14 flex-col items-center gap-0.5 text-white"
+          aria-label={`${p.liked ? "Togli il mi piace" : "Mi piace"}: ${compactCount(p.likes)}`}
+          className="press flex h-[58px] w-12 flex-col items-center justify-center gap-1"
           data-testid="hl-like"
         >
           <span
             key={p.liked ? "on" : "off"}
-            className={p.liked ? "hl-pop" : ""}
+            className={clsx("hl-icon", p.liked && "hl-pop")}
           >
-            <BallIcon size={38} filled={p.liked} />
+            <Heart
+              size={29}
+              strokeWidth={2}
+              className={p.liked ? "text-[#ff5a4a]" : "text-[#f6eedc]"}
+              fill={p.liked ? "currentColor" : "none"}
+              aria-hidden
+            />
           </span>
-          <span className="hl-count text-[13px] font-bold tnum">
+          <span className="hl-count text-[12px] font-semibold text-[#f6eedc] tnum">
             {compactCount(p.likes)}
           </span>
         </button>
         <button
           onClick={() => p.onComments(h.id)}
           aria-label={`Commenti: ${compactCount(p.comments)}`}
-          className="press flex w-14 flex-col items-center gap-0.5 text-white"
+          className="press flex h-[58px] w-12 flex-col items-center justify-center gap-1"
           data-testid="hl-comments"
         >
           <MessageCircle
-            size={36}
-            strokeWidth={2.2}
-            className="hl-icon"
-            fill="rgba(0,0,0,0.25)"
+            size={28}
+            strokeWidth={2}
+            className="hl-icon -scale-x-100 text-[#f6eedc]"
             aria-hidden
           />
-          <span className="hl-count text-[13px] font-bold tnum">
+          <span className="hl-count text-[12px] font-semibold text-[#f6eedc] tnum">
             {compactCount(p.comments)}
           </span>
         </button>
       </div>
 
       {/* Titolo e descrizione in basso. */}
-      <div className="hl-meta pointer-events-none absolute left-0 right-[68px] z-10 px-4 text-white">
+      <div className="hl-meta pointer-events-none absolute left-0 right-[60px] z-10 px-4 text-[#f6eedc]">
         <h2 className="hl-title title truncate text-[17px] leading-tight">
           {p.title}
         </h2>
         {h.description && (
           <button
             className={clsx(
-              "pointer-events-auto mt-1 block w-full text-left text-[14px] leading-snug text-white/90",
+              "pointer-events-auto mt-1 block w-full text-left text-[14px] leading-snug text-[#f6eedc]/90",
               !expanded && "line-clamp-2",
             )}
             onClick={() => setExpanded((x) => !x)}
@@ -540,7 +529,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
       {/* La striscia coi numeri della partita, che scorre. */}
       {p.ticker.length > 0 && (
         <div
-          className="hl-ticker absolute inset-x-0 z-10 overflow-hidden border-y-2 border-[#1d1a16] bg-[#ef7d2d] text-[#1d1a16]"
+          className="hl-ticker absolute inset-x-0 z-10 overflow-hidden border-t-2 border-[#1d1a16] bg-[#f47a2e] text-[#fffaf0]"
           aria-label={p.ticker.join(" · ")}
           role="marquee"
         >
@@ -562,7 +551,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
                     className="flex items-center whitespace-nowrap px-3 text-[13px] font-extrabold uppercase tracking-wide"
                   >
                     {t}
-                    <span className="ml-6 inline-block h-1.5 w-1.5 rounded-full bg-[#1d1a16]" />
+                    <span className="ml-6 inline-block h-1.5 w-1.5 rounded-full bg-[#fffaf0]/70" />
                   </span>
                 ))}
               </span>

@@ -94,7 +94,10 @@ export function TutorialProvider({
       if (!best || m.playedAt > best.at) best = { id: m.id, at: m.playedAt };
     return best?.id ?? null;
   }, [data.matches]);
-  const all = sections(me.isAdmin, Boolean(latest && hl.forMatch(latest)));
+  const all = sections(me.isAdmin, {
+    home: hl.available,
+    night: Boolean(latest && hl.forMatch(latest)),
+  });
 
   const update = useCallback(
     (patch: Partial<TourState>) =>

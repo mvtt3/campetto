@@ -62,6 +62,7 @@ const Body = z.discriminatedUnion("type", [
     isNew: z.boolean(),
   }),
   z.object({ type: z.literal("flush") }),
+  z.object({ type: z.literal("highlight_reply"), commentId: z.uuid() }),
   z.object({ type: z.literal("test") }),
 ]);
 
@@ -152,6 +153,39 @@ class Ctx {
     const { data } = await this.sb.rpc("claim_notification", { p_key: key });
     return data === true;
   }
+}
+
+/**
+ * "X ti ha risposto": a chi ha scritto il commento a cui si risponde (non a sé stessi).
+ * Il tocco apre il feed su quel video.
+ */
+async function highlightReply(ctx: Ctx, commentId: string) {
+  const { data: c } = await ctx.sb
+    .from("highlight_comments")
+    .select("id, body, player_id, reply_to, highlights(match_id)")
+    .eq("id", commentId)
+    .single();
+  if (!c || c.player_id !== ctx.me || !c.reply_to) return;
+  const { data: parent } = await ctx.sb
+    .from("highlight_comments")
+    .select("player_id")
+    .eq("id", c.reply_to)
+    .single();
+  if (!parent || parent.player_id === ctx.me) return;
+  if (!(await ctx.claim(`risposta:${c.id}`))) return;
+  const players = await loadPlayers(ctx.sb);
+  const who = shortName(
+    players.find((x) => x.id === ctx.me),
+    players,
+  );
+  const hl = c.highlights as unknown as { match_id: string } | null;
+  const text = String(c.body);
+  await ctx.send(await ctx.targets("commenti", [parent.player_id]), {
+    title: `${who} ti ha risposto`,
+    body: text.length > 120 ? `${text.slice(0, 117)}…` : text,
+    url: hl ? `/partite?h=${hl.match_id}` : "/partite",
+    tag: `risposta-${c.reply_to}`,
+  });
 }
 
 /** Solo il gruppo: gli ospiti non ricevono notifiche e non entrano nei conti. */
@@ -941,6 +975,8 @@ export async function POST(req: Request) {
         await proposalSummary(ctx, mapProposal(row), players);
     } else if (body.type === "match_saved") {
       await matchSaved(ctx, body.matchId);
+    } else if (body.type === "highlight_reply") {
+      await highlightReply(ctx, body.commentId);
     }
   } catch {
     return Response.json(

@@ -20,7 +20,7 @@ import { markMatchOpenedFromElsewhere } from "@/components/screens/matches-scree
 import { Avatar } from "@/components/ui/avatar";
 import { CountUp, CourtLines, Ring } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { PlayBadge } from "@/components/highlights/entry";
+import { HighlightsHomeButton, PlayBadge } from "@/components/highlights/entry";
 import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
@@ -139,8 +139,13 @@ export function HomeScreen() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <HighlightsHomeButton />
             <NewsButton unseen={news.unseen} onOpen={openNews} />
-            <Avatar player={me} size={44} />
+            {/* Sui telefoni stretti, col ciak degli highlights, la figurina lascia spazio al nome
+                (il profilo resta a un tocco, in basso). */}
+            <span className={clsx(hl.available && "max-[389px]:hidden")}>
+              <Avatar player={me} size={44} />
+            </span>
           </div>
         </div>
         <NewsPanel

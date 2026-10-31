@@ -1,9 +1,10 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowUp, RotateCcw, X } from "lucide-react";
+import { ArrowUp, CornerUpLeft, RotateCcw, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
+import { haptic } from "@/components/ui/basics";
 import { Mascot } from "@/components/mascot";
 import { cleanComment, timeAgo } from "@/lib/highlights";
 import { useNow } from "@/lib/use-now";
@@ -44,7 +45,7 @@ export function CommentsPanel({
   players: Player[];
   me: Player;
   onClose: () => void;
-  onSend: (body: string) => void;
+  onSend: (body: string, replyTo: string | null) => void;
   onRetry: (c: ShownComment) => void;
   onDelete: (c: ShownComment) => void;
   onReload: () => void;
@@ -55,6 +56,9 @@ export function CommentsPanel({
   const [vh, setVh] = useState<number | null>(null);
   const [drag, setDrag] = useState(0);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // A chi sto rispondendo (come su WhatsApp): la citazione sopra la casella.
+  const [replyTo, setReplyTo] = useState<ShownComment | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const count = comments.length;
@@ -96,6 +100,7 @@ export function CommentsPanel({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setConfirmId(null);
       setDrag(0);
+      setReplyTo(null);
     }
   }, [open]);
 
@@ -117,10 +122,33 @@ export function CommentsPanel({
   const send = () => {
     const body = cleanComment(text);
     if (!body) return;
-    onSend(body);
+    onSend(body, replyTo && !replyTo.id.startsWith("tmp-") ? replyTo.id : null);
     setText("");
+    setReplyTo(null);
     input.current?.focus();
   };
+
+  const startReply = (c: ShownComment) => {
+    haptic(10);
+    setReplyTo(c);
+    input.current?.focus({ preventScroll: true });
+  };
+
+  // Tocco sulla citazione: si torna al commento originale, che si illumina un attimo.
+  const goTo = (id: string) => {
+    const el = list.current?.querySelector<HTMLElement>(`[data-cid="${id}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    setFlash(id);
+    window.setTimeout(() => setFlash((f) => (f === id ? null : f)), 1200);
+  };
+
+  // Se il commento a cui rispondevo sparisce (eliminato), la citazione se ne va.
+  const replyGone = replyTo && !comments.some((c) => c.id === replyTo.id);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (replyGone) setReplyTo(null);
+  }, [replyGone]);
 
   // Trascinare giù la maniglia chiude.
   const start = useRef<number | null>(null);
@@ -235,86 +263,73 @@ export function CommentsPanel({
               </p>
             </div>
           ) : (
-            <ul className="flex flex-col gap-3.5 py-2">
-              {comments.map((c) => {
-                const who = players.find((x) => x.id === c.playerId);
-                const mine = c.playerId === me.id;
-                return (
-                  <li
-                    key={c.id}
-                    className={clsx(
-                      "flex gap-2.5",
-                      c.state === "sending" && "opacity-60",
-                    )}
-                    data-testid="hl-comment"
-                  >
-                    {who ? (
-                      <Avatar player={who} size={34} />
-                    ) : (
-                      <span className="h-[34px] w-[34px] shrink-0 rounded-full bg-line" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-baseline gap-1.5 text-[12.5px] text-muted">
-                        <span className="truncate font-bold text-text">
-                          {shortName(who, players)}
-                        </span>
-                        <span className="shrink-0">
-                          {c.state === "sending"
-                            ? "invio…"
-                            : timeAgo(c.createdAt, now)}
-                        </span>
-                      </p>
-                      <p className="whitespace-pre-wrap break-words text-[14.5px] leading-snug [overflow-wrap:anywhere]">
-                        {c.body}
-                      </p>
-                      {c.state === "failed" ? (
-                        <div className="mt-1 flex gap-3 text-[12.5px] font-bold">
-                          <span className="text-danger">Non inviato</span>
-                          <button
-                            className="press underline"
-                            onClick={() => onRetry(c)}
-                          >
-                            Riprova
-                          </button>
-                          <button
-                            className="press text-muted underline"
-                            onClick={() => onDelete(c)}
-                          >
-                            Lascia stare
-                          </button>
-                        </div>
-                      ) : (
-                        mine &&
-                        c.state !== "sending" && (
-                          <button
-                            className={clsx(
-                              "press mt-0.5 text-[12.5px] font-semibold",
-                              confirmId === c.id ? "text-danger" : "text-muted",
-                            )}
-                            onClick={() => {
-                              if (confirmId === c.id) {
-                                setConfirmId(null);
-                                onDelete(c);
-                              } else setConfirmId(c.id);
-                            }}
-                            data-testid="hl-comment-delete"
-                          >
-                            {confirmId === c.id
-                              ? "Tocca ancora per eliminarlo"
-                              : "Elimina"}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
+            <ul className="flex flex-col gap-1.5 py-2">
+              {comments.map((c) => (
+                <CommentRow
+                  key={c.id}
+                  c={c}
+                  quoted={
+                    c.replyTo
+                      ? (comments.find((x) => x.id === c.replyTo) ?? null)
+                      : undefined
+                  }
+                  players={players}
+                  me={me}
+                  now={now}
+                  flash={flash === c.id}
+                  confirming={confirmId === c.id}
+                  onReply={() => startReply(c)}
+                  onQuote={goTo}
+                  onRetry={() => onRetry(c)}
+                  onDelete={() => {
+                    if (c.state === "failed" || confirmId === c.id) {
+                      setConfirmId(null);
+                      onDelete(c);
+                    } else setConfirmId(c.id);
+                  }}
+                />
+              ))}
             </ul>
           )}
         </div>
 
+        {replyTo && (
+          <div
+            className="flex shrink-0 items-center gap-2 border-t-2 border-line bg-raised px-3 py-2"
+            data-testid="hl-reply-bar"
+          >
+            <CornerUpLeft
+              size={16}
+              className="shrink-0 text-ball"
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1 border-l-[3px] border-ball pl-2">
+              <p className="truncate text-[12.5px] font-bold">
+                Rispondi a{" "}
+                {shortName(
+                  players.find((x) => x.id === replyTo.playerId),
+                  players,
+                )}
+              </p>
+              <p className="truncate text-[12.5px] text-muted">
+                {replyTo.body}
+              </p>
+            </div>
+            <button
+              onClick={() => setReplyTo(null)}
+              aria-label="Non rispondere più"
+              className="press grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted"
+              data-testid="hl-reply-cancel"
+            >
+              <X size={17} strokeWidth={2.4} />
+            </button>
+          </div>
+        )}
         <form
-          className="safe-bottom flex shrink-0 items-end gap-2 border-t-2 border-line px-3 pb-3 pt-2.5"
+          className={clsx(
+            "safe-bottom flex shrink-0 items-end gap-2 px-3 pb-3 pt-2.5",
+            !replyTo && "border-t-2 border-line",
+          )}
           onSubmit={(e) => {
             e.preventDefault();
             send();
@@ -338,8 +353,10 @@ export function CommentsPanel({
               }}
               rows={1}
               maxLength={COMMENT_MAX}
-              placeholder="Scrivi un commento…"
-              aria-label="Scrivi un commento"
+              placeholder={
+                replyTo ? "Scrivi la risposta…" : "Scrivi un commento…"
+              }
+              aria-label={replyTo ? "Scrivi la risposta" : "Scrivi un commento"}
               enterKeyHint="send"
               className="block max-h-[104px] min-h-[40px] w-full resize-none rounded-[20px] border-2 border-line-strong bg-bg px-3.5 py-[7px] text-[15px] leading-snug outline-none focus:border-edge"
               data-testid="hl-comment-input"
@@ -367,5 +384,198 @@ export function CommentsPanel({
         </form>
       </div>
     </div>
+  );
+}
+
+/** Quanto trascinare a destra per rispondere (come su WhatsApp). */
+const SWIPE_REPLY = 56;
+
+/**
+ * Un commento: chi, quando, il testo e, se risponde a qualcuno, la citazione (toccandola si
+ * torna all'originale). Trascinandolo verso destra si risponde; sotto ci sono Rispondi ed Elimina.
+ */
+function CommentRow({
+  c,
+  quoted,
+  players,
+  me,
+  now,
+  flash,
+  confirming,
+  onReply,
+  onQuote,
+  onRetry,
+  onDelete,
+}: {
+  c: ShownComment;
+  /** undefined: non risponde a nessuno; null: rispondeva a un commento eliminato. */
+  quoted: ShownComment | null | undefined;
+  players: Player[];
+  me: Player;
+  now: Date;
+  flash: boolean;
+  confirming: boolean;
+  onReply: () => void;
+  onQuote: (id: string) => void;
+  onRetry: () => void;
+  onDelete: () => void;
+}) {
+  const who = players.find((x) => x.id === c.playerId);
+  const mine = c.playerId === me.id;
+  const [dx, setDxState] = useState(0);
+  // Il valore vero sta nel ref: gli eventi del dito arrivano più veloci dei disegni.
+  const dxRef = useRef(0);
+  const setDx = (v: number) => {
+    dxRef.current = v;
+    setDxState(v);
+  };
+  const start = useRef<{ x: number; y: number; on: boolean | null } | null>(
+    null,
+  );
+  const canReply = !c.state;
+
+  const onDown = (e: React.PointerEvent) => {
+    if (!canReply || e.pointerType === "mouse") return;
+    start.current = { x: e.clientX, y: e.clientY, on: null };
+  };
+  const onMove = (e: React.PointerEvent) => {
+    const s = start.current;
+    if (!s) return;
+    const mx = e.clientX - s.x;
+    const my = e.clientY - s.y;
+    // Decide al primo movimento chiaro: in orizzontale si risponde, in verticale si scorre.
+    if (s.on === null && (Math.abs(mx) > 8 || Math.abs(my) > 8))
+      s.on = Math.abs(mx) > Math.abs(my) * 1.4 && mx > 0;
+    if (!s.on) return;
+    const next = Math.max(0, Math.min(90, mx));
+    if (next >= SWIPE_REPLY && dxRef.current < SWIPE_REPLY) haptic(8);
+    setDx(next);
+  };
+  const onUp = () => {
+    const s = start.current;
+    start.current = null;
+    if (s?.on && dxRef.current >= SWIPE_REPLY) onReply();
+    setDx(0);
+  };
+
+  const quotedName = quoted
+    ? shortName(
+        players.find((x) => x.id === quoted.playerId),
+        players,
+      )
+    : null;
+
+  return (
+    <li
+      data-cid={c.id}
+      className={clsx(
+        "hl-comment relative -mx-2 rounded-[14px] px-2 py-1",
+        c.state === "sending" && "opacity-60",
+        flash && "hl-flash",
+      )}
+      data-testid="hl-comment"
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      style={{ touchAction: "pan-y" }}
+    >
+      {/* La freccia che compare trascinando, come su WhatsApp. */}
+      <span
+        className="pointer-events-none absolute left-1 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-raised text-ball"
+        style={{
+          opacity: Math.min(1, dx / SWIPE_REPLY),
+          transform: `translateY(-50%) scale(${0.6 + Math.min(1, dx / SWIPE_REPLY) * 0.4})`,
+        }}
+        aria-hidden
+      >
+        <CornerUpLeft size={16} />
+      </span>
+      <div
+        className={clsx(
+          "flex gap-2.5",
+          dx === 0 && "transition-transform duration-200",
+        )}
+        style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
+      >
+        {who ? (
+          <Avatar player={who} size={34} />
+        ) : (
+          <span className="h-[34px] w-[34px] shrink-0 rounded-full bg-line" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="flex items-baseline gap-1.5 text-[12.5px] text-muted">
+            <span className="truncate font-bold text-text">
+              {shortName(who, players)}
+            </span>
+            <span className="shrink-0">
+              {c.state === "sending" ? "invio…" : timeAgo(c.createdAt, now)}
+            </span>
+          </p>
+          {quoted !== undefined && (
+            <button
+              type="button"
+              onClick={() => quoted && onQuote(quoted.id)}
+              disabled={!quoted}
+              className="press mt-1 block w-full max-w-full rounded-[10px] border-l-[3px] border-court bg-raised px-2 py-1 text-left"
+              data-testid="hl-quote"
+            >
+              {quoted ? (
+                <>
+                  <span className="block truncate text-[12px] font-bold text-court">
+                    {quotedName}
+                  </span>
+                  <span className="block truncate text-[12.5px] text-muted">
+                    {quoted.body}
+                  </span>
+                </>
+              ) : (
+                <span className="block text-[12.5px] italic text-faint">
+                  Commento eliminato
+                </span>
+              )}
+            </button>
+          )}
+          <p className="mt-0.5 whitespace-pre-wrap break-words text-[14.5px] leading-snug [overflow-wrap:anywhere]">
+            {c.body}
+          </p>
+          {c.state === "failed" ? (
+            <div className="mt-1 flex gap-3 text-[12.5px] font-bold">
+              <span className="text-danger">Non inviato</span>
+              <button className="press underline" onClick={onRetry}>
+                Riprova
+              </button>
+              <button className="press text-muted underline" onClick={onDelete}>
+                Lascia stare
+              </button>
+            </div>
+          ) : (
+            c.state !== "sending" && (
+              <div className="mt-0.5 flex gap-4 text-[12.5px] font-semibold text-muted">
+                <button
+                  className="press py-0.5"
+                  onClick={onReply}
+                  data-testid="hl-comment-reply"
+                >
+                  Rispondi
+                </button>
+                {mine && (
+                  <button
+                    className={clsx(
+                      "press py-0.5",
+                      confirming && "text-danger",
+                    )}
+                    onClick={onDelete}
+                    data-testid="hl-comment-delete"
+                  >
+                    {confirming ? "Tocca ancora per eliminarlo" : "Elimina"}
+                  </button>
+                )}
+              </div>
+            )
+          )}
+        </div>
+      </div>
+    </li>
   );
 }

@@ -1831,6 +1831,12 @@ html[data-shot="3"] .intro-ball-x {
 
 /* ------------------------------------------------------------------ */
 /* Highlights: il feed verticale dei video, sempre scuro come un cinema. */
+/* Lo sfondo del feed: il marrone scuro dell'app con la sua grana, non un nero piatto. */
+.hl-feed,
+.hl-slide {
+  background-image: url("/grain-dark.png");
+  background-size: 128px 128px;
+}
 .hl-feed {
   transition:
     opacity 240ms ease,
@@ -1863,7 +1869,7 @@ html[data-shot="3"] .intro-ball-x {
   position: absolute;
   inset: auto 0 0 0;
   height: calc(env(safe-area-inset-bottom) + 230px);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+  background: linear-gradient(to top, rgba(23, 19, 15, 0.82), rgba(23, 19, 15, 0));
   pointer-events: none;
   z-index: 5;
 }
@@ -1892,7 +1898,7 @@ html[data-shot="3"] .intro-ball-x {
 .hl-top {
   padding-top: env(safe-area-inset-top);
   height: calc(env(safe-area-inset-top) + 56px);
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  background: linear-gradient(to bottom, rgba(23, 19, 15, 0.7), rgba(23, 19, 15, 0));
 }
 .hl-icon,
 .hl-count,
@@ -2047,8 +2053,8 @@ html[data-shot="3"] .intro-ball-x {
 .hl-intro {
   background: radial-gradient(
     ellipse at 50% 45%,
-    rgba(29, 26, 22, 0.82),
-    rgba(11, 9, 7, 0.94)
+    rgba(36, 30, 24, 0.86),
+    rgba(23, 19, 15, 0.96)
   );
   animation: hl-fade-in 180ms ease-out;
   transition: opacity 220ms ease-in;
@@ -2079,6 +2085,84 @@ html[data-shot="3"] .intro-ball-x {
 @media (prefers-reduced-motion: reduce) {
   .hl-intro,
   .hl-intro-body {
+    animation: none;
+  }
+}
+/* Il commento citato si illumina un attimo quando ci torni dalla risposta. */
+.hl-flash {
+  animation: hl-flash 1.2s ease-out;
+}
+@keyframes hl-flash {
+  0%,
+  35% {
+    background: color-mix(in srgb, var(--ball) 22%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+/* La guida della prima volta nel feed: il dito che scorre in su, poi i due tocchi. */
+.hl-hint-pill {
+  bottom: calc(env(safe-area-inset-bottom) + 150px);
+}
+.hl-finger-up,
+.hl-finger-tap {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 9999px;
+  background: rgb(255 250 240 / 0.85);
+  border: 2.5px solid #1d1a16;
+  box-shadow: 0 0 0 7px rgb(255 250 240 / 0.3);
+}
+.hl-finger-up {
+  animation: hl-finger-up 1.1s cubic-bezier(0.65, 0, 0.35, 1) 2 both;
+}
+@keyframes hl-finger-up {
+  0% {
+    opacity: 0;
+    transform: translateY(90px) scale(0.7);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(90px) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-90px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-110px) scale(0.85);
+  }
+}
+.hl-finger-tap {
+  top: 34%;
+  animation: hl-finger-tap 1s ease-in-out 2 both;
+}
+@keyframes hl-finger-tap {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  15%,
+  45% {
+    opacity: 1;
+    transform: scale(0.82);
+  }
+  30%,
+  60% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hl-finger-up,
+  .hl-finger-tap {
     animation: none;
   }
 }

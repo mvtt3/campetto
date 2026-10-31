@@ -56,7 +56,8 @@ test("dalla serata si apre il feed, il video parte e indietro lo chiude", async 
   await openFeed(page);
   await waitPlaying(page);
   expect((await videoState(page))!.paused).toBe(false);
-  await expect(active(page).getByTestId("hl-clip")).toBeVisible();
+  // Niente contatore dei canestri sopra al video.
+  await expect(page.getByTestId("hl-clip")).toHaveCount(0);
   await page.goBack();
   await expect(page.getByTestId("hl-feed")).toHaveCount(0);
   await expect(page).not.toHaveURL(/[?&]h=/);
@@ -64,19 +65,23 @@ test("dalla serata si apre il feed, il video parte e indietro lo chiude", async 
   await expect(page.getByTestId("hl-night").first()).toBeVisible();
 });
 
-test("gli altri del gruppo non vedono niente (per ora)", async ({ page }) => {
-  await openApp(page, "demo", "light", "p2");
-  await expect(page.getByTestId("hl-badge")).toHaveCount(0);
-  await page.getByRole("link", { name: "Partite", exact: true }).click();
-  await expect(page.getByTestId("night").first()).toBeVisible();
-  await expect(page.getByTestId("hl-night")).toHaveCount(0);
-  await page.getByTestId("match-row").first().click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByTestId("hl-open")).toHaveCount(0);
-  // Nemmeno col link diretto.
-  await page.goto("/partite?h=demo-0");
-  await page.waitForTimeout(1200);
-  await expect(page.getByTestId("hl-feed")).toHaveCount(0);
+test("anche un giocatore normale li vede, mette il mi piace e commenta", async ({
+  page,
+}) => {
+  // Mattia: nei dati di prova non ha ancora messo mi piace.
+  await openApp(page, "demo", "light", "p5");
+  await expect(page.getByTestId("hl-home")).toBeVisible();
+  await page.getByTestId("hl-home").click();
+  await expect(page.getByTestId("hl-feed")).toBeVisible();
+  const like = active(page).getByTestId("hl-like");
+  await like.click();
+  await expect(like).toHaveAttribute("aria-pressed", "true");
+  await active(page).getByTestId("hl-comments").click();
+  await page.getByTestId("hl-comment-input").fill("Grande serata");
+  await page.getByTestId("hl-comment-send").click();
+  await expect(page.getByTestId("hl-comment").last()).toContainText(
+    "Grande serata",
+  );
 });
 
 test("pallone: si mette, si toglie, e coi tocchi a raffica conta l'ultimo", async ({
@@ -556,4 +561,108 @@ test("commenti tanti: si scorre la lista, la casella resta in fondo", async ({
   await expect(page.getByTestId("hl-comment").first()).toBeInViewport();
   // Lo scorrimento della lista non fa scorrere i video sotto.
   expect(await activeIndex(page)).toBe(0);
+});
+
+test("rispondere a un commento, come su WhatsApp: citazione, ritorno all'originale, avviso", async ({
+  page,
+}) => {
+  await openFeed(page);
+  await active(page).getByTestId("hl-comments").click();
+  const rows = page.getByTestId("hl-comment");
+  // Nei commenti di prova il secondo risponde già al primo: si vede la citazione.
+  await expect(rows.nth(1).getByTestId("hl-quote")).toContainText("Che tripla");
+  // Tocco su "Rispondi" del primo: compare la barra "Rispondi a …".
+  const firstName = (
+    await rows.first().locator("p span.font-bold").innerText()
+  ).trim();
+  await rows.first().getByTestId("hl-comment-reply").click();
+  await expect(page.getByTestId("hl-reply-bar")).toContainText(
+    `Rispondi a ${firstName}`,
+  );
+  // Si può annullare…
+  await page.getByTestId("hl-reply-cancel").click();
+  await expect(page.getByTestId("hl-reply-bar")).toHaveCount(0);
+  // …e rifare trascinando il commento verso destra (col dito).
+  const box = (await rows.first().boundingBox())!;
+  await rows.first().evaluate((el, b) => {
+    const ev = (type: string, x: number) =>
+      el.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          pointerType: "touch",
+          clientX: x,
+          clientY: b.y + b.height / 2,
+        }),
+      );
+    ev("pointerdown", b.x + 20);
+    for (let x = 30; x <= 110; x += 10) ev("pointermove", b.x + x);
+    ev("pointerup", b.x + 110);
+  }, box);
+  await expect(page.getByTestId("hl-reply-bar")).toContainText(
+    `Rispondi a ${firstName}`,
+  );
+  const before = await rows.count();
+  await page.getByTestId("hl-comment-input").fill("Vero, che tiro!");
+  await page.getByTestId("hl-comment-send").click();
+  await expect(rows).toHaveCount(before + 1);
+  await expect(page.getByTestId("hl-reply-bar")).toHaveCount(0);
+  const mine = rows.last();
+  await expect(mine.getByTestId("hl-quote")).toContainText(firstName);
+  // La risposta avvisa chi aveva scritto (nel backend di prova resta annotata).
+  const notes = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("campetto:mock:v1")!).notifications,
+  );
+  expect(
+    notes.some((n: { type: string }) => n.type === "highlight_reply"),
+  ).toBe(true);
+  // Tocco sulla citazione: si torna all'originale, che si illumina.
+  await mine.getByTestId("hl-quote").click();
+  await expect(rows.first()).toHaveClass(/hl-flash/);
+});
+
+test("la prima volta: la guida spiega lo scorrimento e i due tocchi, poi non torna più", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  await page.evaluate(() =>
+    localStorage.removeItem("campetto:highlights-guida"),
+  );
+  await page.getByRole("link", { name: "Partite", exact: true }).click();
+  await page.getByTestId("hl-night").first().click();
+  const hint = page.getByTestId("hl-hint");
+  await expect(hint).toBeVisible({ timeout: 4000 });
+  await expect(hint).toContainText(/Scorri in su|Due tocchi/);
+  // La guida non blocca: si può già toccare il cuore.
+  await active(page).getByTestId("hl-like").click();
+  await expect(hint).toHaveCount(0);
+  await page.goBack();
+  await page.getByTestId("hl-night").first().click();
+  await page.waitForTimeout(2600);
+  await expect(page.getByTestId("hl-hint")).toHaveCount(0);
+});
+
+test("dalle notizie: la novità degli highlights apre il video", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  await page.getByRole("button", { name: /^Notizie/ }).click();
+  const card = page.getByTestId("news-highlights");
+  await expect(card).toContainText("Arrivano gli highlights");
+  await card.click();
+  await expect(page.getByTestId("hl-feed")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByTestId("hl-feed")).toHaveCount(0);
+});
+
+test("dalla Home: il ciak in alto apre l'ultimo video e perde il pallino", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  const btn = page.getByTestId("hl-home");
+  await expect(btn).toHaveAttribute("aria-label", /da vedere/);
+  await btn.click();
+  await expect(page.getByTestId("hl-feed")).toBeVisible();
+  expect(await activeIndex(page)).toBe(0);
+  await page.goBack();
+  await expect(page.getByTestId("hl-feed")).toHaveCount(0);
 });

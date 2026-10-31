@@ -483,8 +483,8 @@ export function createMockBackend(): Backend {
         matches: split.matches,
         proposals: state.proposals,
         news: state.news ?? [],
-        // Come nel database: per ora gli highlights li vede solo l'amministratore.
-        highlights: me().isAdmin ? (state.highlights ?? []) : [],
+        // Come nel database: gli highlights li vede tutto il gruppo (aperti a tutti il 31/10).
+        highlights: state.highlights ?? [],
       });
     },
     async createGuest(name) {
@@ -788,7 +788,7 @@ export function createMockBackend(): Backend {
         : rest;
       saveSocial();
     },
-    async addHighlightComment(highlightId, body) {
+    async addHighlightComment(highlightId, body, replyTo) {
       await mockDelay();
       if (failing("commento"))
         throw new Error("Spicchio non riesce a mandare il commento");
@@ -800,7 +800,16 @@ export function createMockBackend(): Backend {
         playerId: state.meId,
         body: text.slice(0, 280),
         createdAt: new Date().toISOString(),
+        replyTo:
+          replyTo &&
+          (state.hlComments ?? []).some(
+            (x) => x.id === replyTo && x.highlightId === highlightId,
+          )
+            ? replyTo
+            : null,
       };
+      if (c.replyTo)
+        state.notifications.push({ type: "highlight_reply", commentId: c.id });
       state.hlComments = [...(state.hlComments ?? []), c];
       saveSocial();
       return structuredClone(c);
@@ -879,6 +888,17 @@ function seedHighlights(state: MockState, params: URLSearchParams) {
     ].filter((c) => c.t < durations[i]) as Highlight["clips"],
     createdAt: m.playedAt,
   }));
+  // La notizia della novità, come quella vera (sotto le stagioni, col ciak).
+  state.news = [
+    ...(state.news ?? []),
+    {
+      id: "n-highlights",
+      kind: "novita",
+      title: "Arrivano gli highlights",
+      body: "Tutti i canestri di ogni partita in un video da mezzo minuto, con la musica. Scorri in su per la partita dopo, metti il cuore e commenta. Tocca qui o il ciak in alto nella Home",
+      createdAt: new Date(Date.now() - 3_600_000).toISOString(),
+    },
+  ];
   const many = params.get("commenti") === "tanti";
   state.hlLikes = [
     { highlightId: "h1", playerId: "p2" },
@@ -893,6 +913,8 @@ function seedHighlights(state: MockState, params: URLSearchParams) {
     playerId: others[i % others.length].id,
     body: MOCK_COMMENTS[i % MOCK_COMMENTS.length],
     createdAt: new Date(Date.now() - (count - i) * 7 * 60_000).toISOString(),
+    // Il secondo risponde al primo, come su WhatsApp.
+    replyTo: i === 1 ? "c1" : null,
   }));
 }
 

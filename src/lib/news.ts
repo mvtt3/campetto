@@ -27,7 +27,8 @@ export type NewsIcon =
   | "calendar"
   | "season"
   | "megaphone"
-  | "leader";
+  | "leader"
+  | "video";
 
 export interface NewsStory {
   id: string;
@@ -40,6 +41,8 @@ export interface NewsStory {
   href?: string;
   /** In cima, sempre (gli annunci). */
   pinned?: boolean;
+  /** Il tocco apre gli highlights (le novità sui video). */
+  highlights?: boolean;
 }
 
 /** Il giorno delle stagioni: fino ad allora c'è l'anteprima, dopo la notizia cambia. */
@@ -148,10 +151,16 @@ export function buildNews(
     out.push({
       id: `post-${p.id}`,
       date: p.createdAt,
-      icon: p.kind === "stagione" ? "season" : "megaphone",
+      icon:
+        p.kind === "stagione"
+          ? "season"
+          : /highlight/i.test(p.title)
+            ? "video"
+            : "megaphone",
       title: p.title,
       body: p.body,
       pinned: true,
+      highlights: /highlight/i.test(p.title),
     });
 
   if (!chrono.length) return out;

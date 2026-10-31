@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { ChevronLeft, Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, Heart, MoveUp, Volume2, VolumeX } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import type { Music } from "./provider";
 import { Slide } from "./slide";
 
 const FADE_MS = 260;
+const GUIDE_KEY = "campetto:highlights-guida";
 
 /**
  * Il feed degli highlights, a schermo intero: un video per partita, si scorre in verticale
@@ -177,7 +178,11 @@ export default function HighlightsFeed({
         { ...c, state: "sending" },
       ]);
       try {
-        const saved = await backend.addHighlightComment(c.highlightId, c.body);
+        const saved = await backend.addHighlightComment(
+          c.highlightId,
+          c.body,
+          c.replyTo ?? null,
+        );
         // Prima entra quello salvato, poi sparisce la copia in viaggio: niente salti.
         setSocial((s) =>
           s && !s.comments.some((x) => x.id === saved.id)
@@ -201,9 +206,10 @@ export default function HighlightsFeed({
   );
 
   const onSend = useCallback(
-    (body: string) => {
+    (body: string, replyTo: string | null) => {
       if (!commentsFor || !me) return;
       void sendComment({
+        replyTo,
         id: `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         highlightId: commentsFor,
         playerId: me.id,
@@ -346,6 +352,58 @@ export default function HighlightsFeed({
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  // --- La prima volta: come si usa (scorri in su, due tocchi per il mi piace). ---
+  const [hint, setHint] = useState<"swipe" | "tap" | null>(null);
+  const hintTimers = useRef<number[]>([]);
+  const endGuide = useCallback(() => {
+    hintTimers.current.forEach((t) => window.clearTimeout(t));
+    hintTimers.current = [];
+    setHint(null);
+    try {
+      localStorage.setItem(GUIDE_KEY, "1");
+    } catch {
+      /* la rivedrà, pazienza */
+    }
+  }, []);
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = localStorage.getItem(GUIDE_KEY) === "1";
+    } catch {
+      seen = false;
+    }
+    if (seen) return;
+    // Scorrere ha senso solo se c'è un altro video; il mi piace sempre.
+    const steps: ("swipe" | "tap")[] =
+      items.length > 1 ? ["swipe", "tap"] : ["tap"];
+    let at = 1750; // dopo l'apertura con Spicchio
+    for (const step of steps) {
+      hintTimers.current.push(
+        window.setTimeout(() => {
+          setHint(step);
+          // Il prossimo video fa capolino dal basso e torna giù, come nelle app di video.
+          const el = scroller.current;
+          if (step === "swipe" && el && activeRef.current < items.length - 1) {
+            const top = activeRef.current * el.clientHeight;
+            el.scrollTo({ top: top + 90, behavior: "smooth" });
+            hintTimers.current.push(
+              window.setTimeout(
+                () => el.scrollTo({ top, behavior: "smooth" }),
+                520,
+              ),
+            );
+          }
+        }, at),
+      );
+      at += 2300;
+    }
+    hintTimers.current.push(window.setTimeout(endGuide, at));
+    const timers = hintTimers;
+    return () => timers.current.forEach((t) => window.clearTimeout(t));
+    // Solo all'apertura.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- Apertura e chiusura animate. ---
   useEffect(() => {
     const t = requestAnimationFrame(() => setEntered(true));
@@ -414,10 +472,12 @@ export default function HighlightsFeed({
       aria-modal="true"
       aria-label="Highlights"
       className={clsx(
-        "hl-feed pointer-events-auto fixed inset-0 z-[90] bg-[#0b0907] text-white",
+        "hl-feed pointer-events-auto fixed inset-0 z-[90] bg-[#17130f] text-[#f6eedc]",
         entered && !closing ? "hl-in" : "hl-out",
       )}
       data-testid="hl-feed"
+      // Un tocco qualsiasi: la guida ha fatto il suo lavoro.
+      onPointerDownCapture={hint ? endGuide : undefined}
     >
       <div className="relative mx-auto h-full max-w-lg">
         <div
@@ -453,7 +513,7 @@ export default function HighlightsFeed({
         {/* Il nero della dissolvenza tra un video e l'altro. */}
         <div
           className={clsx(
-            "pointer-events-none absolute inset-0 z-20 bg-[#0b0907] transition-opacity ease-in-out",
+            "pointer-events-none absolute inset-0 z-20 bg-[#17130f] transition-opacity ease-in-out",
             fading ? "opacity-100" : "opacity-0",
           )}
           style={{ transitionDuration: `${FADE_MS}ms` }}
@@ -466,7 +526,7 @@ export default function HighlightsFeed({
             data-hl-close
             onClick={onRequestClose}
             aria-label="Chiudi gli highlights"
-            className="press pointer-events-auto grid h-11 w-11 place-items-center rounded-full text-white"
+            className="press pointer-events-auto grid h-11 w-11 place-items-center rounded-full text-[#f6eedc]"
             data-testid="hl-close"
           >
             <ChevronLeft size={30} strokeWidth={2.4} className="hl-icon" />
@@ -474,7 +534,7 @@ export default function HighlightsFeed({
           <span className="hl-brand display text-[19px] tracking-wide">
             Highlights
             {items.length > 1 && (
-              <span className="ml-2 align-middle text-[12px] font-bold text-white/70 tnum">
+              <span className="ml-2 align-middle text-[12px] font-bold text-[#f6eedc]/70 tnum">
                 {active + 1}/{items.length}
               </span>
             )}
@@ -490,8 +550,8 @@ export default function HighlightsFeed({
             className={clsx(
               "press pointer-events-auto flex h-11 items-center justify-center rounded-full",
               music.state === "blocked"
-                ? "hl-unmute mr-1 h-9 gap-1.5 bg-white px-3 text-[13px] font-bold text-[#1d1a16] shadow-lg"
-                : "w-11 text-white",
+                ? "hl-unmute mr-1 h-9 gap-1.5 border-2 border-[#1d1a16] bg-[#f6eedc] px-3 text-[13px] font-bold text-[#1d1a16]"
+                : "w-11 text-[#f6eedc]",
             )}
             data-testid="hl-sound"
           >
@@ -506,6 +566,43 @@ export default function HighlightsFeed({
             )}
           </button>
         </div>
+
+        {hint && (
+          <div
+            className="pointer-events-none absolute inset-0 z-[25]"
+            data-testid="hl-hint"
+          >
+            <span
+              key={hint}
+              className={hint === "swipe" ? "hl-finger-up" : "hl-finger-tap"}
+              aria-hidden
+            />
+            <div
+              className="hl-hint-pill absolute inset-x-0 flex justify-center px-4"
+              role="status"
+            >
+              <p
+                key={hint}
+                className="swipe-pill flex items-center gap-2 rounded-full border-[2.5px] border-[#1d1a16] bg-volt py-2 pl-3 pr-4 text-[14.5px] font-bold text-volt-ink"
+                style={{
+                  boxShadow: "3px 3px 0 #1d1a16",
+                  animationDuration: "2.2s",
+                }}
+              >
+                {hint === "swipe" ? (
+                  <>
+                    <MoveUp size={18} aria-hidden /> Scorri in su per la partita
+                    dopo
+                  </>
+                ) : (
+                  <>
+                    <Heart size={18} aria-hidden /> Due tocchi per il mi piace
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
 
         <CommentsPanel
           open={commentsFor !== null}

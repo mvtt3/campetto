@@ -46,7 +46,8 @@ export type NotifyKind =
   | "ritorno"
   | "primati"
   | "notizie"
-  | "adesioni";
+  | "adesioni"
+  | "commenti";
 /** Un interruttore per ogni tipo di notifica, più il silenzio di notte (23–8). */
 export type NotifyPrefs = Record<NotifyKind, boolean> & { notte: boolean };
 export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
@@ -63,6 +64,7 @@ export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
   primati: true,
   notizie: true,
   adesioni: true,
+  commenti: true,
   notte: true,
 };
 
@@ -143,6 +145,11 @@ export const NOTIFY_GROUPS: {
         kind: "notizie",
         label: "Notizie",
         hint: "Quando nelle notizie arriva un annuncio nuovo",
+      },
+      {
+        kind: "commenti",
+        label: "Risposte ai commenti",
+        hint: "Quando qualcuno risponde a un tuo commento sugli highlights",
       },
     ],
   },
@@ -336,6 +343,8 @@ export interface HighlightComment {
   playerId: string;
   body: string;
   createdAt: string;
+  /** Il commento a cui risponde (come su WhatsApp), se c'è. */
+  replyTo?: string | null;
 }
 
 /** Like e commenti degli highlights: si caricano all'apertura e si aggiornano in diretta. */

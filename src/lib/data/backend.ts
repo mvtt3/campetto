@@ -86,6 +86,7 @@ export type NotifyBody =
   | { type: "proposal_moved"; proposalId: string }
   | { type: "feedback"; kind: string }
   | { type: "match_saved"; matchId: string; isNew: boolean }
+  | { type: "highlight_reply"; commentId: string }
   | { type: "flush" }
   | { type: "test" };
 
@@ -154,9 +155,11 @@ export interface Backend {
   loadHighlightSocial(highlightIds: string[]): Promise<HighlightSocial>;
   /** Mi piace (il pallone): true lo mette, false lo toglie. Ripeterlo non fa danni. */
   setHighlightLike(highlightId: string, on: boolean): Promise<void>;
+  /** replyTo: il commento a cui si risponde; chi l'ha scritto riceve una notifica. */
   addHighlightComment(
     highlightId: string,
     body: string,
+    replyTo?: string | null,
   ): Promise<HighlightComment>;
   deleteHighlightComment(commentId: string): Promise<void>;
   /** Like e commenti degli altri in diretta, finché il feed è aperto. */

@@ -4,6 +4,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import {
   CalendarDays,
+  Clapperboard,
   Crown,
   Flame,
   Layers2,
@@ -25,6 +26,7 @@ import {
   type NewsStory,
 } from "@/lib/news";
 import { useNow } from "@/lib/use-now";
+import { useHighlights } from "@/components/highlights/provider";
 
 const ICON: Record<NewsIcon, typeof Flame> = {
   record: Trophy,
@@ -36,6 +38,7 @@ const ICON: Record<NewsIcon, typeof Flame> = {
   season: Sparkles,
   megaphone: Megaphone,
   leader: Trophy,
+  video: Clapperboard,
 };
 const TINT: Record<NewsIcon, string> = {
   record: "bg-volt text-volt-ink",
@@ -47,6 +50,7 @@ const TINT: Record<NewsIcon, string> = {
   season: "bg-ball text-ball-ink",
   megaphone: "bg-court text-court-ink",
   leader: "bg-ok text-white",
+  video: "bg-ball text-ball-ink",
 };
 
 const SEEN_KEY = (id: string) => `campetto:notizie-viste:${id}`;
@@ -178,6 +182,7 @@ function SeasonPreview() {
 
 function StoryCard({ s, onGo }: { s: NewsStory; onGo: () => void }) {
   const Icon = ICON[s.icon];
+  const hl = useHighlights();
   const body = (
     <>
       <span
@@ -201,6 +206,20 @@ function StoryCard({ s, onGo }: { s: NewsStory; onGo: () => void }) {
       </span>
     </>
   );
+  // La novità degli highlights: il tocco chiude le notizie e apre il video più recente.
+  if (s.highlights && hl.latest)
+    return (
+      <button
+        onClick={() => {
+          onGo();
+          if (hl.latest) hl.open(hl.latest);
+        }}
+        className="card press flex w-full items-start gap-3 p-3 text-left"
+        data-testid="news-highlights"
+      >
+        {body}
+      </button>
+    );
   return s.href ? (
     <Link
       href={s.href}
