@@ -977,7 +977,9 @@ test("prima l'apertura con Spicchio, poi la festa", async ({ page }) => {
     );
     sessionStorage.removeItem("campetto:intro");
   });
-  await page.goto("/?mock=keep&intro=1");
+  // Senza aspettare il caricamento completo: col telefono (o il PC) sotto sforzo l'apertura
+  // potrebbe essere già finita, e qui si guarda proprio lei.
+  await page.goto("/?mock=keep&intro=1", { waitUntil: "commit" });
   const intro = page.getByRole("status", { name: "Campetto si sta aprendo" });
   const party = page.locator('[aria-labelledby="party-title"]');
   await expect(intro).toBeVisible();

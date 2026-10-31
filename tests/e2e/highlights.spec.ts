@@ -132,12 +132,70 @@ test("due tocchi sul video danno il pallone senza fermarlo, uno lo mette in paus
   await stage.click({ position: { x: 150, y: 120 } });
   await expect.poll(async () => (await videoState(page))!.paused).toBe(false);
   // Due tocchi quando è già dato non lo tolgono.
-  await stage.dblclick({ position: { x: 100, y: 100 } });
+  await stage.dblclick({ position: { x: 200, y: 100 } });
   await page.waitForTimeout(400);
   await expect(active(page).getByTestId("hl-like")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
+});
+
+test("due tocchi ai lati: indietro o avanti di 10 secondi, col segno; al centro resta il pallone", async ({
+  page,
+}) => {
+  await openFeed(page);
+  await waitPlaying(page);
+  const stage = active(page).getByTestId("hl-stage");
+  const box = (await stage.boundingBox())!;
+  await expect
+    .poll(async () => (await videoState(page))!.t, { timeout: 6000 })
+    .toBeGreaterThan(2.5);
+  // A sinistra: indietro (il video di prova dura 9 s, si torna all'inizio).
+  await stage.dblclick({
+    position: { x: box.width * 0.12, y: box.height / 2 },
+  });
+  await expect(active(page).getByTestId("hl-skip")).toBeVisible();
+  expect((await videoState(page))!.t).toBeLessThan(1.5);
+  await expect(active(page).getByTestId("hl-like")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  // A destra: avanti di 10 secondi, cioè alla fine, e parte il video dopo.
+  await stage.dblclick({ position: { x: box.width * 0.9, y: box.height / 2 } });
+  await expect.poll(() => activeIndex(page), { timeout: 6000 }).toBe(1);
+  await waitPlaying(page);
+});
+
+test("la barretta sotto si trascina: avanti e indietro nel video, col minuto, poi riparte", async ({
+  page,
+}) => {
+  await openFeed(page);
+  await waitPlaying(page);
+  const seek = active(page).getByTestId("hl-seek");
+  await expect(seek).toHaveAttribute("role", "slider");
+  const b = (await seek.boundingBox())!;
+  const y = b.y + b.height / 2;
+  await page.mouse.move(b.x + b.width * 0.1, y);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width * 0.8, y, { steps: 6 });
+  await expect(active(page).getByTestId("hl-seek-time")).toContainText(
+    /0:0\d \/ 0:0\d/,
+  );
+  // Mentre trascini è fermo, al punto scelto.
+  const during = (await videoState(page))!;
+  expect(during.paused).toBe(true);
+  expect(during.t).toBeGreaterThan(6.2);
+  expect(during.t).toBeLessThan(8.2);
+  await page.mouse.up();
+  await expect(active(page).getByTestId("hl-seek-time")).toHaveCount(0);
+  await expect.poll(async () => (await videoState(page))!.paused).toBe(false);
+  // Indietro con la tastiera (frecce), per chi non usa il dito.
+  await seek.focus();
+  const t1 = (await videoState(page))!.t;
+  await page.keyboard.press("ArrowLeft");
+  expect((await videoState(page))!.t).toBeLessThan(t1 - 3);
+  // Lo scorrimento verticale del feed non è partito.
+  expect(await activeIndex(page)).toBe(0);
 });
 
 test("commenti: vuoti no, si scrivono, si eliminano, indietro chiude solo il pannello", async ({
@@ -231,6 +289,57 @@ test("finito un video parte il successivo; l'ultimo ricomincia", async ({
   expect((await videoState(page))!.paused).toBe(false);
 });
 
+test("dalle impostazioni: alla fine di un highlight ricomincia lo stesso, e la scelta resta", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await openApp(page, "demo");
+  await page.goto("/profilo/impostazioni");
+  const row = page.getByTestId("hl-end");
+  await expect(row).toContainText("Parte subito il prossimo");
+  await expect(
+    row.getByRole("tab", { name: "Il prossimo" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await row.getByRole("tab", { name: "Ricomincia" }).click();
+  await expect(row).toContainText("Ricomincia quello che stai guardando");
+  await page.reload();
+  await expect(
+    page.getByTestId("hl-end").getByRole("tab", { name: "Ricomincia" }),
+  ).toHaveAttribute("aria-selected", "true");
+  // Il primo (9 s) finisce e ricomincia: si resta lì.
+  await page.getByRole("link", { name: "Partite", exact: true }).click();
+  await page.getByTestId("hl-night").first().click();
+  await expect(page.getByTestId("hl-feed")).toBeVisible();
+  await waitPlaying(page);
+  let last = 0;
+  let looped = false;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 14_000 && !looped) {
+    const t = (await videoState(page))?.t ?? 0;
+    if (t + 2 < last) looped = true;
+    last = Math.max(last, t);
+    await page.waitForTimeout(250);
+  }
+  expect(looped).toBe(true);
+  expect(await activeIndex(page)).toBe(0);
+  expect((await videoState(page))!.paused).toBe(false);
+});
+
+test("coi commenti aperti il video finito ricomincia, non scappa via", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await openFeed(page);
+  await waitPlaying(page);
+  await active(page).getByTestId("hl-comments").click();
+  await expect(page.getByTestId("hl-comments-panel")).toBeInViewport();
+  await page.waitForTimeout(10_500);
+  expect(await activeIndex(page)).toBe(0);
+  await page.goBack();
+  await expect(page.getByTestId("hl-comments-panel")).not.toBeInViewport();
+  expect(await activeIndex(page)).toBe(0);
+});
+
 test("scorrere veloce avanti e indietro: niente errori, mai più di tre video in pagina", async ({
   page,
 }) => {
@@ -305,6 +414,26 @@ test.describe("rete", () => {
     await expect(active(page).getByTestId("hl-error")).toHaveCount(0);
     await waitPlaying(page);
   });
+
+  test("video che resta appeso: Spicchio non palleggia per sempre, arriva Riprova", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    let hang = true;
+    await page.route("**/mock/hl-1.mp4", (route) => {
+      if (!hang) return route.continue();
+      // Nessuna risposta, mai: come una rete che non c'è.
+    });
+    await openFeed(page);
+    await expect(active(page).getByTestId("hl-loading")).toBeVisible();
+    // Una prova da solo, poi chiede.
+    await expect(active(page).getByTestId("hl-error")).toBeVisible({
+      timeout: 45_000,
+    });
+    hang = false;
+    await active(page).getByRole("button", { name: "Riprova" }).click();
+    await waitPlaying(page);
+  });
 });
 
 test("telefono bloccato: il video si ferma e al ritorno riparte", async ({
@@ -373,62 +502,51 @@ test("link diretto senza tocco: la musica aspetta il permesso, poi parte", async
   }
 });
 
-test("ogni video si apre con Spicchio e il titolo, poi parte; un tocco la salta", async ({
+test("niente apertura tra un video e l'altro: si scorre e parte subito, col titoletto della partita", async ({
   page,
 }) => {
-  // Si annota quando compare l'apertura e com'è il video in quel momento (niente gare coi tempi).
-  await page.addInitScript(() => {
-    const w = window as unknown as {
-      __intro: { seen: number; playingDuring: boolean };
-    };
-    w.__intro = { seen: 0, playingDuring: false };
-    new MutationObserver(() => {
-      const intro = document.querySelector(
-        "[data-active] [data-testid=hl-intro]",
-      );
-      if (!intro) return;
-      if (!(intro as HTMLElement).dataset.counted) {
-        (intro as HTMLElement).dataset.counted = "1";
-        w.__intro.seen++;
-      }
-      const v = document.querySelector<HTMLVideoElement>("[data-active] video");
-      if (v && !v.paused && v.currentTime > 0.2) w.__intro.playingDuring = true;
-    }).observe(document, { subtree: true, childList: true, attributes: true });
-  });
   await openFeed(page);
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => (window as unknown as { __intro: { seen: number } }).__intro.seen,
-      ),
-    )
-    .toBeGreaterThanOrEqual(1);
-  await expect(active(page).getByTestId("hl-intro")).toHaveCount(0, {
-    timeout: 4000,
-  });
   await waitPlaying(page);
-  expect(
-    await page.evaluate(
-      () =>
-        (window as unknown as { __intro: { playingDuring: boolean } }).__intro
-          .playingDuring,
-    ),
-  ).toBe(false);
-  // Il prossimo: di nuovo l'apertura, e un tocco la salta subito.
+  await expect(page.getByTestId("hl-intro")).toHaveCount(0);
+  // Il titoletto in basso: chi contro chi e il risultato.
+  await expect(active(page).getByTestId("hl-score")).toContainText(/\d+–\d+/);
+  // In alto solo il nome: niente "1/3".
+  await expect(page.locator(".hl-brand")).toHaveText("Highlights");
+  // Il prossimo parte subito dopo lo scorrimento (prima c'era un secondo e mezzo di apertura).
   await page
     .getByTestId("hl-scroller")
     .evaluate((s) => s.scrollTo({ top: s.clientHeight, behavior: "instant" }));
+  const t0 = Date.now();
   await expect
-    .poll(() =>
-      page.evaluate(
-        () => (window as unknown as { __intro: { seen: number } }).__intro.seen,
-      ),
-    )
-    .toBeGreaterThanOrEqual(2);
-  const intro = active(page).getByTestId("hl-intro");
-  if (await intro.count()) await intro.click({ timeout: 1000 }).catch(() => {});
-  await expect(active(page).getByTestId("hl-intro")).toHaveCount(0);
-  await waitPlaying(page);
+    .poll(async () => (await videoState(page))?.t ?? 0, { timeout: 4000 })
+    .toBeGreaterThan(0.15);
+  expect(Date.now() - t0).toBeLessThan(1400);
+  expect(await activeIndex(page)).toBe(1);
+  await expect(page.getByTestId("hl-intro")).toHaveCount(0);
+});
+
+test("la barra di scorrimento del feed non si vede mai", async ({ page }) => {
+  await openFeed(page);
+  const m = await page.getByTestId("hl-scroller").evaluate((s) => {
+    const frame = s.parentElement!.getBoundingClientRect();
+    const slide = s
+      .querySelector("[data-testid=hl-slide]")!
+      .getBoundingClientRect();
+    const cs = getComputedStyle(s);
+    return {
+      frame: frame.width,
+      slide: slide.width,
+      right: s.getBoundingClientRect().right,
+      frameRight: frame.right,
+      clip: getComputedStyle(s.parentElement!).overflow,
+      hidden: cs.scrollbarWidth,
+    };
+  });
+  // I video larghi quanto lo schermo; lo scorrimento sborda a destra, nella parte tagliata.
+  expect(Math.abs(m.slide - m.frame)).toBeLessThan(1);
+  expect(m.right).toBeGreaterThan(m.frameRight + 10);
+  expect(m.clip).toBe("hidden");
+  expect(m.hidden).toBe("none");
 });
 
 test("dalla scheda partita: la scheda lascia il posto al video, indietro torna alla lista", async ({

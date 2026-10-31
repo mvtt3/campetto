@@ -14,6 +14,7 @@ import { haptic } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { highlightTitle, scoreOf, tickerItems } from "@/lib/highlights";
+import { highlightEnd } from "@/lib/highlights-prefs";
 import { computeElo } from "@/lib/stats/elo";
 import { matchStory } from "@/lib/story";
 import type { Highlight, HighlightSocial } from "@/lib/types";
@@ -69,6 +70,10 @@ export default function HighlightsFeed({
   const [pending, setPending] = useState<ShownComment[]>([]);
   const [hidden, setHidden] = useState<string[]>([]);
   const [commentsFor, setCommentsFor] = useState<string | null>(null);
+  const commentsRef = useRef(commentsFor);
+  useEffect(() => {
+    commentsRef.current = commentsFor;
+  }, [commentsFor]);
   const ids = useMemo(() => items.map((h) => h.id), [items]);
 
   const loadSocial = useCallback(async () => {
@@ -305,8 +310,13 @@ export default function HighlightsFeed({
   const onEnded = useCallback(
     (i: number) => {
       if (i !== activeRef.current) return;
-      if (i >= items.length - 1) {
-        // L'ultimo ricomincia: è finita la serata.
+      // Ricomincia lo stesso: se l'hai scelto, se è l'ultimo (è finita la serata)
+      // o se stai leggendo i commenti, che non devono cambiare sotto le dita.
+      if (
+        i >= items.length - 1 ||
+        commentsRef.current ||
+        highlightEnd() === "loop"
+      ) {
         const v = scroller.current?.querySelectorAll("video");
         const el = [...(v ?? [])].find(
           (x) => x.closest("[data-active]") !== null,
@@ -484,7 +494,10 @@ export default function HighlightsFeed({
       // Un tocco qualsiasi: la guida ha fatto il suo lavoro.
       onPointerDownCapture={hint ? endGuide : undefined}
     >
-      <div className="relative mx-auto h-full max-w-lg">
+      <div className="relative mx-auto h-full max-w-lg overflow-hidden">
+        {/* La barra di scorrimento non si deve vedere mai (come su TikTok): oltre a nasconderla,
+            lo scorrimento è un po' più largo dello schermo, così quella sottile che alcuni
+            telefoni disegnano comunque mentre scorri finisce fuori, tagliata. */}
         <div
           ref={scroller}
           className="hl-scroller h-full snap-y snap-mandatory overflow-y-auto overscroll-contain"
@@ -537,13 +550,9 @@ export default function HighlightsFeed({
           >
             <ChevronLeft size={30} strokeWidth={2.4} className="hl-icon" />
           </button>
+          {/* Solo il nome, come nelle app di video: niente contatori né barre di posizione. */}
           <span className="hl-brand display text-[19px] tracking-wide">
             Highlights
-            {items.length > 1 && (
-              <span className="ml-2 align-middle text-[12px] font-bold text-[#f6eedc]/70 tnum">
-                {active + 1}/{items.length}
-              </span>
-            )}
           </span>
           {/* Audio bloccato dal telefono (si parte muti): il tasto diventa un invito a toccarlo. */}
           <button

@@ -1,7 +1,14 @@
 "use client";
 
 import clsx from "clsx";
-import { Heart, MessageCircle, Play, RotateCcw } from "lucide-react";
+import {
+  ChevronsLeft,
+  ChevronsRight,
+  Heart,
+  MessageCircle,
+  Play,
+  RotateCcw,
+} from "lucide-react";
 import {
   memo,
   useCallback,
@@ -41,9 +48,8 @@ export interface SlideProps {
 }
 
 const LOADER_DELAY = 280;
-/** L'apertura di ogni video: Spicchio palleggia col titolo, poi parte. */
-const INTRO_MS = 1300;
-const INTRO_OUT_MS = 220;
+/** Senza nemmeno un fotogramma per così tanto, il video non sta arrivando. */
+const STALL_MS = 15_000;
 
 /**
  * Un video del feed. Solo quello attivo e i due vicini hanno il <video>: gli altri sono
@@ -64,33 +70,28 @@ export const Slide = memo(function Slide(p: SlideProps) {
     [],
   );
   const [expanded, setExpanded] = useState(false);
-  // L'intro: "show" (Spicchio e titolo), "out" (sfuma), "off" (si vede il video).
-  const [intro, setIntro] = useState<"show" | "out" | "off">("off");
+  // Trascinando la barretta sotto: il secondo a cui sei (per l'etichetta "0:12 / 0:39").
+  const [scrub, setScrub] = useState<{ t: number; d: number } | null>(null);
+  // Doppio tocco ai lati: indietro o avanti di 10 secondi (il segno resta un attimo).
+  const [skip, setSkip] = useState<{ id: number; side: "l" | "r" } | null>(
+    null,
+  );
   const retried = useRef(false);
+  // La barretta sotto il video, e se la stai trascinando (allora l'avanzamento non la tocca).
+  const seekEl = useRef<HTMLDivElement>(null);
+  const scrubbing = useRef<{ resume: boolean } | null>(null);
   const activeRef = useRef(active);
   const userPausedRef = useRef(false);
-  const introRef = useRef(intro);
   useLayoutEffect(() => {
     activeRef.current = active;
     userPausedRef.current = userPaused;
-    introRef.current = intro;
   });
-
-  // Il caricamento si mostra solo se dura: niente lampi di Spicchio a ogni video.
-  useEffect(() => {
-    if (!loading || !active || intro !== "off") return;
-    const t = window.setTimeout(() => setLoaderDue(true), LOADER_DELAY);
-    return () => {
-      window.clearTimeout(t);
-      setLoaderDue(false);
-    };
-  }, [loading, active, intro]);
-  const showLoader = loaderDue && loading && active && intro === "off";
 
   // I video sono sempre muti: sotto c'è la musica del feed.
   const play = useCallback(async () => {
     const el = video.current;
-    if (!el || !activeRef.current || introRef.current !== "off") return;
+    // Mentre trascini la barretta non riparte da solo (lo fa al rilascio).
+    if (!el || !activeRef.current || scrubbing.current) return;
     el.muted = true;
     try {
       await el.play();
@@ -99,50 +100,81 @@ export const Slide = memo(function Slide(p: SlideProps) {
     }
   }, []);
 
-  // Diventa attivo: torna all'inizio, intro e poi via. Non più attivo: si ferma.
+  // Un intoppo di rete: si riprova una volta da soli, poi si chiede (Riprova).
+  const retryTimer = useRef<number | null>(null);
+  const loadedAt = useRef(0);
+  const onVideoError = useCallback(() => {
+    const el = video.current;
+    if (retryTimer.current !== null) return;
+    if (!retried.current && el) {
+      retried.current = true;
+      retryTimer.current = window.setTimeout(() => {
+        retryTimer.current = null;
+        loadedAt.current = performance.now();
+        el.load();
+        void play();
+      }, 600);
+      return;
+    }
+    setFailed(true);
+    setLoading(false);
+  }, [play]);
+  useEffect(
+    () => () => {
+      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
+    },
+    [],
+  );
+
+  // Il caricamento si mostra solo se dura: niente lampi di Spicchio a ogni video.
+  // E non dura per sempre: un errore che il telefono non ha segnalato, o nessun dato per
+  // troppo tempo, vale come un intoppo di rete (si riprova, poi Riprova).
+  useEffect(() => {
+    if (!loading || !active) return;
+    const t = window.setTimeout(() => setLoaderDue(true), LOADER_DELAY);
+    const since = performance.now();
+    const watch = window.setInterval(() => {
+      const el = video.current;
+      if (!el) return;
+      const from = Math.max(since, loadedAt.current);
+      if (
+        el.error ||
+        (el.readyState === 0 && performance.now() - from > STALL_MS)
+      )
+        onVideoError();
+    }, 1000);
+    return () => {
+      window.clearTimeout(t);
+      window.clearInterval(watch);
+      setLoaderDue(false);
+    };
+  }, [loading, active, onVideoError]);
+  const showLoader = loaderDue && loading && active;
+
+  // Diventa attivo: riparte dall'inizio e subito (come nei reel: niente attese tra un video e
+  // l'altro). Non più attivo: si ferma.
   useEffect(() => {
     if (!active) {
       video.current?.pause();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIntro("off");
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUserPaused(false);
     setExpanded(false);
     const el = video.current;
     if (el) {
-      el.pause();
       try {
         if (el.currentTime > 0.05) el.currentTime = 0;
       } catch {
         /* non ancora pronto */
       }
     }
-    const reduce = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    // Subito, non al prossimo disegno: nessuno deve far partire il video durante l'intro.
-    introRef.current = "show";
-    setIntro("show");
-    const t1 = window.setTimeout(
-      () => setIntro("out"),
-      reduce ? 500 : INTRO_MS,
-    );
-    const t2 = window.setTimeout(
-      () => setIntro("off"),
-      (reduce ? 500 : INTRO_MS) + INTRO_OUT_MS,
-    );
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
   }, [active]);
 
-  // Finita l'intro (o saltata), il video parte; anche se il <video> arriva dopo (scorrimento veloce).
+  // Il video parte appena è quello attivo; anche se il <video> arriva dopo (scorrimento veloce).
   useEffect(() => {
-    if (active && near && intro === "off" && !userPausedRef.current)
-      void play();
-  }, [active, near, intro, play]);
+    if (active && near && !userPausedRef.current) void play();
+  }, [active, near, play]);
 
   // La musica si ferma con la pausa e riparte col video.
   useEffect(() => {
@@ -168,22 +200,90 @@ export const Slide = memo(function Slide(p: SlideProps) {
     let raf = 0;
     const tick = () => {
       const el = video.current;
-      if (el && bar.current && el.duration > 0)
+      if (el && bar.current && el.duration > 0 && !scrubbing.current) {
         bar.current.style.transform = `scaleX(${Math.min(1, el.currentTime / el.duration)})`;
+        seekEl.current?.setAttribute(
+          "aria-valuenow",
+          String(Math.round(el.currentTime)),
+        );
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [active]);
 
+  // Spostarsi nel video: dalla barretta o col doppio tocco ai lati.
+  const seekTo = useCallback((t: number) => {
+    const el = video.current;
+    if (!el || !(el.duration > 0)) return null;
+    const v = Math.max(0, Math.min(el.duration - 0.05, t));
+    try {
+      el.currentTime = v;
+    } catch {
+      /* non ancora pronto */
+    }
+    if (bar.current) bar.current.style.transform = `scaleX(${v / el.duration})`;
+    seekEl.current?.setAttribute("aria-valuenow", String(Math.round(v)));
+    return { t: v, d: el.duration };
+  }, []);
+  const ratioAt = (clientX: number) => {
+    const box = seekEl.current?.getBoundingClientRect();
+    if (!box || box.width <= 0) return 0;
+    return Math.max(0, Math.min(1, (clientX - box.left) / box.width));
+  };
+  const onSeekDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = video.current;
+    if (!el || !(el.duration > 0) || failed) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // Mentre trascini il video sta fermo, poi riparte da lì (se andava).
+    scrubbing.current = { resume: !el.paused };
+    el.pause();
+    setScrub(seekTo(ratioAt(e.clientX) * el.duration));
+  };
+  const scrubFrame = useRef(0);
+  const onSeekMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubbing.current) return;
+    const x = e.clientX;
+    cancelAnimationFrame(scrubFrame.current);
+    scrubFrame.current = requestAnimationFrame(() => {
+      const el = video.current;
+      if (el && el.duration > 0) setScrub(seekTo(ratioAt(x) * el.duration));
+    });
+  };
+  const onSeekUp = () => {
+    const s = scrubbing.current;
+    if (!s) return;
+    scrubbing.current = null;
+    cancelAnimationFrame(scrubFrame.current);
+    setScrub(null);
+    if (s.resume && !userPausedRef.current) void play();
+  };
+  const onSeekKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = video.current;
+    if (!el) return;
+    const step = e.key === "ArrowRight" ? 5 : e.key === "ArrowLeft" ? -5 : 0;
+    if (!step) return;
+    e.preventDefault();
+    e.stopPropagation();
+    seekTo(el.currentTime + step);
+  };
+  const skipBy = (side: "l" | "r") => {
+    const el = video.current;
+    if (!el || !(el.duration > 0)) return;
+    seekTo(el.currentTime + (side === "l" ? -10 : 10));
+    const id = performance.now();
+    setSkip({ id, side });
+    window.setTimeout(() => setSkip((s) => (s?.id === id ? null : s)), 650);
+    // Se era fermo per il tocco di pausa, resta fermo; altrimenti continua da lì.
+    if (!userPausedRef.current) void play();
+  };
+
   const toggle = () => {
     const el = video.current;
     if (!el || failed) return;
-    // Durante l'intro un tocco la salta.
-    if (intro !== "off") {
-      setIntro("off");
-      return;
-    }
     if (el.paused) {
       setUserPaused(false);
       void play();
@@ -193,7 +293,8 @@ export const Slide = memo(function Slide(p: SlideProps) {
     }
   };
 
-  // Un tocco mette in pausa, due tocchi danno il pallone (come nelle app di video).
+  // Un tocco mette in pausa. Due tocchi: al centro il pallone (mi piace), ai lati
+  // indietro o avanti di 10 secondi (come i video su YouTube e Instagram).
   const lastTap = useRef(0);
   const tapTimer = useRef<number | null>(null);
   const onTap = (e: React.MouseEvent) => {
@@ -203,6 +304,11 @@ export const Slide = memo(function Slide(p: SlideProps) {
       tapTimer.current = null;
       lastTap.current = 0;
       const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = (e.clientX - box.left) / Math.max(1, box.width);
+      if (x < 0.3 || x > 0.7) {
+        skipBy(x < 0.3 ? "l" : "r");
+        return;
+      }
       const id = now;
       setBursts((b) => [
         ...b.slice(-3),
@@ -234,6 +340,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
     setLoading(true);
     retried.current = false;
     if (el) {
+      loadedAt.current = performance.now();
       el.load();
       void play();
     }
@@ -241,7 +348,11 @@ export const Slide = memo(function Slide(p: SlideProps) {
 
   return (
     <section
-      className="hl-slide relative h-full w-full shrink-0 snap-start snap-always overflow-hidden bg-[#17130f]"
+      className={clsx(
+        "hl-slide relative h-full w-full shrink-0 snap-start snap-always overflow-hidden bg-[#17130f]",
+        // Mentre trascini la barretta si vede solo il video e il minuto, come su TikTok.
+        scrub && "hl-scrubbing",
+      )}
       aria-roledescription="video"
       aria-label={p.title}
       data-testid="hl-slide"
@@ -302,20 +413,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
                 void play();
             }}
             onEnded={() => onEnded(index)}
-            onError={() => {
-              // Un intoppo di rete: si riprova una volta da soli, poi si chiede.
-              const el = video.current;
-              if (!retried.current && el) {
-                retried.current = true;
-                window.setTimeout(() => {
-                  el.load();
-                  void play();
-                }, 600);
-                return;
-              }
-              setFailed(true);
-              setLoading(false);
-            }}
+            onError={onVideoError}
             data-testid="hl-video"
           />
         ) : (
@@ -340,6 +438,25 @@ export const Slide = memo(function Slide(p: SlideProps) {
             <BallIcon size={86} filled />
           </span>
         ))}
+
+        {skip && (
+          <span
+            key={skip.id}
+            className={clsx(
+              "hl-skip pointer-events-none absolute top-1/2 flex -translate-y-1/2 flex-col items-center gap-0.5 rounded-full px-5 py-4 text-[13px] font-bold text-[#f6eedc]",
+              skip.side === "l" ? "left-[8%]" : "right-[8%]",
+            )}
+            data-testid="hl-skip"
+            aria-hidden
+          >
+            {skip.side === "l" ? (
+              <ChevronsLeft size={30} strokeWidth={2.4} />
+            ) : (
+              <ChevronsRight size={30} strokeWidth={2.4} />
+            )}
+            10 s
+          </span>
+        )}
 
         {active && userPaused && !failed && (
           <span className="hl-paused pointer-events-none absolute left-1/2 top-1/2 grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#17130f]/45 text-[#f6eedc]">
@@ -398,71 +515,51 @@ export const Slide = memo(function Slide(p: SlideProps) {
         )}
       </div>
 
-      {/* L'apertura: Spicchio palleggia col giorno e il risultato, poi sfuma sul video. */}
-      {active && intro !== "off" && (
-        <div
-          className={clsx(
-            "hl-intro absolute inset-0 z-[15] grid place-items-center px-16 text-center",
-            intro === "out" && "hl-intro-out",
-          )}
-          onClick={() => setIntro("off")}
-          data-testid="hl-intro"
-        >
-          <div className="hl-intro-body flex w-full min-w-0 flex-col items-center">
-            <span className="text-[12px] font-extrabold uppercase tracking-[0.22em] text-[#ef7d2d]">
-              Highlights
-            </span>
-            {/* Spicchio alza le braccia sopra la sua scatola: spazio sopra, così non tocca la scritta. */}
-            <div
-              className="hl-intro-stage live-stage relative mt-8 h-[104px] w-[96px]"
-              aria-hidden
-            >
-              <span className="live-shadow absolute bottom-0 left-1/2 h-2.5 w-3/5 -translate-x-1/2 rounded-[50%] bg-[#17130f]/55" />
-              <span className="live-bounce absolute inset-x-0 bottom-2 flex justify-center">
-                <Mascot pose="esulta" size={88} animate={false} />
-              </span>
-            </div>
-            <p className="display mt-3 max-w-full text-[26px] leading-tight">
-              {p.title}
-            </p>
-            {p.score && (
-              <div className="mt-2 flex w-full max-w-[30ch] flex-col items-center">
-                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-[#f6eedc]/85 [overflow-wrap:anywhere]">
-                  {p.score.a}
-                </span>
-                <span className="score my-0.5 text-[34px] leading-none text-[#ef7d2d]">
-                  {p.score.score}
-                </span>
-                <span className="title line-clamp-2 max-w-full text-[15px] leading-snug text-[#f6eedc]/85 [overflow-wrap:anywhere]">
-                  {p.score.b}
-                </span>
-              </div>
-            )}
-            {h.clips.length > 0 && (
-              <p className="mt-2 text-[13px] font-semibold text-[#f6eedc]/65">
-                {h.clips.length === 1
-                  ? "1 canestro"
-                  : `${h.clips.length} canestri`}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Avanzamento: sottile, sul bordo basso del video. */}
+      {/* Avanzamento: sottile sul bordo basso del video. Si tocca e si trascina per andare avanti
+          o indietro (come su TikTok): diventa più spessa, compare il pallino e il minuto. */}
       {active && (
         <div
+          ref={seekEl}
           className={clsx(
-            "hl-progress pointer-events-none absolute inset-x-0 h-[3px] bg-[#f6eedc]/25",
-            portrait && "hl-progress-full",
+            "hl-seek absolute inset-x-0 z-[12]",
+            scrub && "hl-seek-on",
           )}
-          aria-hidden
+          role="slider"
+          tabIndex={0}
+          aria-label="Posizione nel video"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(h.duration ?? 0)}
+          aria-valuenow={0}
+          onPointerDown={onSeekDown}
+          onPointerMove={onSeekMove}
+          onPointerUp={onSeekUp}
+          onPointerCancel={onSeekUp}
+          onKeyDown={onSeekKey}
+          data-testid="hl-seek"
         >
-          <div
-            ref={bar}
-            className="h-full origin-left bg-[#ef7d2d]"
-            style={{ transform: "scaleX(0)" }}
-          />
+          <div className="hl-progress pointer-events-none absolute inset-x-0 bg-[#f6eedc]/25">
+            <div
+              ref={bar}
+              className="hl-progress-fill h-full origin-left bg-[#ef7d2d]"
+              style={{ transform: "scaleX(0)" }}
+            />
+          </div>
+          {scrub && (
+            <>
+              <span
+                className="hl-seek-thumb pointer-events-none absolute"
+                style={{ left: `${(scrub.t / scrub.d) * 100}%` }}
+                aria-hidden
+              />
+              <span
+                className="hl-seek-time display pointer-events-none absolute left-1/2 -translate-x-1/2 text-[26px] text-[#f6eedc] tnum"
+                data-testid="hl-seek-time"
+              >
+                {clock(scrub.t)}{" "}
+                <span className="text-[#f6eedc]/60">/ {clock(scrub.d)}</span>
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -515,6 +612,19 @@ export const Slide = memo(function Slide(p: SlideProps) {
         <h2 className="hl-title title truncate text-[17px] leading-tight">
           {p.title}
         </h2>
+        {/* Il titoletto della partita, al posto dell'apertura: il risultato sempre in vista, poi
+            chi contro chi (che si taglia, se lungo). */}
+        {p.score && (
+          <p
+            className="hl-score mt-0.5 truncate text-[13.5px] font-semibold text-[#f6eedc]/85"
+            data-testid="hl-score"
+          >
+            <span className="score mr-1.5 align-[-1px] text-[16px] text-[#ef7d2d] tnum">
+              {p.score.score}
+            </span>
+            {p.score.a} contro {p.score.b}
+          </p>
+        )}
         {description && (
           <button
             className="pointer-events-auto mt-1 block w-full text-left text-[14px] leading-snug text-[#f6eedc]/90"
@@ -595,4 +705,10 @@ function TickerBall() {
       </g>
     </svg>
   );
+}
+
+/** 0:07, 1:12: il minuto del video mentre trascini. */
+function clock(t: number): string {
+  const s = Math.max(0, Math.floor(t));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }

@@ -7,7 +7,9 @@ import {
   Bell,
   Camera,
   ChevronRight,
+  Clapperboard,
   Compass,
+  Repeat,
   Download,
   Eye,
   LogOut,
@@ -59,6 +61,11 @@ import {
   setThemePref,
   type ThemePref,
 } from "@/lib/theme";
+import {
+  highlightEnd,
+  setHighlightEnd,
+  type HighlightEnd,
+} from "@/lib/highlights-prefs";
 import { onSoundChange, play, setSoundOn, soundOn } from "@/lib/sound";
 import { say } from "@/lib/voice";
 
@@ -99,6 +106,7 @@ export default function SettingsPage() {
   const [card, setCard] = useState<AvatarPresetId | null>(null);
   const [guide, setGuide] = useState(false);
   const [sounds, setSounds] = useState(true);
+  const [hlEnd, setHlEnd] = useState<HighlightEnd>("next");
   const tour = useTutorial();
 
   useEffect(() => {
@@ -106,6 +114,7 @@ export default function SettingsPage() {
     setTheme(getThemePref());
     setStandalone(isStandalone());
     setSounds(soundOn());
+    setHlEnd(highlightEnd());
     // Arrivando dal personaggio nel profilo: la collezione è già aperta.
     if (new URLSearchParams(window.location.search).get("personaggi")) {
       setCharacters(true);
@@ -339,6 +348,39 @@ export default function SettingsPage() {
                 if (on) window.setTimeout(() => play("swish"), 160);
               }}
             />
+          </Row>
+          <Row
+            icon={
+              hlEnd === "loop" ? (
+                <Repeat size={18} />
+              ) : (
+                <Clapperboard size={18} />
+              )
+            }
+          >
+            <span className="min-w-0 flex-1" data-testid="hl-end">
+              <span className="block text-[15px] font-semibold">
+                Fine di un highlight
+              </span>
+              <span className="block text-[12.5px] text-muted">
+                {hlEnd === "loop"
+                  ? "Ricomincia quello che stai guardando"
+                  : "Parte subito il prossimo, come nei Reels"}
+              </span>
+              <Segmented
+                className="mt-2"
+                size="sm"
+                value={hlEnd}
+                onChange={(v) => {
+                  setHlEnd(v);
+                  setHighlightEnd(v);
+                }}
+                options={[
+                  { value: "next", label: "Il prossimo" },
+                  { value: "loop", label: "Ricomincia" },
+                ]}
+              />
+            </span>
           </Row>
           <Row icon={<Bell size={18} />}>
             <Link
