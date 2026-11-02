@@ -91,7 +91,7 @@ export function NightHighlightsButton({ matchIds }: { matchIds: string[] }) {
       </span>
       {withVideo.length === 1
         ? "Guarda gli highlights"
-        : `Highlights della serata · ${withVideo.length} video`}
+        : `Highlights della giornata · ${withVideo.length} video`}
       {fresh && <NewDot className="absolute -right-1 -top-1" />}
     </button>
   );

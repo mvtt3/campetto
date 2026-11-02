@@ -228,7 +228,7 @@ export function buildNews(
       id: `night-${date.slice(0, 10)}`,
       date,
       icon: "calendar",
-      title: `${pick(date, ["La serata di", "Com'è andata", "Il racconto di"])} ${day}`,
+      title: `${pick(date, ["La giornata di", "Com'è andata", "Il racconto di"])} ${day}`,
       body: `${games.length === 1 ? "Una partita" : `${games.length} partite`}. ${parts.join(". ")}`,
       href: "/partite",
     });

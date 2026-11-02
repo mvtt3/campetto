@@ -106,7 +106,7 @@ export function sections(
               step(
                 "matches-highlights",
                 "Gli highlights",
-                "Tutti i canestri della serata in un video. Toccalo per guardarli",
+                "Tutti i canestri della giornata in un video. Toccalo per guardarli",
               ),
             ]
           : []),
