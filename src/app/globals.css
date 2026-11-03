@@ -2299,6 +2299,10 @@ html[data-shot="3"] .intro-ball-x {
     transform: translateY(-4px);
   }
 }
+/* Il canestro che balla (liberi, ultimo livello): lo sposta il gioco con --sway. */
+.hoop-sway {
+  transform: translateX(var(--sway, 0px));
+}
 .net-swish {
   animation: net-swish 460ms ease-out;
 }

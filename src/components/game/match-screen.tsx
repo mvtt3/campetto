@@ -7,7 +7,7 @@ import { Character } from "@/components/character";
 import { Button } from "@/components/ui/basics";
 import { crowdLevel, play, startCrowd, stopCrowd } from "@/lib/sound";
 import { DAY_NAMES, LEVELS, dow, fmtEuro, teamStrength } from "@/lib/game/economy";
-import { AttackAction, CommentaryCourt, DefenseAction, teamKit, useMyKit } from "./action";
+import { AttackAction, CommentaryCourt, DefenseAction, DriveDefense, LayupAction, SaveAction, teamKit, useMyKit } from "./action";
 import { GameScreen, Stage, useStage } from "./arena";
 import { wideCam } from "@/lib/game/camera";
 import {
@@ -34,6 +34,7 @@ import {
   type Rosters,
 } from "@/lib/game/live";
 import { applyMatch, SKILL_NAMES } from "@/lib/game/state";
+import { gapNote, standings, teamMood } from "@/lib/game/career";
 import { unreadCount } from "@/lib/game/messages";
 import type { Difficulty, GameState, Moment, Skill } from "@/lib/game/types";
 import { useGame } from "./store";
@@ -200,7 +201,7 @@ function PreMatch({
         <div className="flex-1" />
 
         {warn.length > 0 && (
-          <div className="card flex flex-col gap-1 bg-gold-soft px-4 py-3 text-[14px] font-semibold">
+          <div className="card flex flex-col gap-1 bg-gold-soft px-4 py-3 text-[14px] font-semibold text-text">
             {warn.map((w) => (
               <p key={w}>⚠️ {w}</p>
             ))}
@@ -254,21 +255,35 @@ function feedbackOf(r: MomentResult): Feedback {
   switch (r.kind) {
     case "tiro":
       return {
-        big: r.made ? (r.outcome === "verde" ? "CIUFF!" : "DENTRO!") : r.outcome === "fuori" ? "MATTONE" : "FERRO!",
+        big: r.shot === "terzo" && r.outcome === "fuori" ? "PASSI!" : r.made ? (r.outcome === "verde" ? "CIUFF!" : "DENTRO!") : r.outcome === "fuori" ? "MATTONE" : "FERRO!",
         line,
         good: r.made,
       };
     case "passaggio":
       return { big: !r.ok ? "PALLA PERSA" : r.made ? "ASSIST!" : "SBAGLIA LUI", line, good: r.ok && r.made };
     case "difesa":
-      return { big: r.ok ? (r.action === "rubata" ? "RUBATA!" : "STOPPATA!") : "CANESTRO LORO", line, good: r.ok };
+      return {
+        big: r.ok ? (r.action === "rubata" ? "RUBATA!" : r.action === "salvataggio" ? "SALVATA!" : "STOPPATA!") : r.action === "salvataggio" ? "FUORI!" : "CANESTRO LORO",
+        line,
+        good: r.ok,
+      };
+    case "fallo":
+      return { big: r.ftMade === 0 ? "0 SU 2!" : `${r.ftMade} SU 2`, line, good: r.ftMade === 0 };
     default:
       return { big: "", line, good: false };
   }
 }
 
 function situation(m: Moment): string {
-  if (m.kind === "difesa") return m.action === "rubata" ? "Difesa: rubagli palla!" : "Difesa: stoppalo!";
+  if (m.kind === "difesa")
+    return m.action === "rubata"
+      ? "Difesa: rubagli palla!"
+      : m.action === "stoppata"
+        ? "Difesa: stoppalo!"
+        : m.action === "penetrazione"
+          ? "Va a canestro: fallo o stoppata?"
+          : "Palla vagante verso la linea!";
+  if (m.shot === "terzo") return "Strada aperta: terzo tempo!";
   if (m.open) return m.shot === "tripla" ? "Sei libero da tre!" : m.shot === "sotto" ? "Strada libera fino a canestro!" : "Libero dalla media!";
   return m.shot === "tripla" ? "Marcato stretto, da tre" : m.shot === "sotto" ? "Sotto canestro, con l'uomo addosso" : "Marcato stretto, dalla media";
 }
@@ -545,7 +560,34 @@ function LiveMatch({
 
         <div className="relative min-h-0 flex-1" onClick={mode === "feedback" ? resume : mode === "intro" ? () => setMode("moment") : undefined}>
           {inAction && m ? (
-            m.kind === "attacco" ? (
+            m.kind === "attacco" && m.shot === "terzo" ? (
+              <LayupAction
+                key={`l${cur.index}`}
+                seed={cur.index + st.seed}
+                game={game}
+                diff={diff}
+                size={plan.size}
+                opponent={plan.opponent}
+                locked={mode === "feedback"}
+                onResult={onResult}
+              />
+            ) : m.kind === "difesa" && (m.action === "penetrazione" || m.action === "salvataggio") ? (
+              (() => {
+                const Scene = m.action === "penetrazione" ? DriveDefense : SaveAction;
+                return (
+                  <Scene
+                    key={`${m.action}${cur.index}`}
+                    seed={cur.index + st.seed}
+                    game={game}
+                    diff={diff}
+                    size={plan.size}
+                    opponent={plan.opponent}
+                    locked={mode === "feedback"}
+                    onResult={onResult}
+                  />
+                );
+              })()
+            ) : m.kind === "attacco" ? (
               <AttackAction
                 key={`a${cur.index}`}
                 seed={cur.index + st.seed}
@@ -567,7 +609,7 @@ function LiveMatch({
                 diff={diff}
                 size={plan.size}
                 opponent={plan.opponent}
-                action={m.action}
+                action={m.action === "stoppata" ? "stoppata" : "rubata"}
                 locked={mode === "feedback"}
                 onResult={onResult}
               />
@@ -608,8 +650,14 @@ function LiveMatch({
                     <p className="num mt-1 text-[13px] text-[#FFF8EA]/70">{m.clock}</p>
                     <p className="mt-4 text-[13.5px] font-semibold text-[#FFF8EA]/85">
                       {m.kind === "attacco"
-                        ? "Tieni premuto Tira e lascia sul verde, oppure Passa"
-                        : "Tocca quando il cerchio si chiude sul pallone"}
+                        ? m.shot === "terzo"
+                          ? "Due passi a ritmo: tocca Passo quando il cerchio si chiude"
+                          : "Tieni premuto Tira e lascia sul verde, oppure Passa"
+                        : m.action === "penetrazione"
+                          ? "Fallo subito (va in lunetta) o Stoppa quando salta"
+                          : m.action === "salvataggio"
+                            ? "Tocca Tuffati quando il cerchio si chiude sulla linea"
+                            : "Tocca quando il cerchio si chiude sul pallone"}
                     </p>
                   </div>
                 </div>
@@ -764,7 +812,7 @@ function Summary({
   const right = home ? { name: opponent, pts: result.them } : { name: team, pts: result.us };
   return (
     <GameScreen testId="match-summary" onClose={onExit} hud={<p className="display truncate text-[19px]">Fine partita</p>}>
-    <div className="absolute inset-0 flex flex-col gap-3 overflow-y-auto px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 [&>*]:shrink-0">
+    <div className="absolute inset-0 flex flex-col gap-3 overflow-y-auto px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 text-text [&>*]:shrink-0">
       <div className={clsx("card relative overflow-hidden px-4 pb-4 pt-3", won ? "bg-ok text-white" : "bg-surface")}>
         <p className="display text-[34px] leading-none">{won ? "Vittoria!" : "Sconfitta"}</p>
         <div className="mt-3 flex items-end justify-between gap-3">
@@ -817,6 +865,21 @@ function Summary({
             📈 {SKILL_NAMES[k]} sale a <b>{after.skills[k]}</b>
           </p>
         ))}
+        {teamMood(after) !== teamMood(before) && (
+          <p>
+            🤝 Morale della squadra: <b>{teamMood(after) > teamMood(before) ? "+" : ""}{teamMood(after) - teamMood(before)}</b>
+          </p>
+        )}
+        {after.club !== before.club && (
+          <p>
+            🏢 Società: <b>{after.club > before.club ? "+" : ""}{after.club - before.club}</b>
+          </p>
+        )}
+        {(() => {
+          const t = standings(after);
+          const i = t.findIndex((r) => r.me);
+          return t[i]?.played ? <p>📊 In classifica: <b>{i + 1}°</b> · {gapNote(t)}</p> : null;
+        })()}
         {newMsgs > 0 && <p>📱 {newMsgs === 1 ? "Un messaggio nuovo" : `${newMsgs} messaggi nuovi`} sul telefono</p>}
         {after.offers.length > 0 && before.offers.length === 0 && <p>📑 Fine stagione: guarda le offerte in Contratti</p>}
       </div>

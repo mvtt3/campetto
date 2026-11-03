@@ -1,4 +1,4 @@
-import type { Contract, GameState, Level, Offer, Skill } from "./types";
+import type { Contract, GameState, Level, MiniGame, Offer, Skill } from "./types";
 
 /** Un generatore casuale ripetibile: nei test e nelle simulazioni dà sempre gli stessi numeri. */
 export type Rng = () => number;
@@ -351,6 +351,23 @@ export function addToken(s: GameState, now: number): GameState {
     tokens,
     tokensAt: tokens >= TOKENS_MAX ? new Date(now).toISOString() : r.tokensAt,
   };
+}
+
+/** Ogni sfida si gioca una volta ogni 2 ore: quando torna libera (null = adesso). */
+export const MINI_COOLDOWN_MS = 2 * 3_600_000;
+export function miniReadyAt(s: Pick<GameState, "miniAt">, g: MiniGame, now: number): number | null {
+  const last = s.miniAt?.[g];
+  if (!last) return null;
+  const at = Date.parse(last) + MINI_COOLDOWN_MS;
+  return at > now ? at : null;
+}
+
+/** Inizi una sfida: un gettone in meno e parte il conto alla rovescia di quella sfida. */
+export function startMini(s: GameState, g: MiniGame, now: number): GameState | null {
+  if (miniReadyAt(s, g, now) !== null) return null;
+  const r = spendToken(s, now);
+  if (!r) return null;
+  return { ...r, miniAt: { ...r.miniAt, [g]: new Date(now).toISOString() } };
 }
 
 export function spendToken(s: GameState, now: number): GameState | null {

@@ -1,6 +1,6 @@
 import type { Difficulty, GameState, Moment } from "./types";
 import { LEVELS, clamp, hash, pick, seeded, type Rng } from "./economy";
-import { SHOTS, finishMatch, planMatch, simMoment, type MatchPlan, type MomentResult } from "./match";
+import { SHOTS, finishMatch, pickDefense, planMatch, simMoment, type MatchPlan, type MomentResult } from "./match";
 
 /**
  * La partita dal vivo, come nei manageriali di calcio: la telecronaca racconta le
@@ -47,6 +47,8 @@ export interface LiveState {
   onFire: boolean;
   failRun: number;
   benched: boolean;
+  /** I tuoi falli: nel 5 contro 5 al quinto sei fuori. */
+  fouls: number;
   over: boolean;
   feed: FeedLine[];
   extra: { ast: number; reb: number; pts: number };
@@ -69,13 +71,16 @@ const SURNAMES = [
   "Gentile", "Martinelli", "Vitale", "Lombardo", "Serra", "Coppola", "De Santis", "D'Angelo", "Marchetti", "Parisi",
 ];
 
+/** I cognomi della rosa di una squadra (inventati, sempre gli stessi per ogni squadra). */
+export function teamNames(team: string, n: number): string[] {
+  const r = seeded(team);
+  const pool = [...SURNAMES].sort(() => r() - 0.5);
+  return pool.slice(0, n);
+}
+
 /** I nomi dei giocatori in campo (inventati, sempre gli stessi per ogni squadra). */
 export function rosters(s: GameState, me: string, opponent: string, size: 3 | 5): Rosters {
-  const take = (team: string, n: number) => {
-    const r = seeded(team);
-    const pool = [...SURNAMES].sort(() => r() - 0.5);
-    return pool.slice(0, n);
-  };
+  const take = teamNames;
   const us = take(s.contract.team, size - 1).filter((n) => n !== me);
   const them = take(opponent, size + 1).filter((n) => !us.includes(n)).slice(0, size);
   return { us, them, me, usTeam: s.contract.team, themTeam: opponent };
@@ -116,6 +121,7 @@ export function startLive(plan: MatchPlan, rng: Rng): LiveState {
     onFire: false,
     failRun: 0,
     benched: false,
+    fouls: 0,
     over: false,
     feed: [],
     extra: { ast: 0, reb: 0, pts: 0 },
@@ -148,7 +154,7 @@ function withPossession(m: Moment, st: LiveState, rng: Rng): Moment {
   const r = rng();
   const clock = st.size === 3 ? `${st.us}–${st.them}` : clockLabel(st);
   if (m.kind === "attacco") return { ...m, clock };
-  return { ...m, clock, action: m.action ?? (r < 0.55 ? "rubata" : "stoppata") };
+  return { ...m, clock, action: m.action ?? pickDefense(r) };
 }
 
 /** La probabilità che la squadra in attacco segni, con forza delle squadre e inerzia. */
@@ -320,18 +326,37 @@ export function applyMoment(
   let text = "";
   let pts = 0;
   let side: Side = "us";
+  let fouledOut = false;
   const kind: FeedLine["kind"] = "you";
   if (r.kind === "tiro") {
     pts = r.pts;
-    text = r.made
-      ? r.shot === "tripla"
-        ? `TRIPLA di ${names.me}!`
-        : `Canestro di ${names.me}!`
-      : `${names.me} sbaglia ${r.shot === "tripla" ? "da tre" : "il tiro"}`;
+    text =
+      r.shot === "terzo" && r.outcome === "fuori"
+        ? `Passi di ${names.me}: palla agli avversari`
+        : r.made
+          ? r.shot === "tripla"
+            ? `TRIPLA di ${names.me}!`
+            : r.shot === "terzo"
+              ? `Terzo tempo di ${names.me}: dentro!`
+              : `Canestro di ${names.me}!`
+          : `${names.me} sbaglia ${r.shot === "tripla" ? "da tre" : r.shot === "terzo" ? "l'appoggio" : "il tiro"}`;
+  } else if (r.kind === "fallo") {
+    side = "them";
+    pts = r.ftMade;
+    st.fouls += 1;
+    text = `Fallo di ${names.me} (${st.fouls}°): ${names.themTeam} in lunetta, ${r.ftMade} su ${r.ftTaken}`;
   } else if (r.kind === "passaggio") {
     pts = r.pts;
     const mate = pick(rng, names.us.length ? names.us : ["un compagno"]);
     text = !r.ok ? `Palla persa di ${names.me}` : r.made ? `Assist di ${names.me} per ${mate}!` : `Bel passaggio di ${names.me}, ma ${mate} sbaglia`;
+  } else if (r.kind === "difesa" && r.action === "salvataggio") {
+    if (r.ok) {
+      text = `Salvataggio sulla linea di ${names.me}!`;
+      if (r.fastBreak) {
+        pts = 2;
+        text += " E contropiede: canestro";
+      }
+    } else text = `${names.me} si tuffa ma non ci arriva: rimessa per ${names.themTeam}`;
   } else if (r.kind === "difesa") {
     if (r.ok) {
       text = r.action === "rubata" ? `Palla rubata da ${names.me}!` : `STOPPATA di ${names.me}!`;
@@ -341,8 +366,11 @@ export function applyMoment(
       }
     } else {
       side = "them";
-      pts = rng() < 0.25 ? 3 : 2;
-      text = `${names.themTeam} segna: ${names.me} battuto`;
+      // Sulla penetrazione, se arrivi tardi, a volte è anche fallo: canestro e libero.
+      const andOne = r.action === "penetrazione" && rng() < 0.3;
+      pts = r.action === "penetrazione" ? 2 + (andOne ? 1 : 0) : rng() < 0.25 ? 3 : 2;
+      if (andOne) st.fouls += 1;
+      text = andOne ? `${names.themTeam} segna col fallo di ${names.me}: canestro e libero` : `${names.themTeam} segna: ${names.me} battuto`;
     }
   }
   if (side === "us") st.us += pts;
@@ -363,13 +391,19 @@ export function applyMoment(
       st.benched = true;
       st.planned = st.done;
     }
+    // Nel 5 contro 5 al quinto fallo si esce.
+    if (st.size === 5 && st.fouls >= 5 && !st.benched) {
+      st.benched = true;
+      st.planned = st.done;
+      fouledOut = true;
+    }
   }
   st = addTime(st, st.size === 5 ? 24 : 0);
   st.poss = side === "us" ? "them" : "us";
   if (r.kind === "difesa" && r.ok && !r.fastBreak) st.poss = "us";
   const line: FeedLine = {
     clock: st.size === 3 ? `${st.us}–${st.them}` : clockLabel(st),
-    text: st.benched ? `${text}. Il coach ti richiama in panchina` : text,
+    text: fouledOut ? `${text}. Quinto fallo: sei fuori!` : st.benched ? `${text}. Il coach ti richiama in panchina` : text,
     side: pts ? side : null,
     pts,
     us: st.us,

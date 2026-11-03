@@ -183,6 +183,11 @@ export function dunkCam(w: number, h: number): Camera {
   return { pos: v3(4.4, 2.4, 9.0), target: v3(-0.9, 2.2, 3.9), fov: w / h < 0.8 ? 60 : 50, w, h, cy: 0.55 };
 }
 
+/** Bordo campo: per il salvataggio sulla linea laterale (side = −1 sinistra, 1 destra). */
+export function lineCam(side: number, w: number, h: number): Camera {
+  return { pos: v3(side * 0.5, 3.4, 12.8), target: v3(side * 5, 0.9, 6.0), fov: w / h < 0.8 ? 58 : 50, w, h, cy: 0.55 };
+}
+
 /** Un punto spostato di lato (perpendicolare alla linea col canestro), verso il centro del campo. */
 export function beside(p: { x: number; z: number }, d: number) {
   const bx = COURT.rim.x - p.x;

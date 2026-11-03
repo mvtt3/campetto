@@ -5,7 +5,6 @@ import { Gift, Shirt, Smartphone, Target, Trophy } from "lucide-react";
 import { useState } from "react";
 import { Character } from "@/components/character";
 import { Button } from "@/components/ui/basics";
-import { play } from "@/lib/sound";
 import {
   DAY_NAMES,
   LEVELS,
@@ -24,16 +23,18 @@ import {
   ACTIVITY_INFO,
   SKILL_NAMES,
   activityCost,
-  advanceDay,
   nextMatch,
   seasonOver,
   todayMatch,
   type Activity,
 } from "@/lib/game/state";
-import type { Skill } from "@/lib/game/types";
+import type { GameState, Skill } from "@/lib/game/types";
 import { ratingWord } from "./match-screen";
+import { useDayAdvance } from "./day-flip";
+import { rank, standings } from "@/lib/game/career";
+import { mapEvent } from "@/lib/game/life";
 import { useGame } from "./store";
-import { Coach, Meter, Sheet, Tip, useToast, useToday } from "./ui";
+import { Coach, Meter, Sheet, Tip, useToday } from "./ui";
 import type { View } from "./game";
 
 const SKILLS: Skill[] = ["tiro", "passaggio", "difesa", "fisico"];
@@ -45,8 +46,7 @@ const SKILL_LINE: Record<Skill, string> = {
 };
 
 export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () => void }) {
-  const { game, update, me, charId } = useGame();
-  const toast = useToast();
+  const { game, me, charId } = useGame();
   const [train, setTrain] = useState(false);
   const lv = LEVELS[game.contract.level];
   const unread = unreadCount(game);
@@ -56,14 +56,12 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
   const over = seasonOver(game);
   const gf = girlfriend(game);
   const tut = game.tutorial.step;
+  const ev = mapEvent(game);
 
+  // Il resoconto della giornata e la pagina del calendario che si strappa.
+  const day = useDayAdvance();
   const doDay = (a: Activity) => {
-    const r = advanceDay(game, a, Math.random);
-    if (r.s === game) return;
-    update(() => r.s);
-    play(a.kind === "partita" ? "whoosh" : "success");
-    const day = `${DAY_NAMES[dow(r.s.day)]}`;
-    toast(r.note ? `${r.note} · ${day}` : day, "info");
+    day.run(a);
     setTrain(false);
   };
 
@@ -181,6 +179,20 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
                 <DayButton emoji="🍕" name={ACTIVITY_INFO.amici.name} line={`+felicità · ${shortEuro(activityCost(game, "amici"))}`} onClick={() => doDay({ kind: "amici" })} />
               )}
             </div>
+            {/* In città c'è di più: la mappa, con l'evento del giorno. */}
+            <button
+              onClick={() => go("telefono:mappa")}
+              className={clsx("press mt-2 flex w-full items-center gap-3 rounded-2xl border-2 border-edge px-3 py-2.5 text-left", ev ? "bg-volt text-volt-ink" : "bg-raised")}
+              data-testid="hub-map"
+            >
+              <span className="text-[24px]" aria-hidden>
+                {ev ? "📍" : "🗺️"}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-bold">{ev ? `Oggi in città: ${ev.title}` : "Vai in città"}</span>
+                <span className="block text-[12.5px] font-semibold opacity-75">{ev ? ev.line : "Campetto, parco, pizzeria con la squadra: apri la Mappa"}</span>
+              </span>
+            </button>
           </>
         )}
       </div>
@@ -198,7 +210,13 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
         />
         <BigTile icon={<Target size={30} />} name="Sfide" line={`🎟️ ${game.tokens}/5 gettoni`} onClick={() => go("sfide")} testId="open-sfide" />
         <BigTile icon={<Shirt size={30} />} name="Guardaroba" line={`${game.owned.length} ${game.owned.length === 1 ? "oggetto" : "oggetti"}`} onClick={() => go("guardaroba")} />
-        <BigTile icon={<Trophy size={30} />} name="Carriera" line={`${seasonSummary(game).wins} vinte su ${seasonSummary(game).played}`} onClick={() => go("carriera")} />
+        <BigTile
+          icon={<Trophy size={30} />}
+          name="Carriera"
+          line={careerLine(game)}
+          onClick={() => go("carriera")}
+          testId="open-carriera"
+        />
       </div>
 
       {tut === 2 && <Coach className="-mt-1">Ti ha scritto Mamma: apri il telefono!</Coach>}
@@ -230,6 +248,7 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
           {game.perks.trainer ? "Col personal trainer vale doppio" : "Un personal trainer (in Shopping) fa valere doppio ogni allenamento"}
         </p>
       </Sheet>
+      {day.node}
     </div>
   );
 }
@@ -280,6 +299,13 @@ function DayButton({
       <span className="text-[12.5px] leading-snug text-muted">{disabled && why ? why : line}</span>
     </button>
   );
+}
+
+/** La riga sotto Carriera: il tuo ruolo e la posizione in classifica (quando si è giocato). */
+function careerLine(game: GameState) {
+  const t = standings(game);
+  const i = t.findIndex((r) => r.me);
+  return `${rank(game).rank}${t[i]?.played ? ` · ${i + 1}° in classifica` : ""}`;
 }
 
 function BigTile({

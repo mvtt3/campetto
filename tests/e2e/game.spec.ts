@@ -23,6 +23,14 @@ async function openGame(page: Page) {
   await expect(page.getByTestId("game")).toBeVisible();
 }
 
+/** Passa al giorno dopo: tocca l'attività e chiude il resoconto col calendario. */
+async function nextDay(page: Page, testId: string) {
+  await page.getByTestId(testId).click();
+  await expect(page.getByTestId("day-flip")).toBeVisible();
+  await page.getByTestId("day-flip-ok").click();
+  await expect(page.getByTestId("day-flip")).toHaveCount(0);
+}
+
 /** Salta il tutorial e chiude il premio del giorno, se si apre. */
 async function skipIntro(page: Page) {
   await page.getByTestId("intro-skip").click();
@@ -74,8 +82,8 @@ test("Campetto Star: tutorial, telefono, shopping e prima partita", async ({ pag
 
   // Martedì allenamento, mercoledì la partita (simulata).
   await page.getByTestId("day-train").click();
-  await page.getByTestId("train-tiro").click();
-  await page.getByTestId("day-rest").click();
+  await nextDay(page, "train-tiro");
+  await nextDay(page, "day-rest");
   await page.getByTestId("game-play-match").click();
   await page.getByRole("button", { name: "Simula" }).click();
   await page.getByRole("button", { name: "Continua" }).click({ timeout: 15000 });
@@ -92,8 +100,8 @@ test("Campetto Star: si gioca davvero, momento per momento", async ({ page }) =>
   await openApp(page, "demo");
   await openGame(page);
   await skipIntro(page);
-  await page.getByTestId("day-rest").click();
-  await page.getByTestId("day-rest").click();
+  await nextDay(page, "day-rest");
+  await nextDay(page, "day-rest");
   await page.getByTestId("game-play-match").click();
   await page.getByRole("radio", { name: /Facile/ }).click();
   await page.getByRole("button", { name: "Gioca", exact: true }).click();
@@ -107,7 +115,7 @@ test("Campetto Star: si gioca davvero, momento per momento", async ({ page }) =>
   for (let guard = 0; guard < 200; guard++) {
     if (await page.getByRole("button", { name: "Continua" }).isVisible()) break;
     const tira = page.getByRole("button", { name: "Tira" });
-    const act = page.getByRole("button", { name: /^(Ruba!|Stoppa!)$/ });
+    const act = page.getByRole("button", { name: /^(Ruba!|Stoppa!|Passo!|Tuffati!)$/ });
     const skip = page.getByTestId("live-skip");
     if ((await tira.isVisible()) && (await tira.isEnabled())) {
       await hold(page, tira, 880);
@@ -149,6 +157,10 @@ test("Campetto Star: le sfide vanno in classifica e costano un gettone", async (
   await page.getByRole("button", { name: "Torna alle sfide" }).click();
   await expect(page.getByTestId("tokens")).toHaveText("4/5");
   await expect(page.getByTestId("sfida-schiacciate")).toContainText("(tu)");
+  // Ogni sfida si gioca una volta ogni 2 ore: parte il conto alla rovescia, le altre restano libere.
+  await expect(page.getByTestId("cooldown-schiacciate")).toHaveText(/^1:5\d:\d\d$/);
+  await expect(page.getByTestId("play-schiacciate")).toBeDisabled();
+  await expect(page.getByTestId("play-triple")).toBeEnabled();
 });
 
 test("Campetto Star: quello che compri si vede anche nell'app", async ({ page }) => {
@@ -162,6 +174,40 @@ test("Campetto Star: quello che compri si vede anche nell'app", async ({ page })
   await page.waitForTimeout(1200);
   await page.goto("/profilo");
   await expect(page.locator(".outfit").first()).toBeAttached();
+});
+
+test("Campetto Star: Instacampo, Mappa, Motori e la carriera", async ({ page }) => {
+  await openApp(page, "demo");
+  await openGame(page);
+  await skipIntro(page);
+  await page.getByTestId("open-phone").click();
+  // Instacampo: pubblichi e arrivano like e follower.
+  await page.getByTestId("app-instacampo").click();
+  const before = Number(await page.getByTestId("followers").textContent());
+  await page.locator('[data-testid^="idea-"]').first().click();
+  await page.getByTestId("tone-umile").click();
+  await expect(page.getByTestId("post-result")).toBeVisible();
+  await expect.poll(async () => Number(await page.getByTestId("followers").textContent())).toBeGreaterThan(before);
+  await expect(page.getByText("Oggi hai già pubblicato")).toBeVisible();
+  await page.goBack();
+  // Motori: la bici si compra subito.
+  await page.getByTestId("app-motori").click();
+  await page.getByTestId("veicolo-bici").getByRole("button", { name: "Compra" }).click();
+  await expect(page.getByTestId("veicolo-bici")).toContainText("Tuo");
+  await page.goBack();
+  // Mappa: col mezzo arrivare costa meno; la partitella fa passare la giornata.
+  await page.getByTestId("app-mappa").click();
+  await expect(page.getByText(/Bici da città/).first()).toBeVisible();
+  await page.getByTestId("place-campetto").click();
+  await page.getByTestId("do-campetto").click();
+  await expect(page.getByTestId("day-flip")).toBeVisible();
+  await expect(page.getByTestId("day-flip")).toContainText("Partitella al campetto");
+  await page.getByTestId("day-flip-ok").click();
+  // Carriera: ruolo, classifica, chi ti cerca.
+  await page.getByTestId("open-carriera").click();
+  await expect(page.getByTestId("standings")).toContainText("Spicchi del Parchetto");
+  await expect(page.getByTestId("interest").locator("text=%").first()).toBeVisible();
+  await noSideScroll(page);
 });
 
 test("Campetto Star è in prova: un giocatore normale non lo vede", async ({ page }) => {

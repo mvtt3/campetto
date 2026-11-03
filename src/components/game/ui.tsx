@@ -19,7 +19,7 @@ export const TIPS: Record<string, string> = {
   banca: "Lo stipendio arriva ogni lunedì, già senza tasse.",
   contratti: "A fine stagione scegli dove giocare. Con voti alti e fama arriva la promozione.",
   shopping: "Quello che compri lo indossi anche nell'app: profilo, classifiche e partite.",
-  sfide: "Ogni tentativo costa un gettone. In classifica resta il tuo record: a mezzanotte chi è primo vince il premio.",
+  sfide: "Ogni tentativo costa un gettone e ogni sfida si gioca una volta ogni 2 ore. In classifica resta il tuo record: a mezzanotte chi è primo vince il premio.",
   guardaroba: "Cambia quello che indossi quando vuoi: si aggiorna anche la tua figurina nell'app.",
   carriera: "Dal Campetto alla Serie A: a fine stagione contano voto medio e fama.",
 };

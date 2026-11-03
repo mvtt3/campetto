@@ -86,8 +86,13 @@ export function MeterBar({
   height = 200,
   className,
   flash,
+  greenRef,
+  nearRef,
 }: {
   fill: React.RefObject<HTMLDivElement | null>;
+  /** Per muovere il verde fuori da React (i liberi ai livelli alti). */
+  greenRef?: React.RefObject<HTMLDivElement | null>;
+  nearRef?: React.RefObject<HTMLDivElement | null>;
   zone: number;
   center: number;
   height?: number;
@@ -103,11 +108,13 @@ export function MeterBar({
     >
       {/* vicino al verde */}
       <div
+        ref={nearRef}
         className="absolute inset-x-0 bg-volt/45"
         style={{ bottom: `${(center - zone) * 100}%`, height: `${zone * 200}%` }}
       />
       {/* il verde */}
       <div
+        ref={greenRef}
         className="absolute inset-x-0 border-y-2 border-edge bg-ok"
         style={{ bottom: `${(center - zone / 2) * 100}%`, height: `${zone * 100}%` }}
       />

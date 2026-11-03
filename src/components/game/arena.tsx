@@ -261,6 +261,7 @@ export const Arena = memo(function Arena({
       })}
       {/* ombra del canestro */}
       <ellipse cx={rimShadow.x} cy={rimShadow.y} rx={rimShadow.s * 0.6} ry={rimShadow.s * 0.18} fill="#000" opacity="0.25" />
+      <g className="hoop-sway">
       {padBase && <polygon points={padBase} fill="#F26A1B" stroke={INK} strokeWidth="1.5" />}
       {pole && (
         <line x1={pole[0].x} y1={pole[0].y} x2={pole[1].x} y2={pole[1].y} stroke={INK} strokeWidth={Math.max(3, pole[0].s * 0.16)} strokeLinecap="round" />
@@ -268,6 +269,7 @@ export const Arena = memo(function Arena({
       {arm && <line x1={arm[0].x} y1={arm[0].y} x2={arm[1].x} y2={arm[1].y} stroke={INK} strokeWidth={Math.max(2.5, arm[0].s * 0.12)} />}
       {backboard && <polygon points={backboard} fill={CREAM} fillOpacity="0.92" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />}
       {square && <polygon points={square} fill="none" stroke="#E5412D" strokeWidth="2" />}
+      </g>
     </svg>
   );
 });
@@ -290,7 +292,7 @@ export function HoopFront({ cam, swish }: { cam: Camera; swish: boolean }) {
   const ringD = ring.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join(" ") + "Z";
   const s = P.p(rim).s;
   return (
-    <svg className="pointer-events-none absolute inset-0 z-[900]" width={cam.w} height={cam.h} aria-hidden>
+    <svg className="hoop-sway pointer-events-none absolute inset-0 z-[900]" width={cam.w} height={cam.h} aria-hidden>
       <g className={swish ? "net-swish" : undefined} style={{ transformOrigin: `${P.p(rim).x}px ${P.p(rim).y}px` }}>
         {net.map((n, i) => (
           <line key={i} x1={n.top.x} y1={n.top.y} x2={n.bot.x} y2={n.bot.y} stroke={CREAM} strokeOpacity="0.9" strokeWidth={Math.max(0.8, s * 0.025)} />
@@ -543,9 +545,9 @@ export function GameScreen({
   testId?: string;
 }) {
   return (
-    <div className="fixed inset-0 z-[66] bg-[#0d1124] text-[#FFF8EA]" data-testid={testId}>
+    <div className="fixed inset-0 z-[66] bg-[#0d1124]" data-testid={testId}>
       <div className="mx-auto flex h-full max-w-lg flex-col">
-        <div className="flex shrink-0 items-center gap-3 bg-[#1d1a16] px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
+        <div className="flex shrink-0 items-center gap-3 bg-[#1d1a16] px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))] text-[#FFF8EA]">
           {onClose && (
             <button
               type="button"

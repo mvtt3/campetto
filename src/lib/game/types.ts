@@ -110,6 +110,8 @@ export interface GameState {
   /** Gettoni delle sfide: quanti e da quando si ricaricano. */
   tokens: number;
   tokensAt: string;
+  /** Quando hai giocato l'ultima volta ogni sfida: una volta ogni 2 ore per tipo. */
+  miniAt: Partial<Record<MiniGame, string>>;
   /** Partite vere già premiate (per i gettoni e i bonus dalla vita vera). */
   realSeen: string[];
   daily: { last: string | null; streak: number };
@@ -121,6 +123,16 @@ export interface GameState {
   once: string[];
   /** L'ultimo giorno in cui è arrivato ogni messaggio (per non ripeterli troppo spesso). */
   sent: Record<string, number>;
+  /** Instacampo: chi ti segue e cosa hai pubblicato. */
+  social: { followers: number; posts: Post[]; sponsor: number };
+  /** Motori: i mezzi che hai, quello che usi, le rate da pagare. */
+  garage: string[];
+  ride: string | null;
+  loans: Loan[];
+  /** Il morale dei compagni di squadra con te (per nome, 0–100). */
+  mates: Record<string, number>;
+  /** Il rapporto con la società (0–100). */
+  club: number;
   /** Statistiche di carriera. */
   career: {
     games: number;
@@ -134,18 +146,47 @@ export interface GameState {
   };
 }
 
+export type PostKind = "partita" | "allenamento" | "serata" | "look" | "squadra" | "motori" | "ragazza" | "campetto";
+export type PostTone = "umile" | "spaccone" | "dedica";
+
+export interface Post {
+  id: string;
+  day: number;
+  kind: PostKind;
+  tone: PostTone;
+  caption: string;
+  likes: number;
+  /** Follower guadagnati (o persi). */
+  gained: number;
+  comments: { who: string; text: string; hater?: boolean }[];
+}
+
+export interface Loan {
+  id: string;
+  label: string;
+  weekly: number;
+  weeksLeft: number;
+}
+
 /** Un momento chiave della partita. */
 export type Moment =
   | {
       kind: "attacco";
-      /** Da dove: sotto, media o tripla. */
-      shot: "sotto" | "media" | "tripla";
+      /** Da dove: sotto, media, tripla, o in terzo tempo (entrata a canestro). */
+      shot: "sotto" | "media" | "tripla" | "terzo";
       /** Marcato stretto o libero. */
       open: boolean;
       /** Il minuto o il punto della partita, per la cronaca. */
       clock: string;
     }
-  | { kind: "difesa"; action: "rubata" | "stoppata"; clock: string };
+  | {
+      kind: "difesa";
+      /** Rubata, stoppata sul tiro, salvataggio sulla linea, o penetrazione (fallo o stoppata: scegli tu). */
+      action: DefAction;
+      clock: string;
+    };
+
+export type DefAction = "rubata" | "stoppata" | "salvataggio" | "penetrazione";
 
 export type ShotOutcome = "verde" | "buono" | "fuori";
 

@@ -8,12 +8,11 @@ import { Button, haptic } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import type { GameKing } from "@/lib/data/backend";
 import { play } from "@/lib/sound";
-import { KING_PRIZE, LEVELS, TOKENS_MAX, TOKEN_MS, fmtEuro, spendToken } from "@/lib/game/economy";
+import { KING_PRIZE, LEVELS, TOKENS_MAX, TOKEN_MS, fmtEuro, miniReadyAt, startMini } from "@/lib/game/economy";
 import { ZONE_CENTER } from "@/lib/game/match";
 import {
   DUNKS,
   DUNK_STEPS,
-  LIBERI_SWEEP,
   MINI,
   PER_RACK,
   RACKS,
@@ -21,8 +20,11 @@ import {
   TRIPLE_SWEEP,
   dunkScore,
   isMoneyBall,
-  liberiMade,
+  dunkStep,
+  liberiLevel,
   liberiZone,
+  liberiZoneAt,
+  swayAt,
   tapQuality,
   tripleShot,
   tripleValue,
@@ -91,7 +93,12 @@ export function Sfide({ playing, setPlaying }: { playing: MiniGame | null; setPl
   const players = useMemo(() => new Map(data.players.map((p) => [p.id, p])), [data.players]);
 
   const start = (g: MiniGame) => {
-    const r = spendToken(game, clockNow());
+    const now = clockNow();
+    if (miniReadyAt(game, g, now) !== null) {
+      toast("Questa sfida l'hai già fatta: aspetta che finisca il conto alla rovescia", "bad");
+      return;
+    }
+    const r = startMini(game, g, now);
     if (!r) {
       toast("Niente gettoni: se ne ricarica uno ogni 2 ore", "bad");
       return;
@@ -157,9 +164,7 @@ export function Sfide({ playing, setPlaying }: { playing: MiniGame | null; setPl
               {rank.length > 3 && <p className="text-[12.5px] font-semibold text-court">Tutta la classifica →</p>}
             </button>
             <div className="px-4 py-3">
-              <Button variant="primary" block size="lg" disabled={game.tokens <= 0} onClick={() => start(g)} data-testid={`play-${g}`}>
-                Gioca · 🎟️ 1
-              </Button>
+              <PlayButton g={g} onPlay={() => start(g)} />
             </div>
           </div>
         );
@@ -174,6 +179,34 @@ export function Sfide({ playing, setPlaying }: { playing: MiniGame | null; setPl
         )}
       </Sheet>
     </div>
+  );
+}
+
+/** Gioca, oppure il conto alla rovescia: ogni sfida si gioca una volta ogni 2 ore. */
+function PlayButton({ g, onPlay, again = false }: { g: MiniGame; onPlay: () => void; again?: boolean }) {
+  const { game } = useGame();
+  const until = miniReadyAt(game, g, clockNow());
+  const clock = useClock(until);
+  const cooling = until !== null && clock !== "0:00";
+  return (
+    <Button
+      variant={cooling ? "secondary" : "primary"}
+      block
+      size="lg"
+      disabled={cooling || game.tokens <= 0}
+      onClick={onPlay}
+      data-testid={`play-${g}`}
+    >
+      {cooling ? (
+        <span className="flex items-center gap-2">
+          ⏳ Di nuovo tra <span className="num" data-testid={`cooldown-${g}`}>{clock}</span>
+        </span>
+      ) : again ? (
+        `Ancora · 🎟️ 1 (${game.tokens} rimasti)`
+      ) : (
+        "Gioca · 🎟️ 1"
+      )}
+    </Button>
   );
 }
 
@@ -212,7 +245,7 @@ function MiniPlay({
   players: Map<string, Player>;
 }) {
   const { backend } = useData();
-  const { game, me } = useGame();
+  const { me } = useGame();
   const [score, setScore] = useState<number | null>(null);
   const [round, setRound] = useState(0);
   const [saved, setSaved] = useState<"saving" | "ok" | "err">("saving");
@@ -261,19 +294,16 @@ function MiniPlay({
         </p>
       )}
       <div className="mt-auto flex flex-col gap-2">
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          disabled={game.tokens <= 0}
-          onClick={() => {
+        <PlayButton
+          g={g}
+          again
+          onPlay={() => {
             setScore(null);
             setRound((r) => r + 1);
             onAgain();
           }}
-        >
-          Ancora · 🎟️ 1 ({game.tokens} rimasti)
-        </Button>
+        />
+        <p className="text-center text-[12.5px] text-muted">Ogni sfida si gioca una volta ogni 2 ore</p>
         <Button variant="secondary" block onClick={onExit}>
           Torna alle sfide
         </Button>
@@ -404,22 +434,42 @@ function LiberiGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit:
   const [streak, setStreak] = useState(0);
   const [go, setGo] = useState(false);
   const [over, setOver] = useState(false);
-  const zone = liberiZone(game, streak);
+  const [banner, setBanner] = useState<string | null>(null);
+  const base = liberiZone(game, streak);
+  const { n, lv } = liberiLevel(streak);
+  // Dal secondo livello in poi il verde si muove, respira, arriva il difensore, balla il canestro.
+  const dyn = useMemo(
+    () =>
+      lv.move || lv.pulse || lv.defender || lv.sway
+        ? {
+            zoneAt: (t: number) => liberiZoneAt(base, lv, t),
+            sway: lv.sway ? (t: number) => swayAt(lv, t) : undefined,
+            defender: lv.defender,
+          }
+        : undefined,
+    [base, lv],
+  );
   const judge = useCallback(
     (pos: number) => {
-      const ok = liberiMade(pos, ZONE_CENTER, zone);
-      const d = Math.abs(pos - ZONE_CENTER);
+      const { zone, center } = liberiZoneAt(base, lv, performance.now());
+      const d = Math.abs(pos - center);
+      const ok = d <= zone / 2;
       return { made: ok, outcome: (ok ? "verde" : d <= zone ? "buono" : "fuori") as "verde" | "buono" | "fuori" };
     },
-    [zone],
+    [base, lv],
   );
   return (
     <GameScreen
       testId="mini-liberi"
       onClose={onQuit}
       hud={
-        <div className="flex items-center justify-between">
-          <p className="display text-[19px]">Tiri liberi</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="display text-[19px] leading-tight">Tiri liberi</p>
+            <p className="truncate text-[12.5px] font-semibold text-volt" data-testid="liberi-level">
+              Livello {n} · {lv.name}
+            </p>
+          </div>
           <p className="flex items-baseline gap-1.5">
             <span className="text-[12px] font-semibold text-[#FFF8EA]/70">di fila</span>
             <span className="score text-[32px] leading-none" data-testid="liberi-streak">{streak}</span>
@@ -427,23 +477,44 @@ function LiberiGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit:
         </div>
       }
     >
-        <SoloShot
-          spot={FT_SPOT}
-          sweep={LIBERI_SWEEP}
-          zone={zone}
-          disabled={!go || over}
-          judge={judge}
-          label="Tiro libero · 1 punto"
-          onShot={(r) => {
-            if (!r.made) {
-              setOver(true);
-              window.setTimeout(() => onEnd(streak), 500);
-              return;
-            }
-            setStreak((s) => s + 1);
-          }}
-          overlay={!go && <Countdown onGo={() => setGo(true)} hint={MINI.liberi.how} />}
-        />
+      <SoloShot
+        spot={FT_SPOT}
+        sweep={lv.sweep}
+        zone={base}
+        dyn={dyn}
+        disabled={!go || over}
+        judge={judge}
+        label="Tiro libero · 1 punto"
+        onShot={(r) => {
+          if (!r.made) {
+            setOver(true);
+            window.setTimeout(() => onEnd(streak), 500);
+            return;
+          }
+          const next = liberiLevel(streak + 1);
+          if (next.n > n) {
+            setBanner(`Livello ${next.n}: ${next.lv.name}`);
+            play("unlock");
+            window.setTimeout(() => setBanner(null), 1800);
+          }
+          setStreak((s) => s + 1);
+        }}
+        overlay={
+          <>
+            {!go && <Countdown onGo={() => setGo(true)} hint={MINI.liberi.how} />}
+            {banner && (
+              <div className="pointer-events-none absolute inset-x-0 top-[22%] z-[985] flex justify-center px-6">
+                <p
+                  className="display game-pop rounded-2xl border-[3px] border-[#1d1a16] bg-volt px-4 py-2 text-center text-[24px] leading-tight text-volt-ink"
+                  style={{ boxShadow: "4px 4px 0 #1d1a16" }}
+                >
+                  {banner}
+                </p>
+              </div>
+            )}
+          </>
+        }
+      />
     </GameScreen>
   );
 }
@@ -464,7 +535,7 @@ function DunkGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit: (
       if (!dunk || doneStep.current) return;
       doneStep.current = true;
       cancelAnimationFrame(raf.current);
-      const quality = tapQuality(p, dunk.win);
+      const quality = tapQuality(p, dunkStep(dunk, q.length).win);
       play(quality > 0.6 ? "swish" : quality > 0 ? "bounce" : "error");
       const all = [...q, quality];
       setQ(all);
@@ -485,7 +556,7 @@ function DunkGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit: (
       const now = performance.now();
       if (now >= startAt) {
         if (t0.current === null) t0.current = startAt;
-        const p = (now - t0.current) / dunk.ms;
+        const p = (now - t0.current) / dunkStep(dunk, step).ms;
         if (p >= 1) {
           record(null);
           return;
@@ -515,7 +586,7 @@ function DunkGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit: (
   const tap = () => {
     if (t0.current === null) return;
     haptic(10);
-    record((performance.now() - t0.current) / (dunk?.ms ?? 1));
+    record((performance.now() - t0.current) / (dunk ? dunkStep(dunk, step).ms : 1));
   };
 
   if (!dunk)
@@ -588,7 +659,7 @@ function DunkGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit: (
               <div className="relative mb-3 h-14 rounded-full border-[2.5px] border-[#1d1a16] bg-[#FFF8EA]">
                 <div
                   className="absolute top-1/2 h-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#1d1a16] bg-ok/40"
-                  style={{ left: "50%", width: `${dunk.win * 200}%` }}
+                  style={{ left: "50%", width: `${dunkStep(dunk, step).win * 200}%` }}
                 />
                 <div ref={dot} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: "0%" }}>
                   <Ball size={38} />

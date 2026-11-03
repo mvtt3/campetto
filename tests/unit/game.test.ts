@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   DAILY,
   LEVELS,
+  MINI_COOLDOWN_MS,
+  TEAMS,
   TOKEN_MS,
   addXp,
   dailyStatus,
   makeOffers,
+  miniReadyAt,
   nextTokenIn,
   prevDay,
   refillTokens,
@@ -13,6 +16,7 @@ import {
   schedule,
   seeded,
   spendToken,
+  startMini,
   weeklyNet,
 } from "@/lib/game/economy";
 import {
@@ -22,13 +26,16 @@ import {
   finishMatch,
   judgeRing,
   judgeShot,
+  layupResult,
   planMatch,
   shotZone,
   type MomentResult,
 } from "@/lib/game/match";
 import { answer, deliver, girlfriend, mood } from "@/lib/game/messages";
 import { applyMoment, nextStep, rosters, simulateMatch, startLive } from "@/lib/game/live";
-import { dunkScore, DUNKS, liberiZone, tripleValue } from "@/lib/game/minigames";
+import { gapNote, interest, marketValue, rank, standings, teamMood } from "@/lib/game/career";
+import { LOAN_WEEKS, PLACES, VEHICLES, buyVehicle, loanPlan, postIdeas, publish, travel, weeklyLife } from "@/lib/game/life";
+import { dunkScore, DUNKS, liberiLevel, liberiZone, liberiZoneAt, tripleValue } from "@/lib/game/minigames";
 import {
   acceptOffer,
   advanceDay,
@@ -259,6 +266,96 @@ describe("Partita", () => {
   });
 });
 
+describe("Le giocate nuove: terzo tempo, falli, salvataggi", () => {
+  it("il verde è più largo da sotto e più stretto da tre", () => {
+    const s = fresh();
+    const z = (shot: "sotto" | "media" | "tripla" | "terzo") => shotZone(s, "normale", shot, true);
+    expect(z("sotto")).toBeGreaterThan(z("media"));
+    expect(z("media")).toBeGreaterThan(z("tripla"));
+    expect(z("tripla") / z("sotto")).toBeLessThan(0.5);
+  });
+
+  it("terzo tempo: un passo fuori tempo sono passi, due perfetti entrano quasi sempre", () => {
+    const s = fresh();
+    const passi = layupResult(["perfetto", "fuori"], s, seeded(1));
+    expect(passi).toMatchObject({ kind: "tiro", shot: "terzo", outcome: "fuori", made: false });
+    let made = 0;
+    const rng = seeded(3);
+    for (let i = 0; i < 200; i++) {
+      const r = layupResult(["perfetto", "perfetto"], s, rng);
+      if (r.kind === "tiro" && r.made) made++;
+    }
+    expect(made).toBeGreaterThan(150);
+  });
+
+  it("il fallo manda in lunetta, e al quinto fallo nel 5 contro 5 sei fuori", () => {
+    const s = { ...fresh(), contract: { ...fresh().contract, level: "b" as const } };
+    const plan = { ...planMatch(s, s.season.matches[0], "normale", seeded(5)), size: 5 as const };
+    plan.moments = Array.from({ length: 8 }, () => ({ kind: "difesa" as const, action: "penetrazione" as const, clock: "" }));
+    const names = rosters(s, "Tu", plan.opponent, 5);
+    const rng = seeded(7);
+    let st = { ...startLive(plan, rng), planned: 8 };
+    for (let i = 0; i < 4; i++) st = applyMoment(st, plan, names, { kind: "fallo", ftMade: 1, ftTaken: 2 }, rng);
+    expect(st.fouls).toBe(4);
+    expect(st.benched).toBe(false);
+    expect(st.them).toBe(4);
+    st = applyMoment(st, plan, names, { kind: "fallo", ftMade: 2, ftTaken: 2 }, rng);
+    expect(st.benched).toBe(true);
+    expect(st.feed.at(-1)?.text).toContain("Quinto fallo");
+  });
+
+  it("il salvataggio riuscito tiene la palla, quello sbagliato la dà agli avversari", () => {
+    const s = fresh();
+    const plan = planMatch(s, s.season.matches[0], "normale", seeded(2));
+    const names = rosters(s, "Tu", plan.opponent, plan.size);
+    const st = startLive(plan, seeded(2));
+    const ok = applyMoment(st, plan, names, { kind: "difesa", action: "salvataggio", ok: true, perfect: false, fastBreak: false }, seeded(2));
+    expect(ok.poss).toBe("us");
+    const ko = applyMoment(st, plan, names, { kind: "difesa", action: "salvataggio", ok: false, perfect: false, fastBreak: false }, seeded(2));
+    expect(ko.poss).toBe("them");
+    expect(ko.them).toBe(st.them);
+  });
+
+  it("in una partita capitano situazioni diverse", () => {
+    const kinds = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const s = fresh();
+      for (const m of planMatch(s, s.season.matches[0], "normale", seeded(i)).moments)
+        kinds.add(m.kind === "attacco" ? m.shot : m.action);
+    }
+    for (const k of ["sotto", "media", "tripla", "terzo", "rubata", "stoppata", "penetrazione", "salvataggio"]) expect(kinds).toContain(k);
+  });
+});
+
+describe("Sfide: una per tipo ogni 2 ore, liberi a livelli", () => {
+  it("dopo una sfida, quella stessa sfida si rigioca solo dopo 2 ore (le altre sì)", () => {
+    const s = fresh();
+    const a = startMini(s, "triple", NOW)!;
+    expect(a.tokens).toBe(s.tokens - 1);
+    expect(miniReadyAt(a, "triple", NOW + 60_000)).toBe(NOW + MINI_COOLDOWN_MS);
+    expect(startMini(a, "triple", NOW + 60_000)).toBeNull();
+    expect(startMini(a, "liberi", NOW + 60_000)).not.toBeNull();
+    expect(miniReadyAt(a, "triple", NOW + MINI_COOLDOWN_MS + 1)).toBeNull();
+    expect(startMini(a, "triple", NOW + MINI_COOLDOWN_MS + 1)).not.toBeNull();
+  });
+
+  it("i liberi salgono di livello ogni tre canestri e il verde si stringe", () => {
+    expect(liberiLevel(0).n).toBe(1);
+    expect(liberiLevel(3).n).toBe(2);
+    expect(liberiLevel(14).lv.defender).toBe(true);
+    expect(liberiLevel(20).lv.sway).toBeGreaterThan(0);
+    const lv = liberiLevel(13).lv;
+    const z = liberiZoneAt(0.2, lv, 0);
+    expect(z.zone).toBeLessThan(0.2);
+    // Il verde resta sempre dentro la barra.
+    for (let t = 0; t < 4000; t += 97) {
+      const q = liberiZoneAt(0.2, liberiLevel(16).lv, t);
+      expect(q.center - q.zone / 2).toBeGreaterThan(0);
+      expect(q.center + q.zone / 2).toBeLessThan(1);
+    }
+  });
+});
+
 describe("Giorni, soldi e carriera", () => {
   it("il giorno della partita non si salta; il lunedì arriva lo stipendio", () => {
     let s = fresh();
@@ -464,3 +561,100 @@ describe("Sfide", () => {
     }
   });
 });
+
+describe("Carriera: squadra, classifica, chi ti cerca", () => {
+  it("la classifica ha tutte le squadre, i tuoi punti sono quelli delle tue vittorie", () => {
+    let s = fresh();
+    const res = { rating: 7, pts: 8, ast: 1, reb: 2, stl: 0, blk: 0, simulated: false, benched: false };
+    s = {
+      ...s,
+      season: {
+        ...s.season,
+        matches: s.season.matches.map((m, i) => (i < 4 ? { ...m, result: { ...res, us: i % 2 ? 15 : 21, them: i % 2 ? 21 : 12 } } : m)),
+      },
+    };
+    const t = standings(s);
+    expect(t).toHaveLength(TEAMS.campetto.length);
+    const me = t.find((r) => r.me)!;
+    expect(me.played).toBe(4);
+    expect(me.won).toBe(2);
+    expect(me.points).toBe(4);
+    // Ogni partita ha un vincitore e un perdente.
+    expect(t.reduce((a, r) => a + r.won, 0)).toBe(t.reduce((a, r) => a + r.lost, 0));
+    expect(gapNote(t)).not.toBe("");
+  });
+
+  it("le squadre interessate salgono se giochi bene e diventi famoso", () => {
+    const s = fresh();
+    const low = interest(s);
+    expect(low.length).toBeGreaterThan(5);
+    const star = { ...s, fame: 80, skills: { tiro: 85, passaggio: 80, difesa: 78, fisico: 82 } };
+    const high = interest(star);
+    const top = (xs: ReturnType<typeof interest>) => Math.max(...xs.filter((x) => x.league === "a").map((x) => x.pct));
+    expect(top(high)).toBeGreaterThan(top(low));
+    expect(marketValue(star)).toBeGreaterThan(marketValue(s));
+  });
+
+  it("vincere e giocare bene alza il morale dei compagni e della società", () => {
+    const s = fresh();
+    const before = teamMood(s);
+    const won = applyMatch(s, 0, { result: { us: 21, them: 10, rating: 8.5, pts: 12, ast: 2, reb: 3, stl: 1, blk: 0, simulated: false, benched: false }, money: 0, fame: 2, happiness: 6, energy: -20, xp: {} }, NOW, seeded(1));
+    expect(teamMood(won)).toBeGreaterThan(before);
+    expect(won.club).toBeGreaterThan(s.club);
+    expect(rank(won).rank).toBeDefined();
+  });
+});
+
+describe("Vita fuori dal campo: motori, mappa, Instacampo", () => {
+  it("a rate: anticipo subito, rata il lunedì, e se non paghi te la riprendono", () => {
+    let s = { ...fresh(), money: 500 };
+    const v = VEHICLES.find((x) => x.id === "scooter")!;
+    const plan = loanPlan(v);
+    const r = buyVehicle(s, "scooter", true)!;
+    expect(r.s.money).toBe(500 - plan.down);
+    expect(r.s.ride).toBe("scooter");
+    expect(r.s.loans[0].weekly).toBe(plan.weekly);
+    s = { ...r.s, money: 1000, day: 8 };
+    const paid = weeklyLife(s);
+    expect(paid.s.loans[0].weeksLeft).toBe(LOAN_WEEKS - 1);
+    const broke = weeklyLife({ ...s, money: 0 });
+    expect(broke.s.garage).not.toContain("scooter");
+    expect(broke.notes[0]).toContain("Rata non pagata");
+  });
+
+  it("col mezzo arrivare costa meno energia", () => {
+    const s = fresh();
+    const far = PLACES.find((p) => p.id === "discoteca")!;
+    expect(travel({ ride: "cabrio" }, far).energy).toBeLessThan(travel(s, far).energy);
+  });
+
+  it("la partitella al campetto e la pizza con la squadra hanno effetti diversi", () => {
+    const s = { ...fresh(), tutorial: { step: 4, seen: [] } };
+    const c = advanceDay(s, { kind: "campetto", travel: 5 }, seeded(1)).s;
+    expect(c.xp.tiro + c.skills.tiro).toBeGreaterThan(s.xp.tiro + s.skills.tiro);
+    const p = advanceDay(s, { kind: "squadra" }, seeded(1)).s;
+    expect(teamMood(p)).toBeGreaterThan(teamMood(s));
+  });
+
+  it("pubblicare fa crescere i follower, e lo spaccone dopo una sconfitta fa arrabbiare la società", () => {
+    const s = fresh();
+    const idea = postIdeas(s).find((i) => i.kind === "look")!;
+    const r = publish(s, idea, "umile", seeded(2));
+    expect(r.s.social.followers).toBeGreaterThan(s.social.followers);
+    expect(r.s.social.posts).toHaveLength(1);
+    const lost = { kind: "partita" as const, emoji: "😤", title: "Sconfitta", quality: 0.7, captions: { umile: "a", spaccone: "b", dedica: "c" } };
+    const bad = publish(s, lost, "spaccone", seeded(2));
+    expect(bad.s.club).toBeLessThan(s.club);
+    expect(bad.post.comments.some((c) => c.hater)).toBe(true);
+  });
+
+  it("con abbastanza follower arriva uno sponsor", () => {
+    const s = { ...fresh(), social: { followers: 499, posts: [], sponsor: 0 }, fame: 50 };
+    const idea = postIdeas(s).find((i) => i.kind === "look")!;
+    const r = publish(s, idea, "umile", seeded(3));
+    expect(r.s.social.sponsor).toBe(1);
+    expect(r.s.contract.sponsor).toBeGreaterThan(0);
+    expect(r.note).toContain("sponsor");
+  });
+});
+

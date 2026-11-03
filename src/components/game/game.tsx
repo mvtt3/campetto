@@ -184,7 +184,7 @@ function GameShell() {
         />
       )}
       {kind === "guardaroba" && <Wardrobe />}
-      {kind === "carriera" && <Career />}
+      {kind === "carriera" && <Career go={go} />}
       {kind === "guida" && (
         <Guide
           onTutorial={() => {

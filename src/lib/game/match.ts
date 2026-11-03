@@ -1,4 +1,4 @@
-import type { Difficulty, GameState, Moment, SeasonMatch, ShotOutcome, Skill } from "./types";
+import type { DefAction, Difficulty, GameState, Moment, SeasonMatch, ShotOutcome, Skill } from "./types";
 import { LEVELS, clamp, overall, pick, teamStrength, type Rng } from "./economy";
 
 /**
@@ -17,10 +17,12 @@ export const DIFF: Record<
   difficile: { name: "Difficile", zone: 0.075, ring: 0.06, prize: 2, sweep: 760, ringMs: 900, opp: 1.06, line: "Zona stretta, premi doppi, coach nervoso" },
 };
 
+/** Più sei lontano, più il verde è stretto: sotto è largo, da tre è stretto. */
 export const SHOTS = {
-  sotto: { pts: 2, f: 1.25, label: "Sotto canestro" },
+  sotto: { pts: 2, f: 1.5, label: "Sotto canestro" },
   media: { pts: 2, f: 1, label: "Dalla media" },
-  tripla: { pts: 3, f: 0.8, label: "Da tre" },
+  tripla: { pts: 3, f: 0.62, label: "Da tre" },
+  terzo: { pts: 2, f: 1.5, label: "Terzo tempo" },
 } as const;
 export type Shot = keyof typeof SHOTS;
 
@@ -128,6 +130,11 @@ function clockLabel(i: number, n: number, size: 3 | 5): string {
   return `${q}° quarto · ${m}:${String(sec).padStart(2, "0")}`;
 }
 
+/** Le situazioni in difesa, con quanta frequenza capitano. */
+export function pickDefense(r: number): DefAction {
+  return r < 0.3 ? "rubata" : r < 0.52 ? "stoppata" : r < 0.82 ? "penetrazione" : "salvataggio";
+}
+
 export function planMatch(
   s: GameState,
   m: Pick<SeasonMatch, "opponent" | "home">,
@@ -156,12 +163,11 @@ export function planMatch(
   // L'ultima palla, se è in attacco, è sempre da giocare.
   const moments: Moment[] = kinds.map((k, i) => {
     const clock = clockLabel(i, n, size);
-    if (k === "difesa")
-      return { kind: "difesa", action: rng() < 0.55 ? "rubata" : "stoppata", clock };
+    if (k === "difesa") return { kind: "difesa", action: pickDefense(rng()), clock };
     const r = rng();
     return {
       kind: "attacco",
-      shot: r < 0.36 ? "sotto" : r < 0.7 ? "media" : "tripla",
+      shot: r < 0.18 ? "terzo" : r < 0.36 ? "sotto" : r < 0.68 ? "media" : "tripla",
       open: rng() < 0.5,
       clock,
     };
@@ -185,8 +191,33 @@ export function planMatch(
 export type MomentResult =
   | { kind: "tiro"; shot: Shot; outcome: ShotOutcome; made: boolean; pts: number }
   | { kind: "passaggio"; ok: boolean; perfect: boolean; made: boolean; pts: number }
-  | { kind: "difesa"; action: "rubata" | "stoppata"; ok: boolean; perfect: boolean; fastBreak: boolean }
+  | { kind: "difesa"; action: DefAction; ok: boolean; perfect: boolean; fastBreak: boolean }
+  /** Hai scelto il fallo: lui va in lunetta (quanti liberi segna) e "andOne" se era già in tiro. */
+  | { kind: "fallo"; ftMade: number; ftTaken: number }
   | { kind: "panchina" };
+
+/** I liberi degli avversari dopo il tuo fallo. */
+export function foulResult(rng: Rng, pct = 0.7): MomentResult {
+  let made = 0;
+  for (let i = 0; i < 2; i++) if (rng() < pct) made++;
+  return { kind: "fallo", ftMade: made, ftTaken: 2 };
+}
+
+/**
+ * Il terzo tempo: due passi a ritmo e l'appoggio. Un passo sbagliato sono passi (palla
+ * persa); due passi perfetti, dentro quasi sempre.
+ */
+export function layupResult(
+  steps: ("perfetto" | "buono" | "fuori")[],
+  s: Pick<GameState, "skills">,
+  rng: Rng,
+): MomentResult {
+  if (steps.includes("fuori")) return { kind: "tiro", shot: "terzo", outcome: "fuori", made: false, pts: 0 };
+  const perfect = steps.filter((x) => x === "perfetto").length;
+  const p = clamp(0.5 + perfect * 0.2 + (s.skills.fisico + s.skills.tiro) / 800, 0.4, 0.97);
+  const made = rng() < p;
+  return { kind: "tiro", shot: "terzo", outcome: perfect === 2 ? "verde" : "buono", made, pts: made ? 2 : 0 };
+}
 
 export function shotResult(shot: Shot, j: { outcome: ShotOutcome; made: boolean }): MomentResult {
   return { kind: "tiro", shot, outcome: j.outcome, made: j.made, pts: j.made ? SHOTS[shot].pts : 0 };
@@ -217,7 +248,7 @@ export function passResult(
 }
 
 export function defenseResult(
-  action: "rubata" | "stoppata",
+  action: DefAction,
   hit: "perfetto" | "buono" | "fuori",
   rng: Rng,
 ): MomentResult {
@@ -227,12 +258,23 @@ export function defenseResult(
     action,
     ok,
     perfect: hit === "perfetto",
-    fastBreak: ok && rng() < (hit === "perfetto" ? 0.6 : 0.35),
+    fastBreak: ok && rng() < (hit === "perfetto" ? 0.6 : 0.35) * (action === "salvataggio" ? 0.5 : 1),
   };
 }
 
 /** Un giocatore virtuale con le tue abilità gioca un momento al posto tuo (Simula). */
 export function simMoment(s: GameState, m: Moment, diff: Difficulty, rng: Rng): MomentResult {
+  const virtualHit = (skill: Skill, k = 1) => {
+    const w = ringWindow(s, diff, skill) * k;
+    const r = rng();
+    return r < w * 2.2 ? "perfetto" : r < w * 5.5 ? "buono" : "fuori";
+  };
+  if (m.kind === "attacco" && m.shot === "terzo") return layupResult([virtualHit("fisico", 1.15), virtualHit("fisico", 1.15)], s, rng);
+  if (m.kind === "difesa" && m.action === "penetrazione") {
+    // Il giocatore virtuale fa fallo se non si fida della sua stoppata.
+    if (s.skills.fisico < 55 && rng() < 0.5) return foulResult(rng);
+    return defenseResult("penetrazione", virtualHit("fisico"), rng);
+  }
   if (m.kind === "attacco") {
     if (s.skills.passaggio > s.skills.tiro + 4 && rng() < 0.4) {
       const w = ringWindow(s, diff, "passaggio");
@@ -252,10 +294,7 @@ export function simMoment(s: GameState, m: Moment, diff: Difficulty, rng: Rng): 
           : rng() < 0.05;
     return shotResult(m.shot, { outcome, made });
   }
-  const w = ringWindow(s, diff, m.action === "rubata" ? "difesa" : "fisico");
-  const r = rng();
-  const hit = r < w * 2.2 ? "perfetto" : r < w * 5.5 ? "buono" : "fuori";
-  return defenseResult(m.action, hit, rng);
+  return defenseResult(m.action, virtualHit(m.action === "rubata" ? "difesa" : "fisico"), rng);
 }
 
 export interface MatchOutcome {
@@ -309,10 +348,14 @@ export function finishMatch(
       add(r.action === "rubata" ? "difesa" : "fisico", 3);
       if (r.ok) {
         rating += r.perfect ? 0.6 : 0.45;
-        if (r.action === "rubata") stl++;
+        if (r.action === "rubata" || r.action === "salvataggio") stl++;
         else blk++;
         if (r.fastBreak) pts += 2;
       } else rating -= 0.25;
+    } else if (r.kind === "fallo") {
+      add("difesa", 2);
+      // Un fallo tattico non è un errore: pesa solo se lui segna tutti e due i liberi.
+      rating += r.ftMade === 2 ? -0.15 : r.ftMade === 0 ? 0.1 : 0;
     }
   }
   // Assist e rimbalzi raccontati in cronaca (dipendono dalle tue abilità).
@@ -358,6 +401,12 @@ export function finishMatch(
 export function commentary(r: MomentResult, rng: Rng): string {
   switch (r.kind) {
     case "tiro":
+      if (r.shot === "terzo")
+        return r.outcome === "fuori"
+          ? "Passi! Fuori ritmo, palla persa"
+          : r.made
+            ? pick(rng, ["Uno, due, appoggio: dentro!", "Terzo tempo da manuale"])
+            : "Appoggio sul ferro, non entra";
       if (r.made && r.outcome === "verde")
         return pick(rng, r.shot === "tripla"
           ? ["Tripla dal verde. Solo retina!", "Da tre, ciuff! Non ha toccato il ferro"]
@@ -371,7 +420,15 @@ export function commentary(r: MomentResult, rng: Rng): string {
       return r.made
         ? pick(rng, ["Che assist! Il compagno appoggia facile", "Passaggio no-look, canestro"])
         : "Bel passaggio, ma il compagno sbaglia";
+    case "fallo":
+      return r.ftMade === 0
+        ? "Fallo tattico: sbaglia tutti e due i liberi!"
+        : r.ftMade === 1
+          ? "Fallo: in lunetta fa 1 su 2"
+          : "Fallo: 2 su 2 in lunetta";
     case "difesa":
+      if (r.action === "salvataggio")
+        return !r.ok ? "Non ci arrivi: palla fuori, rimessa loro" : r.fastBreak ? "Salvataggio sulla linea e contropiede: due punti!" : "Salvataggio sulla linea! Palla nostra";
       if (!r.ok)
         return r.action === "rubata" ? "Ti salta in palleggio e segna" : "Arrivi tardi: canestro loro";
       if (r.fastBreak) return r.action === "rubata" ? "Rubata e contropiede: due punti tuoi!" : "Stoppata e ripartenza: canestro in contropiede!";

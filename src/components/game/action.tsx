@@ -7,13 +7,15 @@ import { AVATAR_PRESETS, KIT, type AvatarPresetId } from "@/components/avatar-pr
 import { jerseyOf } from "@/components/outfit-layer";
 import { play } from "@/lib/sound";
 import { hash } from "@/lib/game/economy";
-import { COURT, actionCam, arcPoints, beside, dunkCam, floor, guardSpot, projector, v3, wideCam, type Camera, type Projector, type V3 } from "@/lib/game/camera";
+import { COURT, actionCam, arcPoints, beside, dunkCam, floor, guardSpot, lineCam, projector, v3, wideCam, type Camera, type Projector, type V3 } from "@/lib/game/camera";
 import {
   DIFF,
   SHOTS,
   ZONE_CENTER,
   defenseResult,
+  foulResult,
   judgeRing,
+  layupResult,
   judgeShot,
   passResult,
   ringWindow,
@@ -87,15 +89,23 @@ export const OFF5: XZ[] = [
   { x: 2.4, z: 1.6 },
 ];
 
+/** Da dove si tira: tante posizioni diverse, sempre vere sul campo. */
 const SPOTS: Record<Shot, XZ[]> = {
   sotto: [
     { x: -1.2, z: 2.4 },
     { x: 1.3, z: 2.2 },
+    { x: 0, z: 2.9 },
+    { x: -2.0, z: 1.0 },
+    { x: 2.0, z: 1.2 },
   ],
   media: [
     { x: -3.7, z: 4.7 },
     { x: 3.7, z: 4.7 },
     { x: 0, z: 6.0 },
+    { x: -4.6, z: 1.6 },
+    { x: 4.6, z: 1.8 },
+    { x: -2.2, z: 5.6 },
+    { x: 2.2, z: 5.6 },
   ],
   tripla: [
     { x: 0, z: 8.6 },
@@ -103,6 +113,16 @@ const SPOTS: Record<Shot, XZ[]> = {
     { x: 5.5, z: 6.5 },
     { x: -6.4, z: 1.4 },
     { x: 6.4, z: 1.4 },
+    { x: -3.6, z: 7.7 },
+    { x: 3.6, z: 7.7 },
+  ],
+  // Il terzo tempo parte da qui e va a canestro.
+  terzo: [
+    { x: -4.4, z: 6.4 },
+    { x: 4.4, z: 6.4 },
+    { x: 0.6, z: 8.2 },
+    { x: -5.6, z: 3.6 },
+    { x: 5.6, z: 3.8 },
   ],
 };
 
@@ -125,9 +145,16 @@ const dist = (a: XZ, b: XZ) => Math.hypot(a.x - b.x, a.z - b.z);
 const RIM_IN = v3(COURT.rim.x, COURT.rim.y + 0.08, COURT.rim.z);
 
 /** Le traiettorie del tiro: dentro, sul ferro e fuori, corto o sul tabellone. */
-export function shotPath(from: V3, made: boolean, outcome: "verde" | "buono" | "fuori", side: number, short: boolean): V3[] {
+export function shotPath(
+  from: V3,
+  made: boolean,
+  outcome: "verde" | "buono" | "fuori",
+  side: number,
+  short: boolean,
+  apexOver?: number,
+): V3[] {
   const r = COURT.rim;
-  const apex = 1.5 + Math.min(1.1, Math.hypot(from.x - r.x, from.z - r.z) * 0.12);
+  const apex = apexOver ?? 1.5 + Math.min(1.1, Math.hypot(from.x - r.x, from.z - r.z) * 0.12);
   if (made) {
     const up = arcPoints(from, RIM_IN, apex, 26);
     return [
@@ -479,6 +506,218 @@ export function AttackAction({
   );
 }
 
+// ———————————— Terzo tempo ————————————
+
+type Hit = "perfetto" | "buono" | "fuori";
+
+/**
+ * Il terzo tempo: parti in palleggio, due passi a ritmo (tocca quando il cerchio si
+ * chiude sul punto dove appoggi il piede) e appoggio al ferro. Un passo fuori tempo
+ * sono passi: palla persa.
+ */
+export function LayupAction({
+  seed,
+  game,
+  diff,
+  size,
+  opponent,
+  locked,
+  onResult,
+}: {
+  seed: number;
+  game: GameState;
+  diff: Difficulty;
+  size: 3 | 5;
+  opponent: string;
+  locked: boolean;
+  onResult: (r: MomentResult) => void;
+}) {
+  const { me, charId } = useGame();
+  const { ref: stageRef, ...stage } = useStage();
+  const start = SPOTS.terzo[(seed + game.day) % SPOTS.terzo.length];
+  const lean = start.x <= 0 ? -1 : 1;
+  const finish: XZ = { x: start.x * 0.22 + lean * 0.3, z: 2.2 };
+  const stepA: XZ = { x: (start.x + finish.x) / 2, z: (start.z + finish.z) / 2 };
+  const steps = [stepA, finish];
+  const back: XZ = { x: start.x + lean * 1.2, z: Math.min(12, start.z + 1.8) };
+  const cam = useCam(stage.w, stage.h, start);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const { el: ballRef, shadow: shadowRef, place, fly } = useBall3D(P);
+  const myKit = useMyKit(game, charId);
+  const oppKit = useMemo(() => teamKit(opponent, myKit.jersey), [opponent, myKit.jersey]);
+  const set = size === 3 ? OFF3 : OFF5;
+  const others = set.filter((p) => dist(p, start) > 2.4 && dist(p, finish) > 1.8).slice(0, size - 1);
+  const ms = DIFF[diff].ringMs * 0.85;
+  const win = Math.min(0.3, ringWindow(game, diff, "fisico") * 1.15);
+  const [phase, setPhase] = useState<"intro" | "ring" | "wait" | "flying" | "done">("intro");
+  const [step, setStep] = useState(0);
+  const [hits, setHits] = useState<Hit[]>([]);
+  const [mePos, setMePos] = useState<XZ>(back);
+  const [move, setMove] = useState(800);
+  const [pose, setPose] = useState<Pose>("dribble");
+  const [lift, setLift] = useState(0);
+  const [swish, setSwish] = useState(false);
+  const [chaser, setChaser] = useState<XZ>(() => beside(back, -1.4));
+
+  /** Il passo k: corri al punto, il cerchio si chiude quando ci arrivi. */
+  const goStep = (k: number) => {
+    const from = k === 0 ? start : steps[k - 1];
+    const dur = 200 + ms * 0.75;
+    setStep(k);
+    setMove(dur);
+    setMePos(steps[k]);
+    setChaser(beside(steps[k], -1.5));
+    void fly(dribblePath(from, steps[k], 2), dur);
+    play("squeak");
+    setPhase("ring");
+  };
+
+  useEffect(() => {
+    if (!P) return;
+    place(hands(back, "side"));
+    play("dribble");
+    const t1 = window.setTimeout(() => {
+      setMove(800);
+      setMePos(start);
+      setChaser(beside(start, -1.5));
+      void fly(dribblePath(back, start, 3), 800);
+    }, 120);
+    const t2 = window.setTimeout(() => goStep(0), 1000);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+    // Solo all'inizio, appena la telecamera è pronta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [P !== null]);
+
+  const { ring, tap } = useRing({
+    ms,
+    active: phase === "ring",
+    delay: 200,
+    onDone: (p) => {
+      if (phase !== "ring") return;
+      const all = [...hits, judgeRing(p, win)];
+      setHits(all);
+      if (all.at(-1) === "fuori") {
+        // Fuori tempo: passi.
+        setPhase("flying");
+        play("whistle");
+        window.setTimeout(() => {
+          setPhase("done");
+          onResult(layupResult(all, game, Math.random));
+        }, 700);
+        return;
+      }
+      if (all.length < 2) {
+        setPhase("wait");
+        window.setTimeout(() => goStep(1), 60);
+        return;
+      }
+      // Su, al ferro.
+      setPhase("flying");
+      const r = layupResult(all, game, Math.random);
+      setPose("up");
+      setLift(0.55);
+      const from = hands(finish, "up");
+      place(from);
+      play("whoosh");
+      window.setTimeout(() => setLift(0), 520);
+      const made = r.kind === "tiro" && r.made;
+      window.setTimeout(() => play(made ? "swish" : "rim"), 420);
+      void fly(shotPath(from, made, "buono", sideCoin(), false, 0.45), 820).then(() => {
+        if (made) setSwish(true);
+        setPose("dribble");
+        setPhase("done");
+        onResult(r);
+      });
+    },
+  });
+
+  const actors: Actor[] = [
+    ...others.map((o, k) => ({
+      key: `m${k}`,
+      id: extraId(`${game.contract.team}-${k}`, charId),
+      at: o,
+      back: true,
+      kit: myKit,
+      number: shirtNumber(`${game.contract.team}${k}`),
+    })),
+    ...others.map((o, k) => ({
+      key: `o${k}`,
+      id: extraId(`${opponent}-${k}`, charId),
+      at: guardSpot(o, 1.25),
+      kit: oppKit,
+      pose: "defend" as Pose,
+      number: shirtNumber(`${opponent}${k}`),
+    })),
+    {
+      key: "chaser",
+      id: extraId(`${opponent}-m`, charId),
+      at: chaser,
+      kit: oppKit,
+      pose: "defend" as Pose,
+      number: shirtNumber(`${opponent}m`),
+      move: move + 120,
+    },
+    {
+      key: "me",
+      id: charId,
+      at: mePos,
+      back: true,
+      backName: me.nickname ?? me.firstName,
+      number: me.jerseyNumber,
+      outfit: game.outfit,
+      pose,
+      lift,
+      move: lift ? 420 : move,
+    },
+  ];
+  const target = steps[Math.min(step, 1)];
+  const ringPos = P ? P.p(v3(target.x, 0.05, target.z)) : null;
+  const label =
+    phase === "ring" || phase === "wait"
+      ? step === 0
+        ? "Primo passo: tocca quando il cerchio si chiude"
+        : "Secondo passo: ancora a tempo!"
+      : "Terzo tempo · 2 punti";
+
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away={oppKit.jersey} seed={game.contract.team} swish={swish} hype={swish}>
+        {P && actors.filter(onStage(P, start, ["me", "chaser"])).map((a) => <Actor3D key={a.key} a={a} P={P} />)}
+        <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
+        {phase === "ring" && ringPos && <RingAt at={ringPos} win={win} ring={ring} size={Math.max(56, Math.round(ringPos.s * 1.2))} />}
+        <Label>{label}</Label>
+        <div className="absolute right-3 top-3 z-[960] flex gap-1.5" aria-label="I passi">
+          {[0, 1].map((k) => (
+            <span
+              key={k}
+              className={clsx(
+                "h-3.5 w-3.5 rounded-full border-2 border-[#1d1a16]",
+                hits[k] === "perfetto" ? "bg-ok" : hits[k] === "buono" ? "bg-volt" : hits[k] === "fuori" ? "bg-danger" : "bg-[#FFF8EA]/40",
+              )}
+            />
+          ))}
+        </div>
+      </Stage>
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            tap();
+          }}
+          disabled={phase !== "ring" || locked}
+          className="press sticker display h-20 w-full touch-none rounded-full bg-court text-[28px] text-court-ink disabled:opacity-40"
+        >
+          Passo!
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ———————————— Difesa ————————————
 
 export function DefenseAction({
@@ -675,6 +914,395 @@ export function DefenseAction({
   );
 }
 
+// ———————————— Penetrazione: fallo o stoppata ————————————
+
+/**
+ * Lui parte in palleggio verso canestro. Puoi fare fallo subito (sicuro: va in
+ * lunetta) o aspettare e stopparlo quando salta (rischioso: se arrivi tardi segna,
+ * a volte anche col fallo).
+ */
+export function DriveDefense({
+  seed,
+  game,
+  diff,
+  size,
+  opponent,
+  locked,
+  onResult,
+}: {
+  seed: number;
+  game: GameState;
+  diff: Difficulty;
+  size: 3 | 5;
+  opponent: string;
+  locked: boolean;
+  onResult: (r: MomentResult) => void;
+}) {
+  const { me, charId } = useGame();
+  const { ref: stageRef, ...stage } = useStage();
+  const set = size === 3 ? OFF3 : OFF5;
+  const att = set[(seed + game.day) % set.length];
+  const drive: XZ = { x: att.x * 0.2, z: 2.1 };
+  const cam = useCam(stage.w, stage.h, att);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const { el: ballRef, shadow: shadowRef, place, fly } = useBall3D(P);
+  const myKit = useMyKit(game, charId);
+  const oppKit = useMemo(() => teamKit(opponent, myKit.jersey), [opponent, myKit.jersey]);
+  const others = set.filter((p) => dist(p, att) > 1.5).slice(0, size - 1);
+  const ms = DIFF[diff].ringMs * 1.15;
+  const win = ringWindow(game, diff, "fisico");
+  const meStart = beside(guardSpot(att, 1.0), 1.35);
+  const meEnd = beside(guardSpot(drive, 0.6), 1.0);
+  const [phase, setPhase] = useState<"intro" | "ring" | "flying" | "done">("intro");
+  const [hPos, setHPos] = useState<XZ>(att);
+  const [hMove, setHMove] = useState(900);
+  const [hPose, setHPose] = useState<Pose>("dribble");
+  const [hJump, setHJump] = useState(false);
+  const [mPos, setMPos] = useState<XZ>(meStart);
+  const [mPose, setMPose] = useState<Pose>("defend");
+  const [mJump, setMJump] = useState(false);
+  const [swish, setSwish] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const ringStart = useRef(0);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
+
+  useEffect(() => {
+    if (!P) return;
+    place(hands(att, "side"));
+    play("dribble");
+    const t = window.setTimeout(() => {
+      // Parte: palleggio fino a canestro, e tu gli scivoli accanto.
+      const dur = 200 + ms * 0.75;
+      ringStart.current = performance.now();
+      setHMove(dur);
+      setHPos(drive);
+      setMPos(meEnd);
+      void fly(dribblePath(att, drive, 4), dur);
+      play("squeak");
+      setPhase("ring");
+      timers.current.push(
+        window.setTimeout(() => {
+          setHPose("up");
+          setHJump(true);
+          place(hands(drive, "up"));
+        }, dur - 140),
+      );
+    }, 700);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [P !== null]);
+
+  const target = hands(drive, "up");
+  const { ring, tap } = useRing({
+    ms,
+    active: phase === "ring",
+    delay: 200,
+    onDone: (p) => {
+      if (phase !== "ring") return;
+      timers.current.forEach((t) => window.clearTimeout(t));
+      const r = defenseResult("penetrazione", judgeRing(p, win), Math.random);
+      if (r.kind !== "difesa") return;
+      setPhase("flying");
+      setHPose("up");
+      setHJump(true);
+      setMPose("up");
+      setMJump(true);
+      window.setTimeout(() => {
+        setMJump(false);
+        setHJump(false);
+      }, 460);
+      const sd = sideCoin();
+      if (r.ok) {
+        play("board");
+        const hit = v3(target.x + sd * 0.3, target.y + 0.5, target.z + 0.4);
+        void fly(arcPoints(target, hit, 0.1, 6), 200)
+          .then(() => fly(arcPoints(hit, floor(drive.x + sd * 3.5, drive.z + 3), 0.6, 18), 650))
+          .then(() => {
+            setPhase("done");
+            onResult(r);
+          });
+        return;
+      }
+      window.setTimeout(() => play("swish"), 380);
+      void fly(shotPath(target, true, "verde", sd, false, 0.4), 700).then(() => {
+        setSwish(true);
+        setPhase("done");
+        onResult(r);
+      });
+    },
+  });
+
+  /** Fallo: fischio, lo fermi, e va in lunetta per due liberi. */
+  const foul = () => {
+    if (phase !== "ring" || locked) return;
+    timers.current.forEach((t) => window.clearTimeout(t));
+    setPhase("flying");
+    play("whistle");
+    const frac = Math.min(1, (performance.now() - ringStart.current) / (200 + ms * 0.75));
+    const stop: XZ = { x: att.x + (drive.x - att.x) * frac, z: att.z + (drive.z - att.z) * frac };
+    setHMove(220);
+    setHPos(stop);
+    setMPos(beside(guardSpot(stop, 0.7), 0.6));
+    setHPose("dribble");
+    setHJump(false);
+    place(hands(stop, "chest"));
+    const r = foulResult(Math.random);
+    if (r.kind !== "fallo") return;
+    setNote("Fallo! Due tiri liberi");
+    // In lunetta: lui sulla linea, tu sul lato dell'area.
+    const ft = FT_SPOT;
+    timers.current.push(
+      window.setTimeout(() => {
+        setHMove(700);
+        setHPos(ft);
+        setMPos({ x: 2.7, z: 3.4 });
+        setMPose("defend");
+        void fly(arcPoints(hands(stop, "chest"), hands(ft, "side"), 0.6, 12), 700);
+      }, 700),
+    );
+    const shoot = (i: number) =>
+      new Promise<void>((done) => {
+        const made = i < r.ftMade;
+        setHPose("up");
+        const from = hands(ft, "up");
+        place(from);
+        window.setTimeout(() => play(made ? "swish" : "rim"), 560);
+        void fly(shotPath(from, made, "buono", sideCoin(), false), 950).then(() => {
+          if (made) setSwish(true);
+          setNote(`Libero ${i + 1}: ${made ? "dentro" : "sbagliato"}`);
+          setHPose("dribble");
+          window.setTimeout(() => {
+            setSwish(false);
+            place(hands(ft, "side"));
+            done();
+          }, 350);
+        });
+      });
+    timers.current.push(
+      window.setTimeout(() => {
+        void shoot(0)
+          .then(() => shoot(1))
+          .then(() => {
+            setPhase("done");
+            onResult(r);
+          });
+      }, 1600),
+    );
+  };
+
+  const actors: Actor[] = [
+    ...others.map((o, k) => ({
+      key: `o${k}`,
+      id: extraId(`${opponent}-${k}`, charId),
+      at: o,
+      back: true,
+      kit: oppKit,
+      number: shirtNumber(`${opponent}${k}`),
+    })),
+    ...others.map((o, k) => ({
+      key: `t${k}`,
+      id: extraId(`${game.contract.team}-${k}`, charId),
+      at: guardSpot(o, 1.2),
+      kit: myKit,
+      pose: "defend" as Pose,
+      number: shirtNumber(`${game.contract.team}${k}`),
+    })),
+    {
+      key: "handler",
+      id: extraId(`${opponent}-h`, charId),
+      at: hPos,
+      back: true,
+      kit: oppKit,
+      number: shirtNumber(`${opponent}h`),
+      pose: hPose,
+      jump: hJump,
+      move: hMove,
+    },
+    { key: "me", id: charId, at: mPos, number: me.jerseyNumber, outfit: game.outfit, pose: mPose, jump: mJump, move: hMove },
+  ];
+  const ringPos = P ? P.p(target) : null;
+
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away={oppKit.jersey} seed={game.contract.team} swish={swish}>
+        {P && actors.filter(onStage(P, att, ["me", "handler"])).map((a) => <Actor3D key={a.key} a={a} P={P} />)}
+        <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
+        {phase === "ring" && ringPos && <RingAt at={ringPos} win={win} ring={ring} size={Math.max(48, Math.round(ringPos.s * 0.85))} tone="danger" />}
+        <Label>{note ?? "Va a canestro: fallo subito, o stoppalo quando salta?"}</Label>
+      </Stage>
+      <div className="flex gap-2 bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+        <button
+          type="button"
+          onClick={foul}
+          disabled={phase !== "ring" || locked}
+          className="press sticker display h-20 w-[38%] rounded-full bg-volt text-[24px] text-volt-ink disabled:opacity-40"
+        >
+          Fallo
+        </button>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            tap();
+          }}
+          disabled={phase !== "ring" || locked}
+          className="press sticker display h-20 flex-1 touch-none rounded-full bg-danger text-[26px] text-white disabled:opacity-40"
+        >
+          Stoppa!
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ———————————— Salvataggio sulla linea ————————————
+
+/** Una palla vagante rotola verso la linea laterale: tuffati e salvala prima che esca. */
+export function SaveAction({
+  seed,
+  game,
+  diff,
+  opponent,
+  locked,
+  onResult,
+}: {
+  seed: number;
+  game: GameState;
+  diff: Difficulty;
+  size: 3 | 5;
+  opponent: string;
+  locked: boolean;
+  onResult: (r: MomentResult) => void;
+}) {
+  const { me, charId } = useGame();
+  const { ref: stageRef, ...stage } = useStage();
+  const sd = (seed + game.day) % 2 ? 1 : -1;
+  const from: XZ = { x: sd * 2.6, z: 5.6 };
+  const line: XZ = { x: sd * 7.35, z: 6.6 };
+  const out: XZ = { x: sd * 9.0, z: 7.0 };
+  const mate: XZ = { x: sd * 2.8, z: 4.2 };
+  const meStart: XZ = { x: sd * 1.2, z: 8.0 };
+  const meEnd: XZ = { x: sd * 6.9, z: 6.9 };
+  const cam = useMemo(() => (stage.w && stage.h ? lineCam(sd, stage.w, stage.h) : null), [stage.w, stage.h, sd]);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const { el: ballRef, shadow: shadowRef, place, fly } = useBall3D(P);
+  const myKit = useMyKit(game, charId);
+  const oppKit = useMemo(() => teamKit(opponent, myKit.jersey), [opponent, myKit.jersey]);
+  const ms = DIFF[diff].ringMs;
+  const win = Math.min(0.3, ringWindow(game, diff, "fisico") * 1.1);
+  const [phase, setPhase] = useState<"intro" | "ring" | "flying" | "done">("intro");
+  const [mPos, setMPos] = useState<XZ>(meStart);
+  const [mMove, setMMove] = useState(800);
+  const [mPose, setMPose] = useState<Pose>("dribble");
+  const [lift, setLift] = useState(0);
+  const [rival, setRival] = useState<XZ>({ x: sd * 3.4, z: 3.2 });
+  const [catcher, setCatcher] = useState<Pose>("dribble");
+
+  useEffect(() => {
+    if (!P) return;
+    // La palla schizza via da una deviazione…
+    const start = v3(from.x - sd * 1.2, 1.4, from.z - 0.8);
+    place(start);
+    play("bounce");
+    void fly(arcPoints(start, floor(from.x, from.z), 0.5, 12), 450);
+    const t = window.setTimeout(() => {
+      // …e rotola verso la linea: corri!
+      const dur = 200 + ms * 0.75;
+      const pts: V3[] = [];
+      for (let i = 0; i <= 16; i++) {
+        const k = i / 16;
+        pts.push(v3(from.x + (line.x - from.x) * k, 0.17 + Math.abs(Math.sin(k * Math.PI * 2)) * 0.25 * (1 - k), from.z + (line.z - from.z) * k));
+      }
+      void fly(pts, dur);
+      setMMove(dur);
+      setMPos(meEnd);
+      setRival({ x: sd * 5.2, z: 4.6 });
+      play("squeak");
+      setPhase("ring");
+    }, 500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [P !== null]);
+
+  const target = v3(line.x, 0.25, line.z);
+  const { ring, tap } = useRing({
+    ms,
+    active: phase === "ring",
+    delay: 200,
+    onDone: (p) => {
+      if (phase !== "ring") return;
+      const r = defenseResult("salvataggio", judgeRing(p, win), Math.random);
+      if (r.kind !== "difesa") return;
+      setPhase("flying");
+      if (r.ok) {
+        // Tuffo e palla rimessa in campo al compagno.
+        setMPose("up");
+        setLift(0.35);
+        play("whoosh");
+        window.setTimeout(() => setLift(0), 380);
+        void fly(arcPoints(v3(line.x, 0.6, line.z), hands(mate, "chest"), 1.2, 18), 760).then(() => {
+          setCatcher("up");
+          play("bounce");
+          setPhase("done");
+          onResult(r);
+        });
+        return;
+      }
+      // Arrivi tardi: la palla esce.
+      setMMove(500);
+      setMPos({ x: sd * 7.6, z: 7.1 });
+      void fly([floor(line.x, line.z), floor((line.x + out.x) / 2, (line.z + out.z) / 2), floor(out.x, out.z)].map((q) => v3(q.x, 0.17, q.z)), 520).then(() => {
+        play("whistle");
+        setPhase("done");
+        onResult(r);
+      });
+    },
+  });
+
+  const actors: Actor[] = [
+    { key: "mate", id: extraId(`${game.contract.team}-0`, charId), at: mate, kit: myKit, pose: catcher, number: shirtNumber(`${game.contract.team}0`) },
+    { key: "rival", id: extraId(`${opponent}-h`, charId), at: rival, kit: oppKit, number: shirtNumber(`${opponent}h`), move: mMove + 200 },
+    {
+      key: "me",
+      id: charId,
+      at: mPos,
+      back: true,
+      backName: me.nickname ?? me.firstName,
+      number: me.jerseyNumber,
+      outfit: game.outfit,
+      pose: mPose,
+      lift,
+      move: lift ? 380 : mMove,
+    },
+  ];
+  const ringPos = P ? P.p(target) : null;
+
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away={oppKit.jersey} seed={game.contract.team} swish={false}>
+        {P && actors.map((a) => <Actor3D key={a.key} a={a} P={P} />)}
+        <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
+        {phase === "ring" && ringPos && <RingAt at={ringPos} win={win} ring={ring} size={Math.max(52, Math.round(ringPos.s * 1.0))} />}
+        <Label>Palla vagante! Tuffati quando il cerchio si chiude sulla linea</Label>
+      </Stage>
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            tap();
+          }}
+          disabled={phase !== "ring" || locked}
+          className="press sticker display h-20 w-full touch-none rounded-full bg-court text-[28px] text-court-ink disabled:opacity-40"
+        >
+          Tuffati!
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ———————————— Da solo: tiro di prova, triple, liberi ————————————
 
 export function SoloShot({
@@ -687,10 +1315,17 @@ export function SoloShot({
   fast = false,
   label,
   overlay,
+  dyn,
 }: {
   spot: XZ;
   sweep: number;
   zone: number;
+  /** Il verde che si muove, il canestro che balla, il difensore (i liberi ai livelli alti). */
+  dyn?: {
+    zoneAt: (t: number) => { zone: number; center: number };
+    sway?: (t: number) => number;
+    defender?: boolean;
+  };
   judge: (pos: number) => { made: boolean; outcome: "verde" | "buono" | "fuori" };
   onShot: (r: { made: boolean; outcome: "verde" | "buono" | "fuori"; pos: number }) => void;
   disabled?: boolean;
@@ -711,6 +1346,44 @@ export function SoloShot({
   const [flash, setFlash] = useState<"verde" | "buono" | "fuori" | null>(null);
   const backName = me.nickname ?? me.firstName;
   const busyRef = useRef(false);
+  const greenRef = useRef<HTMLDivElement>(null);
+  const nearRef = useRef<HTMLDivElement>(null);
+  const [defJump, setDefJump] = useState(false);
+
+  // Il verde che si muove e il canestro che balla: fuori da React, a ogni fotogramma.
+  useEffect(() => {
+    if (!dyn) {
+      stageRef.current?.style.removeProperty("--sway");
+      return;
+    }
+    let raf = 0;
+    const loop = () => {
+      if (!busyRef.current) {
+        const now = performance.now();
+        const { zone: z, center } = dyn.zoneAt(now);
+        if (greenRef.current) {
+          greenRef.current.style.bottom = `${(center - z / 2) * 100}%`;
+          greenRef.current.style.height = `${z * 100}%`;
+        }
+        if (nearRef.current) {
+          nearRef.current.style.bottom = `${(center - z) * 100}%`;
+          nearRef.current.style.height = `${z * 200}%`;
+        }
+        if (P && dyn.sway) stageRef.current?.style.setProperty("--sway", `${(dyn.sway(now) * P.p(COURT.rim).s).toFixed(1)}px`);
+        else stageRef.current?.style.removeProperty("--sway");
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [dyn, P, stageRef]);
+
+  // Il difensore davanti salta e agita le braccia.
+  useEffect(() => {
+    if (!dyn?.defender) return;
+    const id = window.setInterval(() => setDefJump((j) => !j), 620);
+    return () => window.clearInterval(id);
+  }, [dyn?.defender]);
 
   // Il pallone in mano, al posto giusto (anche quando si cambia carrello).
   useEffect(() => {
@@ -756,6 +1429,12 @@ export function SoloShot({
   return (
     <div className="absolute inset-0 flex flex-col">
       <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away="#FFC531" seed="sfide" swish={swish} hype={swish}>
+        {P && dyn?.defender && (
+          <Actor3D
+            a={{ key: "def", id: extraId("liberi-difensore", charId), at: beside(guardSpot(spot, 1.1), 0.8), kit: { jersey: "#2B2724", trim: "#E8A80C" }, number: 13, pose: "up", jump: defJump, move: 300 }}
+            P={P}
+          />
+        )}
         {P && (
           <Actor3D
             a={{ key: "me", id: charId, at: spot, back: true, backName, number: me.jerseyNumber, outfit: game.outfit, pose, jump, crouch: meter.holding, move: 700 }}
@@ -764,7 +1443,7 @@ export function SoloShot({
         )}
         <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
         <div className="absolute right-2 top-[14%] z-[960]">
-          <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={Math.min(200, Math.round(stage.h * 0.45))} flash={flash} />
+          <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={Math.min(200, Math.round(stage.h * 0.45))} flash={flash} greenRef={greenRef} nearRef={nearRef} />
         </div>
         {label && <Label>{label}</Label>}
         {overlay}

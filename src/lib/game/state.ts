@@ -14,7 +14,7 @@ import {
   dailyStatus,
   dow,
   fmtEuro,
-  makeOffers,
+  overall,
   schedule,
   seasonSummary,
   weeklyNet,
@@ -33,16 +33,28 @@ import {
   purchaseEvents,
 } from "./messages";
 import { MINI } from "./minigames";
+import { careerOffers, moveClub, moveMates, teamRoster } from "./career";
+import { ride, weeklyLife, type MapEvent } from "./life";
 
 /** Una partita del gioco al giorno in più per quanto si allena: il "cosa faccio oggi". */
-export type Activity =
+export type Activity = (
   | { kind: "allenamento"; skill: Skill }
   | { kind: "riposo" }
   | { kind: "serata" }
   | { kind: "ragazza" }
   | { kind: "amici" }
+  /** Dalla mappa: partitella al campetto, corsa al parco, pizza con la squadra. */
+  | { kind: "campetto" }
+  | { kind: "parco" }
+  | { kind: "squadra" }
   /** Il giorno della partita, dopo averla giocata. */
-  | { kind: "partita" };
+  | { kind: "partita" }
+) & {
+  /** Energia spesa per arrivarci (dalla mappa: dipende dal mezzo). */
+  travel?: number;
+  /** L'evento del giorno, se sei andato proprio lì. */
+  event?: MapEvent["id"];
+};
 
 export const SKILL_NAMES: Record<Skill, string> = {
   tiro: "Tiro",
@@ -77,6 +89,7 @@ export function newGame(o: { now: number; friend: string; realSeen: string[] }):
     badges: { banca: 0, contratti: 0 },
     tokens: TOKENS_MAX,
     tokensAt: iso,
+    miniAt: {},
     realSeen: o.realSeen,
     daily: { last: null, streak: 0 },
     tutorial: { step: 0, seen: [] },
@@ -84,6 +97,12 @@ export function newGame(o: { now: number; friend: string; realSeen: string[] }):
     once: [],
     sent: {},
     career: { games: 0, wins: 0, pts: 0, ast: 0, reb: 0, stl: 0, blk: 0, best: 0 },
+    social: { followers: 12, posts: [], sponsor: 0 },
+    garage: [],
+    ride: null,
+    loans: [],
+    mates: {},
+    club: 50,
   };
   s = { ...s, contacts: initialContacts(o.friend) };
   s = deliver(s, "mamma-scarpe");
@@ -108,6 +127,13 @@ export function normalize(raw: unknown, now: number, friend: string): GameState 
     tutorial: { ...base.tutorial, ...r.tutorial },
     career: { ...base.career, ...r.career },
     sent: r.sent ?? {},
+    miniAt: r.miniAt ?? {},
+    social: { ...base.social, ...r.social },
+    garage: r.garage ?? [],
+    ride: r.ride ?? null,
+    loans: r.loans ?? [],
+    mates: r.mates ?? {},
+    club: r.club ?? 50,
     once: r.once ?? [],
     contacts: r.contacts ?? base.contacts,
   } as GameState;
@@ -137,12 +163,15 @@ export const ACTIVITY_INFO = {
   serata: { name: "Serata fuori", line: "+felicità, +fama, −energia" },
   ragazza: { name: "Esci con lei", line: "+felicità, più vicini" },
   amici: { name: "Pizza con gli amici", line: "+felicità" },
+  campetto: { name: "Partitella al campetto", line: "Tiro e passaggio su, +felicità" },
+  parco: { name: "Corsa al parco", line: "Fisico su, −energia" },
+  squadra: { name: "Pizza con la squadra", line: "Morale dei compagni su" },
   partita: { name: "Domani", line: "" },
 } as const;
 
 export function activityCost(s: GameState, kind: Activity["kind"]): number {
   const m = LEVELS[s.contract.level].mult;
-  return kind === "serata" ? 40 * m : kind === "ragazza" ? 20 * m : kind === "amici" ? 10 * m : 0;
+  return kind === "serata" ? 40 * m : kind === "ragazza" ? 20 * m : kind === "amici" ? 10 * m : kind === "squadra" ? 15 * m : 0;
 }
 
 /** Il giorno di oggi finisce con quello che hai scelto, e ne comincia un altro. */
@@ -159,7 +188,8 @@ export function advanceDay(s: GameState, act: Activity, rng: Rng): { s: GameStat
       st = addXp(st, act.skill, gain);
       if (act.skill !== "fisico") st = addXp(st, "fisico", 2);
       st = { ...st, energy: clamp(st.energy - 18, 0, 100), happiness: clamp(st.happiness - 2, 0, 100) };
-      st = applyFx(st, "coach", { rel: 1 });
+      // Arrivare puntuale (col mezzo) piace al coach.
+      st = applyFx(st, "coach", { rel: ride(st)?.punctual ? 2 : 1 });
       const up = st.skills[act.skill] - before;
       note = up > 0 ? `${SKILL_NAMES[act.skill]} sale a ${st.skills[act.skill]}!` : `${SKILL_NAMES[act.skill]}: +${gain} esperienza`;
       break;
@@ -169,7 +199,9 @@ export function advanceDay(s: GameState, act: Activity, rng: Rng): { s: GameStat
       note = "Riposato: energia su";
       break;
     case "serata":
-      st = applyFx(st, "dario", { happiness: 12, energy: -22, fame: 2, rel: 5 });
+      st = applyFx(st, "dario", { happiness: 12, energy: -22, fame: act.event === "dj" ? 5 : 2, rel: 5 });
+      // La serata prima di una partita la società la nota.
+      if (st.season.matches.some((m) => m.day === st.day + 1 && !m.result)) st = moveClub(st, -3);
       st = payOut(st, cost, "Serata fuori");
       note = "Che serata! Domani un po' di sonno";
       break;
@@ -185,9 +217,50 @@ export function advanceDay(s: GameState, act: Activity, rng: Rng): { s: GameStat
       st = payOut(st, cost, "Pizza con gli amici");
       note = "Pizza e risate";
       break;
+    case "campetto": {
+      st = addXp(st, "tiro", 6);
+      st = addXp(st, "passaggio", 6);
+      st = applyFx(st, "socio", { rel: 2, happiness: 5, energy: -12 });
+      note = "Partitella al campetto: mani calde";
+      if (act.event === "scout") {
+        st = { ...st, fame: clamp(st.fame + 4, 0, 100), once: [...st.once, `scout-${st.day}`] };
+        note = "L'osservatore ti ha visto giocare: +4 fama";
+      }
+      if (act.event === "fotografo") {
+        st = { ...st, once: [...st.once, `fotografo-${st.day}`] };
+        note = "Il fotografo ti ha fatto foto bellissime: pubblicale domani";
+      }
+      break;
+    }
+    case "parco": {
+      st = addXp(st, "fisico", 10);
+      st = { ...st, energy: clamp(st.energy - 14, 0, 100), happiness: clamp(st.happiness + 2, 0, 100) };
+      note = "Corsa e scatti: le gambe ringraziano";
+      if (act.event === "torneo") {
+        // Il torneo al parco: più sei forte, più è facile vincerlo.
+        const win = rng() < clamp((overall(st) - 30) / 60, 0.15, 0.85);
+        if (win) {
+          const prize = Math.round(60 * LEVELS[st.contract.level].mult);
+          st = { ...st, money: st.money + prize, fame: clamp(st.fame + 3, 0, 100), bank: [...st.bank, { day: st.day, label: "Torneo 3 contro 3 al parco", amount: prize }].slice(-60) };
+          note = `Hai vinto il torneo al parco! +${fmtEuro(prize)} e +3 fama`;
+        } else {
+          st = { ...st, happiness: clamp(st.happiness - 3, 0, 100) };
+          note = "Torneo al parco: fuori in semifinale. Ci riprovi la prossima";
+        }
+      }
+      break;
+    }
+    case "squadra": {
+      st = moveMates(st, act.event === "cena" ? 8 : 4);
+      st = applyFx(st, "coach", { rel: 1, happiness: 6, energy: -4 });
+      st = payOut(st, cost, "Pizza con la squadra");
+      note = act.event === "cena" ? "Cena di squadra: tutti dalla tua parte" : "Pizza con la squadra: il morale sale";
+      break;
+    }
     case "partita":
       break;
   }
+  if (act.travel) st = { ...st, energy: clamp(st.energy - act.travel, 0, 100) };
   st = {
     ...st,
     yesterday: st.tonight ?? act.kind,
@@ -197,7 +270,9 @@ export function advanceDay(s: GameState, act: Activity, rng: Rng): { s: GameStat
     energy: clamp(st.energy + 8, 0, 100),
     happiness: st.happiness > 62 ? st.happiness - 1 : st.happiness < 58 ? st.happiness + 1 : st.happiness,
   };
-  st = enterDay(st, rng);
+  const entered = enterDay(st, rng);
+  st = entered.s;
+  if (entered.notes.length) note = [note, ...entered.notes].filter(Boolean).join(" · ");
   return { s: st, note };
 }
 
@@ -208,7 +283,7 @@ function payOut(s: GameState, amount: number, label: string): GameState {
 }
 
 /** Quello che succede all'inizio di ogni giorno: stipendio il lunedì, messaggi. */
-function enterDay(s: GameState, rng: Rng): GameState {
+function enterDay(s: GameState, rng: Rng): { s: GameState; notes: string[] } {
   let st = s;
   if (dow(st.day) === 0 && st.day > 1) {
     const net = weeklyNet(st.contract);
@@ -219,9 +294,12 @@ function enterDay(s: GameState, rng: Rng): GameState {
       badges: { ...st.badges, banca: st.badges.banca + 1 },
     };
   }
+  // Il lunedì anche rate e spese dei mezzi.
+  const life = weeklyLife(st);
+  st = life.s;
   st = expireIgnored(st);
   for (const id of dayEvents(st, rng)) st = deliver(st, id, {}, rng);
-  return st;
+  return { s: st, notes: life.notes };
 }
 
 /** La partita è finita: risultato, soldi, fama, esperienza, e i messaggi che arrivano. */
@@ -265,11 +343,18 @@ export function applyMatch(
   for (const [k, v] of Object.entries(o.xp)) st = addXp(st, k as Skill, v ?? 0);
   // Il coach si ricorda di come hai giocato.
   st = applyFx(st, "coach", { rel: o.result.benched ? -6 : o.result.rating >= 7.5 ? 4 : o.result.rating < 5.5 ? -3 : 1 });
+  // I compagni e la società: vincere e giocare bene li fa stare con te, la panchina no.
+  st = moveMates(st, (won ? 2 : -1) + (o.result.rating >= 8 ? 2 : o.result.rating < 5 ? -2 : 0) + (o.result.benched ? -1 : 0));
+  if (o.result.ast > 0) {
+    const r = teamRoster(st).filter((m) => m.starter);
+    st = moveMates(st, Math.min(4, o.result.ast), r.slice(0, Math.min(r.length, o.result.ast)).map((m) => m.name));
+  }
+  st = moveClub(st, (won ? 2 : -1) + (o.result.rating >= 8 ? 1 : 0));
   if (!o.result.simulated) st = addToken(st, now);
   for (const id of matchEvents(st, o.result, firstWin, rng)) st = deliver(st, id, {}, rng);
   if (seasonOver(st)) {
     const sum = seasonSummary(st);
-    st = { ...st, offers: makeOffers(st, rng), badges: { ...st.badges, contratti: st.badges.contratti + 1 } };
+    st = { ...st, offers: careerOffers(st, rng), badges: { ...st.badges, contratti: st.badges.contratti + 1 } };
     st = deliver(st, "agente-offerte", { promoted: sum.promoted ? 1 : 0 }, rng);
     if (sum.promoted && LEVELS[st.contract.level].next) st = deliver(st, "coach-promozione", {}, rng);
   }
@@ -296,7 +381,9 @@ export function acceptOffer(s: GameState, offerId: string, rng: Rng): GameState 
   // Cambiando squadra cambia anche il coach (e si riparte da zero con lui).
   if (o.team !== s.contract.team) st = applyFx(st, "coach", { rel: -(st.contacts.find((c) => c.role === "coach")?.rel ?? 0) });
   if (up) st = deliver(st, "mamma-promozione", {}, rng);
-  st = enterDay(st, rng);
+  // Squadra nuova: compagni nuovi, società nuova.
+  if (o.team !== s.contract.team) st = { ...st, mates: {}, club: 50 };
+  st = enterDay(st, rng).s;
   return st;
 }
 

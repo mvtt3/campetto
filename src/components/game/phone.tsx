@@ -35,6 +35,8 @@ import {
 import { EVENTS, MOOD_LABEL, TONES, answer, mood } from "@/lib/game/messages";
 import { acceptOffer, buyConsumable, buyItem, canBuy, consumablePrice, levelIndex } from "@/lib/game/state";
 import type { Contact } from "@/lib/game/types";
+import { Instacampo, Mappa, Motori } from "./apps";
+import { mapEvent } from "@/lib/game/life";
 import { useGame } from "./store";
 import { Coach, Meter, Sheet, Tip, useToast } from "./ui";
 import type { View } from "./game";
@@ -87,6 +89,9 @@ export function Phone({ app, go, back }: { app: string | null; go: (v: View) => 
           {kind === "contratti" && <Contracts back={back} />}
           {kind === "shopping" && <Shopping back={back} />}
           {kind === "calendario" && <Calendar back={back} />}
+          {kind === "instacampo" && <Instacampo back={back} />}
+          {kind === "mappa" && <Mappa back={back} go={go} />}
+          {kind === "motori" && <Motori back={back} />}
         </div>
       )}
     </div>
@@ -121,9 +126,9 @@ function PhoneHome({ go, back }: { go: (v: View) => void; back: () => void }) {
     { name: "Contratti", icon: <FileSignature size={30} />, bg: "#7C4DCC", badge: game.badges.contratti, on: () => go("telefono:contratti"), testId: "app-contratti" },
     { name: "Shopping", icon: <ShoppingBag size={30} />, bg: "#F26A1B", on: () => go("telefono:shopping"), testId: "app-shopping" },
     { name: "Calendario", icon: <CalendarDays size={30} />, bg: "#E5412D", on: () => go("telefono:calendario") },
-    { name: "Instacampo", icon: <Camera size={30} />, bg: "#C93B78", on: soon("Instacampo") },
-    { name: "Mappa", icon: <MapIcon size={30} />, bg: "#1597A6", on: soon("La mappa della città") },
-    { name: "Motori", icon: <Car size={30} />, bg: "#3A342D", on: soon("Le auto") },
+    { name: "Instacampo", icon: <Camera size={30} />, bg: "#C93B78", on: () => go("telefono:instacampo"), testId: "app-instacampo" },
+    { name: "Mappa", icon: <MapIcon size={30} />, bg: "#1597A6", badge: mapEvent(game) ? 1 : 0, on: () => go("telefono:mappa"), testId: "app-mappa" },
+    { name: "Motori", icon: <Car size={30} />, bg: "#3A342D", on: () => go("telefono:motori"), testId: "app-motori" },
     { name: "Case", icon: <House size={30} />, bg: "#8A5A2B", on: soon("Le case") },
     { name: "Scommesse", icon: <Dices size={30} />, bg: "#B3261E", on: soon("Le scommesse") },
     { name: "Cucciolo", icon: <PawPrint size={30} />, bg: "#E8A80C", on: soon("Il tuo cucciolo") },
