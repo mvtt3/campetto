@@ -306,8 +306,8 @@ export function ProposalCard({
                   haptic(5);
                   setNoteOpen((o) => !o);
                 }}
+                // Il nome del bottone è il testo che si vede; aria-expanded dice se è aperta.
                 aria-expanded={noteOpen}
-                aria-label={noteOpen ? "Chiudi la nota" : "Leggi tutta la nota"}
                 className="mt-0.5 flex w-full min-w-0 items-start gap-1 text-left text-[13px] text-muted"
                 data-testid="proposal-note"
               >
