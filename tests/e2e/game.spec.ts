@@ -1,6 +1,9 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openApp } from "./helpers";
 
+// Sono partite intere: con i test in parallelo servono più dei 45 secondi soliti.
+test.describe.configure({ timeout: 120_000 });
+
 /** Tiene premuto un bottone per `ms` millisecondi (il tiro). */
 async function hold(page: Page, loc: Locator, ms: number) {
   const b = (await loc.boundingBox())!;

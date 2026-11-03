@@ -258,6 +258,33 @@ test("proponi una partita e rispondi", async ({ page }) => {
   await expect(page.getByTestId("proposal-card")).toBeVisible();
 });
 
+test("proposta Indoor: la via della palestra, che si apre nelle mappe", async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.goto("/organizza?nuova=1");
+  await page.getByRole("button", { name: "Domani" }).click();
+  await page.getByRole("button", { name: "18:00" }).click();
+  await expect(page.getByLabel("Via della palestra")).toHaveCount(0);
+  await page.getByRole("tab", { name: "Indoor" }).click();
+  await page.getByLabel("Via della palestra").fill("Via Torino 12, Nichelino");
+  await page.getByRole("button", { name: "Proponi", exact: true }).click();
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
+  await expect(card).toContainText("Indoor");
+  const via = card.getByTestId("indoor-address");
+  await expect(via).toContainText("Via Torino 12, Nichelino");
+  await expect(via).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=Via%20Torino%2012/);
+  // Nella Home la via sta accanto all'ora.
+  await page.getByRole("link", { name: "Home" }).click();
+  await expect(
+    page.locator('[data-testid="proposal-card"]:visible').getByTestId("indoor-address"),
+  ).toContainText("Via Torino 12");
+  // La prossima volta la via è già pronta.
+  await page.goto("/organizza?nuova=1");
+  await page.getByRole("tab", { name: "Indoor" }).click();
+  await expect(page.getByLabel("Via della palestra")).toHaveValue("Via Torino 12, Nichelino");
+});
+
 test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
   page,
 }) => {

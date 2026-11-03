@@ -2,7 +2,7 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import { ChevronRight, CircleCheck, MapPin, Repeat2, X } from "lucide-react";
+import { ArrowUpRight, ChevronRight, CircleCheck, MapPin, Repeat2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -16,6 +16,7 @@ import {
   proposalPhase,
 } from "@/lib/proposals";
 import {
+  mapsUrl,
   placeLabel,
   shortName,
   type Proposal,
@@ -132,6 +133,8 @@ export function ProposalCard({
   const mine = proposal.responses.find((r) => r.playerId === me?.id)?.response;
   const needed = neededPlayers(proposal.format);
   const full = yes.length >= needed;
+  /** La via della palestra, se si gioca Indoor. */
+  const indoorVia = proposal.place === "indoor" ? proposal.address?.trim() || null : null;
   const creator = byId.get(proposal.createdBy);
   const canCancel = me && (me.id === proposal.createdBy || me.isAdmin);
 
@@ -273,30 +276,65 @@ export function ProposalCard({
           <p className="title truncate text-[19px]">
             {proposalWhen(proposal.startsAt)}
             {/* Nella Home il campetto sta sulla riga dell'ora: la scheda non si allunga. */}
-            {compact && proposal.place && (
+            {compact && proposal.place && !indoorVia && (
               <PlaceTag place={proposal.place} inline />
             )}
           </p>
-          <p
-            className={clsx(
-              "mt-0.5 truncate text-[13px] text-muted",
-              // Nella Home, sui telefoni non alti, la riga in più toglieva spazio all'ultima partita.
-              compact && "[@media(max-height:820px)]:hidden",
-            )}
-          >
-            {!compact && proposal.place && (
-              <>
-                <PlaceTag place={proposal.place} />
-                {" · "}
-              </>
-            )}
-            {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
-            {shortName(creator, data.players)}
-            {proposal.note ? `. ${proposal.note}` : ""}
-          </p>
+          {/* Indoor nella Home: la via al posto della riga dei dettagli, sempre visibile. */}
+          {compact && indoorVia ? (
+            <p className="mt-0.5 truncate text-[13px]">
+              <PlaceTag place="indoor" />{" "}
+              <a
+                href={mapsUrl(indoorVia)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="font-semibold text-muted underline decoration-dotted underline-offset-2"
+                data-testid="indoor-address"
+              >
+                {indoorVia}
+              </a>
+            </p>
+          ) : (
+            <p
+              className={clsx(
+                "mt-0.5 truncate text-[13px] text-muted",
+                // Nella Home, sui telefoni non alti, la riga in più toglieva spazio all'ultima partita.
+                compact && "[@media(max-height:820px)]:hidden",
+              )}
+            >
+              {!compact && proposal.place && (
+                <>
+                  <PlaceTag place={proposal.place} />
+                  {" · "}
+                </>
+              )}
+              {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
+              {shortName(creator, data.players)}
+              {proposal.note ? `. ${proposal.note}` : ""}
+            </p>
+          )}
         </div>
         <WeatherChip at={proposal.startsAt} className="shrink-0" />
       </div>
+      {/* Indoor nel calendario: la via ben visibile, un tocco e si apre nelle mappe. */}
+      {!compact && indoorVia && (
+        <a
+          href={mapsUrl(indoorVia)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="press -mt-1 flex min-w-0 items-center gap-2 rounded-2xl border-2 border-edge bg-raised px-3 py-2 text-[14px] font-semibold"
+          data-testid="indoor-address"
+        >
+          <MapPin size={17} strokeWidth={2.6} className="shrink-0 text-ball" aria-hidden />
+          <span className="min-w-0 flex-1 truncate">{indoorVia}</span>
+          <span className="flex shrink-0 items-center gap-0.5 text-[12.5px] text-muted">
+            Indicazioni
+            <ArrowUpRight size={15} strokeWidth={2.4} aria-hidden />
+          </span>
+        </a>
+      )}
 
       {/* Chi c'è: facce e conta. Nella Home porta al calendario, dove ci sono tutti i nomi. */}
       <WhoRow compact={compact}>

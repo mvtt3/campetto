@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Plus, X } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
 import { StatsComing } from "@/components/stats-coming";
@@ -20,7 +20,7 @@ import { DayStrip, dayLabel, TimeField } from "@/components/ui/pickers";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
-import { FORMATS, PLACES, type Format, type Place } from "@/lib/types";
+import { FORMATS, PLACES, isPlace, type Format, type Place } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { say } from "@/lib/voice";
 
@@ -35,6 +35,8 @@ const localIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const PLACE_KEY = "campetto:ultimo-campetto";
+/** L'ultima via usata per Indoor: di solito la palestra è sempre quella. */
+const ADDRESS_KEY = "campetto:via-indoor";
 
 function NewProposalSheet({
   open,
@@ -62,9 +64,16 @@ function NewProposalSheet({
   const [place, setPlace] = useState<Place>(() => {
     try {
       const v = localStorage.getItem(PLACE_KEY);
-      return v === "decathlon" || v === "niche" ? v : "niche";
+      return isPlace(v) ? v : "niche";
     } catch {
       return "niche";
+    }
+  });
+  const [address, setAddress] = useState(() => {
+    try {
+      return localStorage.getItem(ADDRESS_KEY) ?? "";
+    } catch {
+      return "";
     }
   });
 
@@ -103,9 +112,11 @@ function NewProposalSheet({
         format: format === "any" ? null : format,
         note: note.trim() || null,
         place,
+        address: place === "indoor" ? address.trim().slice(0, 120) || null : null,
       };
       try {
         localStorage.setItem(PLACE_KEY, place);
+        if (input.address) localStorage.setItem(ADDRESS_KEY, input.address);
       } catch {
         /* ignore */
       }
@@ -184,6 +195,33 @@ function NewProposalSheet({
             onChange={setPlace}
             options={PLACES.map((x) => ({ value: x.value, label: x.label }))}
           />
+          {/* Indoor: la via della palestra, subito sotto. Si ricorda l'ultima. */}
+          {place === "indoor" && (
+            <div className="fade-in mt-2 flex h-12 items-center gap-2 rounded-2xl bg-raised pl-3.5 pr-1.5 focus-within:ring-2 focus-within:ring-ball">
+              <MapPin size={18} strokeWidth={2.4} className="shrink-0 text-ball" aria-hidden />
+              <input
+                aria-label="Via della palestra"
+                value={address}
+                maxLength={120}
+                autoComplete="street-address"
+                enterKeyHint="done"
+                onChange={(e) => setAddress(e.target.value)}
+                style={{ outline: "none" }}
+                placeholder="Via della palestra, es. Via Torino 12"
+                className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint focus-visible:outline-none"
+              />
+              {address && (
+                <button
+                  type="button"
+                  onClick={() => setAddress("")}
+                  aria-label="Cancella la via"
+                  className="press grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted"
+                >
+                  <X size={17} />
+                </button>
+              )}
+            </div>
+          )}
         </section>
         <section>
           <h3 className="mb-2 text-[13px] font-semibold text-muted">Formato</h3>

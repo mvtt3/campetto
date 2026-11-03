@@ -118,6 +118,8 @@ export interface Backend {
     format: Format | null;
     note: string | null;
     place: Place | null;
+    /** La via, solo per Indoor. */
+    address?: string | null;
   }): Promise<string>;
   cancelProposal(id: string): Promise<void>;
   respond(proposalId: string, response: ResponseKind | null): Promise<void>;

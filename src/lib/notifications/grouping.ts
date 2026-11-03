@@ -81,6 +81,7 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
 
 /** " al Decathlon", " al Niche" oppure niente: per le frasi delle notifiche. */
 export function atPlace(place: Place | null | undefined): string {
+  if (place === "indoor") return " al campetto indoor";
   return place ? ` al ${placeLabel(place)}` : "";
 }
 

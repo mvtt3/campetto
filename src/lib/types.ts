@@ -284,12 +284,17 @@ export interface Match {
 
 export type ResponseKind = "si" | "forse" | "no";
 
-/** I due campetti dove si gioca: conta solo per organizzarsi, non per le statistiche. */
-export type Place = "niche" | "decathlon";
+/** Dove si gioca: i due campetti o in palestra (Indoor, con la via). Serve solo a organizzarsi. */
+export type Place = "niche" | "decathlon" | "indoor";
 export const PLACES: { value: Place; label: string; hint: string }[] = [
   { value: "niche", label: "Niche", hint: "Nichelino" },
   { value: "decathlon", label: "Decathlon", hint: "Il campetto del Decathlon" },
+  { value: "indoor", label: "Indoor", hint: "In palestra" },
 ];
+export const isPlace = (v: unknown): v is Place => PLACES.some((x) => x.value === v);
+/** Il link che apre Maps con le indicazioni già pronte, da dove sei fino a quella via. */
+export const mapsUrl = (address: string) =>
+  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
 export const placeLabel = (p: Place | null | undefined): string =>
   PLACES.find((x) => x.value === p)?.label ?? "";
 
@@ -308,6 +313,8 @@ export interface Proposal {
   format: Format | null;
   note: string | null;
   place?: Place | null;
+  /** La via della palestra, per Indoor. */
+  address?: string | null;
   createdBy: string;
   status: "aperta" | "annullata";
   createdAt: string;

@@ -107,6 +107,7 @@ export function mapProposal(r: any): Proposal {
     format: r.format,
     note: r.note,
     place: r.place ?? null,
+    address: r.place_address ?? null,
     createdBy: r.created_by,
     status: r.status,
     createdAt: r.created_at,

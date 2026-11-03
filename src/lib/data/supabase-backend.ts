@@ -203,6 +203,7 @@ export function createSupabaseBackend(): Backend {
           format: input.format,
           note: input.note,
           place: input.place,
+          place_address: input.place === "indoor" ? input.address?.trim() || null : null,
           created_by: meId,
         })
         .select("id")

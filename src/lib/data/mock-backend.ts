@@ -684,6 +684,7 @@ export function createMockBackend(): Backend {
         format: input.format,
         note: input.note,
         place: input.place,
+        address: input.place === "indoor" ? input.address?.trim() || null : null,
         createdBy: state.meId,
         status: "aperta",
         createdAt: new Date().toISOString(),
