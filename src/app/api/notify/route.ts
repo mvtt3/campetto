@@ -810,7 +810,46 @@ async function tick(req: Request) {
       }
     }
   }
-  return Response.json({ sent, confirmed, nudged, news });
+  // Campetto Star: chi era primo a mezzanotte in una sfida del gioco.
+  let kings = 0;
+  {
+    const { data: due } = await sb.rpc("cron_due_game_awards", {
+      p_secret: secret,
+    });
+    for (const r of (due as DueKing[] | null) ?? []) {
+      const name =
+        r.game === "triple"
+          ? "gara delle triple"
+          : r.game === "liberi"
+            ? "tiri liberi a oltranza"
+            : "gara delle schiacciate";
+      try {
+        await webpush.sendNotification(
+          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
+          JSON.stringify({
+            title: "Sei il re del campetto 👑",
+            body: `A mezzanotte eri primo nella ${name} con ${r.score}: il premio ti aspetta in Campetto Star`,
+            url: "/gioca",
+            tag: `re-${r.game}`,
+          }),
+          { TTL: 24 * 3600, urgency: "normal" },
+        );
+        kings++;
+      } catch {
+        /* abbonamento scaduto */
+      }
+    }
+  }
+  return Response.json({ sent, confirmed, nudged, news, kings });
+}
+
+interface DueKing {
+  player_id: string;
+  game: string;
+  score: number;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
 }
 
 interface DueNews {

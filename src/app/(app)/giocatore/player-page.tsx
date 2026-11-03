@@ -84,6 +84,7 @@ export function PlayerPage() {
               <div className="card flex items-center gap-3 px-4 py-3 short:py-1.5">
                 <Character
                   id={characterOf(me)}
+                  outfit={me.outfit}
                   number={me.jerseyNumber}
                   height={64}
                   className="short:h-10 short:w-auto"
@@ -111,6 +112,7 @@ export function PlayerPage() {
                 </div>
                 <Character
                   id={characterOf(player)}
+                  outfit={player.outfit}
                   number={player.jerseyNumber}
                   height={64}
                   className="short:h-10 short:w-auto"

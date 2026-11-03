@@ -47,7 +47,8 @@ export type NotifyKind =
   | "primati"
   | "notizie"
   | "adesioni"
-  | "commenti";
+  | "commenti"
+  | "gioco";
 /** Un interruttore per ogni tipo di notifica, più il silenzio di notte (23–8). */
 export type NotifyPrefs = Record<NotifyKind, boolean> & { notte: boolean };
 export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
@@ -65,6 +66,7 @@ export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
   notizie: true,
   adesioni: true,
   commenti: true,
+  gioco: true,
   notte: true,
 };
 
@@ -151,6 +153,11 @@ export const NOTIFY_GROUPS: {
         label: "Risposte ai commenti",
         hint: "Quando qualcuno risponde a un tuo commento sugli highlights",
       },
+      {
+        kind: "gioco",
+        label: "Campetto Star",
+        hint: "Quando a mezzanotte sei primo in una sfida del gioco",
+      },
     ],
   },
 ];
@@ -176,6 +183,8 @@ export interface Player {
   createdAt: string;
   /** Ospite di una partita (uno trovato al campetto): gioca, ma non conta per il gruppo. */
   guest?: boolean;
+  /** Quello che indossa in Campetto Star (si vede anche nell'app): parte → oggetto. */
+  outfit?: Partial<Record<string, string>>;
 }
 
 export const BOX_KEYS = [

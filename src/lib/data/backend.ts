@@ -12,6 +12,7 @@ import type {
   StatsSource,
   Team,
 } from "../types";
+import type { BoardRow, GameAward, MiniGame } from "../game/types";
 
 export interface SaveMatchInput {
   id?: string;
@@ -45,6 +46,7 @@ export interface MePatch {
   character?: string | null;
   showcase?: string[];
   notifyPrefs?: NotifyPrefs;
+  outfit?: Partial<Record<string, string>>;
 }
 
 export interface FeedbackInput {
@@ -164,6 +166,24 @@ export interface Backend {
   deleteHighlightComment(commentId: string): Promise<void>;
   /** Like e commenti degli altri in diretta, finché il feed è aperto. */
   subscribeHighlights(onChange: () => void): () => void;
+
+  // Campetto Star
+  /** Il mio salvataggio (null se non ho mai giocato). */
+  loadGame(): Promise<{ state: unknown; updatedAt: string } | null>;
+  saveGame(state: unknown): Promise<void>;
+  /** Le tre classifiche (il record di sempre di ognuno) e i re delle ultime notti. */
+  loadGameBoards(): Promise<{ rows: BoardRow[]; kings: GameKing[] }>;
+  /** Manda un punteggio: torna il mio record (resta il più alto). */
+  submitGameScore(game: MiniGame, score: number): Promise<number>;
+  /** I premi di mezzanotte vinti e non ancora ritirati (una volta sola). */
+  claimGameAwards(): Promise<GameAward[]>;
+}
+
+export interface GameKing {
+  day: string;
+  game: MiniGame;
+  playerId: string;
+  score: number;
 }
 
 export type { Player };

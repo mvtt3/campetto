@@ -193,6 +193,7 @@ export default function SettingsPage() {
             <span className="grid h-[72px] w-16 place-items-end justify-center">
               <Character
                 id={characterOf(me)}
+                outfit={me.outfit}
                 number={me.jerseyNumber}
                 height={72}
               />

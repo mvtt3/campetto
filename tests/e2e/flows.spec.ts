@@ -600,10 +600,10 @@ test("niente selettori del telefono: menu e orologio dell'app", async ({
   await expect(page.getByRole("button", { name: "Formato" })).toContainText(
     "3v3",
   );
-  // L'app parte da ottobre 2026: non si torna più indietro.
-  await expect(
-    page.getByRole("button", { name: "Periodo precedente" }),
-  ).toBeDisabled();
+  // L'app parte da ottobre 2026: si torna indietro fino a lì, non oltre.
+  const prev = page.getByRole("button", { name: "Periodo precedente" });
+  for (let i = 0; i < 12 && (await prev.isEnabled()); i++) await prev.click();
+  await expect(prev).toBeDisabled();
   await page.goto("/organizza?nuova=1");
   await page.getByRole("button", { name: "Altro orario" }).click();
   const dial = page.getByRole("slider", { name: "Ora" });

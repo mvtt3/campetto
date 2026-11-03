@@ -105,6 +105,7 @@ function Podium({ rows }: { rows: Row[] }) {
               {p && (
                 <Character
                   id={characterOf(p)}
+                  outfit={p.outfit}
                   number={p.jerseyNumber}
                   height={place === 1 ? 82 : 68}
                   title={shortName(p, data.players)}

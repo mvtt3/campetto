@@ -29,6 +29,8 @@ import { TutorialProvider } from "@/components/tutorial/tutorial";
 import { Button, Spinner } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { NavProvider } from "@/lib/nav";
+import { gameAllowed } from "@/lib/config";
+import { OutfitsVisible } from "@/components/outfit-layer";
 
 /** Pagine riservate all'amministratore: inserire, importare, segnare dal video, gestire il gruppo. */
 const ADMIN_ONLY = ["/admin", "/nuova", "/importa", "/video"];
@@ -294,6 +296,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <NavProvider>
+      <OutfitsVisible.Provider value={gameAllowed(me)}>
       <HighlightsProvider>
         <TutorialProvider me={me}>
           <div className="mx-auto flex h-dvh max-w-lg flex-col">
@@ -358,6 +361,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </TutorialProvider>
       </HighlightsProvider>
+      </OutfitsVisible.Provider>
     </NavProvider>
   );
 }

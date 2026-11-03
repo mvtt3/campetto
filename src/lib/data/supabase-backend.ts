@@ -291,6 +291,7 @@ export function createSupabaseBackend(): Backend {
       if ("character" in patch) row.character = patch.character;
       if ("showcase" in patch) row.showcase = patch.showcase;
       if ("notifyPrefs" in patch) row.notify_prefs = patch.notifyPrefs;
+      if ("outfit" in patch) row.outfit = patch.outfit;
       fail((await sb.from("players").update(row).eq("id", meId!)).error);
     },
 
@@ -530,6 +531,74 @@ export function createSupabaseBackend(): Backend {
       return () => {
         sb.removeChannel(channel);
       };
+    },
+
+    async loadGame() {
+      if (!meId) return null;
+      const { data, error } = await sb
+        .from("game_saves")
+        .select("state, updated_at")
+        .eq("player_id", meId)
+        .maybeSingle();
+      fail(error);
+      return data ? { state: data.state, updatedAt: data.updated_at } : null;
+    },
+
+    async saveGame(state) {
+      if (!meId) throw new Error(friendly("not authenticated"));
+      fail(
+        (
+          await sb
+            .from("game_saves")
+            .upsert({ player_id: meId, state, updated_at: new Date().toISOString() })
+        ).error,
+      );
+    },
+
+    async loadGameBoards() {
+      const [r, k] = await Promise.all([
+        sb.from("game_scores").select("player_id, game, best, achieved_at"),
+        sb
+          .from("game_awards")
+          .select("day, game, player_id, score")
+          .order("day", { ascending: false })
+          .limit(9),
+      ]);
+      fail(r.error);
+      fail(k.error);
+      return {
+        rows: (r.data ?? []).map((x) => ({
+          game: x.game,
+          playerId: x.player_id,
+          best: x.best,
+          at: x.achieved_at,
+        })),
+        kings: (k.data ?? []).map((x) => ({
+          day: x.day,
+          game: x.game,
+          playerId: x.player_id,
+          score: x.score,
+        })),
+      };
+    },
+
+    async submitGameScore(game, score) {
+      const { data, error } = await sb.rpc("submit_game_score", {
+        p_game: game,
+        p_score: Math.max(0, Math.round(score)),
+      });
+      fail(error);
+      return Number(data ?? score);
+    },
+
+    async claimGameAwards() {
+      const { data, error } = await sb.rpc("claim_game_awards");
+      fail(error);
+      return ((data as { day: string; game: string; score: number }[] | null) ?? []).map((x) => ({
+        day: x.day,
+        game: x.game as never,
+        score: x.score,
+      }));
     },
   };
 }

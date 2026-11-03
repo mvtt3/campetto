@@ -77,6 +77,7 @@ function TeamBlock({
             <span key={l.playerId} className={clsx(l.sub && "opacity-80")}>
               <Character
                 id={characterOf(pl)}
+                outfit={pl.outfit}
                 number={pl.jerseyNumber}
                 height={(ids.length > 3 ? 36 : 42) * (l.sub ? 0.86 : 1)}
               />
@@ -251,6 +252,7 @@ export function MatchSheet({
               <span className="grid w-10 shrink-0 place-items-end justify-center">
                 <Character
                   id={characterOf(mvpPlayer)}
+                  outfit={mvpPlayer.outfit}
                   number={mvpPlayer.jerseyNumber}
                   height={46}
                 />

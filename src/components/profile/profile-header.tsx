@@ -79,6 +79,7 @@ export function ProfileHeader({
           />
           <Character
             id={charId}
+            outfit={player.outfit}
             number={player.jerseyNumber}
             height={104}
             idle
@@ -92,6 +93,7 @@ export function ProfileHeader({
         >
           <Character
             id={charId}
+            outfit={player.outfit}
             number={player.jerseyNumber}
             height={104}
             className="short:h-[84px] short:w-auto"

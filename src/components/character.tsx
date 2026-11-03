@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { useId } from "react";
+import { useContext, useId } from "react";
 import {
   AVATAR_PRESETS,
   Figure,
@@ -18,6 +18,13 @@ import {
   type BadgeState,
 } from "@/lib/badges";
 import type { Player } from "@/lib/types";
+import {
+  OutfitLayer,
+  OutfitsVisible,
+  jerseyOf,
+  shoesOf,
+  type OutfitMap,
+} from "@/components/outfit-layer";
 
 const INK = "#1D1A16";
 const CREAM = "#FFF8EA";
@@ -172,8 +179,11 @@ export function Character({
   back = false,
   backName,
   noBall = false,
+  outfit: outfitProp,
 }: {
   id: AvatarPresetId;
+  /** Quello che indossa in Campetto Star. */
+  outfit?: OutfitMap;
   /** Senza pallone: per gli strati interni della scheda 3D. */
   noBall?: boolean;
   back?: boolean;
@@ -186,7 +196,10 @@ export function Character({
   title?: string;
 }) {
   const uid = useId().replace(/:/g, "");
-  const kit = KIT[id];
+  const outfit = useContext(OutfitsVisible) ? outfitProp : undefined;
+  const jersey = jerseyOf(outfit);
+  const kit = jersey ? { ...KIT[id], ...jersey } : KIT[id];
+  const shoe = shoesOf(outfit) ?? RED;
   const head = HEAD_SHAPE[id];
   const leg = 24 + (kit.legs ?? 0);
   const hip = 147;
@@ -276,7 +289,7 @@ export function Character({
               <g transform={`translate(${x1} ${foot}) scale(${s * 1.32} 1.32)`}>
                 <path
                   d="M-5 -3 Q-5 -7 0 -7 L3 -7 Q10 -5 11 0 L11 3 L-6 3 Z"
-                  fill={RED}
+                  fill={shoe}
                   stroke={INK}
                   strokeWidth="1.8"
                   strokeLinejoin="round"
@@ -509,8 +522,11 @@ export function Character({
             />
           </>
         ) : (
-          /* testa e accessori della figurina */
-          <Figure id={id} uid={`c${uid}`} bust={false} />
+          /* testa e accessori della figurina, più quello che indossa nel gioco */
+          <>
+            <Figure id={id} uid={`c${uid}`} bust={false} />
+            <OutfitLayer head={head} outfit={outfit} full />
+          </>
         )}
       </g>
     </svg>

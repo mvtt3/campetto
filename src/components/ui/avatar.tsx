@@ -96,7 +96,7 @@ export function Avatar({
         }}
       >
         {preset ? (
-          <PresetAvatar id={preset} />
+          <PresetAvatar id={preset} outfit={player.outfit} />
         ) : player.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

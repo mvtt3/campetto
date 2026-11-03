@@ -1,4 +1,11 @@
-import { useId, type ReactNode } from "react";
+import { useContext, useId, type ReactNode } from "react";
+import {
+  JerseyOverride,
+  OutfitLayer,
+  OutfitsVisible,
+  jerseyOf,
+  type OutfitMap,
+} from "@/components/outfit-layer";
 
 /**
  * Sei "figurine" pronte da usare come foto profilo: personaggi a palla nello
@@ -501,14 +508,18 @@ function Sunburst({ bg, rarity = "base" }: { bg: string; rarity?: Rarity }) {
 
 /** Spalle con la canotta. */
 function Jersey({
-  color,
-  trim,
+  color: kitColor,
+  trim: kitTrim,
   wide = false,
 }: {
   color: string;
   trim: string;
   wide?: boolean;
 }) {
+  // La canotta comprata in Campetto Star, se c'è.
+  const over = useContext(JerseyOverride);
+  const color = over?.jersey ?? kitColor;
+  const trim = over?.trim ?? kitTrim;
   const d = wide
     ? "M2 104 Q4 80 26 76 L74 76 Q96 80 98 104 Z"
     : "M12 104 Q14 84 32 80 L68 80 Q86 84 88 104 Z";
@@ -3349,11 +3360,15 @@ export function Figure({
 export function PresetAvatar({
   id,
   title,
+  outfit: outfitProp,
 }: {
   id: AvatarPresetId;
   title?: string;
+  /** Quello che indossa in Campetto Star. */
+  outfit?: OutfitMap;
 }): ReactNode {
   const uid = useId().replace(/:/g, "");
+  const outfit = useContext(OutfitsVisible) ? outfitProp : undefined;
   const p = AVATAR_PRESETS.find((x) => x.id === id)!;
   return (
     <svg
@@ -3365,7 +3380,10 @@ export function PresetAvatar({
     >
       <Sunburst bg={p.bg} rarity={p.rarity} />
       <g transform="translate(50 58) scale(1.16) translate(-50 -58)">
-        <Figure id={id} uid={uid} />
+        <JerseyOverride.Provider value={jerseyOf(outfit)}>
+          <Figure id={id} uid={uid} />
+        </JerseyOverride.Provider>
+        <OutfitLayer head={HEAD_SHAPE[id]} outfit={outfit} />
       </g>
     </svg>
   );

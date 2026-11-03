@@ -42,6 +42,11 @@ export default defineConfig({
       },
     },
     {
+      name: "gioco",
+      testMatch: /game\.spec\.ts/,
+      use: { ...devices["Pixel 7"], viewport: { width: 360, height: 800 } },
+    },
+    {
       name: "salute",
       testMatch: /health\.spec\.ts/,
       use: { ...devices["Pixel 7"], viewport: { width: 360, height: 800 } },

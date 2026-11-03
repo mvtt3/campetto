@@ -112,6 +112,7 @@ export function TeamBoard({ matches }: { matches: Match[] }) {
                 >
                   <Character
                     id={characterOf(p)}
+                    outfit={p.outfit}
                     number={p.jerseyNumber}
                     height={best.ids.length > 2 ? 66 : 76}
                   />

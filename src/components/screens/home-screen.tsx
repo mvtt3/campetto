@@ -21,6 +21,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { CountUp, CourtLines, Ring } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { HighlightsHomeButton, PlayBadge } from "@/components/highlights/entry";
+import { GameHomeButton } from "@/components/game/entry";
+import { gameAllowed } from "@/lib/config";
 import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
@@ -133,7 +135,7 @@ export function HomeScreen() {
               text={false}
               className={clsx(
                 "shrink-0 short:h-10 short:w-10",
-                hl.available && "max-[389px]:hidden",
+                (hl.available || gameAllowed(me)) && "max-[389px]:hidden",
               )}
             />
             <h1 className="min-w-0">
@@ -150,6 +152,7 @@ export function HomeScreen() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <GameHomeButton />
             <HighlightsHomeButton />
             <NewsButton unseen={news.unseen} onOpen={openNews} />
             <Avatar player={me} size={44} />
@@ -332,6 +335,7 @@ export function HomeScreen() {
                     >
                       <Character
                         id={characterOf(mvpPlayer)}
+                        outfit={mvpPlayer.outfit}
                         number={mvpPlayer.jerseyNumber}
                         height={104}
                       />
@@ -410,6 +414,7 @@ export function HomeScreen() {
                     >
                       <Character
                         id={characterOf(lastMvpPlayer)}
+                        outfit={lastMvpPlayer.outfit}
                         number={lastMvpPlayer.jerseyNumber}
                         height={52}
                       />

@@ -39,6 +39,7 @@ export function mapPlayer(r: any): Player {
     archived: r.archived,
     createdAt: r.created_at,
     guest: r.guest ?? false,
+    outfit: (r.outfit as Record<string, string> | null) ?? {},
   };
 }
 

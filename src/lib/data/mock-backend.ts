@@ -15,7 +15,14 @@ import {
   type Match,
   type Player,
 } from "../types";
-import type { AuthState, Backend, PendingUser, PlayerPrivate } from "./backend";
+import type {
+  AuthState,
+  Backend,
+  GameKing,
+  PendingUser,
+  PlayerPrivate,
+} from "./backend";
+import type { BoardRow } from "../game/types";
 import { APP_START } from "../periods";
 
 /**
@@ -33,6 +40,9 @@ interface MockState extends Dataset {
   private: PlayerPrivate[];
   pending: PendingUser[];
   notifications: unknown[];
+  game?: { state: unknown; updatedAt: string } | null;
+  gameScores?: BoardRow[];
+  gameAwards?: (GameKing & { claimed: boolean })[];
 }
 
 // nome, cognome, ruoli, nome scelto nell'app, figurina
@@ -517,6 +527,7 @@ export function createMockBackend(): Backend {
       }
     }
     if (mode === "demo" || mode === "pieno") seedHighlights(state, params);
+    if (mode === "demo" || mode === "pieno") seedGame(state, params);
     // ?nuovo=1: primo accesso, il giocatore deve ancora scegliere nome e figurina
     if (params.get("nuovo") === "1") {
       const meP = state.players.find((p) => p.id === state.meId);
@@ -911,7 +922,67 @@ export function createMockBackend(): Backend {
       socialListeners.add(onChange);
       return () => socialListeners.delete(onChange);
     },
+
+    async loadGame() {
+      return state.game ? structuredClone(state.game) : null;
+    },
+    async saveGame(game) {
+      if (failing("gioco")) throw new Error("Spicchio non riesce a salvare la partita");
+      state.game = { state: structuredClone(game), updatedAt: new Date().toISOString() };
+      localStorage.setItem(KEY, JSON.stringify(state));
+    },
+    async loadGameBoards() {
+      await mockDelay();
+      return structuredClone({
+        rows: state.gameScores ?? [],
+        kings: (state.gameAwards ?? []).map((a) => ({
+          day: a.day,
+          game: a.game,
+          playerId: a.playerId,
+          score: a.score,
+        })),
+      });
+    },
+    async submitGameScore(game, score) {
+      await mockDelay();
+      const rows = (state.gameScores ??= []);
+      const cur = rows.find((r) => r.playerId === state.meId && r.game === game);
+      if (!cur) rows.push({ game, playerId: state.meId, best: score, at: new Date().toISOString() });
+      else if (score > cur.best) Object.assign(cur, { best: score, at: new Date().toISOString() });
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return Math.max(score, cur?.best ?? 0);
+    },
+    async claimGameAwards() {
+      const mine = (state.gameAwards ?? []).filter((a) => a.playerId === state.meId && !a.claimed);
+      for (const a of mine) a.claimed = true;
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return mine.map((a) => ({ day: a.day, game: a.game, score: a.score }));
+    },
   };
+}
+
+/** Le classifiche delle sfide con gli amici già dentro (per le prove e le foto). */
+function seedGame(state: MockState, params: URLSearchParams) {
+  const at = "2026-11-02T18:00:00.000Z";
+  const ids = state.players.filter((p) => p.id !== state.meId).map((p) => p.id);
+  const pick = (i: number) => ids[i % ids.length];
+  state.gameScores = [
+    { game: "triple", playerId: pick(0), best: 19, at },
+    { game: "triple", playerId: pick(1), best: 14, at },
+    { game: "triple", playerId: pick(2), best: 11, at },
+    { game: "liberi", playerId: pick(1), best: 12, at },
+    { game: "liberi", playerId: pick(3), best: 7, at },
+    { game: "schiacciate", playerId: pick(2), best: 41, at },
+    { game: "schiacciate", playerId: pick(0), best: 37, at },
+  ];
+  state.gameAwards = [
+    { day: "2026-11-02", game: "triple", playerId: pick(0), score: 19, claimed: false },
+    { day: "2026-11-02", game: "liberi", playerId: pick(1), score: 12, claimed: false },
+    { day: "2026-11-02", game: "schiacciate", playerId: pick(2), score: 41, claimed: false },
+  ];
+  // ?re=1: io sono il re di ieri in tutte e tre (per provare premio e corona).
+  if (params.get("re") === "1")
+    for (const a of state.gameAwards) a.playerId = state.meId;
 }
 
 /** Le prove scelte nell'indirizzo d'apertura: valgono finché l'app resta aperta. */
