@@ -22,7 +22,7 @@ drop policy if exists game_saves_update on public.game_saves;
 create policy game_saves_update on public.game_saves for update to authenticated
   using (player_id = public.current_player_id())
   with check (player_id = public.current_player_id());
-revoke all on public.game_saves from anon;
+revoke all on public.game_saves from anon, authenticated;
 grant select, insert, update on public.game_saves to authenticated;
 
 create table if not exists public.game_scores (
