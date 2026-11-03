@@ -6,21 +6,13 @@ import { Character } from "@/components/character";
 import { Button } from "@/components/ui/basics";
 import { play } from "@/lib/sound";
 import { DAY_NAMES, LEVELS, dow, fmtEuro, teamStrength } from "@/lib/game/economy";
+import { AttackAction, DefenseAction } from "./action";
 import {
   DIFF,
-  SHOTS,
-  ZONE_CENTER,
   coachRel,
   commentary,
-  defenseResult,
   finishMatch,
-  judgeRing,
-  judgeShot,
-  passResult,
   planMatch,
-  ringWindow,
-  shotResult,
-  shotZone,
   shouldBench,
   simulateMoments,
   type MatchOutcome,
@@ -30,8 +22,7 @@ import {
 import { applyMatch, SKILL_NAMES } from "@/lib/game/state";
 import { unreadCount } from "@/lib/game/messages";
 import type { Difficulty, GameState, Skill } from "@/lib/game/types";
-import { HoldButton, MeterBar, RingTarget, useHoldMeter, useRing, useShotFlight } from "./meters";
-import { Ball, CourtScene, Dot, Hoop } from "./scene";
+import { CourtScene } from "./scene";
 import { useGame } from "./store";
 import { Tip } from "./ui";
 
@@ -253,11 +244,10 @@ function LiveMatch({
   onEnd: (r: MomentResult[]) => void;
 }) {
   const [results, setResults] = useState<MomentResult[]>([]);
-  const [mode, setMode] = useState<"choose" | "pass" | "defense" | "feedback" | "bench">(() =>
+  const [mode, setMode] = useState<"choose" | "defense" | "feedback" | "bench">(() =>
     plan.moments[0].kind === "difesa" ? "defense" : "choose",
   );
   const [fb, setFb] = useState<Feedback | null>(null);
-  const [flash, setFlash] = useState<"verde" | "buono" | "fuori" | null>(null);
   const i = results.length;
   // Durante il resoconto si vede ancora il momento appena giocato.
   const cur = Math.min(mode === "feedback" ? i - 1 : i, plan.moments.length - 1);
@@ -278,7 +268,6 @@ function LiveMatch({
   const next = useCallback(
     (all: MomentResult[]) => {
       setFb(null);
-      setFlash(null);
       if (all.length >= plan.moments.length) {
         onEnd(all);
         return;
@@ -376,18 +365,34 @@ function LiveMatch({
               <p className="mt-2 text-[15px]">Troppi errori di fila: il coach ti fa sedere per il resto della partita.</p>
             </div>
           </div>
-        ) : m.kind === "attacco" && (mode === "choose" || (mode === "feedback" && results.at(-1)?.kind === "tiro")) ? (
-          <ShotPlay key={cur} game={game} diff={diff} shot={m.shot} open={m.open} flash={flash} onShot={(r, out) => {
-            setFlash(out);
-            record(r);
-          }} onPass={() => setMode("pass")} disabled={mode !== "choose"} />
-        ) : m.kind === "attacco" && (mode === "pass" || mode === "feedback") ? (
-          <PassPlay key={`p${cur}`} seed={cur} game={game} diff={diff} size={plan.size} done={mode === "feedback"} onPass={(hit) => record(passResult(game, m.shot, m.open, hit, Math.random))} />
-        ) : m.kind === "difesa" ? (
-          <DefensePlay key={`d${cur}`} game={game} diff={diff} action={m.action} done={mode === "feedback"} onDone={(hit) => record(defenseResult(m.action, hit, Math.random))} />
-        ) : null}
+        ) : m.kind === "attacco" ? (
+          <AttackAction
+            key={`a${cur}`}
+            seed={cur}
+            game={game}
+            diff={diff}
+            size={plan.size}
+            opponent={plan.opponent}
+            shot={m.shot}
+            open={m.open}
+            locked={mode === "feedback"}
+            onResult={record}
+          />
+        ) : (
+          <DefenseAction
+            key={`d${cur}`}
+            seed={cur}
+            game={game}
+            diff={diff}
+            size={plan.size}
+            opponent={plan.opponent}
+            action={m.action}
+            locked={mode === "feedback"}
+            onResult={record}
+          />
+        )}
         {fb && (
-          <div className="pointer-events-none absolute inset-x-0 top-[38%] flex flex-col items-center px-4 text-center">
+          <div className="pointer-events-none absolute inset-x-0 top-[34%] z-[300] flex flex-col items-center px-4 text-center">
             <p
               className={clsx("display game-pop text-[46px] leading-none", fb.good ? "text-volt" : "text-white")}
               style={{ WebkitTextStroke: "2px #1d1a16", textShadow: "3px 3px 0 #1d1a16" }}
@@ -407,202 +412,6 @@ function LiveMatch({
     </div>
   );
 }
-
-function ShotPlay({
-  game,
-  diff,
-  shot,
-  open,
-  flash,
-  onShot,
-  onPass,
-  disabled,
-}: {
-  game: GameState;
-  diff: Difficulty;
-  shot: keyof typeof SHOTS;
-  open: boolean;
-  flash: "verde" | "buono" | "fuori" | null;
-  onShot: (r: MomentResult, out: "verde" | "buono" | "fuori") => void;
-  onPass: () => void;
-  disabled: boolean;
-}) {
-  const zone = shotZone(game, diff, shot, open);
-  const { ball, fly } = useShotFlight();
-  const [swish, setSwish] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const meter = useHoldMeter({
-    sweep: DIFF[diff].sweep,
-    disabled: disabled || busy,
-    onRelease: (pos) => {
-      setBusy(true);
-      const j = judgeShot(pos, zone, game.skills.tiro, Math.random);
-      play("whoosh");
-      void fly(j.made, j.outcome).then(() => {
-        if (j.made) {
-          setSwish(true);
-          play("swish");
-        } else play(j.outcome === "fuori" ? "board" : "rim");
-        onShot(shotResult(shot, j), j.outcome);
-      });
-    },
-  });
-  return (
-    <div className="absolute inset-0 flex flex-col">
-      <div className="flex justify-center pt-3">
-        <Hoop swish={swish} />
-      </div>
-      <div className="relative flex-1">
-        <div ref={ball} className="absolute bottom-[96px] left-1/2 -ml-[22px]">
-          <Ball />
-        </div>
-        <div className="absolute right-3 top-0">
-          <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={170} flash={flash} />
-        </div>
-        <p className="absolute left-3 top-0 rounded-full bg-[#1d1a16]/55 px-2.5 py-1 text-[12.5px] font-bold text-white">
-          {SHOTS[shot].label} · {SHOTS[shot].pts} punti
-        </p>
-      </div>
-      <div className="flex gap-2 p-3">
-        <button
-          type="button"
-          onClick={onPass}
-          disabled={disabled || busy || meter.holding}
-          className="press sticker display h-20 w-[34%] rounded-full bg-surface text-[21px] disabled:opacity-40"
-        >
-          Passa
-        </button>
-        <HoldButton handlers={meter.handlers} holding={meter.holding} disabled={disabled || busy} className="flex-1">
-          {meter.holding ? "Lascia!" : "Tira"}
-        </HoldButton>
-      </div>
-    </div>
-  );
-}
-
-function PassPlay({
-  seed,
-  game,
-  diff,
-  size,
-  done,
-  onPass,
-}: {
-  seed: number;
-  game: GameState;
-  diff: Difficulty;
-  size: 3 | 5;
-  done: boolean;
-  onPass: (hit: "perfetto" | "buono" | "fuori") => void;
-}) {
-  const win = ringWindow(game, diff, "passaggio");
-  const mates = useMemo(() => {
-    const nums = [4, 7, 11, 15, 23, 33, 8, 21, 6, 13];
-    return Array.from({ length: size - 1 }, (_, k) => nums[(k * 3 + game.day) % nums.length]);
-  }, [size, game.day]);
-  // Il compagno libero cambia da un'azione all'altra.
-  const target = (seed * 7 + game.day * 3) % mates.length;
-  const { ring, tap } = useRing({
-    ms: DIFF[diff].ringMs,
-    onDone: (p) => {
-      const hit = judgeRing(p, win);
-      play(hit === "fuori" ? "error" : "swish");
-      onPass(hit);
-    },
-  });
-  return (
-    <div className="absolute inset-0 flex flex-col">
-      <p className="px-4 pt-3 text-center text-[14px] font-semibold text-white">Tocca quando il cerchio si chiude sul compagno libero</p>
-      <div className="relative flex flex-1 items-center justify-around px-2">
-        {mates.map((n, k) =>
-          k === target ? (
-            <RingTarget key={k} ring={ring} win={win} size={78}>
-              <Dot n={n} tone="us" size={70} label="Compagno libero" />
-            </RingTarget>
-          ) : (
-            <div key={k} className="flex flex-col items-center gap-1 opacity-80">
-              <Dot n={n} tone="us" size={48} />
-              <Dot n="×" tone="them" size={30} label="Marcato" />
-            </div>
-          ),
-        )}
-      </div>
-      <div className="p-3">
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            tap();
-          }}
-          disabled={done}
-          className="press sticker display h-20 w-full touch-none rounded-full bg-volt text-[28px] text-volt-ink disabled:opacity-40"
-        >
-          Passa ora
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DefensePlay({
-  game,
-  diff,
-  action,
-  done,
-  onDone,
-}: {
-  game: GameState;
-  diff: Difficulty;
-  action: "rubata" | "stoppata";
-  done: boolean;
-  onDone: (hit: "perfetto" | "buono" | "fuori") => void;
-}) {
-  const skill: Skill = action === "rubata" ? "difesa" : "fisico";
-  const win = ringWindow(game, diff, skill);
-  const { ring, tap } = useRing({
-    ms: DIFF[diff].ringMs * (action === "stoppata" ? 0.9 : 1),
-    onDone: (p) => {
-      const hit = judgeRing(p, win);
-      play(hit === "fuori" ? "error" : action === "stoppata" ? "board" : "bounce");
-      onDone(hit);
-    },
-  });
-  return (
-    <div className="absolute inset-0 flex flex-col">
-      {action === "stoppata" && (
-        <div className="flex justify-center pt-3 opacity-90">
-          <Hoop className="w-[110px]" />
-        </div>
-      )}
-      <p className="px-4 pt-3 text-center text-[14px] font-semibold text-white">
-        {action === "rubata" ? "Tocca quando il cerchio si chiude sul pallone" : "Salta quando il cerchio si chiude: stoppata!"}
-      </p>
-      <div className="grid flex-1 place-items-center">
-        <RingTarget ring={ring} win={win} size={96} tone="danger">
-          <div className="relative grid place-items-center">
-            <Dot n={pickNumber(game.day)} tone="them" size={74} label="Avversario col pallone" />
-            <Ball size={30} className="absolute -bottom-2 -right-3" />
-          </div>
-        </RingTarget>
-      </div>
-      <div className="p-3">
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            tap();
-          }}
-          disabled={done}
-          className="press sticker display h-20 w-full touch-none rounded-full bg-danger text-[28px] text-white disabled:opacity-40"
-        >
-          {action === "rubata" ? "Ruba!" : "Stoppa!"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-const pickNumber = (d: number) => [3, 9, 12, 24, 30, 0, 5][d % 7];
 
 /** Simula: la cronaca scorre veloce, momento per momento. */
 function SimMatch({

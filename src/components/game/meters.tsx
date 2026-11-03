@@ -167,10 +167,13 @@ export function useRing({
   ms,
   onDone,
   delay = 450,
+  active = true,
 }: {
   ms: number;
   onDone: (p: number | null) => void;
   delay?: number;
+  /** Finché è false il cerchio aspetta (non parte il tempo). */
+  active?: boolean;
 }) {
   const ring = useRef<HTMLDivElement>(null);
   const t0 = useRef<number | null>(null);
@@ -182,6 +185,7 @@ export function useRing({
   }, [onDone]);
 
   useEffect(() => {
+    if (!active) return;
     done.current = false;
     const startAt = performance.now() + delay;
     const loop = () => {
@@ -209,17 +213,17 @@ export function useRing({
       cancelAnimationFrame(raf.current);
       t0.current = null;
     };
-  }, [ms, delay]);
+  }, [ms, delay, active]);
 
   const tap = useCallback(() => {
-    if (done.current) return;
+    if (done.current || !active) return;
     if (t0.current === null) return; // ancora in partenza: il tocco non conta
     done.current = true;
     cancelAnimationFrame(raf.current);
     const p = (performance.now() - t0.current) / ms;
     haptic(10);
     cb.current(Math.min(1, p));
-  }, [ms]);
+  }, [ms, active]);
 
   return { ring, tap };
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import clsx from "clsx";
 import { BookOpen, ChevronLeft, Gift, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -19,9 +18,9 @@ import type { Player } from "@/lib/types";
 import { Career, DailySheet, Guide, Wardrobe } from "./extra";
 import { Hub } from "./hub";
 import { MatchScreen } from "./match-screen";
-import { HoldButton, MeterBar, useHoldMeter, useShotFlight } from "./meters";
+import { SoloShot } from "./action";
 import { Phone } from "./phone";
-import { Ball, CourtScene, Hoop } from "./scene";
+import { CourtScene } from "./scene";
 import { Sfide } from "./sfide";
 import { GameProvider, useGame } from "./store";
 import { Tip, ToastProvider, clockNow, useToast, useToday } from "./ui";
@@ -282,47 +281,13 @@ function Intro({ onStart, onSkip, onExit }: { onStart: () => void; onSkip: () =>
   );
 }
 
-/** Il primo tiro, con Spicchio che spiega. */
+/** Il primo tiro, con Spicchio che spiega: il tuo personaggio da solo in campo. */
 function Practice({ onDone }: { onDone: () => void }) {
   const { game } = useGame();
   const zone = shotZone({ ...game, energy: 100 }, "facile", "media", true);
   const [tries, setTries] = useState(0);
-  const [msg, setMsg] = useState("Tieni premuto Tira: la barra sale. Lascia quando è sul verde.");
-  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("Tieni premuto Tira: il tuo personaggio carica e la barra sale. Lascia quando è sul verde.");
   const [ok, setOk] = useState(false);
-  const [flash, setFlash] = useState<"verde" | "buono" | "fuori" | null>(null);
-  const { ball, fly, reset } = useShotFlight();
-  const meter = useHoldMeter({
-    sweep: DIFF.facile.sweep,
-    disabled: busy || ok,
-    onRelease: (pos) => {
-      primeAudio();
-      const j = judgeShot(pos, zone, game.skills.tiro, Math.random);
-      setFlash(j.outcome);
-      setBusy(true);
-      void fly(j.made, j.outcome).then(() => {
-        play(j.made ? "swish" : "rim");
-        const n = tries + 1;
-        setTries(n);
-        if (j.made || n >= 4) {
-          setOk(true);
-          setMsg(
-            j.outcome === "verde"
-              ? "Verde perfetto! Sul verde entra quasi sempre."
-              : j.made
-                ? "Dentro! Sul verde pieno entra quasi sempre."
-                : "Ci vuole un po' di mano: in partita il verde è lì che ti aspetta.",
-          );
-        } else {
-          setMsg(pos < ZONE_CENTER ? "Troppo presto: aspetta che la barra arrivi al verde" : "Troppo tardi: lascia appena tocca il verde");
-          reset();
-          meter.reset();
-          setFlash(null);
-          setBusy(false);
-        }
-      });
-    },
-  });
   return (
     <div className="flex min-h-0 flex-1 flex-col px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(14px,env(safe-area-inset-top))]">
       <p className="display text-[26px]">Il tiro</p>
@@ -333,20 +298,31 @@ function Practice({ onDone }: { onDone: () => void }) {
         </p>
       </div>
       <CourtScene className="min-h-0 flex-1">
-        <div className="flex justify-center pt-3">
-          <Hoop />
-        </div>
-        <div ref={ball} className="absolute bottom-[110px] left-1/2 -ml-[22px]">
-          <Ball />
-        </div>
-        <div className="absolute right-3 top-14">
-          <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={190} flash={flash} />
-        </div>
-        <div className={clsx("absolute inset-x-3 bottom-3", ok && "hidden")}>
-          <HoldButton handlers={meter.handlers} holding={meter.holding} disabled={busy} className="w-full">
-            {meter.holding ? "Lascia!" : "Tira"}
-          </HoldButton>
-        </div>
+        <SoloShot
+          spot={{ x: 42, y: 84 }}
+          sweep={DIFF.facile.sweep}
+          zone={zone}
+          disabled={ok}
+          label="Dalla media · prova"
+          judge={(pos) => {
+            primeAudio();
+            return judgeShot(pos, zone, game.skills.tiro, Math.random);
+          }}
+          onShot={(j) => {
+            const n = tries + 1;
+            setTries(n);
+            if (j.made || n >= 4) {
+              setOk(true);
+              setMsg(
+                j.outcome === "verde"
+                  ? "Verde perfetto! Sul verde entra quasi sempre."
+                  : j.made
+                    ? "Dentro! Sul verde pieno entra quasi sempre."
+                    : "Ci vuole un po' di mano: in partita il verde è lì che ti aspetta.",
+              );
+            } else setMsg(j.pos < ZONE_CENTER ? "Troppo presto: aspetta che la barra arrivi al verde" : "Troppo tardi: lascia appena tocca il verde");
+          }}
+        />
       </CourtScene>
       {ok && (
         <Button variant="primary" size="lg" block className="mt-3 !h-16" onClick={onDone} data-testid="practice-done">

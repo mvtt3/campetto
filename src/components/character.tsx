@@ -161,6 +161,30 @@ export function nextCharacter(
   return best;
 }
 
+export type Pose = "dribble" | "up" | "defend";
+
+const POSE_ARMS: Record<Exclude<Pose, "dribble">, { l: string; lh: [number, number]; r: string; rh: [number, number] }> = {
+  up: { l: "M27 80 Q12 64 15 38", lh: [15, 34], r: "M73 80 Q88 64 85 38", rh: [85, 34] },
+  defend: { l: "M26 81 Q10 86 4 73", lh: [3, 70], r: "M74 81 Q90 86 96 73", rh: [97, 70] },
+};
+
+function PoseArms({ pose, arm }: { pose: Exclude<Pose, "dribble">; arm: number }) {
+  const a = POSE_ARMS[pose];
+  return (
+    <>
+      {[
+        [a.l, a.lh],
+        [a.r, a.rh],
+      ].map(([d, h], k) => (
+        <g key={k}>
+          <path d={d as string} fill="none" stroke={INK} strokeWidth={arm} strokeLinecap="round" />
+          <circle cx={(h as number[])[0]} cy={(h as number[])[1]} r="7.4" fill={CREAM} stroke={INK} strokeWidth="2.4" />
+        </g>
+      ))}
+    </>
+  );
+}
+
 /**
  * Il personaggino a figura intera, nello stile di Spicchio: testa a palla con i
  * suoi accessori, canotta col numero, pantaloncini, gambe "a tubo" belle piene e
@@ -180,7 +204,13 @@ export function Character({
   backName,
   noBall = false,
   outfit: outfitProp,
+  pose = "dribble",
+  kit: kitProp,
 }: {
+  /** dribble: palleggia; up: braccia in alto (tiro, stoppata, festa); defend: braccia larghe. */
+  pose?: Pose;
+  /** Un'altra divisa (compagni e avversari nelle azioni del gioco). */
+  kit?: { jersey: string; trim: string };
   id: AvatarPresetId;
   /** Quello che indossa in Campetto Star. */
   outfit?: OutfitMap;
@@ -197,7 +227,7 @@ export function Character({
 }) {
   const uid = useId().replace(/:/g, "");
   const outfit = useContext(OutfitsVisible) ? outfitProp : undefined;
-  const jersey = jerseyOf(outfit);
+  const jersey = kitProp ?? jerseyOf(outfit);
   const kit = jersey ? { ...KIT[id], ...jersey } : KIT[id];
   const shoe = shoesOf(outfit) ?? RED;
   const head = HEAD_SHAPE[id];
@@ -312,84 +342,91 @@ export function Character({
               </g>
             </g>
           ))}
+          {pose === "dribble" ? (
+            <>
           {/* braccia: una lungo il fianco, l'altra che palleggia */}
-          <path
-            d="M26 81 Q12.5 100 15.5 118"
-            fill="none"
-            stroke={INK}
-            strokeWidth={arm}
-            strokeLinecap="round"
-          />
-          <path
-            d="M23.8 84 Q12.4 100 13.6 112"
-            fill="none"
-            stroke="#fff"
-            strokeOpacity="0.15"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-          />
-          <circle
-            cx="15.5"
-            cy="120.5"
-            r="7.4"
-            fill={CREAM}
-            stroke={INK}
-            strokeWidth="2.4"
-          />
-          <path
-            d="M10.6 116 Q15.5 113.6 20.4 116"
-            fill="none"
-            stroke={INK}
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-          <path
-            d="M74 81 Q88.5 92 88.5 107"
-            fill="none"
-            stroke={INK}
-            strokeWidth={arm}
-            strokeLinecap="round"
-          />
-          <path
-            d="M75.4 85.4 Q86 93 86.6 103"
-            fill="none"
-            stroke="#fff"
-            strokeOpacity="0.15"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-          />
-          <g className="character-ball" display={noBall ? "none" : undefined}>
-            <circle
-              cx="89"
-              cy="130"
-              r="9.6"
-              fill="#F26A1B"
+            <path
+              d="M26 81 Q12.5 100 15.5 118"
+              fill="none"
               stroke={INK}
+              strokeWidth={arm}
+              strokeLinecap="round"
+            />
+            <path
+              d="M23.8 84 Q12.4 100 13.6 112"
+              fill="none"
+              stroke="#fff"
+              strokeOpacity="0.15"
               strokeWidth="2.2"
+              strokeLinecap="round"
+            />
+            <circle
+              cx="15.5"
+              cy="120.5"
+              r="7.4"
+              fill={CREAM}
+              stroke={INK}
+              strokeWidth="2.4"
             />
             <path
-              d="M89 120.4 V139.6 M79.4 130 H98.6 M82.6 123.2 Q87 130 82.6 136.8 M95.4 123.2 Q91 130 95.4 136.8"
+              d="M10.6 116 Q15.5 113.6 20.4 116"
               fill="none"
               stroke={INK}
-              strokeWidth="1.3"
-            />
-            <path
-              d="M83.4 125 Q85 122.6 88 122"
-              fill="none"
-              stroke={CREAM}
               strokeWidth="1.6"
               strokeLinecap="round"
-              opacity="0.8"
             />
-          </g>
-          <circle
-            cx="88.4"
-            cy="110"
-            r="7.4"
-            fill={CREAM}
-            stroke={INK}
-            strokeWidth="2.4"
-          />
+            <path
+              d="M74 81 Q88.5 92 88.5 107"
+              fill="none"
+              stroke={INK}
+              strokeWidth={arm}
+              strokeLinecap="round"
+            />
+            <path
+              d="M75.4 85.4 Q86 93 86.6 103"
+              fill="none"
+              stroke="#fff"
+              strokeOpacity="0.15"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+            />
+            <g className="character-ball" display={noBall ? "none" : undefined}>
+              <circle
+                cx="89"
+                cy="130"
+                r="9.6"
+                fill="#F26A1B"
+                stroke={INK}
+                strokeWidth="2.2"
+              />
+              <path
+                d="M89 120.4 V139.6 M79.4 130 H98.6 M82.6 123.2 Q87 130 82.6 136.8 M95.4 123.2 Q91 130 95.4 136.8"
+                fill="none"
+                stroke={INK}
+                strokeWidth="1.3"
+              />
+              <path
+                d="M83.4 125 Q85 122.6 88 122"
+                fill="none"
+                stroke={CREAM}
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+            </g>
+            <circle
+              cx="88.4"
+              cy="110"
+              r="7.4"
+              fill={CREAM}
+              stroke={INK}
+              strokeWidth="2.4"
+            />
+            </>
+          ) : (
+            /* braccia in posa: in alto (tiro, stoppata, festa) o larghe (difesa) */
+            <PoseArms pose={pose} arm={arm} />
+          )}
           {/* pantaloncini */}
           <path
             d={pants}
@@ -525,7 +562,7 @@ export function Character({
           /* testa e accessori della figurina, più quello che indossa nel gioco */
           <>
             <Figure id={id} uid={`c${uid}`} bust={false} />
-            <OutfitLayer head={head} outfit={outfit} full />
+            <OutfitLayer head={head} outfit={outfit} full={pose === "dribble"} />
           </>
         )}
       </g>
