@@ -285,6 +285,26 @@ test("proposta Indoor: la via della palestra, che si apre nelle mappe", async ({
   await expect(page.getByLabel("Via della palestra")).toHaveValue("Via Torino 12, Nichelino");
 });
 
+test("la nota lunga di chi propone si apre con la freccetta", async ({ page }) => {
+  await openApp(page);
+  await page.goto("/organizza?nuova=1");
+  await page.getByRole("button", { name: "Domani" }).click();
+  await page.getByRole("button", { name: "18:00" }).click();
+  await page.getByRole("tab", { name: "Indoor" }).click();
+  const nota = "50 euro il campo, si divide tra chi viene. Portate le scarpe pulite per la palestra";
+  await page.getByLabel("Nota").fill(nota);
+  await page.getByRole("button", { name: "Proponi", exact: true }).click();
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
+  const line = card.getByTestId("proposal-note");
+  await expect(line).toHaveAttribute("aria-expanded", "false");
+  await line.click();
+  await expect(line).toHaveAttribute("aria-expanded", "true");
+  await expect(line).toContainText(nota);
+  // Aperta, la nota si legge tutta: niente puntini.
+  const cut = await line.locator("span").first().evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(cut).toBe(false);
+});
+
 test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
   page,
 }) => {

@@ -2,7 +2,7 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import { ArrowUpRight, ChevronRight, CircleCheck, MapPin, Repeat2, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronRight, CircleCheck, MapPin, Repeat2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -121,6 +121,7 @@ export function ProposalCard({
   const toast = useToast();
   const now = useNow();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const byId = new Map(data.players.map((p) => [p.id, p]));
   const yes = proposal.responses
     .filter((r) => r.response === "si")
@@ -296,23 +297,56 @@ export function ProposalCard({
               </a>
             </p>
           ) : (
-            <p
-              className={clsx(
-                "mt-0.5 truncate text-[13px] text-muted",
-                // Nella Home, sui telefoni non alti, la riga in più toglieva spazio all'ultima partita.
-                compact && "[@media(max-height:820px)]:hidden",
-              )}
-            >
-              {!compact && proposal.place && (
-                <>
-                  <PlaceTag place={proposal.place} />
-                  {" · "}
-                </>
-              )}
-              {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
-              {shortName(creator, data.players)}
-              {proposal.note ? `. ${proposal.note}` : ""}
-            </p>
+            !compact && proposal.note ? (
+              // Con la nota: la riga si apre con la freccetta, così si legge tutta.
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  haptic(5);
+                  setNoteOpen((o) => !o);
+                }}
+                aria-expanded={noteOpen}
+                aria-label={noteOpen ? "Chiudi la nota" : "Leggi tutta la nota"}
+                className="mt-0.5 flex w-full min-w-0 items-start gap-1 text-left text-[13px] text-muted"
+                data-testid="proposal-note"
+              >
+                <span className={clsx("min-w-0 flex-1", noteOpen ? "whitespace-pre-wrap break-words" : "truncate")}>
+                  {proposal.place && (
+                    <>
+                      <PlaceTag place={proposal.place} />
+                      {" · "}
+                    </>
+                  )}
+                  {proposal.format ? `${proposal.format}, ` : ""}proposta da {shortName(creator, data.players)}
+                  {". "}
+                  <span className={clsx(noteOpen && "font-semibold text-text")}>{proposal.note}</span>
+                </span>
+                <ChevronDown
+                  size={15}
+                  className={clsx("mt-0.5 shrink-0 text-faint transition-transform duration-200", noteOpen && "rotate-180")}
+                  aria-hidden
+                />
+              </button>
+            ) : (
+              <p
+                className={clsx(
+                  "mt-0.5 truncate text-[13px] text-muted",
+                  // Nella Home, sui telefoni non alti, la riga in più toglieva spazio all'ultima partita.
+                  compact && "[@media(max-height:820px)]:hidden",
+                )}
+              >
+                {!compact && proposal.place && (
+                  <>
+                    <PlaceTag place={proposal.place} />
+                    {" · "}
+                  </>
+                )}
+                {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
+                {shortName(creator, data.players)}
+                {proposal.note ? `. ${proposal.note}` : ""}
+              </p>
+            )
           )}
         </div>
         <WeatherChip at={proposal.startsAt} className="shrink-0" />
