@@ -24,11 +24,10 @@ import {
   judgeShot,
   planMatch,
   shotZone,
-  shouldBench,
-  simulateMoments,
   type MomentResult,
 } from "@/lib/game/match";
 import { answer, deliver, girlfriend, mood } from "@/lib/game/messages";
+import { applyMoment, nextStep, rosters, simulateMatch, startLive } from "@/lib/game/live";
 import { dunkScore, DUNKS, liberiZone, tripleValue } from "@/lib/game/minigames";
 import {
   acceptOffer,
@@ -55,8 +54,7 @@ function step(s: GameState, rng = seeded(7)): GameState {
   let st = s;
   const t = todayMatch(st);
   if (t && !t.match.result) {
-    const plan = planMatch(st, t.match, "normale", rng);
-    st = applyMatch(st, t.index, finishMatch(st, plan, simulateMoments(st, plan, "normale", rng), "normale", true, rng), NOW, rng);
+    st = applyMatch(st, t.index, simulateMatch(st, t.match, "normale", "Tu", rng).outcome, NOW, rng);
   }
   return canAdvance(st) ? advanceDay(st, t ? { kind: "partita" } : { kind: "riposo" }, rng).s : st;
 }
@@ -67,9 +65,7 @@ function playSeason(s: GameState, rng = seeded(7)): GameState {
   for (let guard = 0; guard < 400 && st.season.matches.some((m) => !m.result); guard++) {
     const t = todayMatch(st);
     if (t && !t.match.result) {
-      const plan = planMatch(st, t.match, "normale", rng);
-      const res = simulateMoments(st, plan, "normale", rng);
-      st = applyMatch(st, t.index, finishMatch(st, plan, res, "normale", true, rng), NOW, rng);
+      st = applyMatch(st, t.index, simulateMatch(st, t.match, "normale", "Tu", rng).outcome, NOW, rng);
     }
     if (canAdvance(st)) st = advanceDay(st, t ? { kind: "partita" } : { kind: "riposo" }, rng).s;
   }
@@ -158,31 +154,69 @@ describe("Partita", () => {
     expect(tired.moments.length).toBeLessThan(p.moments.length);
   });
 
-  it("3 contro 3 ai 21: chi vince arriva a 21, i tuoi punti stanno nel punteggio", () => {
+  it("3 contro 3 ai 21: si gioca fino a 21, i tuoi punti stanno nel punteggio", () => {
     const s = fresh();
     for (let i = 0; i < 60; i++) {
-      const rng = seeded(i);
-      const plan = planMatch(s, s.season.matches[0], "normale", rng);
-      const res = simulateMoments(s, plan, "normale", rng);
-      const o = finishMatch(s, plan, res, "normale", false, rng);
-      expect(Math.max(o.result.us, o.result.them)).toBe(21);
+      const { st, outcome: o, results } = simulateMatch(s, s.season.matches[0], "normale", "Tu", seeded(i));
+      expect(Math.max(o.result.us, o.result.them)).toBeGreaterThanOrEqual(21);
+      expect(Math.max(o.result.us, o.result.them)).toBeLessThanOrEqual(23);
       expect(Math.min(o.result.us, o.result.them)).toBeLessThanOrEqual(20);
       expect(o.result.pts).toBeLessThanOrEqual(o.result.us);
       expect(o.result.rating).toBeGreaterThanOrEqual(4);
       expect(o.result.rating).toBeLessThanOrEqual(10);
-      expect(o.money).toBe(o.result.us > o.result.them ? LEVELS.campetto.win : 0);
+      expect(o.money).toBe(o.result.us > o.result.them ? LEVELS.campetto.win / 2 : 0);
+      // La cronaca racconta tutto: l'ultima riga è il risultato finale.
+      expect(st.feed.at(-1)!.kind).toBe("end");
+      expect(results.length).toBeGreaterThanOrEqual(3);
     }
   });
 
-  it("in 5 contro 5 niente pareggi", () => {
+  it("5 contro 5: quattro quarti, niente pareggi, punteggi da basket", () => {
     const s = { ...fresh(), contract: { team: "Roma Supplì", level: "b" as const, salary: 1000 } };
     for (let i = 0; i < 40; i++) {
-      const rng = seeded(100 + i);
-      const plan = planMatch(s, { opponent: "Bari Orecchiette", home: true }, "difficile", rng);
-      const o = finishMatch(s, plan, simulateMoments(s, plan, "difficile", rng), "difficile", true, rng);
+      const { st, outcome: o } = simulateMatch(s, { opponent: "Bari Orecchiette", home: true }, "difficile", "Tu", seeded(100 + i));
       expect(o.result.us).not.toBe(o.result.them);
-      expect(o.result.us).toBeGreaterThan(40);
+      expect(o.result.us + o.result.them).toBeGreaterThan(80);
+      expect(st.period).toBeGreaterThanOrEqual(4);
+      expect(st.feed.filter((l) => l.kind === "period").length).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it("le tue giocate cambiano la partita: chi segna sempre vince quasi sempre", () => {
+    const s = fresh();
+    let wonAll = 0;
+    let wonNone = 0;
+    for (let i = 0; i < 80; i++) {
+      for (const good of [true, false]) {
+        const rng = seeded(500 + i);
+        const plan = planMatch(s, s.season.matches[0], "normale", rng);
+        const names = rosters(s, "Tu", plan.opponent, plan.size);
+        let st = startLive(plan, rng);
+        const results: MomentResult[] = [];
+        for (let g = 0; g < 400 && !st.over; g++) {
+          const n = nextStep(st, plan, names, rng);
+          st = n.st;
+          if (n.step.kind === "moment") {
+            const m = n.step.moment;
+            const r: MomentResult =
+              m.kind === "attacco"
+                ? { kind: "tiro", shot: m.shot, outcome: good ? "verde" : "fuori", made: good, pts: good ? (m.shot === "tripla" ? 3 : 2) : 0 }
+                : { kind: "difesa", action: m.action, ok: good, perfect: good, fastBreak: false };
+            results.push(r);
+            st = applyMoment(st, plan, names, r, rng);
+          }
+        }
+        if (st.us > st.them) {
+          if (good) wonAll++;
+          else wonNone++;
+        }
+        // Chi sbaglia tutto finisce in panchina, chi segna sempre riceve più palloni.
+        if (!good) expect(st.benched || results.length <= plan.moments.length).toBe(true);
+        else expect(results.length).toBeGreaterThanOrEqual(Math.min(plan.moments.length - 1, 4));
+      }
+    }
+    expect(wonAll).toBeGreaterThan(60);
+    expect(wonNone).toBeLessThan(25);
   });
 
   it("simulare vale metà premio e niente gettone", () => {
@@ -194,9 +228,9 @@ describe("Partita", () => {
         ? { kind: "tiro", shot: m.shot, outcome: "verde", made: true, pts: m.shot === "tripla" ? 3 : 2 }
         : { kind: "difesa", action: m.action, ok: true, perfect: true, fastBreak: false },
     );
-    const played = finishMatch(s, plan, allIn, "difficile", false, seeded(1));
-    const sim = finishMatch(s, plan, allIn, "difficile", true, seeded(1));
-    expect(played.result.us).toBeGreaterThan(played.result.them);
+    const score = { us: 21, them: 14 };
+    const played = finishMatch(s, plan, allIn, score, "difficile", false, seeded(1));
+    const sim = finishMatch(s, plan, allIn, score, "difficile", true, seeded(1));
     expect(played.money).toBe(LEVELS.campetto.win * DIFF.difficile.prize);
     expect(sim.money).toBe(played.money / 2);
     expect(played.result.rating).toBeGreaterThanOrEqual(8);
@@ -212,8 +246,16 @@ describe("Partita", () => {
     const s = fresh();
     const plan = { ...planMatch(s, s.season.matches[0], "normale", seeded(4)), benchAfter: 3 };
     const miss: MomentResult = { kind: "tiro", shot: "media", outcome: "fuori", made: false, pts: 0 };
-    expect(shouldBench(plan, [miss, miss])).toBe(false);
-    expect(shouldBench(plan, [miss, miss, miss])).toBe(plan.moments.length > 3);
+    const full = { ...plan, moments: [...plan.moments, ...plan.moments, ...plan.moments].slice(0, 6) };
+    const names = rosters(s, "Tu", full.opponent, full.size);
+    const rng = seeded(9);
+    let st = startLive(full, rng);
+    st = applyMoment(st, full, names, miss, rng);
+    st = applyMoment(st, full, names, miss, rng);
+    expect(st.benched).toBe(false);
+    st = applyMoment(st, full, names, miss, rng);
+    expect(st.benched).toBe(true);
+    expect(st.feed.at(-1)?.text).toContain("panchina");
   });
 });
 

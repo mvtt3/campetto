@@ -237,7 +237,7 @@ export function DailySheet({ open, onClose }: { open: boolean; onClose: () => vo
           if (!r) return;
           update(() => r.s);
           play("unlock");
-          toast(`Premio: ${r.label}`, "ok");
+          toast(`Premio: ${r.label}`, "ok", "coins");
           onClose();
         }}
       >

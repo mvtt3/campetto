@@ -21,7 +21,17 @@ export type SoundName =
   | "tick"
   | "whoosh"
   | "shuffle"
-  | "refresh";
+  | "refresh"
+  // Campetto Star: il palazzetto e il telefono del personaggio.
+  | "cheer"
+  | "roar"
+  | "groan"
+  | "buzzer"
+  | "squeak"
+  | "dribble"
+  | "heartbeat"
+  | "message"
+  | "coins";
 
 const KEY = "campetto:suoni";
 const listeners = new Set<(on: boolean) => void>();
@@ -482,6 +492,60 @@ const RECIPES: Record<SoundName, (c: BaseAudioContext, t: number) => void> = {
     tone(c, t, { f: 620, to: 1040, dur: 0.1, gain: 0.1 });
     tone(c, t, { f: 1560, at: 0.09, dur: 0.06, gain: 0.05 });
   },
+  // Il pubblico che esulta: tante voci (rumore filtrato a ondate) che salgono e si spengono.
+  cheer: (c, t) => {
+    for (let i = 0; i < 6; i++)
+      noise(c, t, { at: i * 0.06, dur: 1.3 + i * 0.08, gain: 0.05, filter: "bandpass", f: 900 + i * 260, to: 700 + i * 180, q: 1.4, attack: 0.18, reverb: 0.35 });
+    // Qualche fischio di festa.
+    tone(c, t, { f: 2400, to: 2900, at: 0.25, dur: 0.35, gain: 0.025, reverb: 0.3 });
+    tone(c, t, { f: 2100, to: 2600, at: 0.55, dur: 0.3, gain: 0.02, reverb: 0.3 });
+  },
+  // Il boato: il palazzetto viene giù (tuo canestro, palla decisiva).
+  roar: (c, t) => {
+    for (let i = 0; i < 9; i++)
+      noise(c, t, { at: i * 0.05, dur: 2.2 + i * 0.07, gain: 0.055, filter: "bandpass", f: 600 + i * 240, to: 520 + i * 160, q: 1.2, attack: 0.14, reverb: 0.45 });
+    noise(c, t, { dur: 1.8, gain: 0.05, filter: "lowpass", f: 400, attack: 0.2, reverb: 0.3 });
+    tone(c, t, { f: 2600, to: 3300, at: 0.3, dur: 0.4, gain: 0.03, reverb: 0.3 });
+    tone(c, t, { f: 2300, to: 2800, at: 0.75, dur: 0.35, gain: 0.025, reverb: 0.3 });
+  },
+  // "Ohhh": il pubblico che ci credeva (tiro sbagliato, palla persa).
+  groan: (c, t) => {
+    for (let i = 0; i < 5; i++)
+      noise(c, t, { at: i * 0.03, dur: 1.1, gain: 0.05, filter: "bandpass", f: 780 + i * 120, to: 320 + i * 60, q: 2.2, attack: 0.08, reverb: 0.35 });
+    tone(c, t, { f: 230, to: 150, dur: 0.9, gain: 0.03, type: "triangle", attack: 0.08, reverb: 0.3 });
+  },
+  // La sirena di fine quarto: due onde quadre un filo stonate.
+  buzzer: (c, t) => {
+    tone(c, t, { f: 196, dur: 1.1, gain: 0.05, type: "square", attack: 0.01, reverb: 0.25 });
+    tone(c, t, { f: 199, dur: 1.1, gain: 0.05, type: "sawtooth", attack: 0.01, reverb: 0.25 });
+    tone(c, t, { f: 392, dur: 1.1, gain: 0.02, type: "square", attack: 0.01, reverb: 0.2 });
+  },
+  // Le scarpe che stridono sul parquet.
+  squeak: (c, t) => {
+    tone(c, t, { f: 2300, to: 3400, dur: 0.09, gain: 0.05, type: "triangle", attack: 0.004, reverb: 0.15 });
+    tone(c, t, { f: 3100, to: 2600, at: 0.08, dur: 0.07, gain: 0.035, type: "triangle", attack: 0.004, reverb: 0.15 });
+  },
+  // Due palleggi.
+  dribble: (c, t) => {
+    for (const at of [0, 0.28]) {
+      tone(c, t, { f: 130, to: 70, at, dur: 0.12, gain: 0.22, attack: 0.002, reverb: 0.2 });
+      noise(c, t, { at, dur: 0.05, gain: 0.05, filter: "lowpass", f: 900, attack: 0.001, reverb: 0.1 });
+    }
+  },
+  // Il cuore che batte: la palla decisiva.
+  heartbeat: (c, t) => {
+    for (const at of [0, 0.22, 0.85, 1.07]) tone(c, t, { f: 62, to: 44, at, dur: 0.16, gain: 0.3, attack: 0.004, reverb: 0.05 });
+  },
+  // Il messaggio sul telefono del personaggio: "ding ding" chiaro.
+  message: (c, t) => {
+    mallet(c, t, 1318.5, 0, 0.12, 0.3, 0.2);
+    mallet(c, t, 1975.5, 0.11, 0.12, 0.45, 0.25);
+  },
+  // Soldi: monetine che tintinnano.
+  coins: (c, t) => {
+    [2093, 2637, 3136, 2793, 3520].forEach((f, i) => mallet(c, t, f, i * 0.045, 0.06, 0.22, 0.15));
+    noise(c, t, { at: 0.02, dur: 0.18, gain: 0.02, filter: "highpass", f: 6000, attack: 0.002, reverb: 0.1 });
+  },
 };
 
 /** Il volume di ogni suono: i tocchi appena sopra un sussurro, le feste un po' di più. */
@@ -504,6 +568,15 @@ const LEVEL: Record<SoundName, number> = {
   whoosh: 8,
   shuffle: 6,
   refresh: 2.7,
+  cheer: 2.2,
+  roar: 2.4,
+  groan: 2,
+  buzzer: 1.6,
+  squeak: 2.4,
+  dribble: 2.6,
+  heartbeat: 3,
+  message: 2.2,
+  coins: 2.6,
 };
 
 function run(c: BaseAudioContext, name: SoundName, t: number) {
@@ -573,4 +646,60 @@ export async function renderSound(
 /** Per i test: l'audio è pronto e acceso? */
 export function audioState(): string {
   return ctx?.state ?? "none";
+}
+
+// ———————————— Il brusio del palazzetto ————————————
+
+let crowd: { src: AudioBufferSourceNode; gain: GainNode; bq: BiquadFilterNode; lfo: OscillatorNode } | null = null;
+
+/** Il pubblico in sottofondo durante la partita: un brusio che respira. */
+export function startCrowd(level = 0.35) {
+  if (!soundOn() || crowd) return;
+  const c = engine();
+  if (!c || !noiseBuf || !master) return;
+  try {
+    const src = c.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = true;
+    const bq = c.createBiquadFilter();
+    bq.type = "bandpass";
+    bq.frequency.value = 700;
+    bq.Q.value = 0.8;
+    const gain = c.createGain();
+    gain.gain.value = 0.0001;
+    gain.gain.exponentialRampToValueAtTime(0.03 * level + 0.0001, c.currentTime + 1.2);
+    // Il respiro della folla: il volume ondeggia piano.
+    const lfo = c.createOscillator();
+    lfo.frequency.value = 0.23;
+    const depth = c.createGain();
+    depth.gain.value = 0.008 * level;
+    lfo.connect(depth).connect(gain.gain);
+    src.connect(bq).connect(gain).connect(master);
+    src.start();
+    lfo.start();
+    crowd = { src, gain, bq, lfo };
+  } catch {
+    crowd = null;
+  }
+}
+
+/** Più forte quando la partita si scalda (0–1). */
+export function crowdLevel(level: number) {
+  if (!crowd || !ctx) return;
+  const v = Math.max(0.0001, 0.03 * Math.min(1, Math.max(0, level)));
+  crowd.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.4);
+  crowd.bq.frequency.setTargetAtTime(600 + level * 500, ctx.currentTime, 0.4);
+}
+
+export function stopCrowd() {
+  if (!crowd || !ctx) return;
+  const k = crowd;
+  crowd = null;
+  try {
+    k.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25);
+    k.src.stop(ctx.currentTime + 1.2);
+    k.lfo.stop(ctx.currentTime + 1.2);
+  } catch {
+    /* già fermo */
+  }
 }

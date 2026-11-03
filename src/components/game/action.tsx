@@ -1,12 +1,13 @@
 "use client";
 
 import clsx from "clsx";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Character, type Pose } from "@/components/character";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { Pose } from "@/components/character";
 import { AVATAR_PRESETS, KIT, type AvatarPresetId } from "@/components/avatar-presets";
 import { jerseyOf } from "@/components/outfit-layer";
 import { play } from "@/lib/sound";
 import { hash } from "@/lib/game/economy";
+import { COURT, actionCam, arcPoints, beside, dunkCam, floor, guardSpot, projector, v3, wideCam, type Camera, type Projector, type V3 } from "@/lib/game/camera";
 import {
   DIFF,
   SHOTS,
@@ -21,31 +22,20 @@ import {
   type MomentResult,
   type Shot,
 } from "@/lib/game/match";
+import { shirtNumber, type FeedLine, type Rosters, type Side } from "@/lib/game/live";
 import type { Difficulty, GameState } from "@/lib/game/types";
+import { Actor3D, BallNodes, Stage, hands, useBall3D, useStage, type Actor } from "./arena";
 import { HoldButton, MeterBar, ringScale, RING_START, useHoldMeter, useRing } from "./meters";
-import { Ball, Hoop } from "./scene";
 import { useGame } from "./store";
 
 /**
- * L'azione di ogni momento della partita, come in New Star Soccer: la telecamera è
- * alle spalle del tuo personaggio (lo vedi di schiena, col nome e il numero), i
- * compagni hanno i tuoi colori, gli avversari quelli della squadra inventata.
- * Prima un attimo di gioco (palleggi, ti sposti, il difensore ti segue), poi tocca a te.
+ * Le azioni della partita nel palazzetto in 3D. La telecamera sta alle spalle di chi
+ * attacca e guarda il canestro: in attacco vedi il tuo personaggio di schiena (nome e
+ * numero), in difesa lo vedi in faccia. I giocatori stanno ai loro posti veri sul
+ * campo, a metri di distanza: è la telecamera che si avvicina all'azione.
  */
 
-type P = { x: number; y: number };
-
-/** Prospettiva: più in basso nello schermo = più vicino = più grande. */
-const depth = (y: number) => 0.42 + (y / 100) * 0.68;
-/** Altezza del personaggio, in frazione dell'altezza della scena, a grandezza 1. */
-const CHAR = 0.33;
-/** Proporzioni del personaggio intero (viewBox 100 × 185 circa). */
-const CHAR_RATIO = 100 / 185;
-
-export type ScenePoint = P;
-
-/** Da che parte rimbalza il pallone: a caso, a sinistra o a destra. */
-const sideCoin = () => (Math.random() < 0.5 ? -1 : 1);
+export type XZ = { x: number; z: number };
 
 const PALETTE: { jersey: string; trim: string }[] = [
   { jersey: "#E5412D", trim: "#FFF8EA" },
@@ -72,205 +62,116 @@ function extraId(seed: string, not: AvatarPresetId): AvatarPresetId {
   return pool[hash(seed) % pool.length];
 }
 
-function useStage() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const set = () => setSize({ w: el.clientWidth, h: el.clientHeight });
-    set();
-    const ro = new ResizeObserver(set);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return { ref, ...size };
+export function useMyKit(game: GameState, charId: AvatarPresetId) {
+  return useMemo(() => {
+    const k = jerseyOf(game.outfit) ?? KIT[charId];
+    return { jersey: k.jersey, trim: k.trim };
+  }, [game.outfit, charId]);
 }
 
-interface ActorSpec {
-  key: string;
-  id: AvatarPresetId;
-  at: P;
-  back?: boolean;
-  pose?: Pose;
-  kit?: { jersey: string; trim: string };
-  outfit?: GameState["outfit"];
-  number?: number | null;
-  backName?: string;
-  jump?: boolean;
-  crouch?: boolean;
-  /** Durata dello spostamento, in ms. */
-  move?: number;
-  dim?: boolean;
-}
+/** Da che parte rimbalza il pallone: a caso. */
+const sideCoin = () => (Math.random() < 0.5 ? -1 : 1);
 
-function Actor({ a, h }: { a: ActorSpec; h: number }) {
-  const ch = Math.round(h * CHAR * depth(a.at.y));
-  return (
-    <div
-      className="pointer-events-none absolute"
-      style={{
-        left: `${a.at.x}%`,
-        top: `${a.at.y}%`,
-        zIndex: Math.round(a.at.y),
-        transition: `left ${a.move ?? 900}ms ease-in-out, top ${a.move ?? 900}ms ease-in-out`,
-        opacity: a.dim ? 0.55 : 1,
-      }}
-    >
-      <div
-        style={{
-          transform: `translate(-50%, -100%) translateY(${a.jump ? -ch * 0.2 : 0}px) scaleY(${a.crouch ? 0.93 : 1})`,
-          transformOrigin: "50% 100%",
-          transition: a.jump ? "transform 260ms cubic-bezier(.2,.9,.3,1)" : "transform 300ms cubic-bezier(.5,0,.7,.4)",
-        }}
-      >
-        <Character
-          id={a.id}
-          height={ch}
-          back={a.back}
-          backName={a.backName}
-          number={a.number}
-          pose={a.pose}
-          kit={a.kit}
-          outfit={a.outfit}
-          noBall
-          idle={!a.jump && (a.pose ?? "dribble") === "dribble"}
-        />
-      </div>
-    </div>
-  );
-}
+// ———————————— Posizioni in campo (metri) ————————————
 
-/** Il pallone della scena: si sposta e vola con l'animazione del browser, fuori da React. */
-function useSceneBall(stage: { w: number; h: number }) {
-  const el = useRef<HTMLDivElement>(null);
-  const pos = useRef<{ x: number; y: number; s: number }>({ x: 0, y: 0, s: 1 });
-  const px = useCallback((p: P) => ({ x: (p.x / 100) * stage.w, y: (p.y / 100) * stage.h }), [stage.w, stage.h]);
-  const place = useCallback(
-    (p: P, s = 1) => {
-      const e = el.current;
-      if (!e) return;
-      const q = px(p);
-      pos.current = { ...q, s };
-      e.getAnimations?.().forEach((a) => a.cancel());
-      e.style.transform = `translate(${q.x}px, ${q.y}px) translate(-50%, -50%) scale(${s})`;
-    },
-    [px],
-  );
-  /** Vola fino a `to` con un arco alto `arc` (frazione della scena). */
-  const fly = useCallback(
-    (to: P, opts: { arc?: number; ms?: number; s?: number; then?: P[] } = {}) => {
-      const e = el.current;
-      if (!e || !e.animate) return Promise.resolve();
-      const from = pos.current;
-      const end = px(to);
-      const arc = (opts.arc ?? 0.2) * stage.h;
-      const s1 = opts.s ?? from.s;
-      const steps = 18;
-      const frames: Keyframe[] = [];
-      const cx = (from.x + end.x) / 2;
-      const cy = Math.min(from.y, end.y) - arc;
-      for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const x = (1 - t) * (1 - t) * from.x + 2 * (1 - t) * t * cx + t * t * end.x;
-        const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * cy + t * t * end.y;
-        const s = from.s + (s1 - from.s) * t;
-        frames.push({ transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${s})`, offset: t * (opts.then ? 0.75 : 1) });
-      }
-      if (opts.then) {
-        opts.then.forEach((p, k) => {
-          const q = px(p);
-          frames.push({
-            transform: `translate(${q.x}px, ${q.y}px) translate(-50%, -50%) scale(${s1})`,
-            offset: 0.75 + (0.25 * (k + 1)) / opts.then!.length,
-          });
-        });
-      }
-      const last = opts.then ? px(opts.then[opts.then.length - 1]) : end;
-      pos.current = { ...last, s: s1 };
-      const a = e.animate(frames, { duration: opts.ms ?? 800, easing: "linear", fill: "forwards" });
-      return a.finished.then(
-        () => undefined,
-        () => undefined,
-      );
-    },
-    [px, stage.h],
-  );
-  return { el, place, fly };
-}
+export const OFF3: XZ[] = [
+  { x: 0, z: 8.4 },
+  { x: -5.4, z: 5.0 },
+  { x: 5.4, z: 5.2 },
+];
+export const OFF5: XZ[] = [
+  { x: 0, z: 8.6 },
+  { x: -5.6, z: 6.0 },
+  { x: 5.6, z: 6.0 },
+  { x: -2.6, z: 2.4 },
+  { x: 2.4, z: 1.6 },
+];
 
-/** Dove sono le mani di un personaggio fermo in `at`: sopra la testa, al petto o al fianco. */
-function handsAt(at: P, where: "up" | "chest"): P {
-  const hp = CHAR * depth(at.y) * 100;
-  return where === "up" ? { x: at.x, y: at.y - hp * 0.97 } : { x: at.x, y: at.y - hp * 0.55 };
-}
-
-/** Le misure del canestro nella scena: il ferro sta al 17% dell'altezza. */
-const RIM: P = { x: 50, y: 16.5 };
-const NET: P = { x: 50, y: 23 };
-
-const SPOTS: Record<Shot, P[]> = {
+const SPOTS: Record<Shot, XZ[]> = {
   sotto: [
-    { x: 42, y: 64 },
-    { x: 58, y: 65 },
+    { x: -1.2, z: 2.4 },
+    { x: 1.3, z: 2.2 },
   ],
   media: [
-    { x: 32, y: 77 },
-    { x: 68, y: 77 },
-    { x: 50, y: 79 },
+    { x: -3.7, z: 4.7 },
+    { x: 3.7, z: 4.7 },
+    { x: 0, z: 6.0 },
   ],
   tripla: [
-    { x: 50, y: 94 },
-    { x: 22, y: 89 },
-    { x: 78, y: 89 },
+    { x: 0, z: 8.6 },
+    { x: -5.5, z: 6.5 },
+    { x: 5.5, z: 6.5 },
+    { x: -6.4, z: 1.4 },
+    { x: 6.4, z: 1.4 },
   ],
 };
 
-interface Formation {
-  me: P;
-  start: P;
-  marker: P;
-  markerStart: P;
-  mates: P[];
-  others: P[];
-  open: number;
+/** I cinque carrelli della gara delle triple, da un angolo all'altro. */
+export const RACK_SPOTS: XZ[] = [
+  { x: -6.4, z: 1.4 },
+  { x: -5.2, z: 6.0 },
+  { x: 0, z: 8.5 },
+  { x: 5.2, z: 6.0 },
+  { x: 6.4, z: 1.4 },
+];
+/** La lunetta del tiro libero. */
+export const FT_SPOT: XZ = { x: 0, z: 5.8 };
+/** Il tiro di prova del tutorial, dalla media. */
+export const PRACTICE_SPOT: XZ = { x: -3.4, z: 4.8 };
+
+const dist = (a: XZ, b: XZ) => Math.hypot(a.x - b.x, a.z - b.z);
+
+/** Il punto del ferro dove arriva il pallone (un filo sopra il centro). */
+const RIM_IN = v3(COURT.rim.x, COURT.rim.y + 0.08, COURT.rim.z);
+
+/** Le traiettorie del tiro: dentro, sul ferro e fuori, corto o sul tabellone. */
+export function shotPath(from: V3, made: boolean, outcome: "verde" | "buono" | "fuori", side: number, short: boolean): V3[] {
+  const r = COURT.rim;
+  const apex = 1.5 + Math.min(1.1, Math.hypot(from.x - r.x, from.z - r.z) * 0.12);
+  if (made) {
+    const up = arcPoints(from, RIM_IN, apex, 26);
+    return [
+      ...up,
+      v3(r.x, r.y - 0.35, r.z),
+      v3(r.x + side * 0.05, r.y - 0.7, r.z + 0.05),
+      v3(r.x + side * 0.3, 0.17, r.z + 0.6),
+      v3(r.x + side * 0.5, 0.7, r.z + 1.1),
+      v3(r.x + side * 0.7, 0.17, r.z + 1.6),
+    ];
+  }
+  if (outcome === "buono") {
+    const edge = v3(r.x + side * 0.24, r.y + 0.06, r.z + 0.12);
+    const up = arcPoints(from, edge, apex, 26);
+    return [...up, v3(r.x + side * 0.7, r.y + 0.55, r.z + 0.7), v3(r.x + side * 1.3, r.y - 0.4, r.z + 1.5), v3(r.x + side * 1.8, 0.17, r.z + 2.3)];
+  }
+  if (short) return arcPoints(from, v3(r.x + side * 0.2, 0.17, r.z + 1.2), apex + 0.6, 30);
+  const board = v3(r.x + side * 0.35, r.y + 0.55, COURT.board.z + 0.12);
+  const up = arcPoints(from, board, apex * 0.85, 26);
+  return [...up, v3(r.x + side * 0.9, r.y - 0.2, r.z + 1.2), v3(r.x + side * 1.4, 0.17, r.z + 2.2)];
 }
 
-function formation(size: 3 | 5, shot: Shot, open: boolean, seed: number): Formation {
-  const spots = SPOTS[shot];
-  const me = spots[seed % spots.length];
-  const side = me.x < 50 ? -1 : 1;
-  const start = { x: me.x - side * 14, y: Math.min(97, me.y + 6) };
-  const marker = open ? { x: me.x + side * 22, y: me.y - 6 } : { x: me.x + side * 3, y: me.y - 11 };
-  const markerStart = { x: me.x - side * 4, y: me.y - 14 };
-  const mates3 = [
-    { x: 18, y: 71 },
-    { x: 82, y: 72 },
-  ];
-  const mates5 = [
-    { x: 15, y: 70 },
-    { x: 85, y: 69 },
-    { x: 27, y: 56 },
-    { x: 73, y: 55 },
-  ];
-  const mates = (size === 3 ? mates3 : mates5).map((m) => (Math.abs(m.x - me.x) < 12 && Math.abs(m.y - me.y) < 10 ? { x: 100 - m.x, y: m.y } : m));
-  const others = (
-    size === 3
-      ? [
-          { x: 30, y: 55 },
-          { x: 69, y: 56 },
-        ]
-      : [
-          { x: 21, y: 62 },
-          { x: 79, y: 61 },
-          { x: 40, y: 49 },
-          { x: 60, y: 49 },
-        ]
-  ).map((o, k) => ({ x: o.x + ((seed + k) % 3) * 2 - 2, y: o.y }));
-  return { me, start, marker, markerStart, mates, others, open: (seed * 7 + 3) % mates.length };
+/** Il palleggio mentre si corre: il pallone rimbalza a terra da A a B. */
+function dribblePath(a: XZ, b: XZ, bounces = 3): V3[] {
+  const pts: V3[] = [];
+  const n = bounces * 6;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    pts.push(v3(a.x + (b.x - a.x) * t - 0.42, 0.17 + Math.abs(Math.sin(t * Math.PI * bounces)) * 0.6, a.z + (b.z - a.z) * t));
+  }
+  return pts;
 }
 
-/** Il cerchio a tempo sopra un punto della scena (un compagno, il pallone). */
+/** La telecamera, ricreata solo quando cambiano le misure o il punto da inquadrare. */
+function useCam(w: number, h: number, focus: XZ | null) {
+  const fx = focus?.x ?? null;
+  const fz = focus?.z ?? null;
+  return useMemo<Camera | null>(() => {
+    if (!w || !h) return null;
+    return fx === null || fz === null ? wideCam(w, h) : actionCam({ x: fx, z: fz }, w, h);
+  }, [w, h, fx, fz]);
+}
+
+/** Il cerchio a tempo attorno a un punto della scena (un compagno, il pallone). */
 function RingAt({
   at,
   win,
@@ -278,7 +179,7 @@ function RingAt({
   size = 64,
   tone = "volt",
 }: {
-  at: P;
+  at: { x: number; y: number };
   win: number;
   ring: React.RefObject<HTMLDivElement | null>;
   size?: number;
@@ -288,17 +189,17 @@ function RingAt({
   const outer = ringScale(0.75 - win);
   const inner = ringScale(0.75 + win);
   return (
-    <div className="pointer-events-none absolute z-[200]" style={{ left: `${at.x}%`, top: `${at.y}%` }}>
+    <div className="pointer-events-none absolute left-0 top-0 z-[950]" style={{ transform: `translate(${at.x}px, ${at.y}px)` }}>
       <div className="relative -translate-x-1/2 -translate-y-1/2" style={{ width: size, height: size }}>
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{
             width: size * outer,
             height: size * outer,
-            background: `radial-gradient(circle, transparent ${(inner / outer) * 70.7}%, color-mix(in srgb, ${color} 38%, transparent) ${(inner / outer) * 70.7}%)`,
+            background: `radial-gradient(circle, transparent ${(inner / outer) * 70.7}%, color-mix(in srgb, ${color} 40%, transparent) ${(inner / outer) * 70.7}%)`,
           }}
         />
-        <div className="absolute inset-0 rounded-full border-[3px] border-dashed border-white/80" />
+        <div className="absolute inset-0 rounded-full border-[3px] border-dashed border-white/85" />
         <div
           ref={ring}
           className="absolute inset-0 rounded-full border-[5px]"
@@ -309,35 +210,36 @@ function RingAt({
   );
 }
 
-function Stage({
-  stageRef,
-  swish,
-  children,
-}: {
-  stageRef: React.RefObject<HTMLDivElement | null>;
-  swish: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div ref={stageRef} className="relative min-h-0 flex-1 overflow-hidden">
-      <div className="pointer-events-none absolute left-1/2 top-[1.5%] z-[1] w-[44%] max-w-[170px] -translate-x-1/2">
-        <Hoop className="!w-full" swish={swish} />
-      </div>
-      {children}
-    </div>
-  );
+/** Il compagno libero per il passaggio: uno di quelli che si vedono bene. */
+function pickMate(P: Projector | null, me: XZ, mates: XZ[], seed: number): { mates: XZ[]; openMate: number } {
+  const pick = (seed * 7 + 3) % mates.length;
+  if (!P) return { mates, openMate: pick };
+  const d0 = P.p(floor(me.x, me.z)).depth;
+  const ok = mates
+    .map((m, i) => ({ i, q: P.p(hands(m, "chest")) }))
+    .filter(({ q }) => q.depth > d0 - 0.6 && q.x > 40 && q.x < P.cam.w - 40 && q.y > 50);
+  if (ok.length) return { mates, openMate: ok[seed % ok.length].i };
+  // Nessuno in quadro: il primo compagno taglia verso canestro, dal lato libero.
+  const cut = beside(guardSpot(me, Math.min(3.2, Math.hypot(me.x - COURT.rim.x, me.z - COURT.rim.z) * 0.55)), -1.6);
+  return { mates: [cut, ...mates.slice(1)], openMate: 0 };
 }
 
-function useMyKit(game: GameState, charId: AvatarPresetId) {
-  return useMemo(() => {
-    const k = jerseyOf(game.outfit) ?? KIT[charId];
-    return { jersey: k.jersey, trim: k.trim };
-  }, [game.outfit, charId]);
+/**
+ * Chi sta tra la telecamera e l'azione non si disegna: sarebbe un gigante davanti a
+ * tutto. Restano in scena solo i giocatori alla stessa distanza dell'azione o più in là.
+ */
+function onStage(P: Projector | null, focus: XZ, keep: string[]) {
+  if (!P) return () => true;
+  const d0 = P.p(floor(focus.x, focus.z)).depth;
+  return (a: Actor) => keep.includes(a.key) || P.p(floor(a.at.x, a.at.z)).depth > d0 - 0.9;
 }
 
-const NUMS = [0, 3, 4, 5, 7, 8, 9, 11, 12, 13, 14, 15, 21, 22, 24, 30, 31, 33, 44, 55];
+function Label({ children }: { children: ReactNode }) {
+  return <p className="absolute left-2 top-2 z-[960] max-w-[75%] rounded-full bg-[#1d1a16]/75 px-2.5 py-1 text-[12px] font-bold text-white">{children}</p>;
+}
 
-/** Attacco: tiro (tieni premuto e lascia sul verde) oppure passaggio al compagno libero. */
+// ———————————— Attacco ————————————
+
 export function AttackAction({
   seed,
   game,
@@ -347,6 +249,7 @@ export function AttackAction({
   shot,
   open,
   locked,
+  onFire,
   onResult,
 }: {
   seed: number;
@@ -357,18 +260,33 @@ export function AttackAction({
   shot: Shot;
   open: boolean;
   locked: boolean;
+  /** Tre canestri di fila: il verde si allarga. */
+  onFire?: boolean;
   onResult: (r: MomentResult) => void;
 }) {
   const { me, charId } = useGame();
   const { ref: stageRef, ...stage } = useStage();
-  const { el: ballEl, ...ball } = useSceneBall(stage);
-  const f = useMemo(() => formation(size, shot, open, seed + game.day), [size, shot, open, seed, game.day]);
+  const spots = SPOTS[shot];
+  const meAt = spots[(seed + game.day) % spots.length];
+  const cam = useCam(stage.w, stage.h, meAt);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const { el: ballRef, shadow: shadowRef, place, fly } = useBall3D(P);
   const myKit = useMyKit(game, charId);
   const oppKit = useMemo(() => teamKit(opponent, myKit.jersey), [opponent, myKit.jersey]);
-  const zone = shotZone(game, diff, shot, open);
+  const set = size === 3 ? OFF3 : OFF5;
+  const nearest = set.reduce((bi, p, i) => (dist(p, meAt) < dist(set[bi], meAt) ? i : bi), 0);
+  const others = set.filter((_, i) => i !== nearest);
+  const side = meAt.x <= 0 ? 1 : -1;
+  const start: XZ = { x: meAt.x + side * 2.4, z: Math.min(12.5, meAt.z + 2.2) };
+  // Marcato: il difensore ti sta davanti, un po' di lato (così lo vedi). Libero: è rimasto indietro.
+  const markerEnd: XZ = open ? { x: meAt.x + side * 2.8, z: meAt.z + 0.7 } : beside(guardSpot(meAt, 0.95), 1.35);
+  // Il compagno a cui passare deve essere in quadro: se nessuno lo è, uno taglia verso canestro.
+  const { mates, openMate } = pickMate(P, meAt, others, seed);
+  const mateAt = mates[openMate];
+  const zone = Math.min(0.5, shotZone(game, diff, shot, open) * (onFire ? 1.25 : 1));
   const [phase, setPhase] = useState<"intro" | "ready" | "pass" | "flying" | "done">("intro");
-  const [mePos, setMePos] = useState<P>(f.start);
-  const [markerPos, setMarkerPos] = useState<P>(f.markerStart);
+  const [mePos, setMePos] = useState<XZ>(start);
+  const [markerPos, setMarkerPos] = useState<XZ>(() => guardSpot(start, 1.1));
   const [mePose, setMePose] = useState<Pose>("dribble");
   const [meJump, setMeJump] = useState(false);
   const [markerJump, setMarkerJump] = useState(false);
@@ -376,34 +294,26 @@ export function AttackAction({
   const [swish, setSwish] = useState(false);
   const [flash, setFlash] = useState<"verde" | "buono" | "fuori" | null>(null);
   const backName = me.nickname ?? me.firstName;
-  const sideBall = useCallback(
-    (at: P): P => {
-      const hp = CHAR * depth(at.y);
-      const wPx = hp * stage.h * CHAR_RATIO;
-      return { x: at.x - ((wPx * 0.38) / Math.max(1, stage.w)) * 100, y: at.y - hp * 100 * 0.26 };
-    },
-    [stage.h, stage.w],
-  );
 
-  // L'azione parte: palleggi e ti sposti, il difensore ti segue (o resta indietro).
+  // L'azione parte: palleggi verso la tua posizione, il difensore ti segue (o resta indietro).
   useEffect(() => {
-    if (!stage.h) return;
-    ball.place(sideBall(f.start), 0.9 * depth(f.start.y));
+    if (!P) return;
+    place(hands(start, "side"));
+    play("dribble");
     const t1 = window.setTimeout(() => {
-      setMePos(f.me);
-      setMarkerPos(f.marker);
-      void ball.fly(sideBall(f.me), { arc: 0.01, ms: 900, s: depth(f.me.y) });
+      setMePos(meAt);
+      setMarkerPos(markerEnd);
+      void fly(dribblePath(start, meAt, 3), 900);
+      if (Math.random() < 0.6) window.setTimeout(() => play("squeak"), 380);
     }, 120);
-    const t2 = window.setTimeout(() => setPhase("ready"), 1050);
+    const t2 = window.setTimeout(() => setPhase("ready"), 1080);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-    // Solo all'inizio dell'azione, quando la scena ha le misure.
+    // Solo all'inizio, appena la telecamera è pronta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage.h > 0]);
-
-  const ballSize = (y: number) => depth(y);
+  }, [P !== null]);
 
   const shoot = (pos: number) => {
     const j = judgeShot(pos, zone, game.skills.tiro, Math.random);
@@ -412,37 +322,28 @@ export function AttackAction({
     setMePose("up");
     setMeJump(true);
     if (!open) setMarkerJump(true);
-    ball.place(handsAt(f.me, "up"), ballSize(f.me.y));
+    const from = hands(meAt, "up");
+    place(from);
     play("whoosh");
-    const side = Math.random() < 0.5 ? -1 : 1;
-    const flight = j.made
-      ? ball.fly(RIM, { arc: 0.22, ms: 820, s: 0.62, then: [NET, { x: 50 + side * 3, y: 34 }] })
-      : j.outcome === "fuori"
-        ? ball.fly({ x: 50 + side * 9, y: RIM.y + 2 }, { arc: 0.2, ms: 760, s: 0.62, then: [{ x: 50 + side * 22, y: 44 }] })
-        : ball.fly({ x: 50 + side * 4, y: RIM.y - 1 }, { arc: 0.24, ms: 800, s: 0.62, then: [{ x: 50 + side * 6, y: RIM.y - 9 }, { x: 50 + side * 16, y: 36 }] });
     window.setTimeout(() => {
       setMeJump(false);
       setMarkerJump(false);
-    }, 420);
-    void flight.then(() => {
-      if (j.made) {
-        setSwish(true);
-        play("swish");
-      } else play(j.outcome === "fuori" ? "board" : "rim");
+    }, 430);
+    window.setTimeout(() => {
+      if (j.made) play("swish");
+      else play(j.outcome === "fuori" ? "board" : "rim");
+    }, 700);
+    void fly(shotPath(from, j.made, j.outcome, sideCoin(), pos < ZONE_CENTER), 1250).then(() => {
+      if (j.made) setSwish(true);
       setMePose(j.made ? "up" : "dribble");
       setPhase("done");
       onResult(shotResult(shot, j));
     });
   };
 
-  const meter = useHoldMeter({
-    sweep: DIFF[diff].sweep,
-    disabled: phase !== "ready" || locked,
-    onRelease: shoot,
-  });
+  const meter = useHoldMeter({ sweep: DIFF[diff].sweep, disabled: phase !== "ready" || locked, onRelease: shoot });
 
   const passWin = ringWindow(game, diff, "passaggio");
-  const mateAt = f.mates[f.open];
   const { ring, tap } = useRing({
     ms: DIFF[diff].ringMs,
     active: phase === "pass",
@@ -452,32 +353,26 @@ export function AttackAction({
       const hit = judgeRing(p, passWin);
       setPhase("flying");
       play("whoosh");
-      ball.place(handsAt(f.me, "chest"), ballSize(f.me.y));
+      const from = hands(meAt, "chest");
+      place(from);
       const r = passResult(game, shot, open, hit, Math.random);
       if (r.kind !== "passaggio") return;
       if (!r.ok) {
-        // Intercettato: il pallone finisce al difensore più vicino al compagno.
-        const thief = f.others.reduce((a, b) => (Math.hypot(b.x - mateAt.x, b.y - mateAt.y) < Math.hypot(a.x - mateAt.x, a.y - mateAt.y) ? b : a));
-        void ball.fly(handsAt(thief, "chest"), { arc: 0.04, ms: 520, s: ballSize(thief.y) }).then(() => {
-          play("error");
+        const thief = guardSpot(mateAt, 1.25);
+        void fly(arcPoints(from, hands(thief, "chest"), 0.35, 14), 520).then(() => {
           setPhase("done");
           onResult(r);
         });
         return;
       }
-      void ball.fly(handsAt(mateAt, "chest"), { arc: 0.05, ms: 480, s: ballSize(mateAt.y) }).then(() => {
+      void fly(arcPoints(from, hands(mateAt, "chest"), 0.4, 14), 500).then(() => {
         setMate({ jump: true, pose: "up" });
-        ball.place(handsAt(mateAt, "up"), ballSize(mateAt.y));
-        window.setTimeout(() => setMate({ jump: false, pose: r.made ? "up" : "dribble" }), 420);
-        const side = mateAt.x < 50 ? 1 : -1;
-        const fl = r.made
-          ? ball.fly(RIM, { arc: 0.2, ms: 760, s: 0.62, then: [NET, { x: 50 + side * 3, y: 34 }] })
-          : ball.fly({ x: 50 + side * 4, y: RIM.y - 1 }, { arc: 0.22, ms: 760, s: 0.62, then: [{ x: 50 - side * 14, y: 38 }] });
-        void fl.then(() => {
-          if (r.made) {
-            setSwish(true);
-            play("swish");
-          } else play("rim");
+        const up = hands(mateAt, "up");
+        place(up);
+        window.setTimeout(() => setMate({ jump: false, pose: r.made ? "up" : "dribble" }), 430);
+        window.setTimeout(() => play(r.made ? "swish" : "rim"), 650);
+        void fly(shotPath(up, r.made, r.made ? "verde" : "buono", sideCoin(), false), 1150).then(() => {
+          if (r.made) setSwish(true);
           setPhase("done");
           onResult(r);
         });
@@ -485,28 +380,36 @@ export function AttackAction({
     },
   });
 
-  const actors: ActorSpec[] = [
-    ...f.others.map((o, k) => ({ key: `o${k}`, id: extraId(`${opponent}-${k}`, charId), at: o, kit: oppKit, number: NUMS[(hash(opponent) + k * 5) % NUMS.length], pose: "defend" as Pose })),
+  const actors: Actor[] = [
+    ...mates.map((m, k) => ({
+      key: `o${k}`,
+      id: extraId(`${opponent}-${k}`, charId),
+      at: guardSpot(m, 1.25),
+      kit: oppKit,
+      number: shirtNumber(`${opponent}${k}`),
+      pose: "defend" as Pose,
+    })),
     {
       key: "marker",
       id: extraId(`${opponent}-m`, charId),
       at: markerPos,
       kit: oppKit,
-      number: NUMS[(hash(opponent) + 9) % NUMS.length],
+      number: shirtNumber(`${opponent}m`),
       pose: (markerJump ? "up" : "defend") as Pose,
       jump: markerJump,
-      move: open ? 1100 : 850,
+      move: open ? 1150 : 850,
     },
-    ...f.mates.map((m, k) => ({
+    ...mates.map((m, k) => ({
       key: `m${k}`,
       id: extraId(`${game.contract.team}-${k}`, charId),
       at: m,
       back: true,
       kit: myKit,
-      number: NUMS[(hash(game.contract.team) + k * 3) % NUMS.length],
-      pose: (k === f.open && mate ? mate.pose : "dribble") as Pose,
-      jump: k === f.open && !!mate?.jump,
-      dim: phase === "pass" && k !== f.open,
+      number: shirtNumber(`${game.contract.team}${k}`),
+      pose: (k === openMate && mate ? mate.pose : "dribble") as Pose,
+      jump: k === openMate && !!mate?.jump,
+      dim: phase === "pass" && k !== openMate,
+      glow: phase === "pass" && k === openMate,
     })),
     {
       key: "me",
@@ -519,27 +422,29 @@ export function AttackAction({
       pose: mePose,
       jump: meJump,
       crouch: meter.holding,
+      glow: onFire,
+      move: 900,
     },
   ];
 
+  const ringPos = P ? P.p(hands(mateAt, "chest")) : null;
+
   return (
     <div className="absolute inset-0 flex flex-col">
-      <Stage stageRef={stageRef} swish={swish}>
-        {stage.h > 0 && actors.map((a) => <Actor key={a.key} a={a} h={stage.h} />)}
-        <div ref={ballEl} className="pointer-events-none absolute left-0 top-0 z-[150] will-change-transform" style={{ transform: "translate(-200px,-200px)" }}>
-          <Ball size={Math.max(16, Math.round(stage.h * CHAR * 0.13))} />
-        </div>
-        {phase === "pass" && <RingAt at={handsAt(mateAt, "chest")} win={passWin} ring={ring} size={Math.round(stage.h * 0.11)} />}
+      <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away={oppKit.jersey} seed={game.contract.team} swish={swish} hype={swish}>
+        {P && actors.filter(onStage(P, meAt, ["me", "marker", `m${openMate}`])).map((a) => <Actor3D key={a.key} a={a} P={P} />)}
+        <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
+        {phase === "pass" && ringPos && <RingAt at={ringPos} win={passWin} ring={ring} size={Math.max(52, Math.round(ringPos.s * 1.1))} />}
         {phase !== "pass" && (
-          <div className="absolute right-2 top-[22%] z-[160]">
-            <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={Math.min(180, Math.round(stage.h * 0.42))} flash={flash} />
+          <div className="absolute right-2 top-[14%] z-[960]">
+            <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={Math.min(200, Math.round(stage.h * 0.45))} flash={flash} />
           </div>
         )}
-        <p className="absolute left-2 top-2 z-[160] rounded-full bg-[#1d1a16]/60 px-2.5 py-1 text-[12px] font-bold text-white">
-          {phase === "pass" ? "Tocca quando il cerchio si chiude sul compagno" : `${SHOTS[shot].label} · ${SHOTS[shot].pts} punti`}
-        </p>
+        <Label>
+          {phase === "pass" ? "Tocca quando il cerchio si chiude sul compagno" : `${onFire ? "🔥 In fiamme · " : ""}${SHOTS[shot].label} · ${SHOTS[shot].pts} punti`}
+        </Label>
       </Stage>
-      <div className="flex gap-2 p-3">
+      <div className="flex gap-2 bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
         {phase === "pass" ? (
           <button
             type="button"
@@ -574,7 +479,8 @@ export function AttackAction({
   );
 }
 
-/** Difesa: l'avversario attacca il tuo canestro; tu lo vedi in faccia e provi a rubare o stoppare. */
+// ———————————— Difesa ————————————
+
 export function DefenseAction({
   seed,
   game,
@@ -596,75 +502,54 @@ export function DefenseAction({
 }) {
   const { me, charId } = useGame();
   const { ref: stageRef, ...stage } = useStage();
-  const { el: ballEl, ...ball } = useSceneBall(stage);
+  const set = size === 3 ? OFF3 : OFF5;
+  const att = action === "stoppata" ? SPOTS.media[(seed + game.day) % 3] : set[(seed + game.day) % set.length];
+  const cam = useCam(stage.w, stage.h, att);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const { el: ballRef, shadow: shadowRef, place, fly } = useBall3D(P);
   const myKit = useMyKit(game, charId);
   const oppKit = useMemo(() => teamKit(opponent, myKit.jersey), [opponent, myKit.jersey]);
-  const side = (seed + game.day) % 2 ? 1 : -1;
-  const handlerStart: P = { x: 50 + side * 12, y: 99 };
-  const handlerAt: P = { x: 50 + side * 3, y: 91 };
-  const meAt: P = { x: 50 + side * 2, y: 74 };
-  const meStart: P = { x: 50 - side * 8, y: 68 };
-  const [hPos, setHPos] = useState(handlerStart);
-  const [mPos, setMPos] = useState(meStart);
+  const side = att.x <= 0 ? 1 : -1;
+  const attStart: XZ = { x: att.x + side * 2.2, z: Math.min(12.5, att.z + 2.4) };
+  // Tu tra lui e il canestro, un passo di lato: si vedono tutti e due.
+  const meAt = beside(guardSpot(att, 1.0), 1.35);
+  const others = set.filter((p) => dist(p, att) > 1.5).slice(0, size - 1);
+  const [hPos, setHPos] = useState<XZ>(attStart);
+  const [mPos, setMPos] = useState<XZ>(() => guardSpot(attStart, 1.2));
   const [hPose, setHPose] = useState<Pose>("dribble");
   const [hJump, setHJump] = useState(false);
   const [mPose, setMPose] = useState<Pose>("defend");
   const [mJump, setMJump] = useState(false);
   const [phase, setPhase] = useState<"intro" | "ring" | "flying" | "done">("intro");
   const [swish, setSwish] = useState(false);
-  const skill = action === "rubata" ? "difesa" : "fisico";
-  const win = ringWindow(game, diff, skill);
-  const others = useMemo(
-    () =>
-      (size === 3
-        ? [
-            { x: 18, y: 72 },
-            { x: 82, y: 70 },
-          ]
-        : [
-            { x: 13, y: 70 },
-            { x: 87, y: 68 },
-            { x: 31, y: 56 },
-            { x: 69, y: 55 },
-          ]
-      ).map((o) => ({ x: o.x, y: o.y })),
-    [size],
-  );
-  const mates = useMemo(() => others.map((o) => ({ x: o.x + (o.x < 50 ? 7 : -7), y: o.y - 7 })), [others]);
-  const sideBall = useCallback(
-    (at: P): P => {
-      const hp = CHAR * depth(at.y);
-      const wPx = hp * stage.h * CHAR_RATIO;
-      return { x: at.x - ((wPx * 0.38) / Math.max(1, stage.w)) * 100, y: at.y - hp * 100 * 0.26 };
-    },
-    [stage.h, stage.w],
-  );
+  const win = ringWindow(game, diff, action === "rubata" ? "difesa" : "fisico");
 
   useEffect(() => {
-    if (!stage.h) return;
-    ball.place(sideBall(handlerStart), depth(handlerStart.y) * 0.9);
+    if (!P) return;
+    place(hands(attStart, "side"));
+    play("dribble");
     const t1 = window.setTimeout(() => {
-      setHPos(handlerAt);
+      setHPos(att);
       setMPos(meAt);
-      void ball.fly(sideBall(handlerAt), { arc: 0.01, ms: 900, s: depth(handlerAt.y) });
+      void fly(dribblePath(attStart, att, 3), 900);
+      window.setTimeout(() => play("squeak"), 300);
     }, 120);
     const t2 = window.setTimeout(() => {
       if (action === "stoppata") {
-        // Si alza per tirare: il pallone sopra la testa, il cerchio parte lì.
         setHPose("up");
         setHJump(true);
-        ball.place(handsAt(handlerAt, "up"), depth(handlerAt.y));
+        place(hands(att, "up"));
       }
       setPhase("ring");
-    }, 1000);
+    }, 1060);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage.h > 0]);
+  }, [P !== null]);
 
-  const target = action === "stoppata" ? handsAt(handlerAt, "up") : sideBall(handlerAt);
+  const target = action === "stoppata" ? hands(att, "up") : hands(att, "side");
   const { ring, tap } = useRing({
     ms: DIFF[diff].ringMs * (action === "stoppata" ? 0.9 : 1),
     active: phase === "ring",
@@ -675,88 +560,105 @@ export function DefenseAction({
       const r = defenseResult(action, hit, Math.random);
       if (r.kind !== "difesa") return;
       setPhase("flying");
+      const sd = sideCoin();
       if (action === "rubata") {
         if (r.ok) {
           setMPose("up");
           play("bounce");
-          void ball.fly(handsAt(meAt, "chest"), { arc: 0.03, ms: 380, s: depth(meAt.y) }).then(() => {
+          void fly(arcPoints(target, hands(meAt, "chest"), 0.2, 10), 360).then(() => {
             setPhase("done");
             onResult(r);
           });
-        } else {
-          // Ti salta e va a canestro.
-          setHPos({ x: 50 - side * 8, y: 40 });
-          void ball.fly(sideBall({ x: 50 - side * 8, y: 40 }), { arc: 0.02, ms: 700, s: depth(40) }).then(() => {
+          return;
+        }
+        // Ti salta: va dritto a canestro.
+        const drive: XZ = { x: att.x * 0.25, z: 2.0 };
+        setHPos(drive);
+        play("squeak");
+        void fly(dribblePath(att, drive, 3), 760)
+          .then(() => {
             setHPose("up");
             setHJump(true);
-            play("whoosh");
-            return ball.fly(RIM, { arc: 0.08, ms: 520, s: 0.62, then: [NET, { x: 50, y: 34 }] });
-          }).then(() => {
+            const up = hands(drive, "up");
+            place(up);
+            window.setTimeout(() => play("swish"), 380);
+            return fly(shotPath(up, true, "verde", sd, false), 800);
+          })
+          .then(() => {
             setHJump(false);
             setSwish(true);
-            play("swish");
             setPhase("done");
             onResult(r);
           });
-        }
-      } else {
-        setMPose("up");
-        setMJump(true);
-        window.setTimeout(() => {
-          setMJump(false);
-          setHJump(false);
-        }, 450);
-        if (r.ok) {
-          play("board");
-          void ball.fly({ x: 50 + side * 6, y: 48 }, { arc: 0.06, ms: 260, s: 0.8 }).then(() =>
-            ball.fly({ x: side > 0 ? 96 : 4, y: 74 }, { arc: 0.12, ms: 520, s: 0.95 }),
-          ).then(() => {
-            setPhase("done");
-            onResult(r);
-          });
-        } else {
-          play("whoosh");
-          void ball.fly(RIM, { arc: 0.24, ms: 820, s: 0.62, then: [NET, { x: 50, y: 34 }] }).then(() => {
-            setSwish(true);
-            play("swish");
-            setPhase("done");
-            onResult(r);
-          });
-        }
+        return;
       }
+      setMPose("up");
+      setMJump(true);
+      window.setTimeout(() => {
+        setMJump(false);
+        setHJump(false);
+      }, 460);
+      if (r.ok) {
+        play("board");
+        const hit3 = v3(target.x + sd * 0.3, target.y + 0.5, target.z - 0.6);
+        void fly(arcPoints(target, hit3, 0.1, 6), 200)
+          .then(() => fly(arcPoints(hit3, floor(att.x + sd * 3.5, att.z + 2.2), 0.6, 18), 650))
+          .then(() => {
+            setPhase("done");
+            onResult(r);
+          });
+        return;
+      }
+      window.setTimeout(() => play("swish"), 700);
+      void fly(shotPath(target, true, "verde", sd, false), 1200).then(() => {
+        setSwish(true);
+        setPhase("done");
+        onResult(r);
+      });
     },
   });
 
-  const actors: ActorSpec[] = [
-    ...others.map((o, k) => ({ key: `o${k}`, id: extraId(`${opponent}-${k}`, charId), at: o, back: true, kit: oppKit, number: NUMS[(hash(opponent) + k * 5) % NUMS.length] })),
-    ...mates.map((m, k) => ({ key: `t${k}`, id: extraId(`${game.contract.team}-${k}`, charId), at: m, kit: myKit, pose: "defend" as Pose, number: NUMS[(hash(game.contract.team) + k * 3) % NUMS.length] })),
+  const actors: Actor[] = [
+    ...others.map((o, k) => ({
+      key: `o${k}`,
+      id: extraId(`${opponent}-${k}`, charId),
+      at: o,
+      back: true,
+      kit: oppKit,
+      number: shirtNumber(`${opponent}${k}`),
+    })),
+    ...others.map((o, k) => ({
+      key: `t${k}`,
+      id: extraId(`${game.contract.team}-${k}`, charId),
+      at: guardSpot(o, 1.2),
+      kit: myKit,
+      pose: "defend" as Pose,
+      number: shirtNumber(`${game.contract.team}${k}`),
+    })),
     {
       key: "handler",
       id: extraId(`${opponent}-h`, charId),
       at: hPos,
       back: true,
       kit: oppKit,
-      number: NUMS[(hash(opponent) + 2) % NUMS.length],
+      number: shirtNumber(`${opponent}h`),
       pose: hPose,
       jump: hJump,
-      move: phase === "flying" ? 700 : 900,
+      move: phase === "flying" ? 760 : 900,
     },
-    { key: "me", id: charId, at: mPos, number: me.jerseyNumber, outfit: game.outfit, pose: mPose, jump: mJump },
+    { key: "me", id: charId, at: mPos, number: me.jerseyNumber, outfit: game.outfit, pose: mPose, jump: mJump, move: 900 },
   ];
+  const ringPos = P ? P.p(target) : null;
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <Stage stageRef={stageRef} swish={swish}>
-        {stage.h > 0 && actors.map((a) => <Actor key={a.key} a={a} h={stage.h} />)}
-        <div ref={ballEl} className="pointer-events-none absolute left-0 top-0 z-[150] will-change-transform" style={{ transform: "translate(-200px,-200px)" }}>
-          <Ball size={Math.max(16, Math.round(stage.h * CHAR * 0.13))} />
-        </div>
-        {phase === "ring" && <RingAt at={target} win={win} ring={ring} size={Math.round(stage.h * 0.1)} tone="danger" />}
-        <p className="absolute left-2 top-2 z-[160] rounded-full bg-[#1d1a16]/60 px-2.5 py-1 text-[12px] font-bold text-white">
-          {action === "rubata" ? "Tocca quando il cerchio si chiude sul pallone" : "Salta quando il cerchio si chiude: stoppata!"}
-        </p>
+      <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away={oppKit.jersey} seed={game.contract.team} swish={swish}>
+        {P && actors.filter(onStage(P, att, ["me", "handler"])).map((a) => <Actor3D key={a.key} a={a} P={P} />)}
+        <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
+        {phase === "ring" && ringPos && <RingAt at={ringPos} win={win} ring={ring} size={Math.max(48, Math.round(ringPos.s * 0.85))} tone="danger" />}
+        <Label>{action === "rubata" ? "Tocca quando il cerchio si chiude sul pallone" : "Salta quando il cerchio si chiude: stoppata!"}</Label>
       </Stage>
-      <div className="p-3">
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
         <button
           type="button"
           onPointerDown={(e) => {
@@ -764,9 +666,7 @@ export function DefenseAction({
             tap();
           }}
           disabled={phase !== "ring" || locked}
-          className={clsx(
-            "press sticker display h-20 w-full touch-none rounded-full bg-danger text-[28px] text-white disabled:opacity-40",
-          )}
+          className={clsx("press sticker display h-20 w-full touch-none rounded-full bg-danger text-[28px] text-white disabled:opacity-40")}
         >
           {action === "rubata" ? "Ruba!" : "Stoppa!"}
         </button>
@@ -775,10 +675,8 @@ export function DefenseAction({
   );
 }
 
-/**
- * Il tuo personaggio da solo che tira (tiro di prova, triple, tiri liberi): tieni
- * premuto, salta, il pallone parte dalle sue mani. Chi lo usa decide se è dentro.
- */
+// ———————————— Da solo: tiro di prova, triple, liberi ————————————
+
 export function SoloShot({
   spot,
   sweep,
@@ -790,65 +688,54 @@ export function SoloShot({
   label,
   overlay,
 }: {
-  spot: P;
+  spot: XZ;
   sweep: number;
   zone: number;
   judge: (pos: number) => { made: boolean; outcome: "verde" | "buono" | "fuori" };
   onShot: (r: { made: boolean; outcome: "verde" | "buono" | "fuori"; pos: number }) => void;
   disabled?: boolean;
-  /** Più svelto (gara delle triple). */
   fast?: boolean;
   label?: ReactNode;
   overlay?: ReactNode;
 }) {
   const { me, charId, game } = useGame();
   const { ref: stageRef, ...stage } = useStage();
-  const { el: ballEl, ...ball } = useSceneBall(stage);
+  const cam = useCam(stage.w, stage.h, spot);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const { el: ballRef, shadow: shadowRef, place, fly } = useBall3D(P);
+  const myKit = useMyKit(game, charId);
   const [busy, setBusy] = useState(false);
   const [pose, setPose] = useState<Pose>("dribble");
   const [jump, setJump] = useState(false);
   const [swish, setSwish] = useState(false);
   const [flash, setFlash] = useState<"verde" | "buono" | "fuori" | null>(null);
   const backName = me.nickname ?? me.firstName;
-  const sideBall = useCallback(
-    (at: P): P => {
-      const hp = CHAR * depth(at.y);
-      const wPx = hp * stage.h * CHAR_RATIO;
-      return { x: at.x - ((wPx * 0.38) / Math.max(1, stage.w)) * 100, y: at.y - hp * 100 * 0.26 };
-    },
-    [stage.h, stage.w],
-  );
-  // Il pallone torna in mano quando cambia la posizione o la scena prende le misure.
+  const busyRef = useRef(false);
+
+  // Il pallone in mano, al posto giusto (anche quando si cambia carrello).
   useEffect(() => {
-    if (!stage.h || busy) return;
-    ball.place(sideBall(spot), depth(spot.y));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage.h, stage.w, spot.x, spot.y]);
+    if (!P || busyRef.current) return;
+    place(hands(spot, "side"));
+  }, [P, place, spot]);
 
   const meter = useHoldMeter({
     sweep,
     disabled: disabled || busy,
     onRelease: (pos) => {
       const j = judge(pos);
+      busyRef.current = true;
       setBusy(true);
       setFlash(j.outcome);
       setPose("up");
       setJump(true);
-      ball.place(handsAt(spot, "up"), depth(spot.y));
+      const from = hands(spot, "up");
+      place(from);
       play("whoosh");
       window.setTimeout(() => setJump(false), fast ? 300 : 420);
-      const side = sideCoin();
-      const ms = fast ? 560 : 780;
-      const fl = j.made
-        ? ball.fly(RIM, { arc: 0.2, ms, s: 0.62, then: [NET, { x: 50 + side * 3, y: 34 }] })
-        : j.outcome === "fuori"
-          ? ball.fly({ x: 50 + side * 9, y: RIM.y + 2 }, { arc: 0.18, ms, s: 0.62, then: [{ x: 50 + side * 22, y: 46 }] })
-          : ball.fly({ x: 50 + side * 4, y: RIM.y - 1 }, { arc: 0.22, ms, s: 0.62, then: [{ x: 50 + side * 6, y: RIM.y - 9 }, { x: 50 + side * 16, y: 38 }] });
-      void fl.then(() => {
-        if (j.made) {
-          setSwish(true);
-          play("swish");
-        } else play(j.outcome === "fuori" ? "board" : "rim");
+      const ms = fast ? 850 : 1150;
+      window.setTimeout(() => (j.made ? play("swish") : play(j.outcome === "fuori" ? "board" : "rim")), ms * 0.58);
+      void fly(shotPath(from, j.made, j.outcome, sideCoin(), pos < ZONE_CENTER), ms).then(() => {
+        if (j.made) setSwish(true);
         onShot({ ...j, pos });
         window.setTimeout(
           () => {
@@ -856,8 +743,9 @@ export function SoloShot({
             setPose("dribble");
             setFlash(null);
             meter.reset();
-            ball.place(sideBall(spot), depth(spot.y));
+            busyRef.current = false;
             setBusy(false);
+            place(hands(spot, "side"));
           },
           fast ? 120 : 380,
         );
@@ -867,25 +755,21 @@ export function SoloShot({
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <Stage stageRef={stageRef} swish={swish}>
-        {stage.h > 0 && (
-          <Actor
+      <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away="#FFC531" seed="sfide" swish={swish} hype={swish}>
+        {P && (
+          <Actor3D
             a={{ key: "me", id: charId, at: spot, back: true, backName, number: me.jerseyNumber, outfit: game.outfit, pose, jump, crouch: meter.holding, move: 700 }}
-            h={stage.h}
+            P={P}
           />
         )}
-        <div ref={ballEl} className="pointer-events-none absolute left-0 top-0 z-[150] will-change-transform" style={{ transform: "translate(-200px,-200px)" }}>
-          <Ball size={Math.max(16, Math.round(stage.h * CHAR * 0.13))} />
+        <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
+        <div className="absolute right-2 top-[14%] z-[960]">
+          <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={Math.min(200, Math.round(stage.h * 0.45))} flash={flash} />
         </div>
-        <div className="absolute right-2 top-[22%] z-[160]">
-          <MeterBar fill={meter.fill} zone={zone} center={ZONE_CENTER} height={Math.min(190, Math.round(stage.h * 0.44))} flash={flash} />
-        </div>
-        {label && (
-          <p className="absolute left-2 top-2 z-[160] rounded-full bg-[#1d1a16]/60 px-2.5 py-1 text-[12px] font-bold text-white">{label}</p>
-        )}
+        {label && <Label>{label}</Label>}
         {overlay}
       </Stage>
-      <div className="p-3">
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
         <HoldButton handlers={meter.handlers} holding={meter.holding} disabled={disabled || busy} className="w-full">
           {meter.holding ? "Lascia!" : "Tira"}
         </HoldButton>
@@ -893,6 +777,15 @@ export function SoloShot({
     </div>
   );
 }
+
+// ———————————— Schiacciata ————————————
+
+const DUNK_PATH: XZ[] = [
+  { x: -2.4, z: 6.8 },
+  { x: -1.7, z: 5.2 },
+  { x: -0.9, z: 3.5 },
+  { x: -0.15, z: 2.0 },
+];
 
 /** La schiacciata: rincorsa dal fondo, stacco, e su fino al ferro. */
 export function DunkScene({
@@ -902,38 +795,161 @@ export function DunkScene({
   children,
 }: {
   phase: number;
-  /** Chiusura sbagliata: il pallone non entra. */
   made?: boolean;
   controls?: ReactNode;
   children?: ReactNode;
 }) {
   const { me, charId, game } = useGame();
   const { ref: stageRef, ...stage } = useStage();
-  // 0 fermo, 1 rincorsa, 2 stacco, 3 schiacciata
-  const at: P = phase >= 3 ? { x: 50, y: 50 } : phase === 2 ? { x: 50, y: 74 } : phase === 1 ? { x: 44, y: 86 } : { x: 34, y: 96 };
+  const cam = useMemo(() => (stage.w && stage.h ? dunkCam(stage.w, stage.h) : null), [stage.w, stage.h]);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const myKit = useMyKit(game, charId);
+  const step = Math.min(3, Math.max(0, phase));
+  const up = step >= 3;
+  useEffect(() => {
+    if (step === 1) play("squeak");
+    if (step === 2) play("whoosh");
+    if (step === 3) play(made ? "roar" : "rim");
+  }, [step, made]);
   return (
     <div className="absolute inset-0 flex flex-col">
-      <Stage stageRef={stageRef} swish={phase >= 3 && made}>
-        {stage.h > 0 && (
-          <Actor
+      <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away="#FFC531" seed="sfide" swish={up && made} hype={up && made}>
+        {P && (
+          <Actor3D
             a={{
               key: "me",
               id: charId,
-              at,
+              at: DUNK_PATH[step],
               back: true,
               backName: me.nickname ?? me.firstName,
               number: me.jerseyNumber,
               outfit: game.outfit,
-              pose: phase >= 2 ? "up" : "dribble",
-              jump: phase >= 2,
-              move: phase >= 3 ? 420 : 600,
+              pose: step >= 2 ? "up" : "dribble",
+              lift: up ? 1.15 : step === 2 ? 0.45 : 0,
+              move: up ? 420 : 650,
             }}
-            h={stage.h}
+            P={P}
           />
         )}
         {children}
       </Stage>
-      {controls && <div className="p-3">{controls}</div>}
+      {controls && <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">{controls}</div>}
     </div>
+  );
+}
+
+// ———————————— La telecronaca in campo ————————————
+
+/**
+ * Mentre scorre la telecronaca: la metà campo dall'alto, le due squadre ai loro posti
+ * (chi attacca di schiena, chi difende di fronte) e il pallone che va a canestro.
+ */
+export function CommentaryCourt({
+  game,
+  size,
+  opponent,
+  names,
+  line,
+  poss,
+  hype,
+}: {
+  game: GameState;
+  size: 3 | 5;
+  opponent: string;
+  names: Rosters;
+  /** L'ultima riga di cronaca, da mettere in scena. */
+  line: FeedLine | null;
+  poss: Side;
+  hype: boolean;
+}) {
+  const { me, charId } = useGame();
+  const { ref: stageRef, ...stage } = useStage();
+  const cam = useCam(stage.w, stage.h, null);
+  const P = useMemo(() => (cam ? projector(cam) : null), [cam]);
+  const { el: ballRef, shadow: shadowRef, place, fly } = useBall3D(P);
+  const myKit = useMyKit(game, charId);
+  const oppKit = useMemo(() => teamKit(opponent, myKit.jersey), [opponent, myKit.jersey]);
+  const set = size === 3 ? OFF3 : OFF5;
+  const [swish, setSwish] = useState(false);
+  const side: Side = line?.side ?? poss;
+  const usIds = useMemo(() => [names.me, ...names.us].slice(0, size), [names, size]);
+  const themIds = useMemo(() => names.them.slice(0, size), [names, size]);
+  const offense = side === "us" ? usIds : themIds;
+  const handler = line?.who && offense.includes(line.who) ? line.who : offense[0];
+  const scored = !!line && line.pts > 0 && line.side === side;
+  const spotOf = (name: string, team: Side): XZ => {
+    const list = team === "us" ? usIds : themIds;
+    const raw = set[Math.max(0, list.indexOf(name)) % set.length];
+    const base = { x: raw.x * 0.9, z: raw.z };
+    return team === side ? base : guardSpot(base, 1.25);
+  };
+
+  useEffect(() => {
+    if (!P || !line) return;
+    const at = spotOf(handler, side);
+    place(hands(at, "side"));
+    let alive = true;
+    const t = window.setTimeout(() => {
+      if (!alive) return;
+      const sd = sideCoin();
+      const from = hands(at, "up");
+      if (scored) {
+        place(from);
+        void fly(shotPath(from, true, "verde", sd, false), 950).then(() => {
+          if (!alive) return;
+          setSwish(true);
+          window.setTimeout(() => alive && setSwish(false), 600);
+        });
+      } else if (line.kind === "miss") {
+        place(from);
+        void fly(shotPath(from, false, "buono", sd, false), 950);
+      } else if (line.kind === "turnover") {
+        void fly(arcPoints(hands(at, "chest"), hands(guardSpot(at, 1.25), "chest"), 0.3, 10), 450);
+      }
+    }, 650);
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+    };
+    // Una volta per ogni riga nuova.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line, P]);
+
+  const actors: Actor[] = [
+    ...themIds.map((n, k) => ({
+      key: `t-${n}`,
+      id: extraId(`${opponent}-${k}`, charId),
+      at: spotOf(n, "them"),
+      back: side === "them",
+      kit: oppKit,
+      number: shirtNumber(`${opponent}${n}`),
+      pose: (side === "them" ? (n === handler && scored ? "up" : "dribble") : "defend") as Pose,
+      tag: side === "them" && n === handler && scored ? `+${line?.pts} ${n}` : null,
+      move: 1000,
+    })),
+    ...usIds.map((n, k) => {
+      const mine = n === names.me;
+      return {
+        key: `u-${n}`,
+        id: mine ? charId : extraId(`${game.contract.team}-${k - 1}`, charId),
+        at: spotOf(n, "us"),
+        back: side === "us",
+        backName: mine && side === "us" ? me.nickname ?? me.firstName : undefined,
+        kit: mine ? undefined : myKit,
+        outfit: mine ? game.outfit : undefined,
+        number: mine ? me.jerseyNumber : shirtNumber(`${game.contract.team}${n}`),
+        pose: (side === "us" ? (n === handler && scored ? "up" : "dribble") : "defend") as Pose,
+        tag: side === "us" && n === handler && scored ? `+${line?.pts} ${mine ? "Tu" : n}` : null,
+        glow: mine,
+        move: 1000,
+      };
+    }),
+  ];
+
+  return (
+    <Stage stageRef={stageRef} cam={cam} home={myKit.jersey} away={oppKit.jersey} seed={game.contract.team} swish={swish} hype={hype || swish}>
+      {P && actors.map((a) => <Actor3D key={a.key} a={a} P={P} />)}
+      <BallNodes ballRef={ballRef} shadowRef={shadowRef} />
+    </Stage>
   );
 }

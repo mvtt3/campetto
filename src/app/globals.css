@@ -2275,25 +2275,46 @@ html[data-shot="3"] .intro-ball-x {
     opacity: 1;
   }
 }
-/* La retina che si muove quando la palla entra. */
-.hoop-net-swish {
-  transform-origin: 80px 92px;
-  animation: hoop-net 420ms ease-out;
-}
-@keyframes hoop-net {
-  30% {
-    transform: scaleY(1.18) translateY(3px);
-  }
-  60% {
-    transform: scaleY(0.94);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .game-pop,
   .game-glow,
   .sheet-up,
-  .toast-in,
-  .hoop-net-swish {
+  .toast-in {
+    animation: none;
+  }
+}
+
+/* Il palazzetto di Campetto Star: il pubblico che salta e la retina che si muove. */
+.arena-hype .crowd-g0 {
+  animation: crowd-jump 0.42s ease-in-out 4 alternate;
+}
+.arena-hype .crowd-g1 {
+  animation: crowd-jump 0.38s ease-in-out 0.12s 4 alternate;
+}
+.arena-hype .crowd-g2 {
+  animation: crowd-jump 0.46s ease-in-out 0.2s 4 alternate;
+}
+@keyframes crowd-jump {
+  to {
+    transform: translateY(-4px);
+  }
+}
+.net-swish {
+  animation: net-swish 460ms ease-out;
+}
+@keyframes net-swish {
+  30% {
+    transform: scaleY(1.22);
+  }
+  65% {
+    transform: scaleY(0.92);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-hype .crowd-g0,
+  .arena-hype .crowd-g1,
+  .arena-hype .crowd-g2,
+  .net-swish {
     animation: none;
   }
 }

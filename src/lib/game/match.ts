@@ -99,9 +99,12 @@ export interface MatchPlan {
   fromBench: boolean;
   /** Errori di fila dopo cui il coach ti toglie. */
   benchAfter: number;
-  /** I punti del resto della partita, senza di te. */
-  usBase: number;
-  themBase: number;
+  /** Forza delle due squadre (1 = nella media). */
+  usStr: number;
+  oppStr: number;
+  /** Le tue abilità che contano anche fuori dai tuoi momenti (assist, rimbalzi). */
+  passaggio: number;
+  fisico: number;
   size: 3 | 5;
 }
 
@@ -163,20 +166,18 @@ export function planMatch(
       clock,
     };
   });
-  const usStr = 1 + s.fame / 500 + (overall(s) - 50) / 300;
+  const usStr = 1 + s.fame / 500 + (overall(s) - 50) / 300 + (m.home ? 0.02 : 0);
   const oppStr = teamStrength(m.opponent) * DIFF[diff].opp;
-  const usBase =
-    size === 3 ? Math.round((14 + rng() * 5) * usStr) : Math.round((60 + rng() * 12) * usStr);
-  const themBase =
-    size === 3 ? Math.round((16.5 + rng() * 5) * oppStr) : Math.round((69 + rng() * 12) * oppStr);
   return {
     opponent: m.opponent,
     home: m.home,
     moments,
     fromBench,
     benchAfter: (diff === "facile" ? 4 : 3) + (coach >= 30 ? 1 : 0),
-    usBase,
-    themBase,
+    usStr,
+    oppStr,
+    passaggio: s.skills.passaggio,
+    fisico: s.skills.fisico,
     size,
   };
 }
@@ -230,57 +231,31 @@ export function defenseResult(
   };
 }
 
-const isFail = (r: MomentResult) =>
-  (r.kind === "tiro" && !r.made) || (r.kind === "passaggio" && !r.ok);
-
-/** Il coach ti toglie? Dopo troppi errori di fila, se c'è ancora partita da giocare. */
-export function shouldBench(plan: MatchPlan, results: MomentResult[]): boolean {
-  if (results.length >= plan.moments.length) return false;
-  let run = 0;
-  for (let i = results.length - 1; i >= 0 && isFail(results[i]); i--) run++;
-  return run >= plan.benchAfter;
-}
-
-/** Simula: un giocatore virtuale con le tue abilità gioca i momenti al posto tuo. */
-export function simulateMoments(
-  s: GameState,
-  plan: MatchPlan,
-  diff: Difficulty,
-  rng: Rng,
-): MomentResult[] {
-  const out: MomentResult[] = [];
-  for (const m of plan.moments) {
-    if (shouldBench(plan, out)) {
-      while (out.length < plan.moments.length) out.push({ kind: "panchina" });
-      break;
-    }
-    if (m.kind === "attacco") {
-      if (s.skills.passaggio > s.skills.tiro + 4 && rng() < 0.4) {
-        const w = ringWindow(s, diff, "passaggio");
-        const r = rng();
-        const hit = r < w * 2.2 ? "perfetto" : r < w * 5.5 ? "buono" : "fuori";
-        out.push(passResult(s, m.shot, m.open, hit, rng));
-      } else {
-        const z = shotZone(s, diff, m.shot, m.open);
-        const r = rng();
-        const outcome: ShotOutcome =
-          r < clamp(z * 2.6, 0.05, 0.6) ? "verde" : r < clamp(z * 5.2, 0.12, 0.85) ? "buono" : "fuori";
-        const made =
-          outcome === "verde"
-            ? rng() < 0.97
-            : outcome === "buono"
-              ? rng() < clamp(0.3 + s.skills.tiro / 220, 0.3, 0.75)
-              : rng() < 0.05;
-        out.push(shotResult(m.shot, { outcome, made }));
-      }
-    } else {
-      const w = ringWindow(s, diff, m.action === "rubata" ? "difesa" : "fisico");
+/** Un giocatore virtuale con le tue abilità gioca un momento al posto tuo (Simula). */
+export function simMoment(s: GameState, m: Moment, diff: Difficulty, rng: Rng): MomentResult {
+  if (m.kind === "attacco") {
+    if (s.skills.passaggio > s.skills.tiro + 4 && rng() < 0.4) {
+      const w = ringWindow(s, diff, "passaggio");
       const r = rng();
       const hit = r < w * 2.2 ? "perfetto" : r < w * 5.5 ? "buono" : "fuori";
-      out.push(defenseResult(m.action, hit, rng));
+      return passResult(s, m.shot, m.open, hit, rng);
     }
+    const z = shotZone(s, diff, m.shot, m.open);
+    const r = rng();
+    const outcome: ShotOutcome =
+      r < clamp(z * 2.6, 0.05, 0.6) ? "verde" : r < clamp(z * 5.2, 0.12, 0.85) ? "buono" : "fuori";
+    const made =
+      outcome === "verde"
+        ? rng() < 0.97
+        : outcome === "buono"
+          ? rng() < clamp(0.3 + s.skills.tiro / 220, 0.3, 0.75)
+          : rng() < 0.05;
+    return shotResult(m.shot, { outcome, made });
   }
-  return out;
+  const w = ringWindow(s, diff, m.action === "rubata" ? "difesa" : "fisico");
+  const r = rng();
+  const hit = r < w * 2.2 ? "perfetto" : r < w * 5.5 ? "buono" : "fuori";
+  return defenseResult(m.action, hit, rng);
 }
 
 export interface MatchOutcome {
@@ -292,28 +267,35 @@ export interface MatchOutcome {
   xp: Partial<Record<Skill, number>>;
 }
 
+/** Il punteggio finale della partita dal vivo, più i tuoi assist e rimbalzi raccontati in cronaca. */
+export interface FinalScore {
+  us: number;
+  them: number;
+  ast?: number;
+  reb?: number;
+}
+
 export function finishMatch(
   s: GameState,
   plan: MatchPlan,
   results: MomentResult[],
+  score: FinalScore,
   diff: Difficulty,
   simulated: boolean,
   rng: Rng,
 ): MatchOutcome {
   let pts = 0;
-  let ast = 0;
+  let ast = score.ast ?? 0;
   let stl = 0;
   let blk = 0;
-  let us = plan.usBase;
-  let them = plan.themBase;
+  const { us, them } = score;
   let rating = 5.6;
   const xp: Partial<Record<Skill, number>> = { fisico: 2 };
   const add = (k: Skill, v: number) => (xp[k] = (xp[k] ?? 0) + v);
-  const benched = results.some((r) => r.kind === "panchina");
+  const benched = results.some((r) => r.kind === "panchina") || results.length < plan.moments.length;
   for (const r of results) {
     if (r.kind === "tiro") {
       pts += r.pts;
-      us += r.pts;
       rating += r.made ? (r.outcome === "verde" ? 0.65 : 0.45) : -0.3;
       add("tiro", 2 + (r.made ? 1 : 0));
     } else if (r.kind === "passaggio") {
@@ -321,7 +303,6 @@ export function finishMatch(
       if (!r.ok) rating -= 0.3;
       else if (r.made) {
         ast++;
-        us += r.pts;
         rating += 0.4;
       } else rating += 0.05;
     } else if (r.kind === "difesa") {
@@ -330,49 +311,21 @@ export function finishMatch(
         rating += r.perfect ? 0.6 : 0.45;
         if (r.action === "rubata") stl++;
         else blk++;
-        if (r.fastBreak) {
-          pts += 2;
-          us += 2;
-        }
-      } else {
-        rating -= 0.25;
-        them += rng() < 0.25 ? 3 : 2;
-      }
+        if (r.fastBreak) pts += 2;
+      } else rating -= 0.25;
     }
   }
-  // Qualche punto anche fuori dai momenti chiave (rimbalzi, tiri liberi…).
-  const extra =
-    plan.size === 3
-      ? pick(rng, [0, 0, 1, 2])
-      : Math.round(rng() * (2 + s.skills.tiro / 20));
-  pts += extra;
-  us += extra;
-  // Ai 21 nel 3 contro 3: il vincente arriva a 21 esatto.
-  if (plan.size === 3) {
-    if (us === them) {
-      if (rng() < 0.5) us += 1;
-      else them += 1;
-    }
-    const top = Math.max(us, them);
-    const f = 21 / top;
-    const win = us > them;
-    let lose = Math.round((win ? them : us) * f);
-    lose = Math.min(lose, 20);
-    us = win ? 21 : lose;
-    them = win ? lose : 21;
-    if (pts > us) pts = us;
-  } else {
-    while (us === them) {
-      us += Math.round(rng() * 8);
-      them += Math.round(rng() * 8);
-    }
-  }
+  // Assist e rimbalzi raccontati in cronaca (dipendono dalle tue abilità).
+  const extraAst = score.ast ?? 0;
+  const reb = (score.reb ?? 0) + Math.round(rng() * (plan.size === 3 ? 1 : 2) * (0.5 + s.skills.fisico / 100));
+  rating += Math.min(0.6, extraAst * 0.15 + (score.reb ?? 0) * 0.1);
+  if (extraAst) add("passaggio", extraAst);
   const won = us > them;
   rating += won ? 0.6 : -0.2;
-  if (benched) rating -= 0.8;
+  if (benched && results.some((r) => r.kind === "panchina")) rating -= 0.8;
   if (plan.fromBench) rating -= 0.3;
   rating = clamp(Math.round(rating * 2) / 2, 4, 10);
-  const reb = Math.round(rng() * (plan.size === 3 ? 3 : 6) * (0.5 + s.skills.fisico / 100));
+  pts = Math.min(pts, us);
   let fame = rating >= 9 ? 4 : rating >= 8 ? 3 : rating >= 7 ? 2 : rating >= 6 ? 1 : rating < 5 ? -1 : 0;
   if (fame > 0 && diff === "difficile") fame += 1;
   if (fame > 0 && diff === "facile") fame = Math.max(0, fame - 1);
@@ -391,7 +344,7 @@ export function finishMatch(
       stl,
       blk,
       simulated,
-      benched,
+      benched: results.some((r) => r.kind === "panchina"),
     },
     money,
     fame,

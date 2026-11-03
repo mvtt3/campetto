@@ -62,10 +62,8 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
     if (r.s === game) return;
     update(() => r.s);
     play(a.kind === "partita" ? "whoosh" : "success");
-    const msgs = unreadCount(r.s) - unread;
     const day = `${DAY_NAMES[dow(r.s.day)]}`;
     toast(r.note ? `${r.note} · ${day}` : day, "info");
-    if (msgs > 0) window.setTimeout(() => play("tick"), 500);
     setTrain(false);
   };
 

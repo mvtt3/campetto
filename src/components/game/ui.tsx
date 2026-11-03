@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Mascot } from "@/components/mascot";
-import { play } from "@/lib/sound";
+import { play, type SoundName } from "@/lib/sound";
 import { romeDay } from "@/lib/game/economy";
 import { useNow } from "@/lib/use-now";
 import { useGame } from "./store";
@@ -116,16 +116,18 @@ export function Sheet({
 }
 
 type Toast = { id: number; text: string; tone: "ok" | "info" | "bad" };
-const ToastCtx = createContext<(text: string, tone?: Toast["tone"]) => void>(() => {});
+/** `sound`: il suono al posto di quello solito (null = nessuno). */
+const ToastCtx = createContext<(text: string, tone?: Toast["tone"], sound?: SoundName | null) => void>(() => {});
 export const useToast = () => useContext(ToastCtx);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<Toast[]>([]);
   const n = useRef(0);
-  const show = useCallback((text: string, tone: Toast["tone"] = "info") => {
+  const show = useCallback((text: string, tone: Toast["tone"] = "info", sound?: SoundName | null) => {
     const id = ++n.current;
     setList((l) => [...l.slice(-2), { id, text, tone }]);
-    if (tone === "ok") play("success");
+    if (sound) play(sound);
+    else if (sound === undefined && tone === "ok") play("success");
     window.setTimeout(() => setList((l) => l.filter((t) => t.id !== id)), 2600);
   }, []);
   return (

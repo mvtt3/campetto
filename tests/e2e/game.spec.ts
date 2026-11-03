@@ -97,24 +97,34 @@ test("Campetto Star: si gioca davvero, momento per momento", async ({ page }) =>
   await page.getByTestId("game-play-match").click();
   await page.getByRole("radio", { name: /Facile/ }).click();
   await page.getByRole("button", { name: "Gioca", exact: true }).click();
-  for (let guard = 0; guard < 40; guard++) {
+  // La partita è a tutto schermo: niente intestazione dell'app, il tabellone e la telecronaca.
+  await expect(page.getByTestId("live-match")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Partita" })).toHaveCount(0);
+  await expect(page.getByTestId("live-feed").locator("li").first()).toBeVisible({ timeout: 8000 });
+  const box = (await page.getByTestId("live-match").boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual((page.viewportSize()?.height ?? 0) - 1);
+  let moments = 0;
+  for (let guard = 0; guard < 200; guard++) {
     if (await page.getByRole("button", { name: "Continua" }).isVisible()) break;
-    const bench = page.getByRole("button", { name: "Vai al risultato" });
-    if (await bench.isVisible()) {
-      await bench.click();
-      continue;
-    }
     const tira = page.getByRole("button", { name: "Tira" });
     const act = page.getByRole("button", { name: /^(Ruba!|Stoppa!)$/ });
+    const skip = page.getByTestId("live-skip");
     if ((await tira.isVisible()) && (await tira.isEnabled())) {
       await hold(page, tira, 880);
+      moments++;
       await page.waitForTimeout(900);
     } else if ((await act.isVisible()) && (await act.isEnabled())) {
       await page.waitForTimeout(450 + 1250 * 0.75 - 120);
       await act.dispatchEvent("pointerdown");
+      moments++;
       await page.waitForTimeout(600);
-    } else await page.waitForTimeout(300); // il resoconto del momento va avanti da solo
+    } else if ((await skip.isVisible()) && (await skip.isEnabled())) {
+      // La telecronaca si salta fino al tuo turno.
+      await skip.click();
+      await page.waitForTimeout(300);
+    } else await page.waitForTimeout(300);
   }
+  expect(moments).toBeGreaterThan(0);
   await expect(page.getByText(/^(Vittoria!|Sconfitta)$/)).toBeVisible();
   await expect(page.getByText("Il tuo voto")).toBeVisible();
   await noSideScroll(page);

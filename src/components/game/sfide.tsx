@@ -31,8 +31,9 @@ import {
 } from "@/lib/game/minigames";
 import { MINIGAMES, type BoardRow, type MiniGame } from "@/lib/game/types";
 import { shortName, type Player } from "@/lib/types";
-import { DunkScene, SoloShot } from "./action";
-import { Ball, CourtScene } from "./scene";
+import { DunkScene, FT_SPOT, RACK_SPOTS, SoloShot } from "./action";
+import { GameScreen } from "./arena";
+import { Ball } from "./scene";
 import { useGame } from "./store";
 import { Sheet, Tip, clockNow, useClock, useToast } from "./ui";
 
@@ -236,9 +237,9 @@ function MiniPlay({
     [backend, g, rows, me.id, onBest],
   );
   if (score === null) {
-    if (g === "triple") return <TripleGame key={round} onEnd={end} />;
-    if (g === "liberi") return <LiberiGame key={round} onEnd={end} />;
-    return <DunkGame key={round} onEnd={end} />;
+    if (g === "triple") return <TripleGame key={round} onEnd={end} onQuit={onExit} />;
+    if (g === "liberi") return <LiberiGame key={round} onEnd={end} onQuit={onExit} />;
+    return <DunkGame key={round} onEnd={end} onQuit={onExit} />;
   }
   const rank = ranking(rows, g);
   const pos = rank.findIndex((r) => r.playerId === me.id);
@@ -281,7 +282,7 @@ function MiniPlay({
   );
 }
 
-function Countdown({ onGo }: { onGo: () => void }) {
+function Countdown({ onGo, hint }: { onGo: () => void; hint?: string }) {
   const [n, setN] = useState(3);
   useEffect(() => {
     if (n === 0) {
@@ -295,24 +296,16 @@ function Countdown({ onGo }: { onGo: () => void }) {
     return () => window.clearTimeout(t);
   }, [n, onGo]);
   return (
-    <div className="pointer-events-none absolute inset-0 z-[250] grid place-items-center bg-[#1d1a16]/40">
+    <div className="pointer-events-none absolute inset-0 z-[980] flex flex-col items-center justify-center bg-[#0d1124]/55 px-8 text-center">
       <p key={n} className="display game-pop text-[90px] text-volt" style={{ WebkitTextStroke: "3px #1d1a16" }}>
         {n || "Via!"}
       </p>
+      {hint && <p className="mt-2 text-[15px] font-semibold text-[#FFF8EA]">{hint}</p>}
     </div>
   );
 }
 
-/** I cinque carrelli, da un angolo all'altro come nella gara vera. */
-const RACK_SPOTS = [
-  { x: 16, y: 84 },
-  { x: 30, y: 91 },
-  { x: 50, y: 95 },
-  { x: 70, y: 91 },
-  { x: 84, y: 84 },
-];
-
-function TripleGame({ onEnd }: { onEnd: (score: number) => void }) {
+function TripleGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit: () => void }) {
   const { game } = useGame();
   const zone = tripleZone(game);
   const [ball, setBall] = useState(0);
@@ -350,31 +343,40 @@ function TripleGame({ onEnd }: { onEnd: (score: number) => void }) {
     [zone],
   );
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-      <div className="flex items-center justify-between pb-2">
-        <p className="num text-[30px]" data-testid="triple-score">{score}</p>
-        <p className={clsx("num text-[30px]", left <= 10 && "text-danger")}>{left}&quot;</p>
-      </div>
-      <div className="mb-2 grid grid-cols-5 gap-1.5" aria-label="I carrelli">
+    <GameScreen
+      testId="mini-triple"
+      onClose={onQuit}
+      hud={
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <p className="flex items-baseline gap-1.5">
+              <span className="score text-[30px] leading-none" data-testid="triple-score">{score}</span>
+              <span className="text-[12px] font-semibold text-[#FFF8EA]/70">punti</span>
+            </p>
+            <p className={clsx("num rounded-full px-2.5 py-1 text-[16px]", left <= 10 ? "bg-danger text-white" : "bg-volt text-volt-ink")}>{left}&quot;</p>
+          </div>
+          <div className="grid grid-cols-5 gap-1" aria-label="I carrelli">
         {Array.from({ length: RACKS }, (_, r) => (
-          <div key={r} className="flex justify-center gap-0.5 rounded-full border-2 border-edge bg-surface px-1 py-1">
+          <div key={r} className="flex justify-center gap-0.5 rounded-full border border-[#FFF8EA]/25 bg-[#FFF8EA]/10 px-1 py-1">
             {Array.from({ length: PER_RACK }, (_, k) => {
               const i = r * PER_RACK + k;
               return (
                 <span
                   key={k}
                   className={clsx(
-                    "h-3 w-3 rounded-full border border-edge",
-                    made[i] === true ? "bg-ok" : made[i] === false ? "bg-line" : isMoneyBall(i) ? "bg-volt" : "bg-ball",
-                    i === ball && go && "ring-2 ring-court",
+                    "h-2.5 w-2.5 rounded-full border border-[#1d1a16]",
+                    made[i] === true ? "bg-ok" : made[i] === false ? "bg-[#FFF8EA]/30" : isMoneyBall(i) ? "bg-volt" : "bg-ball",
+                    i === ball && go && "ring-2 ring-[#FFF8EA]",
                   )}
                 />
               );
             })}
           </div>
         ))}
-      </div>
-      <CourtScene className="min-h-0 flex-1">
+          </div>
+        </div>
+      }
+    >
         <SoloShot
           spot={RACK_SPOTS[Math.floor(ball / PER_RACK)]}
           sweep={TRIPLE_SWEEP}
@@ -391,15 +393,13 @@ function TripleGame({ onEnd }: { onEnd: (score: number) => void }) {
             if (i + 1 >= RACKS * PER_RACK) finish();
             else setBall(i + 1);
           }}
-          overlay={!go && <Countdown onGo={() => setGo(true)} />}
+          overlay={!go && <Countdown onGo={() => setGo(true)} hint={MINI.triple.how} />}
         />
-      </CourtScene>
-      <p className="pt-2 text-center text-[13px] text-muted">{MINI.triple.how}</p>
-    </div>
+    </GameScreen>
   );
 }
 
-function LiberiGame({ onEnd }: { onEnd: (score: number) => void }) {
+function LiberiGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit: () => void }) {
   const { game } = useGame();
   const [streak, setStreak] = useState(0);
   const [go, setGo] = useState(false);
@@ -414,14 +414,21 @@ function LiberiGame({ onEnd }: { onEnd: (score: number) => void }) {
     [zone],
   );
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-      <div className="flex items-center justify-between pb-2">
-        <p className="text-[14px] font-semibold text-muted">Di fila</p>
-        <p className="num text-[36px]" data-testid="liberi-streak">{streak}</p>
-      </div>
-      <CourtScene className="min-h-0 flex-1">
+    <GameScreen
+      testId="mini-liberi"
+      onClose={onQuit}
+      hud={
+        <div className="flex items-center justify-between">
+          <p className="display text-[19px]">Tiri liberi</p>
+          <p className="flex items-baseline gap-1.5">
+            <span className="text-[12px] font-semibold text-[#FFF8EA]/70">di fila</span>
+            <span className="score text-[32px] leading-none" data-testid="liberi-streak">{streak}</span>
+          </p>
+        </div>
+      }
+    >
         <SoloShot
-          spot={{ x: 50, y: 88 }}
+          spot={FT_SPOT}
           sweep={LIBERI_SWEEP}
           zone={zone}
           disabled={!go || over}
@@ -435,15 +442,13 @@ function LiberiGame({ onEnd }: { onEnd: (score: number) => void }) {
             }
             setStreak((s) => s + 1);
           }}
-          overlay={!go && <Countdown onGo={() => setGo(true)} />}
+          overlay={!go && <Countdown onGo={() => setGo(true)} hint={MINI.liberi.how} />}
         />
-      </CourtScene>
-      <p className="pt-2 text-center text-[13px] text-muted">{MINI.liberi.how}</p>
-    </div>
+    </GameScreen>
   );
 }
 
-function DunkGame({ onEnd }: { onEnd: (score: number) => void }) {
+function DunkGame({ onEnd, onQuit }: { onEnd: (score: number) => void; onQuit: () => void }) {
   const [dunk, setDunk] = useState<Dunk | null>(null);
   const [step, setStep] = useState(0);
   const [q, setQ] = useState<number[]>([]);
@@ -541,34 +546,48 @@ function DunkGame({ onEnd }: { onEnd: (score: number) => void }) {
     );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-      <p className="display text-[24px]">{dunk.name}</p>
-      <div className="mb-2 mt-1 flex gap-1.5">
-        {DUNK_STEPS.map((s, k) => (
-          <span
-            key={s}
-            className={clsx(
-              "flex-1 rounded-full border-2 border-edge py-1 text-center text-[13px] font-bold",
-              k < q.length ? (q[k] > 0.6 ? "bg-ok text-white" : q[k] > 0 ? "bg-volt" : "bg-danger text-white") : k === step ? "bg-court text-court-ink" : "bg-surface",
-            )}
-          >
-            {s}
-          </span>
-        ))}
-      </div>
-      <CourtScene className="min-h-0 flex-1">
+    <GameScreen
+      testId="mini-schiacciate"
+      onClose={onQuit}
+      hud={
+        <div className="flex flex-col gap-1.5">
+          <p className="display truncate text-[19px]">{dunk.name}</p>
+          <div className="flex gap-1.5">
+            {DUNK_STEPS.map((s, k) => (
+              <span
+                key={s}
+                className={clsx(
+                  "flex-1 rounded-full border-2 border-[#1d1a16] py-0.5 text-center text-[12.5px] font-bold",
+                  k < q.length
+                    ? q[k] > 0.6
+                      ? "bg-ok text-white"
+                      : q[k] > 0
+                        ? "bg-volt text-volt-ink"
+                        : "bg-danger text-white"
+                    : k === step
+                      ? "bg-court text-court-ink"
+                      : "bg-[#FFF8EA]/15 text-[#FFF8EA]/80",
+                )}
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      }
+    >
         <DunkScene
           phase={judges ? 3 : q.length}
           made={(q[2] ?? 1) > 0.05}
           controls={
             !judges && (
               <>
-              <p className="mb-2 text-center text-[14px] font-bold text-white [text-shadow:0_1px_2px_#1d1a16]">
+              <p className="mb-2 text-center text-[14px] font-bold text-[#FFF8EA]">
                 {DUNK_STEPS[Math.min(step, 2)]}: tocca quando il pallone è nel cerchio
               </p>
-              <div className="relative mb-3 h-14 rounded-full border-[2.5px] border-edge bg-surface">
+              <div className="relative mb-3 h-14 rounded-full border-[2.5px] border-[#1d1a16] bg-[#FFF8EA]">
                 <div
-                  className="absolute top-1/2 h-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-edge bg-ok/40"
+                  className="absolute top-1/2 h-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#1d1a16] bg-ok/40"
                   style={{ left: "50%", width: `${dunk.win * 200}%` }}
                 />
                 <div ref={dot} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: "0%" }}>
@@ -589,13 +608,18 @@ function DunkGame({ onEnd }: { onEnd: (score: number) => void }) {
             )
           }
         >
+          {judges && shown >= judges.length && (
+            <p className="display game-pop absolute inset-x-0 top-[18%] z-[990] text-center text-[40px] leading-none text-volt" style={{ WebkitTextStroke: "2px #1d1a16", textShadow: "3px 3px 0 #1d1a16" }}>
+              Totale {judges.reduce((a, b) => a + b, 0)}
+            </p>
+          )}
           {judges ? (
-            <div className="absolute inset-x-0 bottom-4 z-[250] flex justify-center gap-2 px-3">
+            <div className="absolute inset-x-0 bottom-6 z-[990] flex justify-center gap-2 px-3">
               {judges.map((j, k) => (
                 <span
                   key={k}
                   className={clsx(
-                    "num grid h-16 w-12 place-items-center rounded-lg border-[2.5px] border-edge bg-surface text-[30px] transition-transform",
+                    "num grid h-16 w-12 place-items-center rounded-lg border-[2.5px] border-[#1d1a16] bg-[#FFF8EA] text-[30px] text-[#1d1a16] transition-transform",
                     k < shown ? "game-pop" : "opacity-0",
                   )}
                 >
@@ -605,10 +629,6 @@ function DunkGame({ onEnd }: { onEnd: (score: number) => void }) {
             </div>
           ) : null}
         </DunkScene>
-      </CourtScene>
-      {judges && shown >= judges.length && (
-        <p className="pt-2 text-center text-[16px] font-bold">Totale: {judges.reduce((a, b) => a + b, 0)}</p>
-      )}
-    </div>
+    </GameScreen>
   );
 }

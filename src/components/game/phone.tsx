@@ -270,10 +270,11 @@ function Chat({ id, back }: { id: string; back: () => void }) {
       setTyping(true);
       window.setTimeout(() => {
         setTyping(false);
-        play("tick");
+        play("message");
       }, 800);
     }
-    if (next.money !== before) toast(`${next.money > before ? "+" : ""}${fmtEuro(next.money - before)}`, next.money > before ? "ok" : "info");
+    if (next.money !== before)
+      toast(`${next.money > before ? "+" : ""}${fmtEuro(next.money - before)}`, next.money > before ? "ok" : "info", next.money > before ? "coins" : undefined);
   };
 
   return (
@@ -511,8 +512,7 @@ function Shopping({ back }: { back: () => void }) {
       if (r !== s && r.tutorial.step === 3 && it.slot === "scarpe") r = { ...r, tutorial: { ...r.tutorial, step: 4 } };
       return r;
     });
-    play("success");
-    toast(game.tutorial.step === 3 && it.slot === "scarpe" ? "Scarpe nuove! Il tutorial è finito: buona carriera" : `Comprato: ${it.name}. Lo indossi già`, "ok");
+    toast(game.tutorial.step === 3 && it.slot === "scarpe" ? "Scarpe nuove! Il tutorial è finito: buona carriera" : `Comprato: ${it.name}. Lo indossi già`, "ok", "coins");
   };
   return (
     <>
@@ -587,8 +587,7 @@ function Shopping({ back }: { back: () => void }) {
                       disabled={game.money < price}
                       onClick={() => {
                         update((s) => buyConsumable(s, c.id));
-                        play("success");
-                        toast(c.perk ? `${c.name}: fatto!` : `${c.name}: ${c.line.toLowerCase()}`, "ok");
+                        toast(c.perk ? `${c.name}: fatto!` : `${c.name}: ${c.line.toLowerCase()}`, "ok", "coins");
                       }}
                     >
                       Compra

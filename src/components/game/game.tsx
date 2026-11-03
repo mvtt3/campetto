@@ -11,6 +11,7 @@ import { useData } from "@/lib/data/provider";
 import { play, primeAudio } from "@/lib/sound";
 import { KING_PRIZE, LEVELS, dailyStatus, fmtEuro } from "@/lib/game/economy";
 import { DIFF, ZONE_CENTER, judgeShot, shotZone } from "@/lib/game/match";
+import { unreadCount } from "@/lib/game/messages";
 import { MINI } from "@/lib/game/minigames";
 import { applyAwards, realMatchBonus } from "@/lib/game/state";
 import { MINIGAMES, type GameAward, type MiniGame } from "@/lib/game/types";
@@ -18,12 +19,12 @@ import type { Player } from "@/lib/types";
 import { Career, DailySheet, Guide, Wardrobe } from "./extra";
 import { Hub } from "./hub";
 import { MatchScreen } from "./match-screen";
-import { SoloShot } from "./action";
+import { PRACTICE_SPOT, SoloShot } from "./action";
 import { Phone } from "./phone";
-import { CourtScene } from "./scene";
+import { GameScreen } from "./arena";
 import { Sfide } from "./sfide";
 import { GameProvider, useGame } from "./store";
-import { Tip, ToastProvider, clockNow, useToast, useToday } from "./ui";
+import { ToastProvider, clockNow, useToast, useToday } from "./ui";
 
 /** Dove sei nel gioco: "hub", "telefono:messaggi:mamma", "partita:3", "sfide:triple"… */
 export type View = string;
@@ -114,6 +115,17 @@ function GameShell() {
   const [kind, ...rest] = view.split(":");
   const sub = rest.join(":");
 
+  // Un messaggio nuovo sul telefono del personaggio: il suo "ding" (nel telefono ci pensa la chat).
+  const unread = unreadCount(game);
+  const seenUnread = useRef(unread);
+  useEffect(() => {
+    const more = unread > seenUnread.current;
+    seenUnread.current = unread;
+    if (!more || syncing || kind === "telefono") return;
+    const t = window.setTimeout(() => play("message"), 900);
+    return () => window.clearTimeout(t);
+  }, [unread, syncing, kind]);
+
   if (game.tutorial.step === 0)
     return (
       <Intro
@@ -128,7 +140,7 @@ function GameShell() {
   return (
     <>
       <OnOpen />
-      {kind !== "telefono" && (
+      {kind !== "telefono" && kind !== "partita" && (
         <header className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-[max(10px,env(safe-area-inset-top))]">
           {kind === "hub" ? (
             <button onClick={exit} aria-label="Esci dal gioco" className="press sticker-sm grid h-11 w-11 place-items-center rounded-full bg-surface" data-testid="game-exit">
@@ -164,7 +176,7 @@ function GameShell() {
       )}
       {kind === "hub" && <Hub go={go} openDaily={() => setDaily(true)} />}
       {kind === "telefono" && <Phone app={sub || null} go={go} back={back} />}
-      {kind === "partita" && <MatchView index={Number(sub)} onExit={back} />}
+      {kind === "partita" && <MatchScreen index={Number(sub)} onExit={back} />}
       {kind === "sfide" && (
         <Sfide
           playing={(MINIGAMES as readonly string[]).includes(sub) ? (sub as MiniGame) : null}
@@ -186,16 +198,7 @@ function GameShell() {
   );
 }
 
-function MatchView({ index, onExit }: { index: number; onExit: () => void }) {
-  return (
-    <>
-      <div className="px-4 pb-2">
-        <Tip id="partita" />
-      </div>
-      <MatchScreen index={index} onExit={onExit} />
-    </>
-  );
-}
+
 
 /** All'apertura: le partite vere giocate e i premi di mezzanotte vinti. */
 function OnOpen() {
@@ -289,46 +292,51 @@ function Practice({ onDone }: { onDone: () => void }) {
   const [msg, setMsg] = useState("Tieni premuto Tira: il tuo personaggio carica e la barra sale. Lascia quando è sul verde.");
   const [ok, setOk] = useState(false);
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(14px,env(safe-area-inset-top))]">
-      <p className="display text-[26px]">Il tiro</p>
-      <div className="mb-2 mt-1 flex items-end gap-2">
-        <Mascot pose={ok ? "esulta" : "ciao"} size={64} />
-        <p className="sticker-sm mb-2 flex-1 rounded-2xl rounded-bl-sm bg-surface px-3 py-2 text-[15px] font-semibold leading-snug" aria-live="polite">
-          {msg}
-        </p>
-      </div>
-      <CourtScene className="min-h-0 flex-1">
-        <SoloShot
-          spot={{ x: 42, y: 84 }}
-          sweep={DIFF.facile.sweep}
-          zone={zone}
-          disabled={ok}
-          label="Dalla media · prova"
-          judge={(pos) => {
-            primeAudio();
-            return judgeShot(pos, zone, game.skills.tiro, Math.random);
-          }}
-          onShot={(j) => {
-            const n = tries + 1;
-            setTries(n);
-            if (j.made || n >= 4) {
-              setOk(true);
-              setMsg(
-                j.outcome === "verde"
-                  ? "Verde perfetto! Sul verde entra quasi sempre."
-                  : j.made
-                    ? "Dentro! Sul verde pieno entra quasi sempre."
-                    : "Ci vuole un po' di mano: in partita il verde è lì che ti aspetta.",
-              );
-            } else setMsg(j.pos < ZONE_CENTER ? "Troppo presto: aspetta che la barra arrivi al verde" : "Troppo tardi: lascia appena tocca il verde");
-          }}
-        />
-      </CourtScene>
-      {ok && (
-        <Button variant="primary" size="lg" block className="mt-3 !h-16" onClick={onDone} data-testid="practice-done">
-          Avanti
-        </Button>
-      )}
-    </div>
+    <GameScreen
+      testId="practice"
+      hud={
+        <div className="flex items-end gap-2">
+          <Mascot pose={ok ? "esulta" : "ciao"} size={54} />
+          <p className="mb-1 flex-1 rounded-2xl rounded-bl-sm bg-[#FFF8EA] px-3 py-2 text-[14.5px] font-semibold leading-snug text-[#1d1a16]" aria-live="polite">
+            {msg}
+          </p>
+        </div>
+      }
+    >
+      <SoloShot
+        spot={PRACTICE_SPOT}
+        sweep={DIFF.facile.sweep}
+        zone={zone}
+        disabled={ok}
+        label="Il tiro di prova · dalla media"
+        judge={(pos) => {
+          primeAudio();
+          return judgeShot(pos, zone, game.skills.tiro, Math.random);
+        }}
+        onShot={(j) => {
+          const n = tries + 1;
+          setTries(n);
+          if (j.made || n >= 4) {
+            setOk(true);
+            setMsg(
+              j.outcome === "verde"
+                ? "Verde perfetto! Sul verde entra quasi sempre."
+                : j.made
+                  ? "Dentro! Sul verde pieno entra quasi sempre."
+                  : "Ci vuole un po' di mano: in partita il verde è lì che ti aspetta.",
+            );
+          } else setMsg(j.pos < ZONE_CENTER ? "Troppo presto: aspetta che la barra arrivi al verde" : "Troppo tardi: lascia appena tocca il verde");
+        }}
+        overlay={
+          ok && (
+            <div className="absolute inset-x-4 bottom-4 z-[990]">
+              <Button variant="primary" size="lg" block className="!h-16" onClick={onDone} data-testid="practice-done">
+                Avanti
+              </Button>
+            </div>
+          )
+        }
+      />
+    </GameScreen>
   );
 }
