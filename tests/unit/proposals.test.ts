@@ -5,6 +5,7 @@ import {
   awaitingStats,
   namesList,
   proposalPhase,
+  rainedOutToday,
 } from "@/lib/proposals";
 import type { Proposal } from "@/lib/types";
 
@@ -112,5 +113,19 @@ describe("statistiche in arrivo", () => {
   it("solo se era confermata", () => {
     const few = proposal([yes("p1"), yes("p2")]);
     expect(awaitingStats([few], [], h(3), six)).toBeNull();
+  });
+});
+
+describe("partita annullata per pioggia", () => {
+  const rained = { ...proposal([]), status: "annullata" as const, cancelReason: "meteo" as const };
+  it("resta visibile per tutto il giorno, poi sparisce", () => {
+    expect(rainedOutToday([rained], new Date(2026, 10, 3, 18, 40))?.id).toBe("x");
+    expect(rainedOutToday([rained], new Date(2026, 10, 3, 23, 50))?.id).toBe("x");
+    expect(rainedOutToday([rained], new Date(2026, 10, 4, 0, 5))).toBeNull();
+  });
+  it("solo se è per il meteo", () => {
+    const plain = { ...rained, cancelReason: null };
+    expect(rainedOutToday([plain], new Date(2026, 10, 3, 18, 40))).toBeNull();
+    expect(rainedOutToday([proposal([])], new Date(2026, 10, 3, 18, 40))).toBeNull();
   });
 });

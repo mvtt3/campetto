@@ -286,13 +286,36 @@ function demoProposals() {
   if (phase === "incorso") d.setTime(Date.now() - 25 * 60_000);
   if (phase === "quasi") d.setTime(Date.now() + 5 * 3_600_000);
   if (phase === "finita") d.setTime(Date.now() - 150 * 60_000);
+  // ?partita=annullata: quella di oggi annullata per pioggia, e la prossima fra tre giorni.
+  const rained = phase === "annullata";
+  if (rained) d.setTime(Date.now() - 40 * 60_000);
   const extra =
     phase === "confermata"
       ? ["p1", "p3", "p6"]
-      : phase === "incorso" || phase === "quasi" || phase === "finita"
+      : phase === "incorso" || phase === "quasi" || phase === "finita" || rained
         ? ["p3"]
         : [];
+  const later = new Date();
+  later.setDate(later.getDate() + 3);
+  later.setHours(10, 30, 0, 0);
+  const after = rained
+    ? [
+        {
+          id: "demo-prop-2",
+          startsAt: later.toISOString(),
+          format: null,
+          note: null,
+          place: "indoor" as const,
+          address: "Via Trofarello 10, Torino",
+          createdBy: "p1",
+          status: "aperta" as const,
+          createdAt: at,
+          responses: [{ playerId: "p1", response: "si" as const, updatedAt: at }],
+        },
+      ]
+    : [];
   return [
+    ...after,
     {
       id: "demo-prop",
       startsAt: d.toISOString(),
@@ -300,7 +323,9 @@ function demoProposals() {
       note: "Porto io il pallone nuovo",
       place: "decathlon" as const,
       createdBy: "p2",
-      status: "aperta" as const,
+      status: rained ? ("annullata" as const) : ("aperta" as const),
+      cancelReason: rained ? ("meteo" as const) : null,
+      cancelledAt: rained ? at : null,
       createdAt: at,
       responses: [
         { playerId: "p2", response: "si" as const, updatedAt: at },
@@ -721,9 +746,13 @@ export function createMockBackend(): Backend {
       save();
       return id;
     },
-    async cancelProposal(id) {
+    async cancelProposal(id, reason) {
       const p = state.proposals.find((x) => x.id === id);
-      if (p) p.status = "annullata";
+      if (p) {
+        p.status = "annullata";
+        p.cancelReason = reason ?? null;
+        p.cancelledAt = new Date().toISOString();
+      }
       save();
     },
     async respond(proposalId, response) {

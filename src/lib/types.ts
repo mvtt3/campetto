@@ -317,9 +317,14 @@ export interface Proposal {
   address?: string | null;
   createdBy: string;
   status: "aperta" | "annullata";
+  /** Perché è stata annullata: con "meteo" resta visibile quel giorno come "annullata per pioggia". */
+  cancelReason?: CancelReason | null;
+  cancelledAt?: string | null;
   createdAt: string;
   responses: ProposalResponse[];
 }
+
+export type CancelReason = "meteo" | "pochi" | "altro";
 
 export interface Dataset {
   players: Player[];

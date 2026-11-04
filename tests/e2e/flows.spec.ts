@@ -618,7 +618,7 @@ test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({
   await page.getByRole("radio", { name: "Figurina Kofi" }).click();
   await expect(page.getByText("Ho cambiato la figurina")).toBeVisible();
   await page.goto("/profilo");
-  await expect(page.getByRole("heading", { name: "Pluto Jr" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pluto Jr", exact: true })).toBeVisible();
 });
 
 test("niente selettori del telefono: menu e orologio dell'app", async ({
@@ -1190,4 +1190,32 @@ test("annuncio all'apertura: scheda come i badge, porta alla proposta nel calend
   await page.getByRole("button", { name: /^Notizie/ }).click();
   await page.getByTestId("news-story").filter({ hasText: "Indoor di sabato" }).click();
   await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=/);
+});
+
+test("partita annullata per pioggia: in Home e nel calendario al posto della partita in corso", async ({ page }) => {
+  await skipTour(page);
+  await page.goto("/?mock=demo&partita=annullata");
+  const home = page.getByTestId("rained-out");
+  await expect(home).toBeVisible();
+  await expect(home.getByText("Annullata per pioggia")).toBeVisible();
+  await expect(page.getByTestId("live-match")).toHaveCount(0);
+  // Sotto, la prossima partita: porta al calendario su quel giorno.
+  await home.getByRole("link", { name: /^Prossima:/ }).click();
+  await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=demo-prop-2/);
+  // Nel calendario di oggi c'è la scheda della pioggia.
+  await page.goto("/organizza");
+  await expect(page.getByTestId("rained-out")).toBeVisible();
+});
+
+test("annullare per pioggia: la proposta resta visibile come annullata", async ({ page }) => {
+  await skipTour(page);
+  // La partita di oggi fra 5 ore: la si annulla per il meteo.
+  await page.goto("/?mock=demo&partita=quasi");
+  await page.goto("/organizza");
+  await page.getByRole("button", { name: "Annulla la proposta" }).first().click();
+  await page.getByRole("button", { name: /È per la pioggia/ }).click();
+  await expect(page.getByRole("button", { name: /È per la pioggia/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Annulla la proposta" }).last().click();
+  await expect(page.getByText("Annullata per pioggia: ho avvisato chi aveva risposto")).toBeVisible();
+  await expect(page.locator("[data-testid=\"rained-out\"]:visible")).toHaveCount(1);
 });

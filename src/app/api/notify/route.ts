@@ -650,9 +650,12 @@ async function proposalCancelled(ctx: Ctx, p: Proposal, players: Player[]) {
   const ids = p.responses
     .filter((r) => r.response !== "no" && r.playerId !== ctx.me)
     .map((r) => r.playerId);
+  const rain = p.cancelReason === "meteo";
   await ctx.send(await ctx.targets("annullate", ids), {
-    title: "Partita annullata",
-    body: `${who} ha annullato la partita di ${dayLabel(p.startsAt)}. Se ne propongono un'altra ti avviso io`,
+    title: rain ? "🌧️ Partita annullata per pioggia" : "Partita annullata",
+    body: rain
+      ? `La partita di ${dayLabel(p.startsAt)} salta per la pioggia. Se ne propongono un'altra ti avviso io`
+      : `${who} ha annullato la partita di ${dayLabel(p.startsAt)}. Se ne propongono un'altra ti avviso io`,
     url: "/organizza",
     tag: `proposal-${p.id}`,
   });

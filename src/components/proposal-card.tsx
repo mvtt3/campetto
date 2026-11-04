@@ -2,7 +2,7 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import { ArrowUpRight, ChevronDown, ChevronRight, CircleCheck, MapPin, Repeat2, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, ChevronRight, CircleCheck, CloudRain, MapPin, Repeat2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -121,6 +121,8 @@ export function ProposalCard({
   const toast = useToast();
   const now = useNow();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // Annullata per il meteo: resta visibile quel giorno come "annullata per pioggia".
+  const [rain, setRain] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const byId = new Map(data.players.map((p) => [p.id, p]));
   const yes = proposal.responses
@@ -527,6 +529,33 @@ export function ProposalCard({
           </motion.div>
         )}
       </AnimatePresence>
+      {!compact && canCancel && confirmCancel && (
+        <button
+          type="button"
+          aria-pressed={rain}
+          onClick={() => setRain((r) => !r)}
+          className={clsx(
+            "press flex min-h-10 items-center gap-2.5 rounded-2xl border-2 px-3.5 py-2 text-left text-[13.5px] font-semibold",
+            rain ? "border-court bg-court-soft" : "border-line-strong",
+          )}
+        >
+          <span
+            className={clsx(
+              "grid h-6 w-6 shrink-0 place-items-center rounded-full border-2",
+              rain ? "border-court bg-court text-court-ink" : "border-line-strong text-court",
+            )}
+            aria-hidden
+          >
+            {rain ? <Check size={14} strokeWidth={3} /> : <CloudRain size={13} strokeWidth={2.6} />}
+          </span>
+          <span className="min-w-0">
+            È per la pioggia
+            <span className="block text-[12.5px] font-normal text-muted">
+              Fino a sera tutti vedono che oggi non si gioca
+            </span>
+          </span>
+        </button>
+      )}
       {/* Una riga sola per le azioni: squadre, orario o campetto, annulla. */}
       {!compact && (showAlt || canCancel) && (
         <div className="flex gap-2">
@@ -549,27 +578,42 @@ export function ProposalCard({
               <>
                 <button
                   className="sticker-sm press h-10 flex-1 rounded-full bg-surface text-[13.5px] font-bold text-muted"
-                  onClick={() => setConfirmCancel(false)}
+                  onClick={() => {
+                    setConfirmCancel(false);
+                    setRain(false);
+                  }}
                 >
                   Lascia stare
                 </button>
                 <button
                   className="sticker-sm press h-10 flex-1 rounded-full bg-danger text-[13.5px] font-bold text-white"
                   onClick={async () => {
+                    const reason = rain ? ("meteo" as const) : undefined;
                     mutate((d) => ({
                       ...d,
-                      proposals: d.proposals.filter(
-                        (x) => x.id !== proposal.id,
-                      ),
+                      proposals: reason
+                        ? d.proposals.map((x) =>
+                            x.id === proposal.id
+                              ? {
+                                  ...x,
+                                  status: "annullata" as const,
+                                  cancelReason: reason,
+                                  cancelledAt: new Date().toISOString(),
+                                }
+                              : x,
+                          )
+                        : d.proposals.filter((x) => x.id !== proposal.id),
                     }));
                     try {
-                      await backend.cancelProposal(proposal.id);
+                      await backend.cancelProposal(proposal.id, reason);
                       void backend.notify({
                         type: "proposal_cancelled",
                         proposalId: proposal.id,
                       });
                       toast(
-                        "Ho annullato la proposta e avvisato chi aveva risposto",
+                        reason
+                          ? "Annullata per pioggia: ho avvisato chi aveva risposto"
+                          : "Ho annullato la proposta e avvisato chi aveva risposto",
                       );
                     } catch (e) {
                       toast(say(e), "error");

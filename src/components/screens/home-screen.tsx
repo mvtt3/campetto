@@ -9,8 +9,10 @@ import {
   Plus,
   TrendingDown,
   TrendingUp,
+  CloudRain,
 } from "lucide-react";
-import { proposalPhase } from "@/lib/proposals";
+import { proposalPhase, rainedOutToday } from "@/lib/proposals";
+import { RainedOut } from "@/components/rained-out";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NewsButton, NewsPanel, useNews } from "@/components/news-panel";
@@ -49,6 +51,9 @@ function relativeDay(iso: string, now: Date): string {
   if (days < 7) return `${days} giorni fa`;
   return d.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
 }
+
+const sameDayAs = (iso: string, d: Date) =>
+  new Date(iso).toDateString() === d.toDateString();
 
 export function HomeScreen() {
   const { data, me, engine } = useData();
@@ -90,6 +95,11 @@ export function HomeScreen() {
   const nextPhase = next
     ? proposalPhase(next, now, neededPlayers(next.format))
     : null;
+  // Oggi annullata per pioggia: per tutto il giorno la scheda lo dice (se oggi non c'è altro).
+  const rained = useMemo(() => {
+    const r = rainedOutToday(data.proposals, now);
+    return r && !(next && sameDayAs(next.startsAt, now)) ? r : null;
+  }, [data.proposals, now, next]);
   const month = now.getMonth();
   const year = now.getFullYear();
   const mine = useMemo(
@@ -264,15 +274,21 @@ export function HomeScreen() {
             onClick={(e) => {
               // Tutta la scheda apre il calendario; i pulsanti di risposta restano pulsanti.
               if ((e.target as Element).closest("button, a")) return;
-              if (!next) return router.push("/organizza");
-              const d = new Date(next.startsAt);
+              const shown = rained ?? next;
+              if (!shown) return router.push("/organizza");
+              const d = new Date(shown.startsAt);
               router.push(
                 `/organizza?giorno=${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
               );
             }}
           >
             <div className="mb-3 flex items-center justify-between short:mb-1.5">
-              {nextPhase === "confirmed" ? (
+              {rained ? (
+                <h2 className="title flex items-center gap-1.5 text-[16px]">
+                  <CloudRain size={18} strokeWidth={2.6} className="text-court" aria-hidden />
+                  Oggi non si gioca
+                </h2>
+              ) : nextPhase === "confirmed" ? (
                 <h2 className="title flex items-center gap-1.5 text-[16px] text-ok">
                   <CircleCheck size={18} strokeWidth={2.6} aria-hidden />
                   Partita confermata
@@ -291,7 +307,9 @@ export function HomeScreen() {
                 <CalendarDays size={16} /> Calendario
               </Link>
             </div>
-            {next ? (
+            {rained ? (
+              <RainedOut proposal={rained} next={next} compact />
+            ) : next ? (
               <ProposalCard proposal={next} compact />
             ) : (
               <div className="flex items-center justify-between gap-3">

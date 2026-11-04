@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useId } from "react";
 
-export type MascotPose = "ciao" | "esulta" | "boh";
+export type MascotPose = "ciao" | "esulta" | "boh" | "triste";
 
 const INK = "#1D1A16";
 const BALL = "#F26A1B";
@@ -9,6 +9,7 @@ const BALL_DARK = "#C9500F";
 const CREAM = "#FFF8EA";
 const RED = "#E5412D";
 const YELLOW = "#FFC531";
+const SKY = "#4B9BE8";
 
 /** Guanto bianco da cartone animato anni '30 (dita paffute, polsino). */
 function Glove({
@@ -101,11 +102,21 @@ function Shoe({
 }
 
 /** Occhio "a torta" dei cartoni anni '30: pupilla nera con lo spicchio bianco. */
-function Eye({ x, y, look = 0 }: { x: number; y: number; look?: number }) {
+function Eye({
+  x,
+  y,
+  look = 0,
+  down = false,
+}: {
+  x: number;
+  y: number;
+  look?: number;
+  down?: boolean;
+}) {
   return (
     <g transform={`translate(${x} ${y})`}>
       <ellipse rx="10.5" ry="14" fill={CREAM} stroke={INK} strokeWidth="3" />
-      <g transform={`translate(${look * 2.5} ${look ? -3 : 2})`}>
+      <g transform={`translate(${look * 2.5} ${down ? 5 : look ? -3 : 2})`}>
         <ellipse rx="5.6" ry="8.5" fill={INK} />
         <path d="M0 -1 L5.6 -6 L3 -8.6 Z" fill={CREAM} />
       </g>
@@ -116,7 +127,7 @@ function Eye({ x, y, look = 0 }: { x: number; y: number; look?: number }) {
 /**
  * Spicchio, la mascotte del Campetto: una palla a spicchi in stile cartone
  * animato anni '30, con guanti bianchi, braccia e gambe "a tubo di gomma" e
- * scarpe alte rosse. Tre pose: ciao, esulta, boh.
+ * scarpe alte rosse. Quattro pose: ciao, esulta, boh, triste (sotto la nuvola).
  */
 export function Mascot({
   pose = "ciao",
@@ -135,6 +146,7 @@ export function Mascot({
   const dots = `dots-${uid}`;
   const clip = `ball-${uid}`;
   const jump = pose === "esulta";
+  const sad = pose === "triste";
 
   const armL =
     pose === "esulta"
@@ -147,7 +159,9 @@ export function Mascot({
       ? "M116 82 Q134 64 138 40"
       : pose === "boh"
         ? "M116 92 Q132 98 142 86"
-        : "M116 84 Q136 70 138 46";
+        : sad
+          ? "M116 96 Q130 108 130 124"
+          : "M116 84 Q136 70 138 46";
   const gloveL =
     pose === "esulta"
       ? { x: 22, y: 34, r: -12, flip: true }
@@ -159,7 +173,9 @@ export function Mascot({
       ? { x: 138, y: 34, r: 12 }
       : pose === "boh"
         ? { x: 144, y: 80, r: 70 }
-        : { x: 138, y: 40, r: 14 };
+        : sad
+          ? { x: 130, y: 128, r: 180, flip: true }
+          : { x: 138, y: 40, r: 14 };
 
   return (
     <svg
@@ -308,10 +324,43 @@ export function Mascot({
         />
 
         <g className="mascot-eyes">
-          <Eye x={68} y={74} look={pose === "boh" ? -1 : 0} />
-          <Eye x={94} y={74} look={pose === "boh" ? -1 : 0} />
+          <Eye x={68} y={74} look={pose === "boh" ? -1 : 0} down={sad} />
+          <Eye x={94} y={74} look={pose === "boh" ? -1 : 0} down={sad} />
         </g>
-        {pose === "boh" ? (
+        {sad ? (
+          <>
+            {/* Sopracciglia all'insù al centro, bocca all'ingiù e una lacrima. */}
+            <path
+              d="M57 60 Q66 60 74 53"
+              fill="none"
+              stroke={INK}
+              strokeWidth="3.4"
+              strokeLinecap="round"
+            />
+            <path
+              d="M88 53 Q96 60 105 60"
+              fill="none"
+              stroke={INK}
+              strokeWidth="3.4"
+              strokeLinecap="round"
+            />
+            <path
+              d="M69 111 Q81 100 93 111"
+              fill="none"
+              stroke={INK}
+              strokeWidth="3.6"
+              strokeLinecap="round"
+            />
+            <path
+              className="mascot-tear"
+              d="M104 90 Q100 97 104 100 Q108 97 104 90 Z"
+              fill={SKY}
+              stroke={INK}
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+          </>
+        ) : pose === "boh" ? (
           <>
             <path
               d="M58 56 Q66 52 74 57"
@@ -373,6 +422,31 @@ export function Mascot({
             d="M150 64 L156 58 M150 72 L158 72 M8 64 L2 58 M8 72 L0 72"
             strokeLinecap="round"
             strokeWidth="3"
+          />
+        </g>
+      )}
+      {sad && (
+        // La nuvoletta sopra la testa, con la pioggia che cade (ferma per chi chiede meno movimento).
+        <g className="mascot-cloud">
+          <g className="mascot-drops" stroke={SKY} strokeWidth="3.4" strokeLinecap="round">
+            <path d="M58 22 L55 31" />
+            <path d="M80 24 L77 33" />
+            <path d="M102 22 L99 31" />
+          </g>
+          <path
+            d="M50 14 Q44 2 56 -2 Q60 -14 76 -10 Q86 -20 98 -10 Q114 -12 112 2 Q120 8 112 16 Z"
+            fill="#c9cdd6"
+            stroke={INK}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M60 2 Q64 -4 72 -4"
+            fill="none"
+            stroke={CREAM}
+            strokeWidth="3"
+            strokeLinecap="round"
+            opacity="0.8"
           />
         </g>
       )}

@@ -114,3 +114,21 @@ export function awaitingStats(
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
   return done[0] ?? null;
 }
+
+/**
+ * La partita di oggi annullata per il meteo: fino a mezzanotte resta in Home e nel
+ * calendario come "annullata per pioggia", così chi apre l'app non la cerca in campo.
+ */
+export function rainedOutToday(proposals: Proposal[], now: Date): Proposal | null {
+  const day = now.toDateString();
+  return (
+    proposals
+      .filter(
+        (p) =>
+          p.status === "annullata" &&
+          p.cancelReason === "meteo" &&
+          new Date(p.startsAt).toDateString() === day,
+      )
+      .sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0] ?? null
+  );
+}

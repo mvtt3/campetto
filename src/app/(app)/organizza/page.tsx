@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, MapPin, Plus, X } from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RainedOut } from "@/components/rained-out";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
 import { StatsComing } from "@/components/stats-coming";
 import { neededPlayers } from "@/lib/notifications/grouping";
@@ -295,10 +296,14 @@ function OrganizeInner() {
 
   const today = useNow();
   // Una partita finita (o mai confermata e ormai iniziata) esce dal calendario: si torna a proporre.
+  // Annullata oggi per pioggia: resta fino a mezzanotte, con Spicchio sotto la nuvola.
   const open = data.proposals.filter(
     (p) =>
-      p.status === "aperta" &&
-      proposalPhase(p, today, neededPlayers(p.format)) !== "over",
+      (p.status === "aperta" &&
+        proposalPhase(p, today, neededPlayers(p.format)) !== "over") ||
+      (p.status === "annullata" &&
+        p.cancelReason === "meteo" &&
+        sameDay(new Date(p.startsAt), today)),
   );
   const days = Array.from(
     { length: 7 },
@@ -323,7 +328,8 @@ function OrganizeInner() {
       return (
         d >= weekStart &&
         d < weekEnd &&
-        d.getTime() > today.getTime() - 3 * 3_600_000
+        (p.status === "annullata" ||
+          d.getTime() > today.getTime() - 3 * 3_600_000)
       );
     })
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -461,7 +467,11 @@ function OrganizeInner() {
                 ref={p.id === focus ? scrollOnce : undefined}
                 data-focus={p.id === focus || undefined}
               >
-                <ProposalCard proposal={p} />
+                {p.status === "annullata" ? (
+                  <RainedOut proposal={p} />
+                ) : (
+                  <ProposalCard proposal={p} />
+                )}
               </Card>
             ))}
           </div>

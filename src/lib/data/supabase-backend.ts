@@ -224,12 +224,16 @@ export function createSupabaseBackend(): Backend {
       return data!.id as string;
     },
 
-    async cancelProposal(id) {
+    async cancelProposal(id, reason) {
       fail(
         (
           await sb
             .from("proposals")
-            .update({ status: "annullata" })
+            .update({
+              status: "annullata",
+              cancel_reason: reason ?? null,
+              cancelled_at: new Date().toISOString(),
+            })
             .eq("id", id)
         ).error,
       );

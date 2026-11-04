@@ -1,5 +1,6 @@
 import type {
   Box,
+  CancelReason,
   Dataset,
   EventKind,
   Format,
@@ -121,7 +122,8 @@ export interface Backend {
     /** La via, solo per Indoor. */
     address?: string | null;
   }): Promise<string>;
-  cancelProposal(id: string): Promise<void>;
+  /** Con un motivo ("meteo") la partita resta visibile quel giorno come annullata. */
+  cancelProposal(id: string, reason?: CancelReason): Promise<void>;
   respond(proposalId: string, response: ResponseKind | null): Promise<void>;
   /** La mia controproposta (stesso giorno): null la toglie. */
   setAlternative(

@@ -110,6 +110,8 @@ export function mapProposal(r: any): Proposal {
     address: r.place_address ?? null,
     createdBy: r.created_by,
     status: r.status,
+    cancelReason: r.cancel_reason ?? null,
+    cancelledAt: r.cancelled_at ?? null,
     createdAt: r.created_at,
     responses: (r.proposal_responses ?? []).map((x: any) => ({
       playerId: x.player_id,
