@@ -82,7 +82,7 @@ export function Card({
   className,
   children,
   ...rest
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLDivElement> & { ref?: React.Ref<HTMLDivElement> }) {
   return (
     <div {...rest} className={clsx("card", className)}>
       {children}

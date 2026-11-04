@@ -9,7 +9,8 @@ import { play } from "@/lib/sound";
 import { matchMvp } from "@/lib/stats/match-mvp";
 import { normalizeBox, teamOf } from "@/lib/stats/player";
 import { sortChrono } from "@/lib/periods";
-import { winnerOf } from "@/lib/types";
+import { winnerOf, type NewsPost } from "@/lib/types";
+import { useRouter } from "next/navigation";
 import { say } from "@/lib/voice";
 import {
   AVATAR_PRESETS,
@@ -44,7 +45,25 @@ interface ResultItem {
 type Item =
   | ResultItem
   | { kind: "badge"; id: string; unlock: BadgeUnlock }
-  | { kind: "character"; id: AvatarPresetId };
+  | { kind: "character"; id: AvatarPresetId }
+  | { kind: "news"; id: string; post: NewsPost };
+
+/** L'annuncio "Dopo" vale per questa apertura dell'app: alla prossima torna, finché serve. */
+const laterKey = (id: string) => `campetto:annuncio-dopo:${id}`;
+function later(id: string): boolean {
+  try {
+    return sessionStorage.getItem(laterKey(id)) === "1";
+  } catch {
+    return false;
+  }
+}
+function setLater(id: string) {
+  try {
+    sessionStorage.setItem(laterKey(id), "1");
+  } catch {
+    /* niente: al massimo ricompare */
+  }
+}
 
 /** Legge e aggiorna una lista "già visti" sul telefono. null = telefono nuovo. */
 function seenList(key: string, all: string[]): string[] | null {
@@ -66,6 +85,7 @@ function seenList(key: string, all: string[]): string[] | null {
 export function BadgeCelebration() {
   const { me, engine, data, loading, backend, mutate } = useData();
   const toast = useToast();
+  const router = useRouter();
   const [queue, setQueue] = useState<Item[]>([]);
   const badges = useMemo(
     () => (me ? engine.badges(me.id) : null),
@@ -77,6 +97,19 @@ export function BadgeCelebration() {
   useEffect(() => {
     if (!me || loading || !badges || !introDone) return;
     const items: Item[] = [];
+    // 0. Gli annunci da non perdere (per esempio: rispondi entro giovedì), prima di tutto.
+    //    Finché non hai risposto alla proposta e non è scaduto, ricompaiono a ogni apertura.
+    const nowIso = new Date().toISOString();
+    for (const post of data.news ?? []) {
+      if (!post.popup || (post.until && post.until <= nowIso) || later(post.id)) continue;
+      if (post.proposalId) {
+        const prop = data.proposals.find((x) => x.id === post.proposalId);
+        if (!prop || prop.status !== "aperta") continue;
+        const mine = prop.responses.find((r) => r.playerId === me.id)?.response;
+        if (mine === "si" || mine === "no") continue;
+      }
+      items.push({ kind: "news", id: `n:${post.id}`, post });
+    }
     // Telefono nuovo: chi gioca da poco si gode le feste di quello che ha già fatto;
     // chi c'è da tempo e cambia telefono no (sarebbero troppe e vecchie).
     const newcomer = isNewcomer(me.id, data.matches);
@@ -169,7 +202,7 @@ export function BadgeCelebration() {
         ...items.filter((i) => !q.some((x) => x.id === i.id)),
       ]);
     }
-  }, [me, badges, loading, data.matches, engine.elo, introDone]);
+  }, [me, badges, loading, data.matches, data.news, data.proposals, engine.elo, introDone]);
 
   const current = queue[0];
 
@@ -185,7 +218,10 @@ export function BadgeCelebration() {
   }, [current]);
 
   if (!current || !me) return null;
-  const next = () => setQueue((q) => q.slice(1));
+  const next = () => {
+    if (current.kind === "news") setLater(current.post.id);
+    setQueue((q) => q.slice(1));
+  };
   const more = queue.length > 1;
 
   return (
@@ -209,7 +245,26 @@ export function BadgeCelebration() {
         {current.kind === "result" && <ResultBody item={current} />}
         {current.kind === "badge" && <BadgeBody unlock={current.unlock} />}
         {current.kind === "character" && <CharacterBody id={current.id} />}
-        {current.kind === "character" ? (
+        {current.kind === "news" && <NewsBody post={current.post} />}
+        {current.kind === "news" ? (
+          <div className="relative mt-5 flex w-full gap-2">
+            <Button variant="light" className="flex-1 text-court" onClick={next}>
+              Dopo
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-[1.6] whitespace-nowrap"
+              data-testid="annuncio-vai"
+              onClick={() => {
+                const to = current.post.link;
+                next();
+                if (to) router.push(to);
+              }}
+            >
+              {current.post.cta ?? "Vai"}
+            </Button>
+          </div>
+        ) : current.kind === "character" ? (
           <div className="relative mt-5 flex w-full gap-2">
             <Button
               variant="light"
@@ -306,6 +361,30 @@ function ResultBody({ item }: { item: ResultItem }) {
       {item.elo !== null && item.elo !== 0 && (
         <p className="relative mt-1.5 inline-flex rounded-full bg-white/15 px-3 py-0.5 text-[13px] font-bold">
           {item.elo > 0 ? `+${item.elo}` : `−${Math.abs(item.elo)}`} ELO
+        </p>
+      )}
+    </>
+  );
+}
+
+/** L'annuncio da non perdere: Spicchio che saluta, il messaggio, e chi ha già risposto. */
+function NewsBody({ post }: { post: NewsPost }) {
+  const { data } = useData();
+  const prop = post.proposalId ? data.proposals.find((x) => x.id === post.proposalId) : null;
+  const yes = prop ? prop.responses.filter((r) => r.response === "si").length : null;
+  return (
+    <>
+      <div className="relative">
+        <Mascot pose="ciao" size={92} />
+      </div>
+      <p className="relative mt-3 text-[14px] font-semibold text-volt">📣 Avviso</p>
+      <h2 id="party-title" className="display relative mt-1 text-[22px] leading-tight">
+        {post.title}
+      </h2>
+      <p className="relative mt-2 text-[14.5px] leading-snug text-white/90">{post.body}</p>
+      {yes !== null && (
+        <p className="sticker-sm relative mt-3 inline-flex rounded-full bg-volt px-3 py-1 text-[13.5px] font-bold text-volt-ink">
+          {yes === 0 ? "Ancora nessuno ha detto ci sono" : yes === 1 ? "Finora 1 ha detto ci sono" : `Finora ${yes} hanno detto ci sono`}
         </p>
       )}
     </>

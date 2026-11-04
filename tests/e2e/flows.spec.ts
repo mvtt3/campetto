@@ -1174,3 +1174,20 @@ test("statistiche avanzate: mappa di tiro da toccare", async ({ page }) => {
     page.locator(".tab-enter-right").getByText("Stoppate", { exact: true }),
   ).toBeVisible();
 });
+
+test("annuncio all'apertura: scheda come i badge, porta alla proposta nel calendario", async ({ page }) => {
+  await skipTour(page);
+  await page.goto("/?mock=demo&annuncio=1");
+  const go = page.getByTestId("annuncio-vai");
+  await expect(go).toBeVisible({ timeout: 20000 });
+  await expect(page.getByRole("dialog")).toContainText("rispondi entro giovedì alle 21");
+  await go.click();
+  await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=/);
+  await expect(page.locator("[data-focus]")).toBeVisible();
+  // Dalle notizie: la stessa notizia porta allo stesso posto (la scheda, in questa apertura, non torna).
+  await page.goto("/?mock=demo&annuncio=1");
+  await expect(page.getByTestId("annuncio-vai")).toHaveCount(0);
+  await page.getByRole("button", { name: /^Notizie/ }).click();
+  await page.getByTestId("news-story").filter({ hasText: "Indoor di sabato" }).click();
+  await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=/);
+});

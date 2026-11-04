@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, MapPin, Plus, X } from "lucide-react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
 import { StatsComing } from "@/components/stats-coming";
 import { neededPlayers } from "@/lib/notifications/grouping";
@@ -284,6 +284,15 @@ function OrganizeInner() {
     router.replace("/organizza");
   }, [params, data.proposals, respond, router]);
 
+  // ?p=ID senza risposta: si evidenzia quella proposta (dagli annunci e dalle notizie).
+  const focus = params.get("r") ? null : params.get("p");
+  const scrolled = useRef(false);
+  const scrollOnce = useCallback((el: HTMLDivElement | null) => {
+    if (!el || scrolled.current) return;
+    scrolled.current = true;
+    window.setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+  }, []);
+
   const today = useNow();
   // Una partita finita (o mai confermata e ormai iniziata) esce dal calendario: si torna a proporre.
   const open = data.proposals.filter(
@@ -445,7 +454,13 @@ function OrganizeInner() {
         ) : (
           <div className="flex flex-col gap-3">
             {list.map((p) => (
-              <Card key={p.id} className="p-4">
+              <Card
+                key={p.id}
+                className={clsx("p-4", p.id === focus && "focus-pulse")}
+                // Arrivati da un avviso: la proposta giusta, al centro, pronta per "Ci sono".
+                ref={p.id === focus ? scrollOnce : undefined}
+                data-focus={p.id === focus || undefined}
+              >
                 <ProposalCard proposal={p} />
               </Card>
             ))}

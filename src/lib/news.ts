@@ -159,6 +159,7 @@ export function buildNews(
             : "megaphone",
       title: p.title,
       body: p.body,
+      href: p.link,
       pinned: true,
       highlights: /highlight/i.test(p.title),
     });

@@ -799,8 +799,18 @@ async function tick(req: Request) {
           JSON.stringify({
             title: r.title,
             body: r.body.length > 140 ? `${r.body.slice(0, 137)}…` : r.body,
-            url: "/?notizie=1",
+            // L'annuncio con un'azione porta lì (e, se è su una proposta, si risponde dai bottoni).
+            url: r.link ?? "/?notizie=1",
             tag: `news-${r.news_id}`,
+            ...(r.proposal_id
+              ? {
+                  actions: [
+                    { action: "si", title: "Ci sono" },
+                    { action: "no", title: "No" },
+                  ],
+                  data: { proposalId: r.proposal_id },
+                }
+              : {}),
           }),
           { TTL: 24 * 3600, urgency: "normal" },
         );
@@ -904,6 +914,8 @@ interface DueNews {
   news_id: string;
   title: string;
   body: string;
+  link: string | null;
+  proposal_id: string | null;
   endpoint: string;
   p256dh: string;
   auth: string;

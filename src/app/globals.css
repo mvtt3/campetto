@@ -2284,6 +2284,22 @@ html[data-shot="3"] .intro-ball-x {
   }
 }
 
+/* Arrivati da un avviso: la proposta giusta pulsa tre volte. */
+.focus-pulse {
+  animation: focus-pulse 1.1s ease-in-out 3;
+  box-shadow: 0 0 0 3px var(--volt), var(--shadow-pop);
+}
+@keyframes focus-pulse {
+  50% {
+    box-shadow: 0 0 0 7px var(--volt), var(--shadow-pop);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-pulse {
+    animation: none;
+  }
+}
+
 /* Il palazzetto di Campetto Star: il pubblico che salta e la retina che si muove. */
 .arena-hype .crowd-g0 {
   animation: crowd-jump 0.42s ease-in-out 4 alternate;

@@ -121,6 +121,11 @@ export function createSupabaseBackend(): Backend {
               body: r.body,
               kind: r.kind,
               createdAt: r.created_at,
+              link: r.link ?? undefined,
+              popup: !!r.popup,
+              until: r.until ?? undefined,
+              cta: r.cta ?? undefined,
+              proposalId: r.proposal_id ?? undefined,
             })),
         // Come le notizie: se mancano, l'app va avanti senza.
         highlights: hl.error ? [] : (hl.data ?? []).map(mapHighlight),

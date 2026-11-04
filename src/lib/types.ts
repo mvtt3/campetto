@@ -377,6 +377,15 @@ export interface NewsPost {
   body: string;
   kind: "annuncio" | "stagione" | "novita";
   createdAt: string;
+  /** Dove porta il tocco (una pagina dell'app), se porta da qualche parte. */
+  link?: string;
+  /** Compare come scheda appena si apre l'app (come i badge), fino a `until`. */
+  popup?: boolean;
+  until?: string;
+  /** Il bottone della scheda, per esempio "Rispondi ora". */
+  cta?: string;
+  /** La proposta di cui parla: chi ha già risposto non vede più la scheda. */
+  proposalId?: string;
 }
 
 /** Il profilo di un giocatore: una pagina sola per tutti, già pronta sul telefono. */

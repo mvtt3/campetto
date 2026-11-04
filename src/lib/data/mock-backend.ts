@@ -13,6 +13,7 @@ import {
   type Highlight,
   type HighlightComment,
   type Match,
+  type NewsPost,
   type Player,
 } from "../types";
 import type {
@@ -561,12 +562,33 @@ export function createMockBackend(): Backend {
     },
     async loadAll() {
       const split = splitGuests(state.players, state.matches);
+      // ?annuncio=1: l'annuncio con la scheda all'apertura, sulla prossima proposta aperta.
+      const next = state.proposals
+        .filter((p) => p.status === "aperta" && Date.parse(p.startsAt) > Date.now())
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+      const promo: NewsPost[] =
+        params.get("annuncio") === "1" && next
+          ? [
+              {
+                id: "n-annuncio",
+                kind: "annuncio",
+                title: "Indoor di sabato: rispondi entro giovedì alle 21",
+                body: "Sabato alle 10:30 in Via Trofarello 10, un'ora a 50 €: più siamo, meno si spende. Se giovedì alle 21 siamo pochi, Springs annulla.",
+                createdAt: new Date(Date.now() - 600_000).toISOString(),
+                link: `/organizza?giorno=${next.startsAt.slice(0, 10)}&p=${next.id}`,
+                popup: true,
+                until: next.startsAt,
+                cta: "Rispondi ora",
+                proposalId: next.id,
+              },
+            ]
+          : [];
       return structuredClone({
         players: split.players,
         guests: split.guests,
         matches: split.matches,
         proposals: state.proposals,
-        news: state.news ?? [],
+        news: [...promo, ...(state.news ?? [])],
         // Come nel database: gli highlights li vede tutto il gruppo (aperti a tutti il 31/10).
         highlights: state.highlights ?? [],
       });
