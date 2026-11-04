@@ -810,6 +810,24 @@ async function tick(req: Request) {
       }
     }
   }
+  // Gli avvisi al volo (es. "pioggia prevista alle 18"): solo di giorno, una volta per
+  // telefono finché non scadono. Se riguardano una proposta, si risponde dalla notifica.
+  let alerts = 0;
+  if (!night) {
+    const { data: due } = await sb.rpc("cron_due_alerts", { p_secret: secret });
+    for (const r of (due as DueAlert[] | null) ?? []) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
+          JSON.stringify(alertPayload(r)),
+          { TTL: 6 * 3600, urgency: "high" },
+        );
+        alerts++;
+      } catch {
+        /* abbonamento scaduto */
+      }
+    }
+  }
   // Campetto Star: chi era primo a mezzanotte in una sfida del gioco.
   let kings = 0;
   {
@@ -840,7 +858,37 @@ async function tick(req: Request) {
       }
     }
   }
-  return Response.json({ sent, confirmed, nudged, news, kings });
+  return Response.json({ sent, confirmed, nudged, news, alerts, kings });
+}
+
+interface DueAlert {
+  alert_id: string;
+  title: string;
+  body: string;
+  url: string;
+  proposal_id: string | null;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+/** La notifica di un avviso: con i bottoni per rispondere, se riguarda una proposta. */
+function alertPayload(r: Pick<DueAlert, "alert_id" | "title" | "body" | "url" | "proposal_id">): Payload {
+  return {
+    title: r.title,
+    body: r.body,
+    url: r.url,
+    tag: r.proposal_id ? `proposal-${r.proposal_id}` : `avviso-${r.alert_id}`,
+    ...(r.proposal_id
+      ? {
+          actions: [
+            { action: "si", title: "Ci sono" },
+            { action: "no", title: "No" },
+          ],
+          data: { proposalId: r.proposal_id },
+        }
+      : {}),
+  };
 }
 
 interface DueKing {
