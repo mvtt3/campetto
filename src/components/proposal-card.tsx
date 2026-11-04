@@ -6,12 +6,14 @@ import { ArrowUpRight, Check, ChevronDown, ChevronRight, CircleCheck, CloudRain,
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { neededPlayers } from "@/lib/notifications/grouping";
+import { dayLabel, neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
 import { useNow } from "@/lib/use-now";
 import {
   alternativesOf,
   altLabel,
+  autoCancelAt,
+  CONFIRM_MIN,
   namesList,
   proposalPhase,
 } from "@/lib/proposals";
@@ -250,6 +252,18 @@ export function ProposalCard({
 
   // Al completo, o in 4 a meno di 12 ore: confermata. Iniziata: in corso, con la cronaca.
   const phase = proposalPhase(proposal, now, needed);
+  const minYes = Math.min(CONFIRM_MIN, needed);
+  const missing = minYes - yes.length;
+  const cutoff = autoCancelAt(proposal);
+  // Solo nelle ultime 36 ore prima della scadenza: prima sarebbe un allarme inutile.
+  const deadline =
+    phase === "open" &&
+    missing > 0 &&
+    cutoff &&
+    cutoff.getTime() > now.getTime() &&
+    cutoff.getTime() - now.getTime() < 36 * 3_600_000
+      ? cutoff
+      : null;
   if (phase === "live")
     return <LiveMatch proposal={proposal} compact={compact} />;
 
@@ -425,6 +439,13 @@ export function ProposalCard({
         )}
       </WhoRow>
 
+      {/* Se non si arriva al minimo in tempo si annulla da sola: lo si dice prima, con l'ora. */}
+      {!compact && deadline && (
+        <p className="-mt-1 text-[12.5px] font-semibold text-muted" data-testid="auto-cancel-hint">
+          {missing === 1 ? "Ne manca 1" : `Ne mancano ${missing}`} entro{" "}
+          {dayLabel(deadline.toISOString(), now)}, se no si annulla da sola
+        </p>
+      )}
       <div className="flex gap-2" role="group" aria-label="La tua risposta">
         {RESPONSES.map((r) => {
           const on = mine === r.value;

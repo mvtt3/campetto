@@ -91,6 +91,8 @@ export function createSupabaseBackend(): Backend {
         sb
           .from("news")
           .select("*")
+          // Le programmate (data nel futuro) restano nascoste anche all'amministratore.
+          .lte("created_at", new Date().toISOString())
           .order("created_at", { ascending: false })
           .limit(30),
         // Gli highlights li restituisce solo a chi li può vedere (per ora l'amministratore).

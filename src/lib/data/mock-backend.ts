@@ -285,6 +285,12 @@ function demoProposals() {
       : null;
   if (phase === "incorso") d.setTime(Date.now() - 25 * 60_000);
   if (phase === "quasi") d.setTime(Date.now() + 5 * 3_600_000);
+  // ?partita=stasera: più tardi ma sempre oggi (per le prove che dipendono dal giorno).
+  if (phase === "stasera") {
+    const end = new Date();
+    end.setHours(23, 59, 0, 0);
+    d.setTime(Date.now() + Math.min(3 * 3_600_000, (end.getTime() - Date.now()) / 2));
+  }
   if (phase === "finita") d.setTime(Date.now() - 150 * 60_000);
   // ?partita=annullata: quella di oggi annullata per pioggia, e la prossima fra tre giorni.
   const rained = phase === "annullata";
@@ -292,7 +298,7 @@ function demoProposals() {
   const extra =
     phase === "confermata"
       ? ["p1", "p3", "p6"]
-      : phase === "incorso" || phase === "quasi" || phase === "finita" || rained
+      : phase === "incorso" || phase === "quasi" || phase === "stasera" || phase === "finita" || rained
         ? ["p3"]
         : [];
   const later = new Date();

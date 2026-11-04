@@ -24,6 +24,7 @@ import {
   summaryText,
 } from "@/lib/notifications/grouping";
 import { nudgeFor } from "@/lib/notifications/nudges";
+import { autoCancelledPush, cancelledPush } from "@/lib/notifications/cancel";
 import { MONTHS_IT, monthKey } from "@/lib/periods";
 import { TIER_NAMES } from "@/lib/badges";
 import { currentMvp, monthlyHistory, seasonHistory } from "@/lib/stats/awards";
@@ -647,18 +648,32 @@ async function proposalCancelled(ctx: Ctx, p: Proposal, players: Player[]) {
     players.find((x) => x.id === p.createdBy),
     players,
   );
+  // Solo a chi aveva detto "Ci sono": "Forse" e "No" non avevano niente in programma.
   const ids = p.responses
-    .filter((r) => r.response !== "no" && r.playerId !== ctx.me)
+    .filter((r) => r.response === "si" && r.playerId !== ctx.me)
     .map((r) => r.playerId);
-  const rain = p.cancelReason === "meteo";
+  const msg = cancelledPush(
+    { startsAt: p.startsAt, place: p.place ?? null },
+    p.cancelReason === "meteo" ? "meteo" : null,
+    who,
+  );
   await ctx.send(await ctx.targets("annullate", ids), {
-    title: rain ? "🌧️ Partita annullata per pioggia" : "Partita annullata",
-    body: rain
-      ? `La partita di ${dayLabel(p.startsAt)} salta per la pioggia. Se ne propongono un'altra ti avviso io`
-      : `${who} ha annullato la partita di ${dayLabel(p.startsAt)}. Se ne propongono un'altra ti avviso io`,
-    url: "/organizza",
+    ...msg,
     tag: `proposal-${p.id}`,
   });
+}
+
+interface DueAutoCancel {
+  player_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  proposal_id: string;
+  starts_at: string;
+  place: string | null;
+  yes_count: number;
+  min_needed: number;
+  proposer: boolean;
 }
 
 interface DueConfirmation {
@@ -760,6 +775,33 @@ async function tick(req: Request) {
       }
     }
   }
+  // Annullate da sole: 12 ore prima senza abbastanza "ci sono". Solo di giorno: di notte la
+  // partita resta aperta (si può ancora salvare) e si decide alle 8.
+  let cancelled = 0;
+  if (!night) {
+    const { data: due } = await sb.rpc("cron_auto_cancel", { p_secret: secret });
+    for (const r of (due as DueAutoCancel[] | null) ?? []) {
+      const msg = autoCancelledPush(
+        {
+          startsAt: r.starts_at,
+          place: (r.place as Place | null) ?? null,
+          yes: r.yes_count,
+          min: r.min_needed,
+        },
+        r.proposer,
+      );
+      try {
+        await webpush.sendNotification(
+          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
+          JSON.stringify({ ...msg, tag: `proposal-${r.proposal_id}` }),
+          { TTL: 6 * 3600, urgency: "normal" },
+        );
+        cancelled++;
+      } catch {
+        /* abbonamento scaduto */
+      }
+    }
+  }
   // "Torna a giocare": verso sera (17–19, ora di Roma), a chi non apre l'app da 6 giorni,
   // al massimo una volta a settimana (lo segna il database).
   let nudged = 0;
@@ -790,10 +832,11 @@ async function tick(req: Request) {
       }
     }
   }
-  // Le notizie nuove (annunci): subito, a qualsiasi ora, a tutti quelli con le notifiche;
-  // chi le attiva dopo riceve quelle degli ultimi 7 giorni. Una volta sola per telefono.
+  // Le notizie nuove (annunci): appena pubblicate, ma solo di giorno (quelle programmate per
+  // mezzanotte partono alle 8), a tutti quelli con le notifiche; chi le attiva dopo riceve
+  // quelle degli ultimi 7 giorni. Una volta sola per telefono.
   let news = 0;
-  {
+  if (!night) {
     const { data: due } = await sb.rpc("cron_due_news", { p_secret: secret });
     for (const r of (due as DueNews[] | null) ?? []) {
       try {
@@ -871,7 +914,7 @@ async function tick(req: Request) {
       }
     }
   }
-  return Response.json({ sent, confirmed, nudged, news, alerts, kings });
+  return Response.json({ sent, confirmed, cancelled, nudged, news, alerts, kings });
 }
 
 interface DueAlert {

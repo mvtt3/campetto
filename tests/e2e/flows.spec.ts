@@ -1209,8 +1209,8 @@ test("partita annullata per pioggia: in Home e nel calendario al posto della par
 
 test("annullare per pioggia: la proposta resta visibile come annullata", async ({ page }) => {
   await skipTour(page);
-  // La partita di oggi fra 5 ore: la si annulla per il meteo.
-  await page.goto("/?mock=demo&partita=quasi");
+  // Una partita di stasera: la si annulla per il meteo.
+  await page.goto("/?mock=demo&partita=stasera");
   await page.goto("/organizza");
   await page.getByRole("button", { name: "Annulla la proposta" }).first().click();
   await page.getByRole("button", { name: /È per la pioggia/ }).click();
