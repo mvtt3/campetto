@@ -66,8 +66,9 @@ function boardInfo(board: Board, minGames: number | null): string {
     return "Il punteggio di forza: sale quando vinci, scende quando perdi, di più contro chi è forte. Nel mese e nella stagione vedi di quanto è salito o sceso";
   if (board === "difesa")
     return `Chi difende meglio: rubata o stoppata vale 1 punto difesa, un rimbalzo in difesa mezzo punto. È la media a partita: servono almeno ${minGames ?? 2} partite con il tabellino`;
-  const extra = board === "tre" ? " e 5 tiri da tre" : "";
-  return `La media a partita. Per entrare in classifica servono almeno ${minGames ?? 2} partite con il tabellino${extra}: così chi gioca una volta sola non scavalca chi c'è sempre. Chi tira poco compare in fondo`;
+  if (board === "tre")
+    return `La percentuale da tre: canestri da tre diviso tiri da tre. Per entrare in classifica servono almeno 5 tiri da tre e ${minGames ?? 2} partite con il tabellino: 1 su 1 fa 100%, ma vale meno di 4 su 10. Chi ha tirato meno sta sotto, in "Ancora pochi tiri"`;
+  return `La media a partita. Per entrare in classifica servono almeno ${minGames ?? 2} partite con il tabellino: così chi gioca una volta sola non scavalca chi c'è sempre`;
 }
 
 function missingLabel(missing: number): string {
@@ -282,12 +283,15 @@ export function RankingScreen() {
     [data.matches, period],
   );
 
-  const { rows, pending, minGames } = useMemo<{
+  const { rows, pending, loose, minGames } = useMemo<{
     rows: Row[];
     pending: Pending[];
+    /** Chi ha tirato troppo poco per una percentuale (es. 1 su 1 = 100%): a parte, senza posizione. */
+    loose: Row[];
     minGames: number | null;
   }>(() => {
-    if (board === "squadre") return { rows: [], pending: [], minGames: null };
+    if (board === "squadre")
+      return { rows: [], pending: [], loose: [], minGames: null };
     if (board === "mvp") {
       const ranked = mvpRanking(ids, data.matches, period, format, {
         elo: engine.elo,
@@ -311,6 +315,7 @@ export function RankingScreen() {
           .filter((g) => g.n > 0 && g.n < need)
           .sort((a, b) => b.n - a.n)
           .map((g) => ({ playerId: g.id, value: "", missing: need - g.n })),
+        loose: [],
         minGames: need,
       };
     }
@@ -324,7 +329,7 @@ export function RankingScreen() {
     });
     const fmt = (v: number) => stat.format(v).replace(".", ",");
     return {
-      // Chi ha tirato poco non sparisce: viene dopo gli altri, con il motivo.
+      // Chi ha tirato poco non sparisce: sta a parte, sotto, con il motivo (non in classifica).
       rows: [
         ...lb.rows.map((r) => {
           const s = stats.find((x) => x.playerId === r.playerId)!;
@@ -338,13 +343,13 @@ export function RankingScreen() {
               : `${s.games} ${s.games === 1 ? "partita" : "partite"}`,
           };
         }),
-        ...lb.loose.map((r, i) => ({
-          playerId: r.playerId,
-          rank: lb.rows.length + i + 1,
-          value: fmt(r.value),
-          sub: r.note,
-        })),
       ],
+      loose: lb.loose.map((r) => ({
+        playerId: r.playerId,
+        rank: 0,
+        value: fmt(r.value),
+        sub: r.note,
+      })),
       pending: lb.pending.map((r) => ({
         playerId: r.playerId,
         value: fmt(r.value),
@@ -464,7 +469,8 @@ export function RankingScreen() {
         </div>
       </div>
 
-      {board !== "squadre" && (rows.length > 0 || pending.length > 0) ? (
+      {board !== "squadre" &&
+      (rows.length > 0 || pending.length > 0 || loose.length > 0) ? (
         <>
           {/* Il podio grande in cima; scorrendo resta in vista quello piccolo e l'elenco
               prende quasi tutto lo schermo. */}
@@ -496,7 +502,13 @@ export function RankingScreen() {
                     )}
                   </InfoTip>
                 </div>
-                <Podium rows={podium} />
+                {podium.length > 0 ? (
+                  <Podium rows={podium} />
+                ) : (
+                  <p className="px-10 pb-1 pt-3 text-center text-[14.5px] font-semibold text-muted">
+                    Nessuno ha ancora tirato abbastanza per entrare in classifica
+                  </p>
+                )}
               </div>
               <ol className="flex flex-col gap-2">
                 {rest.map((r) => {
@@ -535,6 +547,40 @@ export function RankingScreen() {
                   );
                 })}
               </ol>
+              {loose.length > 0 && (
+                <section className="mt-5" aria-label="Ancora pochi tiri" data-testid="few-shots">
+                  <h3 className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-bold text-muted">
+                    Ancora pochi tiri
+                    <InfoTip label="Perché non sono in classifica" size={16}>
+                      {(board !== "mvp" && STAT_BY_KEY.get(board)?.note) || "Servono più tiri"}: con 1
+                      tiro su 1 si è al 100%, ma è ancora presto per dirlo. Entrano
+                      in classifica appena ci arrivano
+                    </InfoTip>
+                  </h3>
+                  <ul className="flex flex-col gap-1.5">
+                    {loose.map((r) => {
+                      const p = data.players.find((x) => x.id === r.playerId);
+                      return (
+                        <li
+                          key={r.playerId}
+                          className="flex items-center gap-3 rounded-[18px] border-2 border-dashed border-line-strong px-3 py-2 opacity-80"
+                        >
+                          <Avatar player={p} size={30} href={false} ring="none" />
+                          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
+                            {shortName(p, data.players)}
+                          </span>
+                          <span className="shrink-0 text-[12.5px] font-semibold text-muted">
+                            <span className="num mr-2 text-[15px] text-faint">
+                              {r.value}
+                            </span>
+                            {r.sub}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
               {restPending.length > 0 && (
                 <section className="mt-5" aria-label="Fuori classifica">
                   <h3 className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-bold text-muted">

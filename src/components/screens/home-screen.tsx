@@ -332,7 +332,9 @@ export function HomeScreen() {
               <Link
                 href="/classifiche"
                 data-tour="home-mvp"
-                className="card halftone relative flex h-full flex-col overflow-hidden !bg-volt p-4 text-volt-ink short:p-3.5"
+                // Si adatta allo spazio che resta (container query), come la scheda accanto: il
+                // personaggio si rimpicciolisce e, se non c'è posto, lascia spazio al nome.
+                className="mvp-card card halftone relative flex h-full flex-col overflow-hidden !bg-volt p-4 text-volt-ink short:p-3.5"
               >
                 <h2 className="relative flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold">
                   <Crown size={15} className="shrink-0" /> MVP in carica
@@ -348,7 +350,7 @@ export function HomeScreen() {
                   <div className="relative flex min-h-0 flex-1 flex-col">
                     {/* Sui telefoni alti lo spazio libero lo riempie il suo personaggio, come in Classifica. */}
                     <span
-                      className="flex min-h-0 flex-1 items-end justify-center overflow-hidden pb-1.5 [@media(max-height:780px)]:hidden"
+                      className="mvp-art flex min-h-0 flex-1 items-end justify-center pb-1.5"
                       aria-hidden
                     >
                       <Character
@@ -359,10 +361,10 @@ export function HomeScreen() {
                       />
                     </span>
                     <div className="mt-auto flex flex-row items-end gap-2">
-                      <span className="short:hidden">
+                      <span className="mvp-av-big">
                         <Avatar player={mvpPlayer} size={44} href={false} />
                       </span>
-                      <span className="hidden short:inline">
+                      <span className="mvp-av-small hidden">
                         <Avatar player={mvpPlayer} size={34} href={false} />
                       </span>
                       <div className="min-w-0">
@@ -374,7 +376,7 @@ export function HomeScreen() {
                               ? "line-clamp-3 text-[12.5px] [overflow-wrap:anywhere]"
                               : shortName(mvpPlayer, data.players).length > 11
                                 ? "line-clamp-3 text-[14px] [overflow-wrap:anywhere]"
-                                : "line-clamp-2 break-words text-[17px]",
+                                : "mvp-name line-clamp-2 text-[17px] [overflow-wrap:anywhere]",
                           )}
                         >
                           {shortName(mvpPlayer, data.players)}

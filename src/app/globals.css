@@ -1773,6 +1773,33 @@ html[data-shot="3"] .intro-ball-x {
   }
 }
 
+/* MVP in carica in Home: il personaggio prende l'altezza che c'è (mai tagliato) e sparisce
+   quando verrebbe troppo piccolo; nelle schede strette avatar e nome scendono di misura. */
+.mvp-card {
+  container: mvp / size;
+}
+.mvp-art svg {
+  height: 100%;
+  max-height: 112px;
+  width: auto;
+}
+@container mvp (max-height: 140px) {
+  .mvp-art {
+    display: none;
+  }
+}
+@container mvp (max-width: 132px) or (max-height: 120px) {
+  .mvp-av-big {
+    display: none;
+  }
+  .mvp-av-small {
+    display: inline;
+  }
+  .mvp-name {
+    font-size: 15px;
+  }
+}
+
 /* La partita in corso: bollino che pulsa, Spicchio che palleggia, la cronaca che scorre. */
 .live-dot {
   animation: live-dot 1.2s ease-in-out infinite;

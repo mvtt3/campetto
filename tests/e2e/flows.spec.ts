@@ -1219,3 +1219,14 @@ test("annullare per pioggia: la proposta resta visibile come annullata", async (
   await expect(page.getByText("Annullata per pioggia: ho avvisato chi aveva risposto")).toBeVisible();
   await expect(page.locator("[data-testid=\"rained-out\"]:visible")).toHaveCount(1);
 });
+
+test("classifica da tre: chi ha tirato poco sta a parte, senza posizione", async ({ page }) => {
+  await openApp(page, "pieno");
+  await page.goto("/classifiche");
+  await page.getByRole("button", { name: /^Da tre/ }).first().click();
+  const few = page.getByTestId("few-shots");
+  if (await few.count()) {
+    await expect(few.getByRole("heading", { name: /Ancora pochi tiri/ })).toBeVisible();
+    await expect(few.getByText(/solo \d+ tir|nessun tiro/).first()).toBeVisible();
+  }
+});
