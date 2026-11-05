@@ -25,6 +25,7 @@ import {
 } from "@/lib/notifications/grouping";
 import { nudgeFor } from "@/lib/notifications/nudges";
 import { autoCancelledPush, cancelledPush } from "@/lib/notifications/cancel";
+import { confirmedInvite, confirmedPush, proposalUrl } from "@/lib/notifications/confirm";
 import { MONTHS_IT, monthKey } from "@/lib/periods";
 import { TIER_NAMES } from "@/lib/badges";
 import { currentMvp, monthlyHistory, seasonHistory } from "@/lib/stats/awards";
@@ -233,10 +234,10 @@ async function proposalSummary(
   const when = dayLabel(p.startsAt);
   if (decision.threshold) {
     const to = await ctx.targets("completa", yes);
+    const m = { startsAt: p.startsAt, place: p.place ?? null, yes: yes.length };
     await ctx.send(to, {
-      title: "Si gioca!",
-      body: `Ho fatto la conta: siete in ${yes.length} ${when}${p.format ? ` per il ${p.format}` : ""}. Ci vediamo${p.place ? atPlace(p.place) : " al campetto"}`,
-      url: "/organizza",
+      ...confirmedPush(m),
+      url: proposalUrl(p.id, p.startsAt),
       tag: `proposal-${p.id}`,
     });
     // Chi non ha ancora risposto sa che la partita c'è.
@@ -245,9 +246,8 @@ async function proposalSummary(
       .filter((x) => !x.archived && !answered.has(x.id))
       .map((x) => x.id);
     await ctx.send(await ctx.targets("completa", others), {
-      title: "Si gioca!",
-      body: `Ho già ${yes.length} giocatori ${when}${atPlace(p.place)}. Vuoi esserci anche tu?`,
-      url: "/organizza",
+      ...confirmedInvite(m),
+      url: proposalUrl(p.id, p.startsAt),
       tag: `proposal-${p.id}`,
       actions: [
         { action: "si", title: "Ci sono" },
@@ -762,9 +762,12 @@ async function tick(req: Request) {
         await webpush.sendNotification(
           { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
           JSON.stringify({
-            title: "Partita confermata",
-            body: `Siete in ${r.yes_count}: ci vediamo ${dayLabel(r.starts_at)}${r.place ? atPlace(r.place as Place) : " al campetto"}. Se non puoi più, dillo nell'app`,
-            url: "/organizza",
+            ...confirmedPush({
+              startsAt: r.starts_at,
+              place: (r.place as Place | null) ?? null,
+              yes: r.yes_count,
+            }),
+            url: proposalUrl(r.proposal_id, r.starts_at),
             tag: `proposal-${r.proposal_id}`,
           }),
           { TTL: 6 * 3600, urgency: "normal" },
