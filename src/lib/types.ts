@@ -67,7 +67,8 @@ export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
   adesioni: true,
   commenti: true,
   gioco: true,
-  notte: true,
+  // Il silenzio di notte è spento finché non lo accende chi lo vuole.
+  notte: false,
 };
 
 /** Le notifiche che si possono scegliere, raggruppate come nelle impostazioni. */

@@ -10,6 +10,7 @@ import {
   isStandalone,
 } from "@/lib/notifications/push-client";
 import { usePush } from "@/lib/notifications/use-push";
+import { gameAllowed } from "@/lib/config";
 import {
   DEFAULT_NOTIFY_PREFS,
   NOTIFY_GROUPS,
@@ -25,6 +26,9 @@ export default function NotificationsPage() {
   const prefs: NotifyPrefs = { ...DEFAULT_NOTIFY_PREFS, ...me.notifyPrefs };
   const supported = pushSupported();
   const iosNeedsHome = isIos() && !isStandalone();
+  // Con le notifiche spente su questo telefono i singoli tipi non si toccano: si accendono
+  // e si spengono tutti insieme dall'interruttore principale.
+  const locked = supported && !push.on;
 
   const set = async (patch: Partial<NotifyPrefs>) => {
     const next = { ...prefs, ...patch };
@@ -76,7 +80,9 @@ export default function NotificationsPage() {
           <section key={g.title} className="mb-4">
             <h2 className="title mb-2 px-1 text-[15px]">{g.title}</h2>
             <div className="card overflow-hidden">
-              {g.items.map((it) => (
+              {g.items
+                .filter((it) => it.kind !== "gioco" || gameAllowed(me))
+                .map((it) => (
                 <div
                   key={it.kind}
                   className="flex min-h-[62px] items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0"
@@ -87,7 +93,8 @@ export default function NotificationsPage() {
                   </div>
                   <Toggle
                     label={it.label}
-                    checked={prefs[it.kind]}
+                    checked={prefs[it.kind] && !locked}
+                    disabled={locked}
                     onChange={(v) => void set({ [it.kind]: v })}
                   />
                 </div>
@@ -103,7 +110,7 @@ export default function NotificationsPage() {
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-semibold">Silenzio di notte</p>
               <p className="text-[12.5px] text-muted">
-                Niente notifiche dalle 23 alle 8
+                Niente notifiche dalle 23 alle 8. Spento, se non lo accendi tu
               </p>
             </div>
             <Toggle
@@ -115,7 +122,7 @@ export default function NotificationsPage() {
         </section>
         {!push.on && supported && (
           <p className="px-2 text-center text-[13px] text-muted">
-            Le scelte valgono quando accendi le notifiche qui sopra
+            Accendi “Su questo telefono” qui sopra: si accendono tutte insieme
           </p>
         )}
       </main>

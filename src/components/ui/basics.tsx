@@ -494,23 +494,26 @@ export function Toggle({
   checked,
   onChange,
   label,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => {
         haptic(5);
         play(checked ? "toggleOff" : "toggleOn");
         onChange(!checked);
       }}
       className={clsx(
-        "relative h-8 w-[54px] shrink-0 rounded-full border-2 border-edge transition-colors",
+        "relative h-8 w-[54px] shrink-0 rounded-full border-2 border-edge transition-colors disabled:opacity-40",
         checked ? "bg-ok" : "bg-raised",
       )}
     >
