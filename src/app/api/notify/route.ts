@@ -84,6 +84,23 @@ interface Target {
   auth: string;
 }
 
+/** "Sabato 7 novembre alle 10:30", all'ora italiana. */
+function fullDateLabel(iso: string): string {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString("it-IT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "Europe/Rome",
+  });
+  const time = d.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Rome",
+  });
+  return `${day[0].toUpperCase()}${day.slice(1)} alle ${time}`;
+}
+
 /** Ora di Roma: il silenzio di notte vale dalle 23 alle 8. */
 function romeHour(d = new Date()): number {
   return Number(
@@ -1018,13 +1035,39 @@ export async function POST(req: Request) {
   const body = parsed.data;
   try {
     if (body.type === "test") {
+      // Appena accese: una notifica sola, niente arretrati. Se hai detto "ci sono" a una
+      // partita che ha già i giocatori, è la sua conferma (e non ti arriva doppia dopo).
       ctx.quiet.clear();
-      await ctx.send(await ctx.targets("proposte", [ctx.me]), {
-        title: "Ci sono anch'io!",
-        body: "Perfetto, da ora ti avviso io quando si gioca",
-        url: "/",
-        tag: "test",
+      const { data: rows } = await sb
+        .from("proposals")
+        .select(PROPOSAL_SELECT)
+        .eq("status", "aperta")
+        .gt("starts_at", new Date().toISOString())
+        .order("starts_at");
+      const mine = ((rows ?? []) as unknown[]).map(mapProposal).find((p) => {
+        const yes = p.responses.filter((r) => r.response === "si");
+        return (
+          yes.some((r) => r.playerId === ctx.me) &&
+          yes.length >= Math.min(4, neededPlayers(p.format))
+        );
       });
+      const targets = await ctx.targets("proposte", [ctx.me]);
+      if (mine && (await ctx.claim(`welcome-confirmed:${mine.id}:${ctx.me}`))) {
+        const yes = mine.responses.filter((r) => r.response === "si").length;
+        await ctx.send(targets, {
+          title: "Partita confermata",
+          body: `${fullDateLabel(mine.startsAt)}${atPlace(mine.place ?? null)}: siete in ${yes}. Se non puoi più, dillo nell'app`,
+          url: `/organizza?p=${mine.id}`,
+          tag: `proposal-${mine.id}`,
+        });
+      } else {
+        await ctx.send(targets, {
+          title: "Notifiche accese",
+          body: "Da ora ti avviso io quando si gioca",
+          url: "/",
+          tag: "test",
+        });
+      }
     } else if (body.type === "proposal_new") {
       const [players, { data }] = await Promise.all([
         loadPlayers(sb),
