@@ -20,6 +20,17 @@ export const APP_NAME = "Campetto";
  */
 export const GAME_FOR_ALL = false;
 
+/**
+ * Il gioco per ora è spento per tutti, anche per l'amministratore (5/11/2026: la prova è
+ * passata, si riprende più avanti). Il codice resta com'è: per riaccenderlo si mette a true.
+ * In locale (le prove sul computer) resta visibile all'amministratore.
+ */
+export const GAME_ON = false;
+
+const localPreview = () =>
+  typeof window !== "undefined" &&
+  ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
 /** Il gioco è aperto a questo giocatore? */
 export const gameAllowed = (me: { isAdmin: boolean } | null | undefined) =>
-  GAME_FOR_ALL || !!me?.isAdmin;
+  (GAME_ON || localPreview()) && (GAME_FOR_ALL || !!me?.isAdmin);
