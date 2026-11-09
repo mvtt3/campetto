@@ -78,6 +78,8 @@ In `scripts/video/` ci sono gli strumenti che lavorano sui video delle partite g
 
 Come si usano, come funzionano e quanto sono precisi: [scripts/video/README.md](scripts/video/README.md).
 
+**Perché il tabellino non esce in automatico.** All'inizio i canestri si cercavano in automatico, mandando il video a un'AI (Gemini): segnava troppi canestri che non c'erano e non sapeva dire chi aveva tirato, quindi le statistiche non erano affidabili. Per questo il programma oggi trova da solo i tiri e i canestri, ma i nomi, i rimbalzi, gli assist e le rubate li conferma una persona in **Segna dal video**: qualche tocco in più, in cambio di un tabellino giusto.
+
 ## Pubblicarla
 
 ```bash
