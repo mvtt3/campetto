@@ -105,7 +105,7 @@ export function ScreenHeader({
     "sticker-sm press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface";
   return (
     <header className="safe-top shrink-0 px-5">
-      <div className="flex min-h-16 items-center gap-3 pt-2">
+      <div className="flex min-h-16 items-center gap-3 pt-5">
         {back &&
           (typeof back === "string" ? (
             <Link href={back} aria-label="Indietro" className={backCls}>

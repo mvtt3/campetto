@@ -41,38 +41,6 @@ import { useToast } from "./ui/toast";
 import { WeatherChip } from "./weather-chip";
 import { say } from "@/lib/voice";
 
-export function proposalWhen(iso: string, now = new Date()): string {
-  const d = new Date(iso);
-  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const today = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  ).getTime();
-  const diff = Math.round((day - today) / 86_400_000);
-  const time = d.toLocaleTimeString("it-IT", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const name =
-    diff === 0
-      ? "Oggi"
-      : diff === 1
-        ? "Domani"
-        : // Come i calendari: entro la settimana basta il giorno ("Domenica"), più in là la data corta
-          // ("Dom 8 nov"). Così sta sempre su una riga, senza puntini.
-          diff > 1 && diff < 7
-          ? d.toLocaleDateString("it-IT", { weekday: "long" })
-          : d
-              .toLocaleDateString("it-IT", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              })
-              .replace(/\./g, "");
-  return `${name.charAt(0).toUpperCase()}${name.slice(1)}, ${time}`;
-}
-
 const RESPONSES: { value: ResponseKind; label: string }[] = [
   { value: "si", label: "Ci sono" },
   { value: "forse", label: "Forse" },
@@ -351,85 +319,68 @@ export function ProposalCard({
   if (phase === "live")
     return <LiveMatch proposal={proposal} compact={compact} />;
 
+  const at = new Date(proposal.startsAt);
+  const time = at.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const head = (
+    <div className="flex items-stretch gap-3.5">
+      <div className="flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-court text-court-ink">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] opacity-80">
+          {at.toLocaleDateString("it-IT", { weekday: "short" })}
+        </span>
+        <span className="num text-[22px] leading-none">{at.getDate()}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] opacity-70">
+          {at.toLocaleDateString("it-IT", { month: "short" })}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center">
+        <div className="flex items-center justify-between gap-2">
+          <p className="score text-[36px] leading-none">{time}</p>
+          <WeatherChip at={proposal.startsAt} className="shrink-0" />
+        </div>
+        <p className="mt-1.5 flex min-w-0 items-center gap-1 text-[13px] text-muted">
+          {proposal.place && (
+            <IconMapPin size={13} className="shrink-0 text-ball" aria-hidden />
+          )}
+          {indoorVia ? (
+            <a
+              href={mapsUrl(indoorVia)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="truncate font-semibold text-text underline decoration-dotted underline-offset-2"
+              data-testid="indoor-address"
+            >
+              {indoorVia}
+            </a>
+          ) : (
+            proposal.place && (
+              <span className="truncate font-semibold text-text">
+                {placeLabel(proposal.place)}
+              </span>
+            )
+          )}
+          {proposal.format && (
+            <span className="shrink-0">
+              {proposal.place ? " · " : ""}
+              {proposal.format}
+            </span>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+
   if (compact) {
-    const at = new Date(proposal.startsAt);
-    const days = Math.round(
-      (new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime() -
-        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
-        86_400_000,
-    );
-    const weekday = at.toLocaleDateString("it-IT", { weekday: "long" });
-    const when =
-      days === 0 ? "Oggi" : days === 1 ? "Domani" : weekday;
-    const time = at.toLocaleTimeString("it-IT", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const minutes = Math.round((at.getTime() - now.getTime()) / 60_000);
-    const countdown =
-      minutes <= 0
-        ? null
-        : minutes < 60
-          ? `tra ${minutes} min`
-          : minutes < 48 * 60
-            ? `tra ${Math.round(minutes / 60)} ore`
-            : null;
     return (
       <div
         data-testid="proposal-card"
         data-phase={phase}
         className="flex flex-col gap-3.5 short:gap-3"
       >
-        <div className="flex items-stretch gap-3.5">
-          <div className="flex w-[60px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-court py-2 text-court-ink">
-            <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] opacity-80">
-              {at.toLocaleDateString("it-IT", { weekday: "short" })}
-            </span>
-            <span className="num text-[26px] leading-none">{at.getDate()}</span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] opacity-70">
-              {at.toLocaleDateString("it-IT", { month: "short" })}
-            </span>
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
-                {when}
-                {countdown && <span className="text-ball"> · {countdown}</span>}
-              </p>
-              <WeatherChip at={proposal.startsAt} className="-mt-0.5 shrink-0" />
-            </div>
-            <p className="score text-[36px] leading-none">{time}</p>
-            <p className="mt-1.5 flex min-w-0 items-center gap-1 text-[13px] text-muted">
-              {proposal.place && (
-                <IconMapPin size={13} className="shrink-0 text-ball" aria-hidden />
-              )}
-              {indoorVia ? (
-                <a
-                  href={mapsUrl(indoorVia)}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="truncate font-semibold text-text underline decoration-dotted underline-offset-2"
-                  data-testid="indoor-address"
-                >
-                  {indoorVia}
-                </a>
-              ) : (
-                proposal.place && (
-                  <span className="truncate font-semibold text-text">
-                    {placeLabel(proposal.place)}
-                  </span>
-                )
-              )}
-              {proposal.format && (
-                <span className="shrink-0">
-                  {proposal.place ? " · " : ""}
-                  {proposal.format}
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
+        {head}
         <div className="h-px bg-line" aria-hidden />
         {who}
         {answers}
@@ -458,57 +409,50 @@ export function ProposalCard({
           </span>
         </div>
       )}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="title truncate text-[19px]">
-            {proposalWhen(proposal.startsAt)}
-          </p>
-          {proposal.note ? (
-            // Con la nota: la riga si apre con la freccetta, così si legge tutta.
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                haptic(5);
-                setNoteOpen((o) => !o);
-              }}
-              // Il nome del bottone è il testo che si vede; aria-expanded dice se è aperta.
-              aria-expanded={noteOpen}
-              className="mt-0.5 flex w-full min-w-0 items-start gap-1 text-left text-[13px] text-muted"
-              data-testid="proposal-note"
-            >
-              <span className={clsx("min-w-0 flex-1", noteOpen ? "whitespace-pre-wrap break-words" : "truncate")}>
-                {proposal.place && (
-                  <>
-                    <PlaceTag place={proposal.place} />
-                    {" · "}
-                  </>
-                )}
-                {proposal.format ? `${proposal.format}, ` : ""}proposta da {shortName(creator, data.players)}
-                {". "}
-                <span className={clsx(noteOpen && "font-semibold text-text")}>{proposal.note}</span>
-              </span>
-              <IconChevronDown
-                size={15}
-                className={clsx("mt-0.5 shrink-0 text-faint transition-transform duration-200", noteOpen && "rotate-180")}
-                aria-hidden
-              />
-            </button>
-          ) : (
-            <p className="mt-0.5 truncate text-[13px] text-muted">
-              {proposal.place && (
-                <>
-                  <PlaceTag place={proposal.place} />
-                  {" · "}
-                </>
-              )}
-              {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
+      {head}
+      {proposal.note ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            haptic(5);
+            setNoteOpen((o) => !o);
+          }}
+          aria-expanded={noteOpen}
+          className="flex w-full min-w-0 items-start gap-1 text-left text-[13px] text-muted"
+          data-testid="proposal-note"
+        >
+          <span
+            className={clsx(
+              "min-w-0 flex-1",
+              noteOpen ? "whitespace-pre-wrap break-words" : "truncate",
+            )}
+          >
+            Proposta da{" "}
+            <span className="font-semibold text-text">
               {shortName(creator, data.players)}
-            </p>
-          )}
-        </div>
-        <WeatherChip at={proposal.startsAt} className="shrink-0" />
-      </div>
+            </span>
+            {" · "}
+            <span className={clsx(noteOpen && "text-text")}>{proposal.note}</span>
+          </span>
+          <IconChevronDown
+            size={15}
+            className={clsx(
+              "mt-0.5 shrink-0 text-faint transition-transform duration-200",
+              noteOpen && "rotate-180",
+            )}
+            aria-hidden
+          />
+        </button>
+      ) : (
+        <p className="truncate text-[13px] text-muted">
+          Proposta da{" "}
+          <span className="font-semibold text-text">
+            {shortName(creator, data.players)}
+          </span>
+        </p>
+      )}
+      <div className="h-px bg-line" aria-hidden />
       {/* Indoor nel calendario: la via ben visibile, un tocco e si apre nelle mappe. */}
       {indoorVia && (
         <a
@@ -516,7 +460,7 @@ export function ProposalCard({
           target="_blank"
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="press -mt-1 flex min-w-0 items-center gap-2 rounded-2xl bg-raised px-3 py-2 text-[14px] font-semibold"
+          className="press flex min-w-0 items-center gap-2 rounded-2xl bg-raised px-3 py-2 text-[14px] font-semibold"
           data-testid="indoor-address"
         >
           <IconMapPin size={17} strokeWidth={2.6} className="shrink-0 text-ball" aria-hidden />
@@ -543,7 +487,7 @@ export function ProposalCard({
             return (
               <li
                 key={g.key}
-                className="flex items-center gap-2 rounded-2xl border-2 border-dashed border-line-strong py-1.5 pl-2.5 pr-1.5"
+                className="flex items-center gap-2 rounded-2xl border border-dashed border-line-strong py-1.5 pl-2.5 pr-1.5"
               >
                 <IconRepeat size={18} className="shrink-0 text-ball" aria-hidden />
                 <p className="min-w-0 flex-1 truncate text-[13.5px] leading-tight">
@@ -748,18 +692,3 @@ function WhoRow({
   );
 }
 
-/** Il campetto: puntina arancione e nome, ben leggibile. */
-function PlaceTag({
-  place,
-}: {
-  place: NonNullable<Proposal["place"]>;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-0.5 text-[13px] font-bold text-text"
-    >
-      <IconMapPin size={13} strokeWidth={2.6} className="text-ball" aria-hidden />
-      {placeLabel(place)}
-    </span>
-  );
-}

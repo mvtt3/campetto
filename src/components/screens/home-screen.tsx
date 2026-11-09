@@ -3,7 +3,6 @@
 import clsx from "clsx";
 import Link from "next/link";
 import {
-  IconCalendar,
   IconChevronRight,
   IconCircleCheck,
   IconCloudRain,
@@ -383,11 +382,6 @@ export function HomeScreen() {
           "Prossima partita"
         )
       }
-      action={
-        <SectionLink href="/organizza">
-          <IconCalendar size={15} /> Calendario
-        </SectionLink>
-      }
     >
       <div
         data-tour="home-next"
@@ -423,7 +417,7 @@ export function HomeScreen() {
   return (
     <>
       <header className="safe-top shrink-0 px-5">
-        <div className="flex h-16 items-center justify-end gap-3 short:h-14">
+        <div className="flex items-center justify-end gap-3 pt-5">
           <h1 className="sr-only">Home</h1>
           <div className="flex shrink-0 items-center gap-1.5">
             <GameHomeButton />

@@ -72,7 +72,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div
-      className="flex flex-col gap-1 border-t-2 border-dashed border-line-strong pt-2.5"
+      className="flex flex-col gap-1 border-t border-line pt-3"
       aria-label="Chi c'è"
       role="group"
     >
@@ -91,7 +91,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
               >
                 <span
                   className={clsx(
-                    "flex h-6 w-[86px] shrink-0 items-center justify-between rounded-full border-2 border-edge pl-2 pr-1.5 text-[11.5px] font-bold",
+                    "flex h-6 w-[86px] shrink-0 items-center justify-between rounded-full pl-2.5 pr-2 text-[11.5px] font-semibold",
                     g.tone,
                   )}
                 >
@@ -136,7 +136,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                       <li
                         key={p.id}
                         className={clsx(
-                          "flex items-center gap-1.5 rounded-full border-2 border-line-strong bg-surface py-0.5 pl-0.5 pr-2.5 text-[13px] font-semibold",
+                          "flex items-center gap-1.5 rounded-full border border-line bg-surface py-0.5 pl-0.5 pr-2.5 text-[13px] font-semibold",
                           p.id === me?.id && "!border-court bg-court-soft",
                         )}
                       >
@@ -253,7 +253,7 @@ export function AltForm({
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-[20px] border-2 border-edge bg-raised p-3"
+      className="flex flex-col gap-3 rounded-[20px] bg-raised p-3"
       role="group"
       aria-label={
         mode === "move" ? "Sposta la partita" : "Proponi un'alternativa"

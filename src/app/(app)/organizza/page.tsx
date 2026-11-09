@@ -349,14 +349,14 @@ function OrganizeInner() {
           <button
             onClick={() => router.push("/organizza?nuova=1")}
             aria-label="Proponi una partita"
-            className="sticker press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ball text-ball-ink"
+            className="press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ball text-ball-ink shadow-[var(--shadow)]"
           >
             <IconPlus size={22} strokeWidth={2.8} />
           </button>
         }
       />
-      <div className="shrink-0 px-4 pb-3">
-        <div className="mb-2 flex items-center justify-between">
+      <div className="shrink-0 px-5 pb-4 pt-2">
+        <div className="mb-3 flex items-center justify-between">
           <button
             aria-label="Settimana precedente"
             disabled={thisWeek}
@@ -370,7 +370,7 @@ function OrganizeInner() {
                 ),
               );
             }}
-            className="grid h-10 w-10 place-items-center rounded-full active:bg-raised disabled:opacity-25"
+            className="press grid h-10 w-10 place-items-center rounded-full bg-surface shadow-[var(--shadow)] disabled:opacity-30"
           >
             <IconChevronLeft size={20} />
           </button>
@@ -385,7 +385,7 @@ function OrganizeInner() {
               setSelected(null);
               setWeekStart(weekEnd);
             }}
-            className="grid h-10 w-10 place-items-center rounded-full active:bg-raised"
+            className="press grid h-10 w-10 place-items-center rounded-full bg-surface shadow-[var(--shadow)]"
           >
             <IconChevronRight size={20} />
           </button>
@@ -405,12 +405,12 @@ function OrganizeInner() {
                 onClick={() => setSelected(isSel ? null : d)}
                 aria-pressed={Boolean(isSel)}
                 className={clsx(
-                  "flex h-[62px] flex-col items-center justify-center rounded-2xl",
+                  "press flex h-[64px] flex-col items-center justify-center rounded-[18px] transition-colors",
                   isSel
-                    ? "bg-text text-bg"
+                    ? "bg-court text-court-ink shadow-[var(--shadow)]"
                     : sameDay(d, today)
-                      ? "bg-ball-soft ring-1 ring-ball/40 ring-inset"
-                      : "card",
+                      ? "bg-ball-soft"
+                      : "bg-surface",
                   past && !isSel && "opacity-45",
                 )}
               >
@@ -435,7 +435,7 @@ function OrganizeInner() {
                 <span
                   className={clsx(
                     "mt-0.5 h-1.5 w-1.5 rounded-full",
-                    count ? (isSel ? "bg-bg" : "bg-ball") : "bg-transparent",
+                    count ? (isSel ? "bg-court-ink" : "bg-ball") : "bg-transparent",
                   )}
                 />
               </button>
@@ -443,7 +443,7 @@ function OrganizeInner() {
           })}
         </div>
       </div>
-      <PullToRefresh className="px-4 pb-4">
+      <PullToRefresh className="px-5 pb-6">
         {/* Senza partite in lista sta in cima, così si vede anche sui telefoni piccoli. */}
         {list.length === 0 && <StatsComing first />}
         {list.length === 0 ? (
