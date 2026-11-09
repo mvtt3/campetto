@@ -10,6 +10,7 @@ import {
   IconCircleCheck,
   IconCloudRain,
   IconMapPin,
+  IconPlus,
   IconRepeat,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -34,7 +35,7 @@ import {
 } from "@/lib/types";
 import { AltForm, RosterPanel } from "./proposal-extras";
 import { LiveMatch } from "./live-match";
-import { AvatarStack } from "./ui/avatar";
+import { Avatar, AvatarStack } from "./ui/avatar";
 import { haptic } from "./ui/basics";
 import { useToast } from "./ui/toast";
 import { WeatherChip } from "./weather-chip";
@@ -414,50 +415,49 @@ export function ProposalCard({
         </div>
       )}
       {head}
-      {proposal.note ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            haptic(5);
-            setNoteOpen((o) => !o);
-          }}
-          aria-expanded={noteOpen}
-          className="flex w-full min-w-0 items-start gap-1 text-left text-[13px] text-muted"
-          data-testid="proposal-note"
-        >
-          <span
-            className={clsx(
-              "min-w-0 flex-1",
-              noteOpen ? "whitespace-pre-wrap break-words" : "truncate",
-            )}
+      <div className="flex items-start gap-2.5">
+        {creator && <Avatar player={creator} size={30} href={false} />}
+        {proposal.note ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              haptic(5);
+              setNoteOpen((o) => !o);
+            }}
+            aria-expanded={noteOpen}
+            className="flex min-w-0 flex-1 items-start gap-1 rounded-[16px] rounded-tl-[6px] bg-raised px-3 py-2 text-left text-[13.5px]"
+            data-testid="proposal-note"
           >
+            <span
+              className={clsx(
+                "min-w-0 flex-1",
+                noteOpen ? "whitespace-pre-wrap break-words" : "truncate",
+              )}
+            >
+              <span className="font-semibold">
+                {shortName(creator, data.players)}
+              </span>{" "}
+              <span className="text-muted">{proposal.note}</span>
+            </span>
+            <IconChevronDown
+              size={15}
+              className={clsx(
+                "mt-0.5 shrink-0 text-faint transition-transform duration-200",
+                noteOpen && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        ) : (
+          <p className="min-w-0 flex-1 self-center truncate text-[13px] text-muted">
             Proposta da{" "}
             <span className="font-semibold text-text">
               {shortName(creator, data.players)}
             </span>
-            {" · "}
-            <span className={clsx(noteOpen && "text-text")}>{proposal.note}</span>
-          </span>
-          <IconChevronDown
-            size={15}
-            className={clsx(
-              "mt-0.5 shrink-0 text-faint transition-transform duration-200",
-              noteOpen && "rotate-180",
-            )}
-            aria-hidden
-          />
-        </button>
-      ) : (
-        <p className="truncate text-[13px] text-muted">
-          Proposta da{" "}
-          <span className="font-semibold text-text">
-            {shortName(creator, data.players)}
-          </span>
-        </p>
-      )}
-      <div className="h-px bg-line" aria-hidden />
-      {/* Indoor nel calendario: la via ben visibile, un tocco e si apre nelle mappe. */}
+          </p>
+        )}
+      </div>
       {indoorVia && (
         <a
           href={mapsUrl(indoorVia)}
@@ -467,16 +467,63 @@ export function ProposalCard({
           className="press flex min-w-0 items-center gap-2 rounded-2xl bg-raised px-3 py-2 text-[14px] font-semibold"
           data-testid="indoor-address"
         >
-          <IconMapPin size={17} strokeWidth={2.6} className="shrink-0 text-ball" aria-hidden />
+          <IconMapPin size={17} className="shrink-0 text-ball" aria-hidden />
           <span className="min-w-0 flex-1 truncate">{indoorVia}</span>
           <span className="flex shrink-0 items-center gap-0.5 text-[12.5px] text-muted">
             Indicazioni
-            <IconArrowUpRight size={15} strokeWidth={2.4} aria-hidden />
+            <IconArrowUpRight size={15} aria-hidden />
           </span>
         </a>
       )}
 
-      {who}
+      <div className="rounded-[20px] bg-raised/70 p-3.5">
+        <div className="flex items-baseline justify-between">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
+            Formazione
+          </p>
+          <p className="text-[13px] text-muted">
+            <span className={clsx("num text-[18px]", full ? "text-ok" : "text-text")}>
+              {Math.min(yes.length, needed)}
+            </span>
+            /{needed}
+            {yes.length > needed && (
+              <span className="font-semibold">
+                {" "}
+                +{yes.length - needed}{" "}
+                {proposal.format === "1v1"
+                  ? "in attesa"
+                  : yes.length - needed === 1
+                    ? "cambio"
+                    : "cambi"}
+              </span>
+            )}
+          </p>
+        </div>
+        <ul className="mt-3 grid grid-cols-6 gap-x-1 gap-y-2.5">
+          {Array.from({ length: needed }, (_, i) => {
+            const p = yes[i];
+            return (
+              <li key={p?.id ?? `slot-${i}`} className="flex min-w-0 flex-col items-center gap-1">
+                {p ? (
+                  <Avatar player={p} size={40} href={false} />
+                ) : (
+                  <span className="grid h-10 w-10 place-items-center rounded-full border-[1.5px] border-dashed border-line-strong text-faint">
+                    <IconPlus size={16} aria-hidden />
+                  </span>
+                )}
+                <span
+                  className={clsx(
+                    "w-full truncate text-center text-[11px]",
+                    p ? "font-semibold" : "text-faint",
+                  )}
+                >
+                  {p ? (p.id === me?.id ? "Tu" : shortName(p, data.players)) : "Libero"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {answers}
 
@@ -505,10 +552,10 @@ export function ProposalCard({
                     <p className="truncate text-[14px] font-semibold">
                       {altLabel(proposal, g)}
                     </p>
-                    <p className="truncate text-[12.5px] text-muted">
+                    <p className="truncate text-[12.5px] text-muted first-letter:uppercase">
                       {g.playerIds.length === 1
-                        ? "La preferisce"
-                        : "La preferiscono"}{" "}
+                        ? "la preferisce"
+                        : "la preferiscono"}{" "}
                       {namesList(names)}
                     </p>
                   </div>
@@ -597,13 +644,13 @@ export function ProposalCard({
       )}
       {/* Una riga sola per le azioni: squadre, orario o campetto, annulla. */}
       {(showAlt || canCancel) && (
-        <div className="flex gap-2 border-t border-line pt-3">
+        <div className="-mx-1 -mb-1 flex items-center justify-between gap-2 border-t border-line pt-2">
           {showAlt && !confirmCancel && (
             <button
               type="button"
               onClick={() => openAlt(canMove ? "move" : "alt")}
               aria-label={altAria}
-              className="press flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-raised px-3.5 text-[13.5px] font-semibold"
+              className="press flex h-10 min-w-0 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold"
             >
               <IconRepeat size={16} className="shrink-0 text-ball" aria-hidden />
               <span className="truncate">{altShort}</span>
@@ -663,8 +710,8 @@ export function ProposalCard({
               <button
                 aria-label="Annulla la proposta"
                 className={clsx(
-                  "press flex h-11 items-center justify-center rounded-full px-4 text-[13.5px] font-semibold text-danger",
-                  showAlt ? "shrink-0" : "flex-1 bg-raised",
+                  "press flex h-10 shrink-0 items-center justify-center rounded-full px-3 text-[13.5px] font-semibold text-danger",
+                  !showAlt && "ml-auto",
                 )}
                 onClick={() => setConfirmCancel(true)}
               >

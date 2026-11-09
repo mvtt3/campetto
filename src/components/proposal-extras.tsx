@@ -46,25 +46,25 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
       title: "Ci sono",
       short: "Ci sono",
       players: by("si"),
-      tone: "bg-volt text-volt-ink",
+      tone: "bg-volt",
     },
     {
       title: "Forse",
       short: "Forse",
       players: by("forse"),
-      tone: "bg-court text-court-ink",
+      tone: "bg-court",
     },
     {
       title: "Non ci sono",
       short: "No",
       players: by("no"),
-      tone: "bg-raised text-text",
+      tone: "bg-danger",
     },
     {
       title: "Non hanno ancora risposto",
       short: "In attesa",
       players: waiting,
-      tone: "bg-raised text-muted",
+      tone: "bg-line-strong",
     },
   ];
   const name = (p: Player) =>
@@ -72,7 +72,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div
-      className="flex flex-col gap-1 border-t border-line pt-3"
+      className="flex flex-col gap-1.5"
       aria-label="Chi c'è"
       role="group"
     >
@@ -89,14 +89,12 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                 onClick={() => setOpen(isOpen ? null : g.title)}
                 className="press -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-2 rounded-full px-1 py-0.5 text-left"
               >
-                <span
-                  className={clsx(
-                    "flex h-6 w-[86px] shrink-0 items-center justify-between rounded-full pl-2.5 pr-2 text-[11.5px] font-semibold",
-                    g.tone,
-                  )}
-                >
+                <span className="flex w-[100px] shrink-0 items-center gap-2 whitespace-nowrap text-[12.5px] font-semibold">
+                  <span className={clsx("h-2 w-2 shrink-0 rounded-full", g.tone)} />
                   {g.short}
-                  <span className="tnum">{g.players.length}</span>
+                  <span className="tnum ml-auto pr-1 text-muted">
+                    {g.players.length}
+                  </span>
                 </span>
                 <AvatarStack players={g.players} size={22} max={4} />
                 <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">
