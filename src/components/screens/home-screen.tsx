@@ -16,15 +16,14 @@ import { RainedOut } from "@/components/rained-out";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NewsButton, NewsPanel, useNews } from "@/components/news-panel";
-import { Logo, Mascot } from "@/components/mascot";
+import { Mascot } from "@/components/mascot";
 import { ProposalCard } from "@/components/proposal-card";
 import { markMatchOpenedFromElsewhere } from "@/components/screens/matches-screen";
 import { Avatar } from "@/components/ui/avatar";
-import { CountUp, CourtLines, Ring } from "@/components/ui/basics";
+import { CountUp, CourtLines } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { HighlightsHomeButton, PlayBadge } from "@/components/highlights/entry";
 import { GameHomeButton } from "@/components/game/entry";
-import { gameAllowed } from "@/lib/config";
 import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
@@ -130,42 +129,28 @@ export function HomeScreen() {
   const mvpPlayer = data.players.find((p) => p.id === mvp?.entry.playerId);
   const goodMonth = mine.games > 0 && mine.winPct >= 0.5;
   const hello = greeting(now.getHours());
-  // Il punteggio del mese resta su una riga anche con tante partite.
   const digits = String(mine.wins).length + String(mine.losses).length;
 
   return (
     <>
       <header className="safe-top shrink-0 px-5">
-        <div className={"flex h-16 items-center justify-between short:h-14"}>
-          <div className="flex min-w-0 items-center gap-3">
-            {/* Sui telefoni stretti, col ciak degli highlights, il marchio lascia spazio al nome:
-                la tua foto resta sempre in alto a destra (un tocco e sei nel profilo). */}
-            <Logo
-              size={46}
-              text={false}
-              className={clsx(
-                "shrink-0 short:h-10 short:w-10",
-                (hl.available || gameAllowed(me)) && "max-[389px]:hidden",
-              )}
-            />
-            <h1 className="min-w-0">
-              <span className="block text-[14px] font-bold text-muted">
-                {hello.lead},
-              </span>{" "}
-              <span className="display block truncate text-[26px] leading-[1.05]">
-                {/* L'MVP in carica viene salutato come tale. */}
-                {engine.mvp?.entry.playerId === me.id
-                  ? "MVP"
-                  : (me.nickname ?? me.firstName)}
-                {hello.question ? "?" : ""}
-              </span>
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+        <div className="flex h-16 items-center justify-between gap-3 short:h-14">
+          <h1 className="min-w-0">
+            <span className="block truncate text-[13px] font-medium text-muted">
+              {hello.lead}
+            </span>
+            <span className="display block truncate text-[24px]">
+              {engine.mvp?.entry.playerId === me.id
+                ? "MVP"
+                : (me.nickname ?? me.firstName)}
+              {hello.question ? "?" : ""}
+            </span>
+          </h1>
+          <div className="flex shrink-0 items-center gap-1.5">
             <GameHomeButton />
             <HighlightsHomeButton />
             <NewsButton unseen={news.unseen} onOpen={openNews} />
-            <Avatar player={me} size={44} />
+            <Avatar player={me} size={40} />
           </div>
         </div>
         <NewsPanel
@@ -177,102 +162,94 @@ export function HomeScreen() {
       </header>
 
       <PullToRefresh scroll={false} className="px-5 pb-2 pt-2">
-        <div className={"flex h-full flex-col gap-3 short:gap-2"}>
-          {/* Il tuo mese, sul campo */}
+        <div className="flex h-full flex-col gap-3 short:gap-2">
           <section
             data-tour="home-month"
-            className="court relative shrink-0 overflow-hidden rounded-[26px]"
+            className="court relative shrink-0 overflow-hidden rounded-[24px]"
           >
-            <CourtLines
-              draw
-              className="absolute inset-x-0 bottom-0 h-full w-full"
-            />
-            <div className={"relative flex items-end gap-3 p-5 short:p-4"}>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-[14px] font-semibold text-white/85">
-                  Il tuo {MONTHS_IT[month].toLowerCase()}
-                </h2>
-                <p
-                  className={clsx(
-                    "score mt-2 whitespace-nowrap short:mt-1",
-                    digits <= 3
-                      ? "text-[64px] short:text-[46px]"
-                      : digits <= 4
-                        ? "text-[54px] short:text-[42px]"
-                        : "text-[44px] short:text-[36px]",
-                  )}
-                  aria-label={`${mine.wins} vinte, ${mine.losses} perse`}
-                >
-                  <CountUp value={mine.wins} />
-                  <span className="text-white/45">–</span>
-                  <CountUp value={mine.losses} />
-                </p>
-                <p className="mt-1 text-[13px] text-white/85 short:hidden">
-                  {mine.games ? "vinte e perse" : "Nessuna partita questo mese"}
-                </p>
-                <div className="mt-3 flex items-center gap-3 short:mt-2">
-                  <Ring
-                    value={mine.winPct}
-                    size={46}
-                    stroke={6}
-                    label={`${Math.round(mine.winPct * 100)}% di vittorie`}
+            <CourtLines draw className="absolute inset-0 h-full w-full" />
+            <div className="relative p-5 short:p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-white/70">
+                    Il tuo {MONTHS_IT[month].toLowerCase()}
+                  </h2>
+                  <p
+                    className={clsx(
+                      "score mt-2 whitespace-nowrap short:mt-1",
+                      digits <= 3
+                        ? "text-[56px] short:text-[44px]"
+                        : digits <= 4
+                          ? "text-[48px] short:text-[38px]"
+                          : "text-[40px] short:text-[34px]",
+                    )}
+                    aria-label={`${mine.wins} vinte, ${mine.losses} perse`}
                   >
-                    {/* Il % piccolo in alto: "100%" a grandezza piena usciva dall'anello. */}
-                    <span className="num whitespace-nowrap text-[13px] leading-none">
-                      {Math.round(mine.winPct * 100)}
-                      <span className="ml-px align-[0.3em] text-[8.5px]">
-                        %
-                      </span>
-                    </span>
-                  </Ring>
-                  <div className="text-[13px] leading-tight">
-                    <p className="flex items-center gap-1 text-white/75">
-                      ELO
-                      <InfoTip label="Cos'è l'ELO" size={15}>
-                        Il tuo punteggio di forza. Si parte tutti da 1000:
-                        vincendo sale, perdendo scende. Battere chi è più forte
-                        vale di più
-                      </InfoTip>
-                    </p>
-                    <p className="flex items-center gap-1.5">
-                      <span className="num text-[20px]">
-                        <CountUp value={elo} />
-                      </span>
-                      {delta !== 0 && (
-                        <span
-                          className={clsx(
-                            "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11.5px] font-bold",
-                            delta > 0
-                              ? "border-2 border-[#1d1a16] bg-volt text-volt-ink"
-                              : "bg-white/20 text-white",
-                          )}
-                        >
-                          {delta > 0 ? (
-                            <TrendingUp size={12} />
-                          ) : (
-                            <TrendingDown size={12} />
-                          )}
-                          {delta > 0 ? `+${delta}` : `−${-delta}`}
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                    <CountUp value={mine.wins} />
+                    <span className="mx-1 text-white/40">–</span>
+                    <CountUp value={mine.losses} />
+                  </p>
+                  <p className="mt-1.5 text-[14px] font-medium text-white/80">
+                    {mine.games
+                      ? `${mine.wins} ${mine.wins === 1 ? "vinta" : "vinte"}, ${mine.losses} ${mine.losses === 1 ? "persa" : "perse"}`
+                      : "Nessuna partita questo mese"}
+                  </p>
                 </div>
+                <Mascot
+                  pose={goodMonth ? "esulta" : "ciao"}
+                  size={84}
+                  className="-mr-1 -mt-1 shrink-0 short:h-auto short:w-[60px]"
+                />
               </div>
-              <Mascot
-                pose={goodMonth ? "esulta" : "ciao"}
-                size={96}
-                className={"-mb-2 -mr-1 shrink-0 short:h-auto short:w-[64px]"}
-              />
+              <dl className="mt-4 grid grid-cols-2 gap-2 short:mt-3">
+                <div className="rounded-2xl bg-white/12 px-3.5 py-2.5 short:py-2">
+                  <dt className="text-[12px] font-medium text-white/70">
+                    Vittorie
+                  </dt>
+                  <dd className="num mt-1 text-[22px]">
+                    {Math.round(mine.winPct * 100)}%
+                  </dd>
+                </div>
+                <div className="rounded-2xl bg-white/12 px-3.5 py-2.5 short:py-2">
+                  <dt className="flex items-center gap-1 text-[12px] font-medium text-white/70">
+                    ELO
+                    <InfoTip label="Cos'è l'ELO" size={14}>
+                      Il tuo punteggio di forza. Si parte tutti da 1000:
+                      vincendo sale, perdendo scende. Battere chi è più forte
+                      vale di più
+                    </InfoTip>
+                  </dt>
+                  <dd className="mt-1 flex items-center gap-2">
+                    <span className="num text-[22px]">
+                      <CountUp value={elo} />
+                    </span>
+                    {delta !== 0 && (
+                      <span
+                        className={clsx(
+                          "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[12px] font-semibold",
+                          delta > 0
+                            ? "bg-volt text-volt-ink"
+                            : "bg-white/20 text-white",
+                        )}
+                      >
+                        {delta > 0 ? (
+                          <TrendingUp size={12} />
+                        ) : (
+                          <TrendingDown size={12} />
+                        )}
+                        {delta > 0 ? `+${delta}` : `−${-delta}`}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
             </div>
           </section>
 
-          {/* Prossima partita */}
           <section
             data-tour="home-next"
-            className="card shrink-0 cursor-pointer p-4 transition-transform duration-100 active:translate-x-px active:translate-y-px short:p-3.5"
+            className="card shrink-0 cursor-pointer p-4 transition-transform duration-100 active:scale-[0.99] short:p-3.5"
             onClick={(e) => {
-              // Tutta la scheda apre il calendario; i pulsanti di risposta restano pulsanti.
               if ((e.target as Element).closest("button, a")) return;
               const shown = rained ?? next;
               if (!shown) return router.push("/organizza");
@@ -282,29 +259,32 @@ export function HomeScreen() {
               );
             }}
           >
-            <div className="mb-3 flex items-center justify-between short:mb-1.5">
+            <div className="mb-3 flex items-center justify-between gap-2 short:mb-2">
               {rained ? (
-                <h2 className="title flex items-center gap-1.5 text-[16px]">
-                  <CloudRain size={18} strokeWidth={2.6} className="text-court" aria-hidden />
+                <h2 className="title flex items-center gap-1.5 text-[15px]">
+                  <CloudRain
+                    size={17}
+                    strokeWidth={2.4}
+                    className="text-court"
+                    aria-hidden
+                  />
                   Oggi non si gioca
                 </h2>
               ) : nextPhase === "confirmed" ? (
-                <h2 className="title flex items-center gap-1.5 text-[16px] text-ok">
-                  <CircleCheck size={18} strokeWidth={2.6} aria-hidden />
+                <h2 className="title flex items-center gap-1.5 text-[15px] text-ok">
+                  <CircleCheck size={17} strokeWidth={2.4} aria-hidden />
                   Partita confermata
                 </h2>
               ) : (
-                <h2 className="title text-[16px]">
-                  {nextPhase === "live"
-                    ? "Si gioca adesso"
-                    : "Prossima partita"}
+                <h2 className="title text-[15px]">
+                  {nextPhase === "live" ? "Si gioca adesso" : "Prossima partita"}
                 </h2>
               )}
               <Link
                 href="/organizza"
-                className="press -my-2 flex items-center gap-1.5 py-2 text-[13.5px] font-semibold text-text"
+                className="press -my-2 -mr-2 flex items-center gap-1.5 rounded-full px-2 py-2 text-[13px] font-semibold text-court"
               >
-                <CalendarDays size={16} /> Calendario
+                <CalendarDays size={15} /> Calendario
               </Link>
             </div>
             {rained ? (
@@ -313,44 +293,38 @@ export function HomeScreen() {
               <ProposalCard proposal={next} compact />
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[14.5px] text-muted">
+                <p className="text-[14px] text-muted">
                   Nessuno ha ancora proposto un giorno
                 </p>
                 <Link
                   href="/organizza?nuova=1"
-                  className="sticker press flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-bold text-ball-ink"
+                  className="press flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-semibold text-ball-ink"
                 >
-                  <Plus size={17} strokeWidth={2.6} /> Proponi
+                  <Plus size={16} strokeWidth={2.4} /> Proponi
                 </Link>
               </div>
             )}
           </section>
 
-          {/* MVP e ultima partita */}
-          <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
+          <div className="grid min-h-0 flex-1 grid-cols-2 gap-3 short:gap-2">
             <div className="min-h-0">
               <Link
                 href="/classifiche"
                 data-tour="home-mvp"
-                // Si adatta allo spazio che resta (container query), come la scheda accanto: il
-                // personaggio si rimpicciolisce e, se non c'è posto, lascia spazio al nome.
-                className="mvp-card card halftone relative flex h-full flex-col overflow-hidden !bg-volt p-4 text-volt-ink short:p-3.5"
+                className="mvp-card card relative flex h-full flex-col overflow-hidden !border-transparent !bg-volt p-4 text-volt-ink short:p-3.5"
               >
-                <h2 className="relative flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold">
-                  <Crown size={15} className="shrink-0" /> MVP in carica
-                  <InfoTip
-                    label="Come si diventa MVP"
-                    size={14}
-                    className="ml-auto"
-                  >
+                <div className="flex items-center justify-between gap-1">
+                  <h2 className="flex items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold">
+                    <Crown size={15} className="shrink-0" /> MVP in carica
+                  </h2>
+                  <InfoTip label="Come si diventa MVP" size={14}>
                     <MvpMonthInfo />
                   </InfoTip>
-                </h2>
+                </div>
                 {mvp && mvpPlayer ? (
                   <div className="relative flex min-h-0 flex-1 flex-col">
-                    {/* Sui telefoni alti lo spazio libero lo riempie il suo personaggio, come in Classifica. */}
                     <span
-                      className="mvp-art flex min-h-0 flex-1 items-end justify-center pb-1.5"
+                      className="mvp-art flex min-h-0 flex-1 items-end justify-center pb-2"
                       aria-hidden
                     >
                       <Character
@@ -360,40 +334,38 @@ export function HomeScreen() {
                         height={104}
                       />
                     </span>
-                    <div className="mt-auto flex flex-row items-end gap-2">
+                    <div className="mt-auto flex items-center gap-2.5">
                       <span className="mvp-av-big">
-                        <Avatar player={mvpPlayer} size={44} href={false} />
+                        <Avatar player={mvpPlayer} size={40} href={false} />
                       </span>
                       <span className="mvp-av-small hidden">
-                        <Avatar player={mvpPlayer} size={34} href={false} />
+                        <Avatar player={mvpPlayer} size={32} href={false} />
                       </span>
                       <div className="min-w-0">
                         <p
                           className={clsx(
-                            "title leading-tight",
-                            // Un nome lungo (fino a 16 lettere) scende di misura invece di tagliarsi.
+                            "title line-clamp-2 [overflow-wrap:anywhere]",
                             shortName(mvpPlayer, data.players).length > 13
-                              ? "line-clamp-3 text-[12.5px] [overflow-wrap:anywhere]"
+                              ? "text-[13px]"
                               : shortName(mvpPlayer, data.players).length > 11
-                                ? "line-clamp-3 text-[14px] [overflow-wrap:anywhere]"
-                                : "mvp-name line-clamp-2 text-[17px] [overflow-wrap:anywhere]",
+                                ? "text-[14px]"
+                                : "mvp-name text-[16px]",
                           )}
                         >
                           {shortName(mvpPlayer, data.players)}
                         </p>
-                        <p className="text-[12.5px] font-semibold opacity-75">
-                          di{" "}
-                          {mvp.period.kind === "month"
-                            ? MONTHS_IT[mvp.period.month].toLowerCase()
-                            : ""}
-                        </p>
+                        {mvp.period.kind === "month" && (
+                          <p className="text-[12px] font-medium opacity-70">
+                            {MONTHS_IT[mvp.period.month]}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="relative flex flex-1 flex-col justify-end">
-                    <p className="title text-[17px]">Ancora nessuno</p>
-                    <p className="mt-1 text-[12.5px] font-semibold opacity-75">
+                  <div className="flex flex-1 flex-col justify-end">
+                    <p className="title text-[16px]">Ancora nessuno</p>
+                    <p className="mt-1 text-[12px] font-medium opacity-70">
                       Serve giocare almeno 3 partite nel mese
                     </p>
                   </div>
@@ -406,7 +378,6 @@ export function HomeScreen() {
                 href={last ? `/partite?m=${last.id}` : "/partite"}
                 onClick={(e) => {
                   if (!last) return;
-                  // Il bollino ▶ dentro la scheda apre il video invece della partita.
                   if ((e.target as Element).closest("[data-hl-badge]")) {
                     e.preventDefault();
                     hl.open(last.id);
@@ -414,80 +385,74 @@ export function HomeScreen() {
                   }
                   markMatchOpenedFromElsewhere();
                 }}
-                // Si adatta all'altezza che resta (container query): su un telefono basso spariscono
-                // prima "Hai vinto", poi la figurina, mai il risultato tagliato.
                 className="last-card card flex h-full flex-col overflow-hidden p-4 short:p-3.5"
               >
                 <div className="flex items-start justify-between gap-1">
-                  <h2 className="text-[13.5px] font-semibold text-muted">
+                  <h2 className="text-[13px] font-semibold text-muted">
                     Ultima partita
                   </h2>
                   {last && (
                     <PlayBadge matchId={last.id} className="-my-1.5 -mr-1.5" />
                   )}
                 </div>
-                {lastMvpPlayer && (
-                  <div className="last-mvp mt-1.5 flex min-w-0 items-end gap-1.5">
-                    <span
-                      className="last-mvp-art shrink-0 short:hidden"
-                      aria-hidden
-                    >
-                      <Character
-                        id={characterOf(lastMvpPlayer)}
-                        outfit={lastMvpPlayer.outfit}
-                        number={lastMvpPlayer.jerseyNumber}
-                        height={52}
-                      />
-                    </span>
-                    <span className="min-w-0 pb-1">
-                      <span className="flex items-center gap-1 text-[11.5px] font-bold text-gold">
-                        <Crown size={12} /> MVP
-                      </span>
-                      <span className="block truncate text-[13.5px] font-bold">
-                        {shortName(lastMvpPlayer, data.players)}
-                      </span>
-                    </span>
-                  </div>
-                )}
                 {last ? (
-                  <div className="flex flex-1 flex-col justify-end">
-                    <p
-                      // Si adatta alla larghezza: con le cifre doppie "22–10" a 40 px usciva dal riquadro.
-                      className={clsx(
-                        "score whitespace-nowrap",
-                        String(last.scoreA).length +
-                          String(last.scoreB).length >
-                          3
-                          ? "text-[clamp(24px,8.4vw,36px)] short:text-[26px]"
-                          : "text-[40px] short:text-[30px]",
-                      )}
-                    >
-                      {last.scoreA}
-                      <span className="text-faint">–</span>
-                      {last.scoreB}
-                    </p>
-                    <p className="mt-1 truncate text-[12.5px] text-muted">
-                      {last.format}, {relativeDay(last.playedAt, now)}
-                    </p>
+                  <>
                     {lastTeam && (
                       <span
                         className={clsx(
-                          "last-pill sticker-sm mt-2 w-fit rounded-full px-2.5 py-0.5 text-[12px] font-bold short:hidden",
+                          "last-pill mt-2 w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold",
                           winnerOf(last) === lastTeam
-                            ? "bg-volt text-volt-ink"
+                            ? "bg-ok/15 text-ok"
                             : "bg-raised text-muted",
                         )}
                       >
-                        {winnerOf(last) === lastTeam
-                          ? "Hai vinto"
-                          : "Hai perso"}
+                        {winnerOf(last) === lastTeam ? "Hai vinto" : "Hai perso"}
                       </span>
                     )}
-                  </div>
+                    <div className="mt-auto pt-2">
+                      <p
+                        className={clsx(
+                          "score whitespace-nowrap",
+                          String(last.scoreA).length +
+                            String(last.scoreB).length >
+                            3
+                            ? "text-[clamp(26px,8.4vw,36px)] short:text-[28px]"
+                            : "text-[40px] short:text-[32px]",
+                        )}
+                      >
+                        {last.scoreA}
+                        <span className="mx-0.5 text-faint">–</span>
+                        {last.scoreB}
+                      </p>
+                      <p className="mt-1 truncate text-[12.5px] text-muted">
+                        {last.format} · {relativeDay(last.playedAt, now)}
+                      </p>
+                    </div>
+                    {lastMvpPlayer && (
+                      <div className="last-mvp mt-3 flex min-w-0 items-center gap-2 border-t border-line pt-3">
+                        <span className="last-mvp-art shrink-0" aria-hidden>
+                          <Character
+                            id={characterOf(lastMvpPlayer)}
+                            outfit={lastMvpPlayer.outfit}
+                            number={lastMvpPlayer.jerseyNumber}
+                            height={40}
+                          />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-1 text-[11px] font-semibold text-gold">
+                            <Crown size={12} /> MVP
+                          </span>
+                          <span className="block truncate text-[13px] font-semibold">
+                            {shortName(lastMvpPlayer, data.players)}
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex flex-1 flex-col justify-end">
-                    <p className="title text-[17px]">Si parte da zero</p>
-                    <p className="mt-1 text-[12.5px] text-muted">
+                    <p className="title text-[16px]">Si parte da zero</p>
+                    <p className="mt-1 text-[12px] text-muted">
                       Le partite compaiono qui appena le inseriamo
                     </p>
                   </div>

@@ -84,7 +84,7 @@ export function BottomNav({
           <span
             aria-hidden
             data-nav-pill
-            className="nav-pill pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-[18px] border-2 border-edge bg-court"
+            className="nav-pill pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-[18px] bg-court"
             style={{ ["--i" as string]: index }}
           />
         )}
@@ -113,7 +113,7 @@ export function BottomNav({
                 }
                 aria-current={active ? "page" : undefined}
                 className={clsx(
-                  "flex w-full flex-col items-center justify-center gap-0.5 rounded-[18px] text-[11.5px] font-bold transition-colors duration-300",
+                  "flex w-full flex-col items-center justify-center gap-0.5 rounded-[18px] text-[11px] font-semibold transition-colors duration-300",
                   active ? "text-court-ink" : "text-muted",
                 )}
               >

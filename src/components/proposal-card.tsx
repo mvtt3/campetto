@@ -267,7 +267,7 @@ export function ProposalCard({
     >
       {phase === "confirmed" && !compact && (
         <div
-          className="halftone -mx-4 -mt-4 flex items-center gap-2 rounded-t-[19.5px] border-b-[2.5px] border-edge bg-ok px-4 py-2.5 text-white"
+          className="-mx-4 -mt-4 flex items-center gap-2 rounded-t-[19px] bg-ok px-4 py-2.5 text-white"
           role="status"
         >
           <CircleCheck size={19} strokeWidth={2.6} aria-hidden />
@@ -363,7 +363,7 @@ export function ProposalCard({
           target="_blank"
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="press -mt-1 flex min-w-0 items-center gap-2 rounded-2xl border-2 border-edge bg-raised px-3 py-2 text-[14px] font-semibold"
+          className="press -mt-1 flex min-w-0 items-center gap-2 rounded-2xl bg-raised px-3 py-2 text-[14px] font-semibold"
           data-testid="indoor-address"
         >
           <MapPin size={17} strokeWidth={2.6} className="shrink-0 text-ball" aria-hidden />
@@ -409,7 +409,7 @@ export function ProposalCard({
             )}
           </p>
           <div
-            className="mt-1.5 h-2.5 overflow-hidden rounded-full border-2 border-edge bg-raised"
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-raised"
             aria-hidden
           >
             <motion.div

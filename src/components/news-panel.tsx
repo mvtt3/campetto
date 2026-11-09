@@ -116,7 +116,7 @@ export function NewsButton({
       aria-label={
         unseen ? `Notizie, ${unseen > 9 ? "9+" : unseen} nuove` : "Notizie"
       }
-      className="sticker-sm press relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface"
+      className="sticker-sm press relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface"
     >
       <Newspaper size={20} />
       {unseen > 0 && (

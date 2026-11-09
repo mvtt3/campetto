@@ -85,7 +85,7 @@ export function Avatar({
     >
       <span
         className={clsx(
-          "grid h-full w-full place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16]",
+          "grid h-full w-full place-items-center overflow-hidden rounded-full ring-2 ring-surface",
           isLightColor(playerColor(player))
             ? "text-[#1d1a16]"
             : "text-[#fffaf0]",

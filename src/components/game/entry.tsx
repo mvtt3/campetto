@@ -39,7 +39,7 @@ export function GameHomeButton() {
     <Link
       href="/gioca"
       aria-label={dot ? "Campetto Star, qualcosa ti aspetta" : "Campetto Star"}
-      className="sticker-sm press relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ball text-ball-ink"
+      className="press relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ball text-ball-ink"
       data-testid="game-home"
     >
       <Gamepad2 size={21} aria-hidden />

@@ -145,7 +145,7 @@ export function HighlightsHomeButton() {
           ? `Highlights, ${hl.unseenCount} da vedere`
           : "Highlights"
       }
-      className="sticker-sm press relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface"
+      className="sticker-sm press relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface"
       data-testid="hl-home"
       data-tour="home-highlights"
     >

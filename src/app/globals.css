@@ -32,8 +32,9 @@
   --gold-soft: #fbe6ad;
   --danger: #e5412d;
   --ok: #2e9e5b;
-  --shadow: 3px 3px 0 var(--edge);
-  --shadow-pop: 5px 5px 0 var(--edge);
+  --shadow: 0 1px 2px rgb(29 26 22 / 0.05), 0 4px 14px rgb(29 26 22 / 0.06);
+  --shadow-pop: 0 2px 4px rgb(29 26 22 / 0.06), 0 12px 28px rgb(29 26 22 / 0.12);
+  --hairline: rgb(29 26 22 / 0.08);
   color-scheme: light;
 }
 
@@ -60,8 +61,9 @@
   --gold-soft: #4a3a16;
   --danger: #ff6a55;
   --ok: #4cc77d;
-  --shadow: 3px 3px 0 var(--edge);
-  --shadow-pop: 5px 5px 0 var(--edge);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 12px 28px rgb(0 0 0 / 0.4);
+  --hairline: rgb(255 250 240 / 0.08);
   color-scheme: dark;
 }
 
@@ -163,20 +165,18 @@ body {
 }
 
 @layer components {
-  /* Adesivo: contorno d'inchiostro e ombra piena spostata. */
   .card {
     background: var(--surface);
-    border: 2.5px solid var(--edge);
-    border-radius: 22px;
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
     box-shadow: var(--shadow);
   }
   .sticker {
-    border: 2.5px solid var(--edge);
+    border: 1px solid var(--hairline);
     box-shadow: var(--shadow);
   }
   .sticker-sm {
-    border: 2px solid var(--edge);
-    box-shadow: 2px 2px 0 var(--edge);
+    border: 1px solid var(--hairline);
   }
 }
 
@@ -186,20 +186,16 @@ body {
   background-size: 7px 7px;
 }
 
-/* La card del campo: blu retrò a retino, linee color crema. */
 .court {
-  background-color: var(--court);
-  background-image: radial-gradient(rgb(0 0 0 / 0.17) 1.1px, transparent 1.5px);
-  background-size: 7px 7px;
+  background: linear-gradient(160deg, var(--court) 0%, var(--court-deep) 100%);
   color: var(--court-ink);
-  border: 2.5px solid var(--edge);
   box-shadow: var(--shadow-pop);
 }
 .court-lines path,
 .court-lines rect,
 .court-lines circle {
   fill: none;
-  stroke: rgb(255 250 240 / 0.32);
+  stroke: rgb(255 250 240 / 0.14);
   stroke-width: 2.5;
 }
 .court-lines.draw path,
@@ -234,15 +230,11 @@ a,
   -webkit-user-select: none;
 }
 
-/* Premuto: l'adesivo "scende" sulla sua ombra. */
 .press {
-  transition:
-    transform 120ms ease-out,
-    box-shadow 120ms ease-out;
+  transition: transform 120ms ease-out;
 }
 .press:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--edge);
+  transform: scale(0.97);
 }
 
 /* A capo puliti: titoli bilanciati, niente parola sola sull'ultima riga.
@@ -1751,23 +1743,21 @@ html[data-shot="3"] .intro-ball-x {
   }
 }
 
-/* "Ultima partita" nella Home: decide l'altezza che resta. Si tolgono le cose in quest'ordine
-   (prima "Hai vinto", poi la figurina, poi la riga MVP), così il risultato non si taglia mai. */
 .last-card {
   container: last / size;
 }
-@container last (max-height: 228px) {
-  .last-pill {
-    display: none;
-  }
-}
-@container last (max-height: 186px) {
+@container last (max-height: 214px) {
   .last-mvp-art {
     display: none;
   }
 }
-@container last (max-height: 138px) {
+@container last (max-height: 168px) {
   .last-mvp {
+    display: none;
+  }
+}
+@container last (max-height: 110px) {
+  .last-pill {
     display: none;
   }
 }
