@@ -273,7 +273,7 @@ export function ProposalCard({
           <CircleCheck size={19} strokeWidth={2.6} aria-hidden />
           <span className="title text-[15.5px]">Partita confermata</span>
           <span className="ml-auto truncate text-[12.5px] font-semibold opacity-90">
-            {full ? "al completo" : `siete in ${yes.length}, si gioca`}
+            {full ? "al completo" : `siete in ${yes.length} di ${needed}, si gioca`}
           </span>
         </div>
       )}
