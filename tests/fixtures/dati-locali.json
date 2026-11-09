@@ -1,0 +1,15 @@
+{"esportato":"2026-11-09T14:00:00.000Z",
+ "players":[
+  {"id":"a1","first_name":"Anna","last_name":"Rossi","nickname":"Razzo","roles":["Play"],"jersey_number":null,"card_color":null,"avatar_url":"preset:bandana","user_id":null,"is_admin":true,"showcase":[],"notify_prefs":{},"archived":false,"created_at":"2026-10-01T10:00:00Z","character":null,"nickname_changed_at":null,"guest":false,"outfit":{}},
+  {"id":"a2","first_name":"Bruno","last_name":"Verdi","nickname":null,"roles":["Centro"],"jersey_number":null,"card_color":null,"avatar_url":null,"user_id":null,"is_admin":false,"showcase":[],"notify_prefs":{},"archived":false,"created_at":"2026-10-01T10:00:00Z","character":null,"nickname_changed_at":null,"guest":false,"outfit":{}}
+ ],
+ "matches":[
+  {"id":"m1","played_at":"2026-11-07T09:00:00Z","format":"1v1","target_points":11,"score_a":11,"score_b":7,"stats_source":"tabellino","confirmed_by":null,"confirmed_at":null,"created_by":"a1","notes":null,"created_at":"2026-11-07T09:30:00Z",
+   "match_players":[
+    {"match_id":"m1","player_id":"a1","team":"A","has_stats":true,"pts":11,"fg2m":4,"fg2a":8,"fg3m":1,"fg3a":3,"oreb":1,"dreb":5,"ast":0,"stl":2,"blk":1,"tov":1,"fouls":0,"sub":false,"fgrm":2,"fgra":4},
+    {"match_id":"m1","player_id":"a2","team":"B","has_stats":true,"pts":7,"fg2m":2,"fg2a":9,"fg3m":1,"fg3a":4,"oreb":2,"dreb":4,"ast":0,"stl":1,"blk":0,"tov":2,"fouls":1,"sub":false,"fgrm":1,"fgra":5}],
+   "match_events":[]}
+ ],
+ "proposals":[],
+ "news":[{"id":"n1","title":"Sabato all'indoor","body":"Una partita nell'app","kind":"annuncio","created_at":"2026-11-07T10:00:00Z","link":"/partite","popup":false,"until":null,"cta":null,"proposal_id":null}],
+ "highlights":[],"highlight_comments":[],"highlight_likes":[]}

@@ -30,6 +30,8 @@ npm run dev          # http://localhost:3000
 
 Per provarla senza account usa il backend di prova (solo su localhost): `http://localhost:3000/?mock=demo` carica una storia di partite finte, `?mock=reset&signed=1` parte vuoto, `?mock=off` torna ai dati veri.
 
+**Con i dati veri, senza database né login.** Metti il file `dati-locali.json` nella cartella `public/` e apri `http://localhost:3000/?mock=dati`: l'app parte con giocatori, partite, tabellini, cronache, notizie e highlights veri, ed entri come amministratore. Le modifiche restano nel browser. Il file si crea con `scripts/esporta-dati.mjs` (serve la password del database) e non contiene email, account, iscrizioni alle notifiche né codici segreti; contiene però nomi e statistiche del gruppo, quindi resta fuori dal repository.
+
 ## Variabili d'ambiente
 
 | Nome | Dove | Note |

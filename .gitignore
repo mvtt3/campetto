@@ -71,3 +71,6 @@ scripts/.prod.sh
 
 # python
 __pycache__/
+
+# dati veri esportati per lo sviluppo in locale (scripts/esporta-dati.mjs)
+/public/dati-locali.json

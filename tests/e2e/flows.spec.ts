@@ -495,6 +495,20 @@ test("segna dal video con i tiri trovati e i rimbalzi", async ({ page }) => {
   await expect(page.getByRole("dialog")).toContainText("0–2");
 });
 
+test("in locale con i dati veri esportati (?mock=dati)", async ({ page }) => {
+  await page.route("**/dati-locali.json", (route) =>
+    route.fulfill({ path: "tests/fixtures/dati-locali.json", contentType: "application/json" }),
+  );
+  await skipTour(page);
+  await page.goto("/?mock=dati");
+  // Si entra come l'amministratore dell'esportazione.
+  await expect(page.getByRole("heading", { name: /Razzo/ })).toBeVisible();
+  await page.getByRole("link", { name: "Partite", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /Razzo 11 Bruno 7/ }),
+  ).toBeVisible();
+});
+
 test("MVP con cornice d'oro e profilo di un altro giocatore", async ({
   page,
 }) => {

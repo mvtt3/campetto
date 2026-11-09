@@ -1,6 +1,7 @@
 "use client";
 
 import { BOX_KEYS, IERI } from "./mock-ieri";
+import { fromExport, LOCAL_DATA_URL } from "./mock-dati";
 import { splitGuests } from "../guests";
 import {
   DEFAULT_NOTIFY_PREFS,
@@ -528,7 +529,8 @@ export function createMockBackend(): Backend {
     mode === "reset" ||
     mode === "demo" ||
     mode === "pieno" ||
-    mode === "ieri"
+    mode === "ieri" ||
+    mode === "dati"
   )
     localStorage.removeItem("campetto:mock:telefono-nuovo");
   let state: MockState;
@@ -538,6 +540,7 @@ export function createMockBackend(): Backend {
     mode === "demo" ||
     mode === "pieno" ||
     mode === "ieri" ||
+    mode === "dati" ||
     !raw
   ) {
     state =
@@ -581,10 +584,40 @@ export function createMockBackend(): Backend {
   };
   save();
   const me = () => state.players.find((p) => p.id === state.meId)!;
+  // ?mock=dati: i dati veri esportati, letti una volta all'apertura (vedi mock-dati.ts).
+  let localData = mode === "dati";
 
   return {
     kind: "mock",
     async init(): Promise<AuthState> {
+      if (localData) {
+        localData = false;
+        const r = await fetch(LOCAL_DATA_URL, { cache: "no-store" });
+        if (!r.ok)
+          throw new Error(
+            "Manca public/dati-locali.json: crealo con scripts/esporta-dati.mjs",
+          );
+        const d = fromExport(await r.json());
+        state = {
+          meId: d.meId,
+          signedIn: true,
+          players: d.players,
+          matches: d.matches,
+          proposals: d.proposals,
+          news: d.news,
+          highlights: d.highlights,
+          hlComments: d.hlComments,
+          hlLikes: d.hlLikes,
+          private: d.players.map((p) => ({
+            playerId: p.id,
+            inviteToken: `tok-${p.id}`,
+            linkEmail: null,
+          })),
+          pending: [],
+          notifications: [],
+        };
+        save();
+      }
       if (!state.signedIn) return { status: "signed-out" };
       return { status: "ready", meId: state.meId };
     },
