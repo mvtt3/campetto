@@ -208,16 +208,19 @@ function MvpCard({
       ))}
       {mvp && player ? (
         <>
-          <span className="mvp-float absolute -bottom-3 right-3" aria-hidden>
+          <span
+            className="mvp-float absolute -bottom-[150px] -right-6"
+            aria-hidden
+          >
             <Character
               id={characterOf(player)}
               outfit={player.outfit}
               number={player.jerseyNumber}
-              height={164}
+              height={300}
             />
           </span>
           <div className="relative flex min-w-0 flex-col pr-32">
-            <span className="flex w-fit items-center gap-1.5 rounded-full bg-volt-ink px-2.5 py-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-volt">
+            <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/45 px-2.5 py-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-volt-ink">
               <IconCrown size={13} />
               {mvp.period.kind === "month" && mvp.period.month !== undefined
                 ? MONTHS_IT[mvp.period.month]
@@ -425,7 +428,7 @@ export function HomeScreen() {
           {hasNext && nextSection}
           <section
             data-tour="home-month"
-            className="rise court relative mt-8 rounded-[28px]"
+            className="rise court relative rounded-[28px]"
             style={rise(hasNext ? 1 : 0)}
           >
             <div className="absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden>
@@ -433,18 +436,16 @@ export function HomeScreen() {
               <span className="blob -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)]" />
               <span className="blob -bottom-10 right-10 h-32 w-32 bg-[radial-gradient(circle,rgb(255_250_240/0.14),transparent_70%)]" />
               <CourtLines draw className="absolute inset-0 h-full w-full" />
+              <span className="absolute -right-4 -top-2 opacity-90 drop-shadow-[0_12px_18px_rgb(0_0_0/0.3)]">
+                <Character
+                  id={characterOf(me)}
+                  outfit={me.outfit}
+                  number={me.jerseyNumber}
+                  height={230}
+                />
+              </span>
+              <span className="absolute inset-y-0 left-0 w-2/3 bg-[linear-gradient(90deg,var(--court-deep)_0%,transparent_100%)] opacity-60" />
             </div>
-            <span
-              className="absolute -top-12 right-4 drop-shadow-[0_10px_14px_rgb(0_0_0/0.25)]"
-              aria-hidden
-            >
-              <Character
-                id={characterOf(me)}
-                outfit={me.outfit}
-                number={me.jerseyNumber}
-                height={132}
-              />
-            </span>
             <div className="relative px-5 pb-5 pt-6">
               <p className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold">
                 Il tuo {MONTHS_IT[month].toLowerCase()}
@@ -470,7 +471,7 @@ export function HomeScreen() {
                   </p>
                 </div>
               </div>
-              <div className="mt-5 grid grid-cols-3 divide-x divide-white/15 rounded-[20px] bg-black/15 py-3">
+              <div className="mt-5 grid grid-cols-3 divide-x divide-white/15 rounded-[20px] bg-court-deep/80 py-3 backdrop-blur-md">
                 <div className="px-3.5">
                   <p className="num text-[20px]">{mine.games ? `${winPct}%` : "—"}</p>
                   <p className="mt-1 text-[11.5px] font-medium text-white/70">Vittorie</p>

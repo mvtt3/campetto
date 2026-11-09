@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { IconX } from "@tabler/icons-react";
+import { IconInfoCircle, IconX } from "@tabler/icons-react";
 import {
   useEffect,
   useId,
@@ -44,7 +44,7 @@ export function InfoTip({
     if (!open || !btn.current) return;
     const place = () => {
       const r = btn.current!.getBoundingClientRect();
-      const w = Math.min(272, window.innerWidth - 24);
+      const w = Math.min(296, window.innerWidth - 24);
       const h = tip.current?.offsetHeight ?? 90;
       const cx = r.left + r.width / 2;
       const left = Math.min(
@@ -102,13 +102,12 @@ export function InfoTip({
           setOpen((o) => !o);
         }}
         className={clsx(
-          "relative inline-grid shrink-0 place-items-center rounded-full border-2 border-current align-middle font-serif font-bold italic leading-none opacity-70 transition-opacity before:absolute before:-inset-3 before:content-[''] hover:opacity-100",
+          "relative inline-grid shrink-0 place-items-center rounded-full align-middle opacity-60 transition-opacity before:absolute before:-inset-3 before:content-[''] hover:opacity-100",
           open && "!opacity-100",
           className,
         )}
-        style={{ width: size, height: size, fontSize: size * 0.62 }}
       >
-        i
+        <IconInfoCircle size={size + 2} strokeWidth={1.8} aria-hidden />
       </button>
       {open &&
         createPortal(
@@ -116,15 +115,15 @@ export function InfoTip({
             ref={tip}
             id={id}
             role="tooltip"
-            className="menu-pop fixed z-[65] rounded-[18px] border-[2.5px] border-edge bg-surface px-8 py-3 text-center text-[13.5px] font-medium leading-snug text-text"
+            className="menu-pop fixed z-[65] rounded-[20px] border border-[var(--hairline)] bg-surface py-3.5 pl-4 pr-10 text-left text-[13.5px] leading-snug text-text"
             style={{
               left: pos?.left ?? -999,
               top: pos?.top ?? -999,
               width: Math.min(
-                272,
-                typeof window !== "undefined" ? window.innerWidth - 24 : 272,
+                296,
+                typeof window !== "undefined" ? window.innerWidth - 24 : 296,
               ),
-              boxShadow: "3px 3px 0 var(--edge)",
+              boxShadow: "var(--shadow-pop)",
               transformOrigin: pos
                 ? `${pos.arrow}px ${pos.below ? "0" : "100%"}`
                 : undefined,
@@ -133,10 +132,10 @@ export function InfoTip({
             <span
               aria-hidden
               className={clsx(
-                "absolute h-3 w-3 rotate-45 border-edge bg-surface",
+                "absolute h-3 w-3 rotate-45 rounded-[3px] border-[var(--hairline)] bg-surface",
                 pos?.below
-                  ? "-top-[7.5px] border-l-[2.5px] border-t-[2.5px]"
-                  : "-bottom-[7.5px] border-b-[2.5px] border-r-[2.5px]",
+                  ? "-top-[6.5px] border-l border-t"
+                  : "-bottom-[6.5px] border-b border-r",
               )}
               style={{ left: (pos?.arrow ?? 20) - 6 }}
             />
@@ -144,9 +143,9 @@ export function InfoTip({
               type="button"
               aria-label="Chiudi"
               onClick={() => setOpen(false)}
-              className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full text-muted"
+              className="press absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-raised text-muted"
             >
-              <IconX size={15} />
+              <IconX size={14} strokeWidth={2.2} />
             </button>
             {children}
           </div>,

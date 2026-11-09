@@ -30,33 +30,34 @@ const MONTH = [
 /** L'MVP del mese (e della classifica MVP). */
 export function MvpMonthInfo({ minGames = 3 }: { minGames?: number }) {
   return (
-    <span className="block text-left">
-      <span className="block text-center font-bold">
+    <span className="block">
+      <span className="block text-[15px] font-bold">Come si diventa MVP</span>
+      <span className="mt-0.5 block text-[12.5px] text-muted">
         Conta come giochi, e conta vincere
       </span>
-      <span className="mt-2 flex flex-col gap-1.5">
+      <span className="mt-3 flex flex-col gap-2.5">
         {MONTH.map((r) => (
           <span key={r.label} className="block">
-            <span className="flex items-baseline justify-between gap-2 text-[12.5px]">
-              <span className="font-bold">{r.label}</span>
+            <span className="flex items-baseline justify-between gap-2 text-[13px]">
+              <span className="font-semibold">{r.label}</span>
               <span className="tnum font-bold">{r.pct}%</span>
             </span>
-            <span className="mt-0.5 block h-1.5 overflow-hidden rounded-full bg-raised">
+            <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-raised">
               <span
                 className={`block h-full rounded-full ${r.color}`}
                 style={{ width: `${(r.pct / 45) * 100}%` }}
               />
             </span>
-            <span className="block text-[11.5px] leading-tight text-muted">
+            <span className="mt-1 block text-[11.5px] leading-snug text-muted">
               {r.hint}
             </span>
           </span>
         ))}
       </span>
-      <span className="mt-2 block text-center text-[11.5px] text-muted">
+      <span className="mt-3 block rounded-xl bg-raised px-3 py-2 text-[11.5px] leading-snug text-muted">
         Servono almeno {minGames} partite nel mese. Nelle partite senza
         tabellino contano vittorie, impatto e presenza
-      </span>
+    </span>
     </span>
   );
 }

@@ -263,8 +263,176 @@ export function ProposalCard({
   const phase = proposalPhase(proposal, now, needed);
   const minYes = Math.min(CONFIRM_MIN, needed);
   const missing = minYes - yes.length;
+  const who = (
+    <WhoRow compact={compact}>
+      {yes.length ? (
+        <AvatarStack players={yes} size={compact ? 28 : 32} />
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <p className="text-[13.5px]">
+          <span className="tnum font-bold">
+            {Math.min(yes.length, needed)}
+          </span>
+          <span className="text-muted">
+            {" "}
+            di {needed}
+            {full
+              ? ""
+              : ` per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
+          </span>
+          {full && <span className="font-bold text-ok"> al completo</span>}
+          {yes.length > needed && (
+            <span className="font-semibold text-muted">
+              {" "}
+              +{yes.length - needed}{" "}
+              {proposal.format === "1v1"
+                ? "in attesa"
+                : yes.length - needed === 1
+                  ? "cambio"
+                  : "cambi"}
+            </span>
+          )}
+          {maybe.length > 0 && (
+            <span className="text-muted">, {maybe.length} forse</span>
+          )}
+        </p>
+        <div
+          className="mt-2 h-1.5 overflow-hidden rounded-full bg-raised"
+          aria-hidden
+        >
+          <motion.div
+            className={clsx(
+              "h-full rounded-full",
+              full ? "bg-ok" : "bg-court",
+            )}
+            initial={false}
+            animate={{ width: `${progress * 100}%` }}
+            transition={{ type: "spring", stiffness: 200, damping: 26 }}
+          />
+        </div>
+      </div>
+      {compact && (
+        <IconChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
+      )}
+    </WhoRow>
+  );
+
+  const answers = (
+    <div
+      className="flex gap-1 rounded-full bg-raised p-1"
+      role="group"
+      aria-label="La tua risposta"
+    >
+      {RESPONSES.map((r) => {
+        const on = mine === r.value;
+        return (
+          <button
+            key={r.value}
+            aria-pressed={on}
+            onClick={() => void respond(proposal, r.value)}
+            className={clsx(
+              "press h-10 flex-1 rounded-full text-[14px] font-semibold transition-colors short:h-9",
+              on
+                ? r.value === "si"
+                  ? "bg-volt text-volt-ink shadow-[var(--shadow)]"
+                  : r.value === "no"
+                    ? "bg-text text-bg shadow-[var(--shadow)]"
+                    : "bg-court text-court-ink shadow-[var(--shadow)]"
+                : "text-muted",
+            )}
+          >
+            {r.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   if (phase === "live")
     return <LiveMatch proposal={proposal} compact={compact} />;
+
+  if (compact) {
+    const at = new Date(proposal.startsAt);
+    const days = Math.round(
+      (new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime() -
+        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
+        86_400_000,
+    );
+    const weekday = at.toLocaleDateString("it-IT", { weekday: "long" });
+    const when =
+      days === 0
+        ? "Oggi"
+        : days === 1
+          ? "Domani"
+          : weekday[0].toUpperCase() + weekday.slice(1);
+    const time = at.toLocaleTimeString("it-IT", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return (
+      <div
+        data-testid="proposal-card"
+        data-phase={phase}
+        className="flex flex-col gap-4 short:gap-3"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-[58px] w-[54px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-ball-soft">
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ball">
+              {at.toLocaleDateString("it-IT", { weekday: "short" })}
+            </span>
+            <span className="num text-[24px] leading-none">{at.getDate()}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="title truncate text-[19px]">
+              {when}
+              <span className="font-medium text-faint"> · </span>
+              <span className="tnum">{time}</span>
+            </p>
+            <p className="mt-1 flex min-w-0 items-center gap-1 text-[13px] text-muted">
+              {proposal.place && (
+                <IconMapPin size={14} className="shrink-0 text-ball" aria-hidden />
+              )}
+              {indoorVia ? (
+                <a
+                  href={mapsUrl(indoorVia)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="truncate font-semibold text-text underline decoration-dotted underline-offset-2"
+                  data-testid="indoor-address"
+                >
+                  {indoorVia}
+                </a>
+              ) : (
+                proposal.place && (
+                  <span className="shrink-0 font-semibold text-text">
+                    {placeLabel(proposal.place)}
+                  </span>
+                )
+              )}
+              {proposal.format && (
+                <span className="shrink-0">
+                  {proposal.place ? " · " : ""}
+                  {proposal.format}
+                </span>
+              )}
+            </p>
+          </div>
+          <WeatherChip at={proposal.startsAt} className="shrink-0 self-start" />
+        </div>
+        <p className="-mt-1 truncate text-[13px] text-muted">
+          Proposta da{" "}
+          <span className="font-semibold text-text">
+            {shortName(creator, data.players)}
+          </span>
+          {proposal.note ? ` · ${proposal.note}` : ""}
+        </p>
+        <div className="h-px bg-line" aria-hidden />
+        {who}
+        {answers}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -272,10 +440,10 @@ export function ProposalCard({
       data-phase={phase}
       className={clsx(
         "flex flex-col",
-        compact ? "gap-3 short:gap-2" : "gap-3 short:gap-2.5",
+        "gap-3 short:gap-2.5",
       )}
     >
-      {phase === "confirmed" && !compact && (
+      {phase === "confirmed" && (
         <div
           className="-mx-4 -mt-4 flex items-center gap-2 rounded-t-[19px] bg-ok px-4 py-2.5 text-white"
           role="status"
@@ -291,83 +459,55 @@ export function ProposalCard({
         <div className="min-w-0">
           <p className="title truncate text-[19px]">
             {proposalWhen(proposal.startsAt)}
-            {/* Nella Home il campetto sta sulla riga dell'ora: la scheda non si allunga. */}
-            {compact && proposal.place && !indoorVia && (
-              <PlaceTag place={proposal.place} inline />
-            )}
           </p>
-          {/* Indoor nella Home: la via al posto della riga dei dettagli, sempre visibile. */}
-          {compact && indoorVia ? (
-            <p className="mt-0.5 truncate text-[13px]">
-              <PlaceTag place="indoor" />{" "}
-              <a
-                href={mapsUrl(indoorVia)}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="font-semibold text-muted underline decoration-dotted underline-offset-2"
-                data-testid="indoor-address"
-              >
-                {indoorVia}
-              </a>
-            </p>
-          ) : (
-            !compact && proposal.note ? (
-              // Con la nota: la riga si apre con la freccetta, così si legge tutta.
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  haptic(5);
-                  setNoteOpen((o) => !o);
-                }}
-                // Il nome del bottone è il testo che si vede; aria-expanded dice se è aperta.
-                aria-expanded={noteOpen}
-                className="mt-0.5 flex w-full min-w-0 items-start gap-1 text-left text-[13px] text-muted"
-                data-testid="proposal-note"
-              >
-                <span className={clsx("min-w-0 flex-1", noteOpen ? "whitespace-pre-wrap break-words" : "truncate")}>
-                  {proposal.place && (
-                    <>
-                      <PlaceTag place={proposal.place} />
-                      {" · "}
-                    </>
-                  )}
-                  {proposal.format ? `${proposal.format}, ` : ""}proposta da {shortName(creator, data.players)}
-                  {". "}
-                  <span className={clsx(noteOpen && "font-semibold text-text")}>{proposal.note}</span>
-                </span>
-                <IconChevronDown
-                  size={15}
-                  className={clsx("mt-0.5 shrink-0 text-faint transition-transform duration-200", noteOpen && "rotate-180")}
-                  aria-hidden
-                />
-              </button>
-            ) : (
-              <p
-                className={clsx(
-                  "mt-0.5 truncate text-[13px] text-muted",
-                  // Nella Home, sui telefoni non alti, la riga in più toglieva spazio all'ultima partita.
-                  compact && "[@media(max-height:820px)]:hidden",
-                )}
-              >
-                {!compact && proposal.place && (
+          {proposal.note ? (
+            // Con la nota: la riga si apre con la freccetta, così si legge tutta.
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                haptic(5);
+                setNoteOpen((o) => !o);
+              }}
+              // Il nome del bottone è il testo che si vede; aria-expanded dice se è aperta.
+              aria-expanded={noteOpen}
+              className="mt-0.5 flex w-full min-w-0 items-start gap-1 text-left text-[13px] text-muted"
+              data-testid="proposal-note"
+            >
+              <span className={clsx("min-w-0 flex-1", noteOpen ? "whitespace-pre-wrap break-words" : "truncate")}>
+                {proposal.place && (
                   <>
                     <PlaceTag place={proposal.place} />
                     {" · "}
                   </>
                 )}
-                {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
-                {shortName(creator, data.players)}
-                {proposal.note ? `. ${proposal.note}` : ""}
-              </p>
-            )
+                {proposal.format ? `${proposal.format}, ` : ""}proposta da {shortName(creator, data.players)}
+                {". "}
+                <span className={clsx(noteOpen && "font-semibold text-text")}>{proposal.note}</span>
+              </span>
+              <IconChevronDown
+                size={15}
+                className={clsx("mt-0.5 shrink-0 text-faint transition-transform duration-200", noteOpen && "rotate-180")}
+                aria-hidden
+              />
+            </button>
+          ) : (
+            <p className="mt-0.5 truncate text-[13px] text-muted">
+              {proposal.place && (
+                <>
+                  <PlaceTag place={proposal.place} />
+                  {" · "}
+                </>
+              )}
+              {proposal.format ? `${proposal.format}, ` : ""}proposta da{" "}
+              {shortName(creator, data.players)}
+            </p>
           )}
         </div>
         <WeatherChip at={proposal.startsAt} className="shrink-0" />
       </div>
       {/* Indoor nel calendario: la via ben visibile, un tocco e si apre nelle mappe. */}
-      {!compact && indoorVia && (
+      {indoorVia && (
         <a
           href={mapsUrl(indoorVia)}
           target="_blank"
@@ -385,83 +525,9 @@ export function ProposalCard({
         </a>
       )}
 
-      {/* Chi c'è: facce e conta. Nella Home porta al calendario, dove ci sono tutti i nomi. */}
-      <WhoRow compact={compact}>
-        {yes.length ? (
-          <AvatarStack players={yes} size={compact ? 28 : 32} />
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <p className="text-[13.5px]">
-            <span className="tnum font-bold">
-              {Math.min(yes.length, needed)}
-            </span>
-            <span className="text-muted">
-              {" "}
-              di {needed}
-              {full
-                ? ""
-                : ` per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
-            </span>
-            {full && <span className="font-bold text-ok"> al completo</span>}
-            {yes.length > needed && (
-              <span className="font-semibold text-muted">
-                {" "}
-                +{yes.length - needed}{" "}
-                {proposal.format === "1v1"
-                  ? "in attesa"
-                  : yes.length - needed === 1
-                    ? "cambio"
-                    : "cambi"}
-              </span>
-            )}
-            {maybe.length > 0 && (
-              <span className="text-muted">, {maybe.length} forse</span>
-            )}
-          </p>
-          <div
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-raised"
-            aria-hidden
-          >
-            <motion.div
-              className={clsx(
-                "h-full rounded-full",
-                full ? "bg-ok" : "bg-court",
-              )}
-              initial={false}
-              animate={{ width: `${progress * 100}%` }}
-              transition={{ type: "spring", stiffness: 200, damping: 26 }}
-            />
-          </div>
-        </div>
-        {compact && (
-          <IconChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
-        )}
-      </WhoRow>
+      {who}
 
-      <div className="flex gap-2" role="group" aria-label="La tua risposta">
-        {RESPONSES.map((r) => {
-          const on = mine === r.value;
-          return (
-            <button
-              key={r.value}
-              aria-pressed={on}
-              onClick={() => void respond(proposal, r.value)}
-              className={clsx(
-                "sticker-sm press h-11 flex-1 rounded-full text-[14px] font-bold transition-colors short:h-10",
-                on
-                  ? r.value === "si"
-                    ? "bg-volt text-volt-ink"
-                    : r.value === "no"
-                      ? "bg-text text-bg"
-                      : "bg-court text-court-ink"
-                  : "bg-surface text-text",
-              )}
-            >
-              {r.label}
-            </button>
-          );
-        })}
-      </div>
+      {answers}
 
       {/* Le controproposte: piccole, sotto le risposte. Chi ha proposto la sposta con un tocco. */}
       {alts.length > 0 && (
@@ -525,7 +591,7 @@ export function ProposalCard({
 
       {/* Un altro orario o l'altro campetto, stesso giorno: per chi c'è, e per chi l'ha proposta. */}
       <AnimatePresence initial={false}>
-        {altForm.open && !compact && (
+        {altForm.open && (
           <motion.div
             key={`alt-${altForm.n}`}
             initial={{ opacity: 0, height: 0 }}
@@ -542,7 +608,7 @@ export function ProposalCard({
           </motion.div>
         )}
       </AnimatePresence>
-      {!compact && canCancel && confirmCancel && (
+      {canCancel && confirmCancel && (
         <button
           type="button"
           aria-pressed={rain}
@@ -570,7 +636,7 @@ export function ProposalCard({
         </button>
       )}
       {/* Una riga sola per le azioni: squadre, orario o campetto, annulla. */}
-      {!compact && (showAlt || canCancel) && (
+      {(showAlt || canCancel) && (
         <div className="flex gap-2">
           {showAlt && !confirmCancel && (
             <button
@@ -653,7 +719,7 @@ export function ProposalCard({
         </div>
       )}
       {/* Tutti i nomi, sotto, nello spazio del calendario: niente da aprire. */}
-      {!compact && <RosterPanel proposal={proposal} />}
+      {<RosterPanel proposal={proposal} />}
     </div>
   );
 }
@@ -682,17 +748,12 @@ function WhoRow({
 /** Il campetto: puntina arancione e nome, ben leggibile. */
 function PlaceTag({
   place,
-  inline,
 }: {
   place: NonNullable<Proposal["place"]>;
-  inline?: boolean;
 }) {
   return (
     <span
-      className={clsx(
-        "inline-flex items-center gap-0.5 text-[13px] font-bold text-text [font-family:var(--font-sans)]",
-        inline && "ml-2 align-[0.15em]",
-      )}
+      className="inline-flex items-center gap-0.5 text-[13px] font-bold text-text"
     >
       <IconMapPin size={13} strokeWidth={2.6} className="text-ball" aria-hidden />
       {placeLabel(place)}
