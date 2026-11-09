@@ -1,0 +1,1149 @@
+"use client";
+
+import { BOX_KEYS, IERI } from "./mock-ieri";
+import { splitGuests } from "../guests";
+import {
+  DEFAULT_NOTIFY_PREFS,
+  emptyBox,
+  MAX_SUBS,
+  nameUnlockDate,
+  TEAM_SIZE,
+  type Dataset,
+  type Format,
+  type Highlight,
+  type HighlightComment,
+  type Match,
+  type NewsPost,
+  type Player,
+} from "../types";
+import type {
+  AuthState,
+  Backend,
+  GameKing,
+  PendingUser,
+  PlayerPrivate,
+} from "./backend";
+import type { BoardRow } from "../game/types";
+import { APP_START } from "../periods";
+
+/**
+ * Backend in memoria (salvato in localStorage) usato per i test automatici e per
+ * provare l'app in locale senza account. Attivo solo su localhost.
+ */
+
+const KEY = "campetto:mock:v1";
+
+interface MockState extends Dataset {
+  hlLikes?: { highlightId: string; playerId: string }[];
+  hlComments?: HighlightComment[];
+  meId: string;
+  signedIn: boolean;
+  private: PlayerPrivate[];
+  pending: PendingUser[];
+  notifications: unknown[];
+  game?: { state: unknown; updatedAt: string } | null;
+  gameScores?: BoardRow[];
+  gameAwards?: (GameKing & { claimed: boolean })[];
+}
+
+// nome, cognome, ruoli, nome scelto nell'app, figurina
+const SEED: [string, string | null, string[], string, string | null][] = [
+  ["Matteo", "Pepe", ["Guardia", "Ala piccola"], "Matteo", null],
+  ["Valerio", "Semeraro", ["Play"], "Valerio", "preset:bandana"],
+  [
+    "Davide",
+    "Aquilino",
+    ["Guardia", "Ala grande"],
+    "Davide",
+    "preset:occhiali",
+  ],
+  ["Lorenzo", "Candela", ["Play"], "Lorenzo", null],
+  ["Mattia", null, ["Play", "Guardia"], "Mattia", "preset:coppola"],
+  [
+    "Matteo",
+    "Mocciaro",
+    ["Ala grande", "Centro"],
+    "Mocciaro",
+    "preset:muscoli",
+  ],
+  ["Simone", "Falbo", ["Ala grande", "Centro", "Ala piccola"], "Simone", null],
+  ["Mori", null, [], "Mori", "preset:collana"],
+  ["Samuele", "Formigaro", [], "Samuele", null],
+];
+
+const rid = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : String(Math.random()).slice(2);
+
+function seedPlayers(): Player[] {
+  return SEED.map(([firstName, lastName, roles, nickname, avatarUrl], i) => ({
+    id: `p${i + 1}`,
+    firstName,
+    lastName,
+    nickname,
+    roles,
+    jerseyNumber: null,
+    cardColor: null,
+    avatarUrl,
+    character:
+      (
+        [
+          "bomber",
+          "bandana",
+          "occhiali",
+          "cecchino",
+          "coppola",
+          "muscoli",
+          "volo",
+          "collana",
+          "ladro",
+        ] as const
+      )[i] ?? null,
+    userId: i === 0 ? "u1" : null,
+    isAdmin: i === 0,
+    showcase: [],
+    notifyPrefs: DEFAULT_NOTIFY_PREFS,
+    archived: false,
+    createdAt: new Date(2026, 9, 1, 10, i).toISOString(),
+  }));
+}
+
+/** Deterministic pseudo-random history for visual checks (?mock=demo). */
+/**
+ * Sistema i canestri di una squadra finché la somma dei punti è esattamente il risultato:
+ * aggiunge o toglie canestri da 2 e da 3 a turno, poi rimette in ordine tentativi e zone.
+ */
+function settlePoints(
+  boxes: Match["players"][number]["box"][],
+  target: number,
+) {
+  const pts = () => boxes.reduce((s, b) => s + b.fg2m * 2 + b.fg3m * 3, 0);
+  const pick = (ok: (b: (typeof boxes)[number]) => boolean, i: number) => {
+    for (let k = 0; k < boxes.length; k++) {
+      const b = boxes[(i + k) % boxes.length];
+      if (ok(b)) return b;
+    }
+    return null;
+  };
+  for (let i = 0; i < 400; i++) {
+    const d = target - pts();
+    if (d === 0) break;
+    const next = boxes[i % boxes.length];
+    if (d === 3) next.fg3m++;
+    else if (d >= 2) next.fg2m++;
+    else if (d === 1) {
+      // Un punto in più: un canestro da 2 diventa da 3 (o se ne aggiunge uno da 2 e si sistema dopo).
+      const b = pick((x) => x.fg2m > 0, i);
+      const t = b ? null : pick((x) => x.fg3m > 0, i);
+      if (b) {
+        b.fg2m--;
+        b.fg3m++;
+      } else if (t) {
+        // Solo triple: una tripla diventa due canestri da 2.
+        t.fg3m--;
+        t.fg2m += 2;
+      } else next.fg3m++;
+    } else if (d === -1) {
+      const b = pick((x) => x.fg3m > 0, i);
+      const t = b ? null : pick((x) => x.fg2m > 1, i);
+      if (b) {
+        b.fg3m--;
+        b.fg2m++;
+      } else if (t) {
+        // Solo canestri da 2: due diventano una tripla.
+        t.fg2m -= 2;
+        t.fg3m++;
+      } else {
+        const one = pick((x) => x.fg2m > 0, i);
+        if (one) one.fg2m--;
+      }
+    } else {
+      const b2 = pick((x) => x.fg2m > 0, i);
+      if (b2) b2.fg2m--;
+      else {
+        const b3 = pick((x) => x.fg3m > 0, i);
+        if (b3) b3.fg3m--;
+      }
+    }
+  }
+  for (const b of boxes) {
+    b.fg2a = Math.max(b.fg2a, b.fg2m);
+    b.fg3a = Math.max(b.fg3a, b.fg3m);
+    if (b.fgra != null) b.fgra = Math.min(b.fgra, b.fg2a);
+    if (b.fgrm != null) b.fgrm = Math.min(b.fgrm, b.fg2m, b.fgra ?? b.fg2m);
+    b.pts = b.fg2m * 2 + b.fg3m * 3;
+  }
+}
+
+export function demoMatches(
+  players: Player[],
+  now = new Date(),
+  count = 24,
+): Match[] {
+  let s = 7;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const out: Match[] = [];
+  const formats: Format[] = ["2v2", "3v3", "3v3", "1v1", "2v2", "4v4"];
+  // Lo storico di prova sta tutto dopo l'apertura dell'app (ottobre 2026).
+  const N = count;
+  const span = Math.max(
+    1,
+    Math.floor((now.getTime() - APP_START.getTime()) / 86_400_000),
+  );
+  const step = Math.min(2.4, Math.max(0.25, (span - 1) / N));
+  for (let i = 0; i < N; i++) {
+    const daysAgo = Math.floor(i * step) + 1;
+    const d = new Date(now.getTime() - daysAgo * 86_400_000);
+    d.setHours(step < 1 ? 15 + (i % 4) * 2 : 17, 30, 0, 0);
+    if (d < APP_START) break;
+    const format = formats[i % formats.length];
+    const n = TEAM_SIZE[format];
+    // Nel mese pieno ogni tanto si è in uno in più: il quinto fa il cambio nella squadra A.
+    const extra =
+      count > 24 && format !== "1v1" && format !== "4v4" && i % 4 === 1 ? 1 : 0;
+    const pool = [...players].sort(() => rnd() - 0.5).slice(0, n * 2 + extra);
+    const id = `demo-${i}`;
+    const winA = rnd() > 0.45;
+    const lose = Math.floor(rnd() * 18) + 2;
+    const scoreA = winA ? 21 : lose;
+    const scoreB = winA ? lose : 21;
+    const withStats = i % 3 !== 2;
+    const lines = pool.map((p, k) => {
+      // Ordine: A in campo, B in campo, poi il cambio di A.
+      const team = (k < n || k >= n * 2 ? "A" : "B") as "A" | "B";
+      const sub = k >= n * 2;
+      const teamPts = team === "A" ? scoreA : scoreB;
+      const box = emptyBox();
+      if (withStats) {
+        const share = Math.round(teamPts / (team === "A" ? n + extra : n));
+        box.fg3m = Math.min(Math.floor(rnd() * 3), Math.floor(share / 3));
+        box.fg2m = Math.max(0, Math.floor((share - box.fg3m * 3) / 2));
+        box.fg2a = box.fg2m + Math.floor(rnd() * 5);
+        // Da sotto: circa metà dei tiri da 2 (il resto dalla media).
+        box.fgra = Math.round(box.fg2a * (0.3 + rnd() * 0.4));
+        box.fgrm = Math.min(
+          box.fgra,
+          box.fg2m,
+          Math.round(box.fgra * (0.4 + rnd() * 0.4)),
+        );
+        box.fg3a = box.fg3m + Math.floor(rnd() * 4);
+        box.pts = box.fg2m * 2 + box.fg3m * 3;
+        box.oreb = Math.floor(rnd() * 3);
+        box.dreb = Math.floor(rnd() * 5);
+        box.ast = Math.floor(rnd() * 5);
+        box.stl = Math.floor(rnd() * 3);
+        box.blk = Math.floor(rnd() * 2);
+        box.tov = Math.floor(rnd() * 3);
+        box.fouls = Math.floor(rnd() * 4);
+      }
+      return {
+        matchId: id,
+        playerId: p.id,
+        team,
+        hasStats: withStats,
+        box,
+        ...(sub ? { sub: true } : {}),
+      };
+    });
+    // Il tabellino deve tornare col risultato, come nelle partite vere.
+    if (withStats)
+      for (const t of ["A", "B"] as const)
+        settlePoints(
+          lines.filter((l) => l.team === t).map((l) => l.box),
+          t === "A" ? scoreA : scoreB,
+        );
+    out.push({
+      id,
+      playedAt: d.toISOString(),
+      format,
+      targetPoints: 21,
+      scoreA,
+      scoreB,
+      statsSource: withStats ? "tabellino" : "solo_risultato",
+      confirmedBy: i % 4 === 0 ? pool[pool.length - 1].id : null,
+      confirmedAt: null,
+      createdBy: pool[0].id,
+      notes: null,
+      createdAt: d.toISOString(),
+      players: lines,
+      events: [],
+    });
+  }
+  return out;
+}
+
+function demoProposals() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(18, 0, 0, 0);
+  const at = new Date().toISOString();
+  // ?partita=confermata | quasi | incorso: per vedere la proposta nelle sue fasi.
+  const phase =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("partita")
+      : null;
+  if (phase === "incorso") d.setTime(Date.now() - 25 * 60_000);
+  if (phase === "quasi") d.setTime(Date.now() + 5 * 3_600_000);
+  // ?partita=stasera: più tardi ma sempre oggi (per le prove che dipendono dal giorno).
+  if (phase === "stasera") {
+    const end = new Date();
+    end.setHours(23, 59, 0, 0);
+    d.setTime(Date.now() + Math.min(3 * 3_600_000, (end.getTime() - Date.now()) / 2));
+  }
+  if (phase === "finita") d.setTime(Date.now() - 150 * 60_000);
+  // ?partita=annullata: quella di oggi annullata per pioggia, e la prossima fra tre giorni.
+  const rained = phase === "annullata";
+  if (rained) d.setTime(Date.now() - 40 * 60_000);
+  const extra =
+    phase === "confermata"
+      ? ["p1", "p3", "p6"]
+      : phase === "incorso" || phase === "quasi" || phase === "stasera" || phase === "finita" || rained
+        ? ["p3"]
+        : [];
+  const later = new Date();
+  later.setDate(later.getDate() + 3);
+  later.setHours(10, 30, 0, 0);
+  const after = rained
+    ? [
+        {
+          id: "demo-prop-2",
+          startsAt: later.toISOString(),
+          format: null,
+          note: null,
+          place: "indoor" as const,
+          address: "Via Trofarello 10, Torino",
+          createdBy: "p1",
+          status: "aperta" as const,
+          createdAt: at,
+          responses: [{ playerId: "p1", response: "si" as const, updatedAt: at }],
+        },
+      ]
+    : [];
+  return [
+    ...after,
+    {
+      id: "demo-prop",
+      startsAt: d.toISOString(),
+      format: "3v3" as Format,
+      note: "Porto io il pallone nuovo",
+      place: "decathlon" as const,
+      createdBy: "p2",
+      status: rained ? ("annullata" as const) : ("aperta" as const),
+      cancelReason: rained ? ("meteo" as const) : null,
+      cancelledAt: rained ? at : null,
+      createdAt: at,
+      responses: [
+        { playerId: "p2", response: "si" as const, updatedAt: at },
+        { playerId: "p4", response: "si" as const, updatedAt: at },
+        {
+          playerId: "p7",
+          response: "si" as const,
+          updatedAt: at,
+          // Una controproposta di prova: un'ora dopo, al Niche.
+          altStartsAt: new Date(d.getTime() + 3_600_000).toISOString(),
+          altPlace: "niche" as const,
+        },
+        { playerId: "p5", response: "forse" as const, updatedAt: at },
+        ...extra.map((playerId) => ({
+          playerId,
+          response: "si" as const,
+          updatedAt: at,
+        })),
+      ],
+    },
+  ];
+}
+
+/** "ieri": le partite vere del primo giorno, con i nomi come li vedono gli amici. */
+function ieriState(): MockState {
+  const players = seedPlayers().map((p) => ({
+    ...p,
+    nickname: p.id === "p1" ? "Springs" : null,
+    character: null,
+    avatarUrl: null,
+  }));
+  const matches: Match[] = [...IERI].reverse().map((m, j) => {
+    const i = IERI.length - 1 - j;
+    return {
+      id: `ieri-${i}`,
+      playedAt: new Date(m.at).toISOString(),
+      format: "2v2",
+      targetPoints: 21,
+      scoreA: m.score[0],
+      scoreB: m.score[1],
+      statsSource: "tabellino",
+      confirmedBy: null,
+      confirmedAt: null,
+      createdBy: "p1",
+      notes: null,
+      createdAt: new Date(m.at).toISOString(),
+      players: m.lines.map(([playerId, team, v, [fgrm, fgra]]) => ({
+        matchId: `ieri-${i}`,
+        playerId,
+        team,
+        hasStats: true,
+        box: {
+          ...(Object.fromEntries(
+            BOX_KEYS.map((k, j) => [k, v[j]]),
+          ) as unknown as Match["players"][number]["box"]),
+          fgrm,
+          fgra,
+        },
+      })),
+      events: [],
+    };
+  });
+  return {
+    meId: "p1",
+    signedIn: true,
+    players,
+    matches,
+    proposals: [],
+    private: players.map((p) => ({
+      playerId: p.id,
+      inviteToken: `tok-${p.id}`,
+      linkEmail: null,
+    })),
+    pending: [],
+    notifications: [],
+  };
+}
+
+/** "pieno": un mese intenso, nomi lunghi e tutte le statistiche, per provare gli spazi. */
+function initialState(demo: boolean, full = false): MockState {
+  const players = seedPlayers();
+  // ?gruppo=30: un gruppo grande, per provare classifiche ed elenchi lunghi.
+  const group = Number(
+    new URLSearchParams(window.location.search).get("gruppo") ?? 0,
+  );
+  const extraNames = [
+    "Luca",
+    "Marco",
+    "Andrea",
+    "Giulia",
+    "Fede",
+    "Teo",
+    "Nico",
+    "Ale",
+    "Paolo",
+    "Rocco",
+    "Enzo",
+    "Dario",
+    "Ivan",
+    "Gabri",
+    "Pietro",
+    "Tommi",
+    "Edo",
+    "Leo",
+    "Bruno",
+    "Carlo",
+    "Elia",
+    "Filo",
+    "Gino",
+    "Ugo",
+    "Vito",
+    "Zeno",
+    "Omar",
+    "Rudi",
+    "Sandro",
+    "Tino",
+    "Ciro",
+    "Mirko",
+  ];
+  for (let i = players.length; i < Math.min(group, 40); i++) {
+    const n = extraNames[(i - 9) % extraNames.length];
+    players.push({
+      ...players[i % 9],
+      id: `p${i + 1}`,
+      firstName: n,
+      lastName: "Prova",
+      nickname: n,
+      avatarUrl: null,
+      userId: null,
+      isAdmin: false,
+      createdAt: new Date(2026, 9, 1, 11, i).toISOString(),
+    });
+  }
+  if (full) {
+    const long = [
+      "Strings",
+      "Valerio il Mago",
+      "Davide Aquila",
+      "Cande",
+      "Matti",
+      "Mocciaro",
+      "Simone Falbo",
+      "Gigi Pyq",
+      "Samu Formigaro",
+    ];
+    players.forEach((p, i) => {
+      p.nickname = long[i] ?? p.nickname;
+      p.jerseyNumber = [23, 7, 11, 3, 0, 33, 14, 9, 21][i] ?? null;
+    });
+  }
+  // ?nomi=lunghi: tutti col nome più lungo (e largo) possibile, per provare gli spazi.
+  if (new URLSearchParams(window.location.search).get("nomi") === "lunghi") {
+    const wide = [
+      "Massimiliano MW",
+      "WWWWWWWWWWWWWWWW",
+      "Bartolomeo Magno",
+      "MMMMMMMMMMMMMMMM",
+      "Supermegabomber",
+      "Mocciarissimo XL",
+      "Gianmarco Wolfgg",
+      "Lo Stoppatore 99",
+      "Il Re del Ferro",
+    ];
+    players.forEach((p, i) => {
+      p.nickname = wide[i] ?? p.nickname;
+    });
+  }
+  return {
+    meId: "p1",
+    signedIn: false,
+    players,
+    matches: demo ? demoMatches(players, new Date(), full ? 90 : 24) : [],
+    proposals: demo ? demoProposals() : [],
+    private: players.map((p) => ({
+      playerId: p.id,
+      inviteToken: `tok-${p.id}`,
+      linkEmail: null,
+    })),
+    pending: [],
+    notifications: [],
+  };
+}
+
+export function createMockBackend(): Backend {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mock");
+  trial.slow = params.get("lento") === "1";
+  trial.broken = params.get("guasto") ?? "";
+  localStorage.setItem("campetto:use-mock", "1");
+  // ?telefono=nuovo: prova come la vede chi entra per la prima volta su un telefono nuovo.
+  if (params.get("telefono") === "nuovo")
+    localStorage.setItem("campetto:mock:telefono-nuovo", "1");
+  else if (
+    mode === "reset" ||
+    mode === "demo" ||
+    mode === "pieno" ||
+    mode === "ieri"
+  )
+    localStorage.removeItem("campetto:mock:telefono-nuovo");
+  let state: MockState;
+  const raw = localStorage.getItem(KEY);
+  if (
+    mode === "reset" ||
+    mode === "demo" ||
+    mode === "pieno" ||
+    mode === "ieri" ||
+    !raw
+  ) {
+    state =
+      mode === "ieri"
+        ? ieriState()
+        : initialState(mode === "demo" || mode === "pieno", mode === "pieno");
+    if (params.get("signed") === "1" || mode === "demo" || mode === "pieno")
+      state.signedIn = true;
+    // ?as=p2 entra come un giocatore normale (non amministratore)
+    const as = params.get("as");
+    if (as && state.players.some((p) => p.id === as)) {
+      state.meId = as;
+      for (const p of state.players)
+        p.userId = p.id === as ? "u1" : p.id === "p1" ? "u-admin" : null;
+      // Nelle partite di ieri gli amici non hanno ancora un nome scelto: entrano col proprio.
+      if (mode === "ieri" && params.get("nuovo") !== "1") {
+        const meP = state.players.find((p) => p.id === as);
+        if (meP && !meP.nickname) meP.nickname = meP.firstName;
+      }
+    }
+    if (mode === "demo" || mode === "pieno") seedHighlights(state, params);
+    if (mode === "demo" || mode === "pieno") seedGame(state, params);
+    // ?nuovo=1: primo accesso, il giocatore deve ancora scegliere nome e figurina
+    if (params.get("nuovo") === "1") {
+      const meP = state.players.find((p) => p.id === state.meId);
+      if (meP) Object.assign(meP, { nickname: null, avatarUrl: null });
+    }
+  } else {
+    state = JSON.parse(raw);
+  }
+  const listeners = new Set<() => void>();
+  const socialListeners = new Set<() => void>();
+  // Like e commenti non toccano il resto dei dati: avvisano solo il feed.
+  const saveSocial = () => {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    for (const l of socialListeners) setTimeout(l, 0);
+  };
+  const save = () => {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    for (const l of listeners) setTimeout(l, 0);
+  };
+  save();
+  const me = () => state.players.find((p) => p.id === state.meId)!;
+
+  return {
+    kind: "mock",
+    async init(): Promise<AuthState> {
+      if (!state.signedIn) return { status: "signed-out" };
+      return { status: "ready", meId: state.meId };
+    },
+    onAuthChange() {
+      return () => {};
+    },
+    async loadAll() {
+      const split = splitGuests(state.players, state.matches);
+      // ?annuncio=1: l'annuncio con la scheda all'apertura, sulla prossima proposta aperta.
+      const next = state.proposals
+        .filter((p) => p.status === "aperta" && Date.parse(p.startsAt) > Date.now())
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+      const promo: NewsPost[] =
+        params.get("annuncio") === "1" && next
+          ? [
+              {
+                id: "n-annuncio",
+                kind: "annuncio",
+                title: "Indoor di sabato: rispondi entro giovedì alle 21",
+                body: "Sabato alle 10:30 in Via Trofarello 10, un'ora a 50 €: più siamo, meno si spende. Se giovedì alle 21 siamo pochi, Springs annulla.",
+                createdAt: new Date(Date.now() - 600_000).toISOString(),
+                link: `/organizza?giorno=${next.startsAt.slice(0, 10)}&p=${next.id}`,
+                popup: true,
+                until: next.startsAt,
+                cta: "Rispondi ora",
+                proposalId: next.id,
+              },
+            ]
+          : [];
+      return structuredClone({
+        players: split.players,
+        guests: split.guests,
+        matches: split.matches,
+        proposals: state.proposals,
+        news: [...promo, ...(state.news ?? [])],
+        // Come nel database: gli highlights li vede tutto il gruppo (aperti a tutti il 31/10).
+        highlights: state.highlights ?? [],
+      });
+    },
+    async createGuest(name) {
+      const id = `ospite-${rid().slice(0, 8)}`;
+      state.players.push({
+        id,
+        firstName: name.trim() || "Ospite",
+        lastName: null,
+        nickname: null,
+        roles: [],
+        jerseyNumber: null,
+        cardColor: null,
+        avatarUrl: null,
+        character: null,
+        userId: null,
+        isAdmin: false,
+        showcase: [],
+        notifyPrefs: DEFAULT_NOTIFY_PREFS,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        guest: true,
+      });
+      save();
+      return id;
+    },
+    subscribe(cb) {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+    async signIn() {
+      state.signedIn = true;
+      save();
+      window.location.reload();
+    },
+    async signOut() {
+      state.signedIn = false;
+      save();
+    },
+    async saveMatch(input) {
+      const size = TEAM_SIZE[input.format];
+      for (const t of ["A", "B"] as const) {
+        const line = input.players.filter((p) => p.team === t);
+        const starters = line.filter((p) => !p.sub).length;
+        const subs = line.length - starters;
+        if (starters !== size)
+          throw new Error(
+            `Per il ${input.format} servono ${size} giocatori per squadra.`,
+          );
+        if (subs > (input.format === "1v1" ? 0 : MAX_SUBS))
+          throw new Error("Troppi cambi per una squadra.");
+      }
+      if (input.scoreA === input.scoreB)
+        throw new Error("Il risultato non può essere un pareggio");
+      // Come nel database: il tabellino deve tornare col risultato (se ce l'hanno tutti).
+      for (const t of ["A", "B"] as const) {
+        const line = input.players.filter((p) => p.team === t);
+        if (!line.length || line.some((p) => !p.hasStats)) continue;
+        const pts = line.reduce((s, p) => {
+          const b = p.box;
+          const shots = b.fg2m * 2 + b.fg3m * 3;
+          return s + (b.fg2m + b.fg2a > 0 ? shots : Math.max(b.pts, shots));
+        }, 0);
+        const score = t === "A" ? input.scoreA : input.scoreB;
+        if (pts !== score)
+          throw new Error(
+            `Il tabellino non torna: la squadra ${t} fa ${pts} punti, ma il risultato dice ${score}. Sistema i punti prima di salvare.`,
+          );
+      }
+      const id = input.id ?? rid();
+      const existing = state.matches.find((m) => m.id === id);
+      const m: Match = {
+        id,
+        playedAt: input.playedAt,
+        format: input.format,
+        targetPoints: input.targetPoints,
+        scoreA: input.scoreA,
+        scoreB: input.scoreB,
+        statsSource: input.statsSource,
+        confirmedBy: null,
+        confirmedAt: null,
+        createdBy: existing?.createdBy ?? state.meId,
+        notes: input.notes ?? null,
+        createdAt: existing?.createdAt ?? new Date().toISOString(),
+        players: input.players.map((p) => ({ ...p, matchId: id })),
+        events: input.events.map((e, i) => ({
+          ...e,
+          id: rid(),
+          matchId: id,
+          seq: i,
+        })),
+      };
+      state.matches = [m, ...state.matches.filter((x) => x.id !== id)];
+      save();
+      return id;
+    },
+    async deleteMatch(id) {
+      state.matches = state.matches.filter((m) => m.id !== id);
+      save();
+    },
+    async confirmMatch(id) {
+      const m = state.matches.find((x) => x.id === id);
+      if (m) {
+        m.confirmedBy = state.meId;
+        m.confirmedAt = new Date().toISOString();
+      }
+      save();
+    },
+    async createProposal(input) {
+      const id = rid();
+      state.proposals.push({
+        id,
+        startsAt: input.startsAt,
+        format: input.format,
+        note: input.note,
+        place: input.place,
+        address: input.place === "indoor" ? input.address?.trim() || null : null,
+        createdBy: state.meId,
+        status: "aperta",
+        createdAt: new Date().toISOString(),
+        responses: [
+          {
+            playerId: state.meId,
+            response: "si",
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      });
+      save();
+      return id;
+    },
+    async cancelProposal(id, reason) {
+      const p = state.proposals.find((x) => x.id === id);
+      if (p) {
+        p.status = "annullata";
+        p.cancelReason = reason ?? null;
+        p.cancelledAt = new Date().toISOString();
+      }
+      save();
+    },
+    async respond(proposalId, response) {
+      const p = state.proposals.find((x) => x.id === proposalId);
+      if (!p) return;
+      const prev = p.responses.find((r) => r.playerId === state.meId);
+      p.responses = p.responses.filter((r) => r.playerId !== state.meId);
+      if (response)
+        p.responses.push({
+          playerId: state.meId,
+          response,
+          updatedAt: new Date().toISOString(),
+          // Come nel database: la controproposta resta solo con il "sì".
+          ...(response === "si" && prev
+            ? { altStartsAt: prev.altStartsAt, altPlace: prev.altPlace }
+            : {}),
+        });
+      save();
+    },
+    async setAlternative(proposalId, alt) {
+      const p = state.proposals.find((x) => x.id === proposalId);
+      const r = p?.responses.find((x) => x.playerId === state.meId);
+      if (!p || !r || r.response !== "si") return;
+      if (
+        alt?.startsAt &&
+        new Date(alt.startsAt).toDateString() !==
+          new Date(p.startsAt).toDateString()
+      )
+        throw new Error(
+          "Per cambiare giorno fai una nuova proposta dal calendario",
+        );
+      const same =
+        (alt?.startsAt ?? p.startsAt) === p.startsAt &&
+        (alt?.place ?? p.place ?? null) === (p.place ?? null);
+      r.altStartsAt = alt && !same ? alt.startsAt : null;
+      r.altPlace = alt && !same ? alt.place : null;
+      save();
+    },
+    async moveProposal(proposalId, startsAt, place) {
+      const p = state.proposals.find((x) => x.id === proposalId);
+      if (!p) return;
+      if (p.createdBy !== state.meId && !me().isAdmin)
+        throw new Error("Può spostarla solo chi l'ha proposta");
+      p.startsAt = startsAt;
+      if (place) p.place = place;
+      for (const r of p.responses)
+        if (
+          (r.altStartsAt ?? startsAt) === startsAt &&
+          (r.altPlace ?? p.place ?? null) === (p.place ?? null)
+        ) {
+          r.altStartsAt = null;
+          r.altPlace = null;
+        }
+      save();
+    },
+    async updateMe(patch) {
+      const nick = patch.nickname?.trim().toLowerCase();
+      if (
+        nick &&
+        state.players.some(
+          (p) =>
+            p.id !== state.meId && p.nickname?.trim().toLowerCase() === nick,
+        )
+      )
+        throw new Error(
+          'duplicate key value violates unique constraint "players_nickname_key"',
+        );
+      // Come nel database: dopo il primo nome, un cambio ogni 14 giorni.
+      const cur = me();
+      if (
+        patch.nickname !== undefined &&
+        patch.nickname !== cur.nickname &&
+        cur.nickname
+      ) {
+        const until = nameUnlockDate(cur);
+        if (until)
+          throw new Error(
+            `Puoi cambiare nome di nuovo dal ${until.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}`,
+          );
+        cur.nicknameChangedAt = new Date().toISOString();
+      }
+      Object.assign(cur, patch);
+      save();
+    },
+    async uploadAvatar(file) {
+      return await new Promise<string>((resolve) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.readAsDataURL(file);
+      });
+    },
+    async upsertPlayer(input) {
+      if (input.id) {
+        const p = state.players.find((x) => x.id === input.id)!;
+        Object.assign(p, {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          roles: input.roles,
+          archived: input.archived ?? false,
+        });
+        save();
+        return input.id;
+      }
+      const id = rid();
+      state.players.push({
+        ...seedPlayers()[1],
+        id,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        roles: input.roles,
+        userId: null,
+        isAdmin: false,
+      });
+      state.private.push({
+        playerId: id,
+        inviteToken: `tok-${id}`,
+        linkEmail: null,
+      });
+      save();
+      return id;
+    },
+    async listPrivate() {
+      return structuredClone(state.private);
+    },
+    async setLinkEmail(playerId, email) {
+      const p = state.private.find((x) => x.playerId === playerId);
+      if (p) p.linkEmail = email;
+      save();
+    },
+    async regenerateInvite(playerId) {
+      const token = `tok-${rid().slice(0, 8)}`;
+      const p = state.private.find((x) => x.playerId === playerId);
+      if (p) p.inviteToken = token;
+      save();
+      return token;
+    },
+    async unlinkPlayer(playerId) {
+      const p = state.players.find((x) => x.id === playerId);
+      if (p) p.userId = null;
+      save();
+    },
+    async listPending() {
+      return structuredClone(state.pending);
+    },
+    async resolvePending(userId) {
+      state.pending = state.pending.filter((p) => p.userId !== userId);
+      save();
+    },
+    async savePushSubscription() {},
+    async sendFeedback(input) {
+      state.notifications.push({ type: "feedback", ...input });
+      save();
+    },
+    async removePushSubscription() {},
+    async notify(body) {
+      state.notifications.push(body);
+      localStorage.setItem(KEY, JSON.stringify(state));
+    },
+    async touchSeen() {
+      localStorage.setItem("campetto:mock:seen", new Date().toISOString());
+    },
+
+    async loadHighlightSocial(ids) {
+      await mockDelay();
+      if (failing("social"))
+        throw new Error("Spicchio non riesce a caricare i commenti");
+      const set = new Set(ids);
+      return structuredClone({
+        likes: (state.hlLikes ?? []).filter((l) => set.has(l.highlightId)),
+        comments: (state.hlComments ?? []).filter((c) =>
+          set.has(c.highlightId),
+        ),
+      });
+    },
+    async setHighlightLike(highlightId, on) {
+      await mockDelay();
+      if (failing("like"))
+        throw new Error("Spicchio non riesce a salvare il like");
+      const rest = (state.hlLikes ?? []).filter(
+        (l) => !(l.highlightId === highlightId && l.playerId === state.meId),
+      );
+      state.hlLikes = on
+        ? [...rest, { highlightId, playerId: state.meId }]
+        : rest;
+      saveSocial();
+    },
+    async addHighlightComment(highlightId, body, replyTo) {
+      await mockDelay();
+      if (failing("commento"))
+        throw new Error("Spicchio non riesce a mandare il commento");
+      const text = body.trim();
+      if (!text) throw new Error("Il commento è vuoto");
+      const c: HighlightComment = {
+        id: rid(),
+        highlightId,
+        playerId: state.meId,
+        body: text.slice(0, 280),
+        createdAt: new Date().toISOString(),
+        replyTo:
+          replyTo &&
+          (state.hlComments ?? []).some(
+            (x) => x.id === replyTo && x.highlightId === highlightId,
+          )
+            ? replyTo
+            : null,
+      };
+      if (c.replyTo)
+        state.notifications.push({ type: "highlight_reply", commentId: c.id });
+      state.hlComments = [...(state.hlComments ?? []), c];
+      saveSocial();
+      return structuredClone(c);
+    },
+    async deleteHighlightComment(id) {
+      await mockDelay();
+      state.hlComments = (state.hlComments ?? []).filter((c) => c.id !== id);
+      saveSocial();
+    },
+    subscribeHighlights(onChange) {
+      socialListeners.add(onChange);
+      return () => socialListeners.delete(onChange);
+    },
+
+    async loadGame() {
+      return state.game ? structuredClone(state.game) : null;
+    },
+    async saveGame(game) {
+      if (failing("gioco")) throw new Error("Spicchio non riesce a salvare la partita");
+      state.game = { state: structuredClone(game), updatedAt: new Date().toISOString() };
+      localStorage.setItem(KEY, JSON.stringify(state));
+    },
+    async loadGameBoards() {
+      await mockDelay();
+      return structuredClone({
+        rows: state.gameScores ?? [],
+        kings: (state.gameAwards ?? []).map((a) => ({
+          day: a.day,
+          game: a.game,
+          playerId: a.playerId,
+          score: a.score,
+        })),
+      });
+    },
+    async submitGameScore(game, score) {
+      await mockDelay();
+      const rows = (state.gameScores ??= []);
+      const cur = rows.find((r) => r.playerId === state.meId && r.game === game);
+      if (!cur) rows.push({ game, playerId: state.meId, best: score, at: new Date().toISOString() });
+      else if (score > cur.best) Object.assign(cur, { best: score, at: new Date().toISOString() });
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return Math.max(score, cur?.best ?? 0);
+    },
+    async claimGameAwards() {
+      const mine = (state.gameAwards ?? []).filter((a) => a.playerId === state.meId && !a.claimed);
+      for (const a of mine) a.claimed = true;
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return mine.map((a) => ({ day: a.day, game: a.game, score: a.score }));
+    },
+  };
+}
+
+/** Le classifiche delle sfide con gli amici già dentro (per le prove e le foto). */
+function seedGame(state: MockState, params: URLSearchParams) {
+  const at = "2026-11-02T18:00:00.000Z";
+  const ids = state.players.filter((p) => p.id !== state.meId).map((p) => p.id);
+  const pick = (i: number) => ids[i % ids.length];
+  state.gameScores = [
+    { game: "triple", playerId: pick(0), best: 19, at },
+    { game: "triple", playerId: pick(1), best: 14, at },
+    { game: "triple", playerId: pick(2), best: 11, at },
+    { game: "liberi", playerId: pick(1), best: 12, at },
+    { game: "liberi", playerId: pick(3), best: 7, at },
+    { game: "schiacciate", playerId: pick(2), best: 41, at },
+    { game: "schiacciate", playerId: pick(0), best: 37, at },
+  ];
+  state.gameAwards = [
+    { day: "2026-11-02", game: "triple", playerId: pick(0), score: 19, claimed: false },
+    { day: "2026-11-02", game: "liberi", playerId: pick(1), score: 12, claimed: false },
+    { day: "2026-11-02", game: "schiacciate", playerId: pick(2), score: 41, claimed: false },
+  ];
+  // ?re=1: io sono il re di ieri in tutte e tre (per provare premio e corona).
+  if (params.get("re") === "1")
+    for (const a of state.gameAwards) a.playerId = state.meId;
+}
+
+/** Le prove scelte nell'indirizzo d'apertura: valgono finché l'app resta aperta. */
+const trial = { slow: false, broken: "" };
+
+/** ?lento=1: like e commenti rispondono in ritardo, per provare i caricamenti. */
+function mockDelay(): Promise<void> {
+  return new Promise((r) => setTimeout(r, trial.slow ? 1200 : 60));
+}
+
+/** ?guasto=like|commento|social: quella chiamata fallisce, per provare gli errori. */
+function failing(what: string): boolean {
+  return trial.broken === what;
+}
+
+const MOCK_COMMENTS = [
+  "Che tripla 🔥",
+  "Ma quello al secondo 12 è passi 😂",
+  "Difesa zero, ma ci sta",
+  "Il terzo tempo di Davide è da NBA, non scherzo. Rivisto 5 volte e ogni volta è meglio, voglio la maglia autografata",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "Martedì rivincita",
+];
+
+/** Gli highlights di prova: le tre partite più recenti, coi video piccoli in /public/mock. */
+function seedHighlights(state: MockState, params: URLSearchParams) {
+  const recent = [...state.matches]
+    .sort((a, b) => b.playedAt.localeCompare(a.playedAt))
+    .slice(0, 3);
+  const durations = [9, 7, 6];
+  state.highlights = recent.map((m, i): Highlight => ({
+    id: `h${i + 1}`,
+    matchId: m.id,
+    videoUrl: `/mock/hl-${i + 1}.mp4`,
+    posterUrl: `/mock/hl-${i + 1}.jpg`,
+    duration: durations[i],
+    description:
+      i === 0
+        ? "Tre triple di fila e un terzo tempo al tabellone: serata da ricordare, con un finale tiratissimo fino all'ultimo canestro."
+        : i === 1
+          ? "Appoggi, tap-in e un no-look sotto canestro."
+          : null,
+    clips: [
+      {
+        t: 0,
+        punti: 3,
+        come: "tripla",
+        descrizione: "Bomba frontale, solo retina",
+      },
+      {
+        t: 3,
+        punti: 2,
+        come: "terzo tempo",
+        descrizione: "Terzo tempo al tabellone",
+      },
+      {
+        t: 5,
+        punti: 2,
+        come: "appoggio",
+        descrizione: "Appoggio dopo lo scarico",
+      },
+    ].filter((c) => c.t < durations[i]) as Highlight["clips"],
+    createdAt: m.playedAt,
+  }));
+  // La notizia della novità, come quella vera (sotto le stagioni, col ciak).
+  state.news = [
+    ...(state.news ?? []),
+    {
+      id: "n-highlights",
+      kind: "novita",
+      title: "Arrivano gli highlights",
+      body: "I canestri più belli di ogni serata in un video da mezzo minuto, con la musica. Scorri in su per il prossimo, metti il cuore e commenta. Tocca qui o il ciak in alto nella Home",
+      createdAt: new Date(Date.now() - 3_600_000).toISOString(),
+    },
+  ];
+  const many = params.get("commenti") === "tanti";
+  state.hlLikes = [
+    { highlightId: "h1", playerId: "p2" },
+    { highlightId: "h1", playerId: "p3" },
+    { highlightId: "h2", playerId: "p4" },
+  ];
+  const others = state.players.filter((p) => p.id !== "p1").slice(0, 6);
+  const count = many ? 60 : MOCK_COMMENTS.length;
+  state.hlComments = Array.from({ length: count }, (_, i) => ({
+    id: `c${i + 1}`,
+    highlightId: "h1",
+    playerId: others[i % others.length].id,
+    body: MOCK_COMMENTS[i % MOCK_COMMENTS.length],
+    createdAt: new Date(Date.now() - (count - i) * 7 * 60_000).toISOString(),
+    // Il secondo risponde al primo, come su WhatsApp.
+    replyTo: i === 1 ? "c1" : null,
+  }));
+}
+
+export function mockAllowed(): boolean {
+  if (typeof window === "undefined") return false;
+  const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const q = new URLSearchParams(window.location.search).get("mock");
+  if (q === "off") {
+    localStorage.removeItem("campetto:use-mock");
+    return false;
+  }
+  return (
+    local && (q !== null || localStorage.getItem("campetto:use-mock") === "1")
+  );
+}

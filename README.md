@@ -1,0 +1,94 @@
+# Campetto
+
+L'app del nostro campetto di basket a Nichelino: partite, statistiche in stile NBA, classifiche, MVP, badge, record, stagioni e organizzazione delle partite con notifiche e meteo. Gratuita in tutto: Next.js su Vercel (piano Hobby), Supabase (piano Free), login con Google, meteo da Open-Meteo.
+
+## Chi fa cosa
+
+- **Giocatori**: guardano partite, statistiche, classifiche, badge e profili, e rispondono alle partite proposte ("Ci sono / Forse / No"). Non possono inserire, modificare o eliminare partite: lo blocca il database stesso.
+- **Amministratore**: inserisce le partite dall'app (Partite, poi Aggiungi; oppure Profilo, ingranaggio, Gestione del gruppo: aggiungi, importa, segna dal video) e gestisce giocatori e inviti.
+- **Da riga di comando**: le partite si possono inserire anche con `scripts/inserisci-partita.mjs` (vedi sotto).
+
+## Stile
+
+Poster da campetto in stile cartone animato anni '30: carta color crema con la grana, contorni d'inchiostro, ombre piene da adesivo, titoli e numeri in Ultra, testo in Archivo. La mascotte è **Spicchio** (`src/components/mascot.tsx`), una palla a spicchi con guanti bianchi e scarpe alte rosse, in tre pose (ciao, esulta, boh); il logo è Spicchio nel badge giallo e blu. Tema chiaro di base, scuro opzionale.
+
+## Cosa fa
+
+- **Partite**: 1v1, 2v2, 3v3, 4v4 fino a 21 (modificabile). L'amministratore segna il risultato in pochi secondi; il tabellino è facoltativo e si può aggiungere a mano, **dal video** (si guarda il filmato sul telefono e si toccano le azioni) oppure **importandolo** da un CSV/JSON.
+- **Statistiche** per giocatore, per mese, stagione o sempre, e per formato: vittorie, punti, rimbalzi, assist, rubate, stoppate, perse, percentuali al tiro, eFG%, TS%, valutazione NBA, plus/minus, ELO, chimica con i compagni e testa a testa.
+- **MVP del mese** (40% vittorie, 40% valutazione, 20% crescita ELO, minimo 3 partite) con la **cornice d'oro** per l'MVP in carica; migliori per categoria, record del gruppo, stagioni trimestrali con trofeo permanente, albo d'oro.
+- **Badge** a 5 livelli (Bronzo, Argento, Oro, Hall of Fame, Leggenda), vetrina di 3 badge nel profilo e animazione allo sblocco.
+- **Organizzazione**: chiunque propone giorno e ora, tutti ricevono la notifica e rispondono "Ci sono / Forse / No"; i riepiloghi sono raggruppati (massimo uno ogni 30 minuti) più un "Si gioca!" quando si raggiunge il numero. Meteo di Nichelino con avviso pioggia.
+- **PWA**: si installa nella schermata Home e si apre a schermo intero; tema chiaro/scuro; funziona offline con gli ultimi dati.
+
+## Avviarla sul PC
+
+```bash
+npm install
+npm run dev          # http://localhost:3000
+```
+
+Per provarla senza account usa il backend di prova (solo su localhost): `http://localhost:3000/?mock=demo` carica una storia di partite finte, `?mock=reset&signed=1` parte vuoto, `?mock=off` torna ai dati veri.
+
+## Variabili d'ambiente
+
+| Nome | Dove | Note |
+|---|---|---|
+| `VAPID_PRIVATE_KEY` | solo server (Vercel) | chiave privata delle notifiche push, **segreta** |
+| `VAPID_SUBJECT` | server | `mailto:` di contatto per le notifiche |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | client | pubbliche; se mancano si usano quelle in `src/lib/config.ts` |
+
+L'app non usa la chiave segreta di Supabase: tutto passa dalla chiave pubblica e dalle regole di sicurezza (RLS) del database.
+
+## Database
+
+Le migrazioni sono in `supabase/migrations/`. Ogni tabella ha RLS: solo i giocatori del gruppo leggono i dati; partite e collegamenti degli account si scrivono solo tramite funzioni del database che controllano i dati (`save_match`, `claim_invite`, …). I 7 giocatori iniziali sono creati dalla seconda migrazione.
+
+## Aggiungere un giocatore
+
+Profilo → Impostazioni → Amministrazione → **+**. Poi apri il giocatore e mandagli il suo **link d'invito** (Copia o Condividi). Chi lo apre entra con Google e trova già il suo profilo con tutte le partite giocate. In alternativa scrivi la sua email Google: al primo accesso viene collegato da solo. Chi entra senza invito finisce in "In attesa" e lo colleghi da lì.
+
+## Inserire partite da riga di comando
+
+Dal PC, nella cartella del progetto (serve la password del database):
+
+```bash
+PGPW='password' node scripts/inserisci-partita.mjs partite.json
+```
+
+Il formato del file è descritto in cima allo script. Usa la stessa funzione `save_match` dell'app, con gli stessi controlli, come se la inserisse l'amministratore.
+
+## Importare statistiche
+
+Partite → icona appunti. Incolla una tabella (virgole, punti e virgola o tab) o un JSON. Colonne riconosciute, in italiano o inglese: nome/giocatore, squadra (A/B), punti, 2PM/2PA, 3PM/3PA o triple, rimbalzi (o offensivi/difensivi), assist, rubate, stoppate, perse, falli. Esempio:
+
+```
+Giocatore;Squadra;Punti;Triple;Rimbalzi;Assist
+Valerio Semeraro;A;9;1;4;3
+Mattia;B;12;2;2;5
+```
+
+## Dal video: tiri, tabellino e highlights
+
+In `scripts/video/` ci sono gli strumenti che lavorano sui video delle partite girati col telefono:
+
+1. `tiri.py` segue ferro e palla fotogramma per fotogramma e scrive un `tiri.json` con ogni tiro al ferro: quando, se è entrato, da sotto o da fuori.
+2. Nell'app, **Segna dal video** apre il video e, se gli dai anche `tiri.json`, salta da un tiro all'altro e propone l'azione (canestro o errore): resta da toccare chi ha tirato, e dopo un errore chi ha preso il rimbalzo. Assist, rubate, stoppate e perse si segnano con i pulsanti. Alla fine si salva la partita con il tabellino.
+3. `highlights.mjs` monta il video dei canestri che si vede nell'app.
+
+Come si usano, come funzionano e quanto sono precisi: [scripts/video/README.md](scripts/video/README.md).
+
+## Pubblicarla
+
+```bash
+npx vercel deploy --prod
+```
+
+Dopo il primo deploy aggiungi l'indirizzo di Vercel in Supabase → Authentication → URL Configuration (Site URL e Redirect URLs).
+
+## Test
+
+```bash
+npm test             # logica: statistiche, ELO, MVP, badge, squadre, notifiche, import
+npm run build && npm run test:e2e   # flussi e layout su 6 misure di schermo, tema chiaro e scuro
+```
