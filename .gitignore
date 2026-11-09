@@ -74,3 +74,6 @@ __pycache__/
 
 # dati veri esportati per lo sviluppo in locale (scripts/esporta-dati.mjs)
 /public/dati-locali.json
+
+# regole personali
+/SETUPLOLLONE.md

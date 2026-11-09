@@ -33,6 +33,7 @@ import { APP_START } from "../periods";
  */
 
 const KEY = "campetto:mock:v1";
+const DEMO = process.env.NEXT_PUBLIC_DEMO === "1";
 
 interface MockState extends Dataset {
   hlLikes?: { highlightId: string; playerId: string }[];
@@ -518,7 +519,8 @@ function initialState(demo: boolean, full = false): MockState {
 
 export function createMockBackend(): Backend {
   const params = new URLSearchParams(window.location.search);
-  const mode = params.get("mock");
+  const mode =
+    params.get("mock") ?? (DEMO && !localStorage.getItem(KEY) ? "demo" : null);
   trial.slow = params.get("lento") === "1";
   trial.broken = params.get("guasto") ?? "";
   localStorage.setItem("campetto:use-mock", "1");
@@ -1170,6 +1172,7 @@ function seedHighlights(state: MockState, params: URLSearchParams) {
 
 export function mockAllowed(): boolean {
   if (typeof window === "undefined") return false;
+  if (DEMO) return true;
   const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
   const q = new URLSearchParams(window.location.search).get("mock");
   if (q === "off") {
