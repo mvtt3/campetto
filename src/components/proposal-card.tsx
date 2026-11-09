@@ -35,7 +35,7 @@ import {
 } from "@/lib/types";
 import { AltForm, RosterPanel } from "./proposal-extras";
 import { LiveMatch } from "./live-match";
-import { Avatar, AvatarStack } from "./ui/avatar";
+import { AvatarStack } from "./ui/avatar";
 import { haptic } from "./ui/basics";
 import { useToast } from "./ui/toast";
 import { WeatherChip } from "./weather-chip";
@@ -369,69 +369,50 @@ export function ProposalCard({
       <div
         data-testid="proposal-card"
         data-phase={phase}
-        className="flex flex-col gap-4 short:gap-3"
+        className="flex flex-col gap-3.5 short:gap-3"
       >
-        <div className="relative -mx-4 -mt-4 overflow-hidden rounded-t-[19px] bg-[linear-gradient(135deg,var(--court-soft)_0%,var(--ball-soft)_100%)] px-4 pb-4 pt-4">
-          <span
-            className="blob -right-10 -top-12 h-36 w-36 bg-[radial-gradient(circle,rgb(255_250_240/0.7),transparent_68%)]"
-            aria-hidden
-          />
-          <div className="relative flex items-center gap-3.5">
-            <div className="flex h-[62px] w-[56px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-surface shadow-[var(--shadow)]">
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ball">
-                {at.toLocaleDateString("it-IT", { weekday: "short" })}
-              </span>
-              <span className="num text-[24px] leading-none">{at.getDate()}</span>
-              <span className="mt-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-faint">
-                {at.toLocaleDateString("it-IT", { month: "short" })}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-court">
-                {when}
-              </p>
-              <p className="score text-[34px] leading-none">{time}</p>
-            </div>
-            <WeatherChip
-              at={proposal.startsAt}
-              className="shrink-0 self-start"
-            />
-          </div>
-          <div className="relative mt-3 flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold">
-            {proposal.place && (
-              <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-surface/75 px-2.5 py-1">
-                <IconMapPin size={13} className="shrink-0 text-ball" aria-hidden />
-                {indoorVia ? (
-                  <a
-                    href={mapsUrl(indoorVia)}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="truncate underline decoration-dotted underline-offset-2"
-                    data-testid="indoor-address"
-                  >
-                    {indoorVia}
-                  </a>
-                ) : (
-                  <span className="truncate">{placeLabel(proposal.place)}</span>
-                )}
-              </span>
-            )}
-            {proposal.format && (
-              <span className="rounded-full bg-surface/75 px-2.5 py-1">
-                {proposal.format}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex min-w-0 items-center gap-2.5">
-          {creator && <Avatar player={creator} size={28} href={false} />}
-          <p className="min-w-0 flex-1 truncate text-[13px] text-muted">
-            <span className="font-semibold text-text">
-              {shortName(creator, data.players)}
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[14px] bg-ball-soft">
+            <span className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-ball">
+              {at.toLocaleDateString("it-IT", { weekday: "short" })}
             </span>
-            {proposal.note ? ` · ${proposal.note}` : " ha proposto la partita"}
-          </p>
+            <span className="num text-[19px] leading-none">{at.getDate()}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="title truncate text-[18px]">
+              <span className="first-letter:uppercase">{when}</span>
+              <span className="text-faint"> · </span>
+              <span className="tnum">{time}</span>
+            </p>
+            <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[13px] text-muted">
+              {proposal.place && (
+                <IconMapPin size={13} className="shrink-0 text-ball" aria-hidden />
+              )}
+              {indoorVia ? (
+                <a
+                  href={mapsUrl(indoorVia)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="truncate underline decoration-dotted underline-offset-2"
+                  data-testid="indoor-address"
+                >
+                  {indoorVia}
+                </a>
+              ) : (
+                proposal.place && (
+                  <span className="truncate">{placeLabel(proposal.place)}</span>
+                )
+              )}
+              {proposal.format && (
+                <span className="shrink-0">
+                  {proposal.place ? " · " : ""}
+                  {proposal.format}
+                </span>
+              )}
+            </p>
+          </div>
+          <WeatherChip at={proposal.startsAt} className="shrink-0" />
         </div>
         {who}
         {answers}
