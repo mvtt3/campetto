@@ -434,13 +434,13 @@ export function HomeScreen() {
               <span className="blob -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)]" />
               <span className="blob -bottom-10 right-10 h-32 w-32 bg-[radial-gradient(circle,rgb(255_250_240/0.14),transparent_70%)]" />
               <CourtLines draw className="absolute inset-0 h-full w-full" />
-              <span className="absolute bottom-[78px] right-0 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgb(255_250_240/0.22),transparent_65%)]" />
-              <span className="absolute bottom-[86px] right-5 [mask-image:linear-gradient(to_bottom,#000_72%,transparent)]">
+              <span className="absolute -right-6 bottom-10 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgb(255_197_49/0.35),transparent_66%)]" />
+              <span className="absolute bottom-6 right-3 drop-shadow-[0_14px_20px_rgb(0_0_0/0.35)]">
                 <Character
                   id={characterOf(me)}
                   outfit={me.outfit}
                   number={me.jerseyNumber}
-                  height={150}
+                  height={196}
                 />
               </span>
             </div>
