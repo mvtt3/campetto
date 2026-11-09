@@ -11,7 +11,6 @@ import {
   IconCloudRain,
   IconMapPin,
   IconRepeat,
-  IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
@@ -226,6 +225,11 @@ export function ProposalCard({
     : myAltKey
       ? "Cambia la tua alternativa"
       : "Proponi un altro orario o campetto";
+  const altShort = canMove
+    ? "Sposta la partita"
+    : myAltKey
+      ? "Cambia alternativa"
+      : "Altro orario";
 
   // Al completo, o in 4 a meno di 12 ore: confermata. Iniziata: in corso, con la cronaca.
   const phase = proposalPhase(proposal, now, needed);
@@ -476,64 +480,73 @@ export function ProposalCard({
 
       {answers}
 
-      {/* Le controproposte: piccole, sotto le risposte. Chi ha proposto la sposta con un tocco. */}
+      <RosterPanel proposal={proposal} />
+
       {alts.length > 0 && (
-        <ul className="flex flex-col gap-1.5" aria-label="Controproposte">
-          {alts.map((g) => {
-            const mineToo = myAltKey === g.key;
-            const names = g.playerIds.map((id) =>
-              id === me?.id ? "tu" : shortName(byId.get(id), data.players),
-            );
-            return (
-              <li
-                key={g.key}
-                className="flex items-center gap-2 rounded-2xl border border-dashed border-line-strong py-1.5 pl-2.5 pr-1.5"
-              >
-                <IconRepeat size={18} className="shrink-0 text-ball" aria-hidden />
-                <p className="min-w-0 flex-1 truncate text-[13.5px] leading-tight">
-                  <span className="font-bold">{altLabel(proposal, g)}</span>
-                  <span className="text-muted">
-                    {" · "}
-                    {g.playerIds.length === 1
-                      ? "la preferisce"
-                      : "la preferiscono"}{" "}
-                    {namesList(names)}
+        <div className="flex flex-col gap-2 border-t border-line pt-3">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
+            Altre proposte
+          </p>
+          <ul className="flex flex-col gap-2" aria-label="Controproposte">
+            {alts.map((g) => {
+              const mineToo = myAltKey === g.key;
+              const names = g.playerIds.map((id) =>
+                id === me?.id ? "tu" : shortName(byId.get(id), data.players),
+              );
+              return (
+                <li
+                  key={g.key}
+                  className="flex items-center gap-3 rounded-[16px] bg-raised px-3 py-2.5"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ball-soft text-ball">
+                    <IconRepeat size={17} aria-hidden />
                   </span>
-                </p>
-                {canMove ? (
-                  <button
-                    onClick={() =>
-                      confirmMove === g.key
-                        ? void moveTo(g.startsAt, g.place)
-                        : setConfirmMove(g.key)
-                    }
-                    className={clsx(
-                      "sticker-sm press h-8 shrink-0 rounded-full px-3 text-[13px] font-bold",
-                      confirmMove === g.key
-                        ? "bg-ok text-white"
-                        : "bg-court text-court-ink",
-                    )}
-                  >
-                    {confirmMove === g.key ? "Confermi?" : "Sposta qui"}
-                  </button>
-                ) : mine === "si" && future ? (
-                  <button
-                    onClick={() => void backAlt(g.startsAt, g.place)}
-                    aria-pressed={mineToo}
-                    className={clsx(
-                      "sticker-sm press h-8 shrink-0 rounded-full px-3 text-[13px] font-bold",
-                      mineToo
-                        ? "bg-surface text-muted"
-                        : "bg-volt text-volt-ink",
-                    )}
-                  >
-                    {mineToo ? "Ritira" : "Anch'io"}
-                  </button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-semibold">
+                      {altLabel(proposal, g)}
+                    </p>
+                    <p className="truncate text-[12.5px] text-muted">
+                      {g.playerIds.length === 1
+                        ? "La preferisce"
+                        : "La preferiscono"}{" "}
+                      {namesList(names)}
+                    </p>
+                  </div>
+                  {canMove ? (
+                    <button
+                      onClick={() =>
+                        confirmMove === g.key
+                          ? void moveTo(g.startsAt, g.place)
+                          : setConfirmMove(g.key)
+                      }
+                      className={clsx(
+                        "press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold",
+                        confirmMove === g.key
+                          ? "bg-ok text-white"
+                          : "bg-court text-court-ink",
+                      )}
+                    >
+                      {confirmMove === g.key ? "Confermi?" : "Sposta qui"}
+                    </button>
+                  ) : mine === "si" && future ? (
+                    <button
+                      onClick={() => void backAlt(g.startsAt, g.place)}
+                      aria-pressed={mineToo}
+                      className={clsx(
+                        "press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold",
+                        mineToo
+                          ? "bg-surface text-muted"
+                          : "bg-volt text-volt-ink",
+                      )}
+                    >
+                      {mineToo ? "Ritira" : "Anch'io"}
+                    </button>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       {/* Un altro orario o l'altro campetto, stesso giorno: per chi c'è, e per chi l'ha proposta. */}
@@ -561,13 +574,13 @@ export function ProposalCard({
           aria-pressed={rain}
           onClick={() => setRain((r) => !r)}
           className={clsx(
-            "press flex min-h-10 items-center gap-2.5 rounded-2xl border-2 px-3.5 py-2 text-left text-[13.5px] font-semibold",
+            "press flex min-h-10 items-center gap-2.5 rounded-2xl border px-3.5 py-2 text-left text-[13.5px] font-semibold",
             rain ? "border-court bg-court-soft" : "border-line-strong",
           )}
         >
           <span
             className={clsx(
-              "grid h-6 w-6 shrink-0 place-items-center rounded-full border-2",
+              "grid h-6 w-6 shrink-0 place-items-center rounded-full border",
               rain ? "border-court bg-court text-court-ink" : "border-line-strong text-court",
             )}
             aria-hidden
@@ -584,26 +597,23 @@ export function ProposalCard({
       )}
       {/* Una riga sola per le azioni: squadre, orario o campetto, annulla. */}
       {(showAlt || canCancel) && (
-        <div className="flex gap-2">
+        <div className="flex gap-2 border-t border-line pt-3">
           {showAlt && !confirmCancel && (
             <button
               type="button"
               onClick={() => openAlt(canMove ? "move" : "alt")}
               aria-label={altAria}
-              className={clsx(
-                "sticker-sm press flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-full bg-surface px-3.5 text-[13.5px] font-bold",
-                "flex-1",
-              )}
+              className="press flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-raised px-3.5 text-[13.5px] font-semibold"
             >
               <IconRepeat size={16} className="shrink-0 text-ball" aria-hidden />
-              <span className="truncate">{altAria}</span>
+              <span className="truncate">{altShort}</span>
             </button>
           )}
           {canCancel &&
             (confirmCancel ? (
               <>
                 <button
-                  className="sticker-sm press h-10 flex-1 rounded-full bg-surface text-[13.5px] font-bold text-muted"
+                  className="press h-11 flex-1 rounded-full bg-raised text-[13.5px] font-semibold text-muted"
                   onClick={() => {
                     setConfirmCancel(false);
                     setRain(false);
@@ -612,7 +622,7 @@ export function ProposalCard({
                   Lascia stare
                 </button>
                 <button
-                  className="sticker-sm press h-10 flex-1 rounded-full bg-danger text-[13.5px] font-bold text-white"
+                  className="press h-11 flex-1 rounded-full bg-danger text-[13.5px] font-semibold text-white"
                   onClick={async () => {
                     const reason = rain ? ("meteo" as const) : undefined;
                     mutate((d) => ({
@@ -650,23 +660,20 @@ export function ProposalCard({
                 </button>
               </>
             ) : (
-              // Da sola la X non si capisce: se c'è spazio ha anche la scritta.
               <button
                 aria-label="Annulla la proposta"
                 className={clsx(
-                  "sticker-sm press flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-surface text-muted",
-                  showAlt ? "w-10" : "flex-1 px-4 text-[13.5px] font-semibold",
+                  "press flex h-11 items-center justify-center rounded-full px-4 text-[13.5px] font-semibold text-danger",
+                  showAlt ? "shrink-0" : "flex-1 bg-raised",
                 )}
                 onClick={() => setConfirmCancel(true)}
               >
-                <IconX size={18} />
-                {!showAlt && "Annulla la proposta"}
+                {showAlt ? "Annulla" : "Annulla la proposta"}
               </button>
             ))}
         </div>
       )}
-      {/* Tutti i nomi, sotto, nello spazio del calendario: niente da aprire. */}
-      {<RosterPanel proposal={proposal} />}
+
     </div>
   );
 }
