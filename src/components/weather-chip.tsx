@@ -2,16 +2,16 @@
 
 import clsx from "clsx";
 import {
-  Cloud,
-  CloudFog,
-  CloudLightning,
-  CloudRain,
-  CloudSun,
-  Snowflake,
-  Sun,
-  type LucideIcon,
-  Droplets,
-} from "lucide-react";
+  IconCloud,
+  IconCloudFog,
+  IconCloudRain,
+  IconCloudStorm,
+  IconDroplets,
+  IconSnowflake,
+  IconSun,
+  IconSunLow,
+  type Icon,
+} from "@tabler/icons-react";
 import {
   rainRisk,
   WEATHER_LABEL,
@@ -21,14 +21,14 @@ import {
 } from "@/lib/weather";
 import { useForecast } from "@/lib/use-weather";
 
-const ICON: Record<WeatherKind, LucideIcon> = {
-  sereno: Sun,
-  "poco-nuvoloso": CloudSun,
-  nuvoloso: Cloud,
-  nebbia: CloudFog,
-  pioggia: CloudRain,
-  neve: Snowflake,
-  temporale: CloudLightning,
+const ICON: Record<WeatherKind, Icon> = {
+  sereno: IconSun,
+  "poco-nuvoloso": IconSunLow,
+  nuvoloso: IconCloud,
+  nebbia: IconCloudFog,
+  pioggia: IconCloudRain,
+  neve: IconSnowflake,
+  temporale: IconCloudStorm,
 };
 
 export function WeatherChip({
@@ -58,7 +58,7 @@ export function WeatherChip({
       {risk ? (
         // Compatto: una goccia e la percentuale, così il giorno della partita resta leggibile.
         <span className="inline-flex items-center gap-0.5">
-          <Droplets size={13} aria-hidden />
+          <IconDroplets size={13} aria-hidden />
           <span className="tnum">{w.rainProb}%</span>
           <span className="sr-only">di rischio pioggia</span>
         </span>

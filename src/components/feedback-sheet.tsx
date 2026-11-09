@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bug, Lightbulb, MessageCircle } from "lucide-react";
+import { IconBug, IconBulb, IconMessageCircle } from "@tabler/icons-react";
 import { useState } from "react";
 import { Button, haptic } from "@/components/ui/basics";
 import { Sheet } from "@/components/ui/sheet";
@@ -14,25 +14,25 @@ type Kind = "problema" | "idea" | "altro";
 const KINDS: {
   value: Kind;
   label: string;
-  icon: typeof Bug;
+  icon: typeof IconBug;
   placeholder: string;
 }[] = [
   {
     value: "problema",
     label: "Qualcosa non va",
-    icon: Bug,
+    icon: IconBug,
     placeholder: "Cosa stavi facendo e cosa è successo?",
   },
   {
     value: "idea",
     label: "Un'idea",
-    icon: Lightbulb,
+    icon: IconBulb,
     placeholder: "Cosa ti piacerebbe trovare nell'app?",
   },
   {
     value: "altro",
     label: "Altro",
-    icon: MessageCircle,
+    icon: IconMessageCircle,
     placeholder: "Scrivimi pure",
   },
 ];

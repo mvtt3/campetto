@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Crown } from "lucide-react";
+import { IconCrown } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { Character, characterOf } from "@/components/character";
 import { AvatarStack } from "@/components/ui/avatar";
@@ -121,7 +121,7 @@ export function TeamBoard({ matches }: { matches: Match[] }) {
             </div>
             <div className="relative min-w-0 flex-1 text-center">
               <p className="flex items-center justify-center gap-1 text-[12.5px] font-bold text-volt">
-                <Crown size={14} aria-hidden />{" "}
+                <IconCrown size={14} aria-hidden />{" "}
                 {best.wins <= best.losses
                   ? "In testa, per ora"
                   : format === "1v1"

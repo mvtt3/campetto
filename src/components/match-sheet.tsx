@@ -3,7 +3,12 @@
 import { matchMvp } from "@/lib/stats/match-mvp";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
-import { Crown, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import {
+  IconCrown,
+  IconPencil,
+  IconRefresh,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { useData } from "@/lib/data/provider";
 import { matchRecap } from "@/lib/recap";
@@ -90,7 +95,7 @@ function TeamBlock({
       </p>
       {subs.length > 0 && (
         <p className="mt-0.5 text-center text-[11.5px] font-bold leading-tight opacity-85">
-          <RefreshCw
+          <IconRefresh
             size={11}
             className="mr-1 inline align-[-1px]"
             aria-hidden
@@ -177,14 +182,14 @@ export function MatchSheet({
                   className="flex-1"
                   onClick={() => router.push(`/nuova?edit=${m.id}`)}
                 >
-                  <Pencil size={17} /> Modifica
+                  <IconPencil size={17} /> Modifica
                 </Button>
                 <Button
                   variant="danger"
                   aria-label="Elimina partita"
                   onClick={() => setConfirmDelete(true)}
                 >
-                  <Trash2 size={18} />
+                  <IconTrash size={18} />
                 </Button>
               </>
             ) : (
@@ -259,7 +264,7 @@ export function MatchSheet({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1 truncate text-[15px] font-bold leading-tight">
-                  <Crown size={14} aria-hidden className="shrink-0" />{" "}
+                  <IconCrown size={14} aria-hidden className="shrink-0" />{" "}
                   <span className="truncate">
                     MVP {shortName(mvpPlayer, players)}
                   </span>

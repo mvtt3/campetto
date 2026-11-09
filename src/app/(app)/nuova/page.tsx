@@ -3,7 +3,7 @@
 import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw, X } from "lucide-react";
+import { IconRefresh, IconX } from "@tabler/icons-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BoxEditor } from "@/components/box-editor";
 import {
@@ -428,7 +428,7 @@ function NewMatchInner() {
             aria-label={step > 0 ? "Passo precedente" : "Chiudi"}
             className="-ml-2 grid h-11 w-11 place-items-center rounded-full active:bg-raised"
           >
-            <X size={22} />
+            <IconX size={22} />
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="title truncate text-[22px]">
@@ -589,7 +589,7 @@ function NewMatchInner() {
                   />
                   {name(id)}
                   {subs.has(id) && (
-                    <RefreshCw
+                    <IconRefresh
                       size={12}
                       aria-label="cambio"
                       className="opacity-70"

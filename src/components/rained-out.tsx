@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { CalendarDays, CloudRain } from "lucide-react";
+import { IconCalendar, IconCloudRain } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Mascot } from "./mascot";
@@ -59,7 +59,7 @@ export function RainedOut({
     >
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-1.5 rounded-full border-2 border-edge bg-court px-2.5 py-0.5 text-[12px] font-bold uppercase tracking-wide text-court-ink">
-          <CloudRain size={14} strokeWidth={2.6} aria-hidden />
+          <IconCloudRain size={14} strokeWidth={2.6} aria-hidden />
           Annullata
         </span>
         <span className="truncate text-[13px] font-semibold text-muted">
@@ -105,7 +105,7 @@ export function RainedOut({
           href={`/organizza?giorno=${dayParam(next.startsAt)}&p=${next.id}`}
           className="sticker-sm press flex h-11 items-center justify-center gap-2 rounded-full bg-surface px-4 text-[14px] font-bold"
         >
-          <CalendarDays size={17} className="shrink-0 text-ball" aria-hidden />
+          <IconCalendar size={17} className="shrink-0 text-ball" aria-hidden />
           <span className="truncate">
             Prossima: {dayLabel(next.startsAt)}
             {next.place ? `, ${placeLabel(next.place)}` : ""}

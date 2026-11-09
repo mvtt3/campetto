@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { ChevronLeft, Heart, UserPlus } from "lucide-react";
+import { IconChevronLeft, IconHeart, IconUserPlus } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
 import { Character } from "@/components/character";
 import { Button } from "@/components/ui/basics";
@@ -39,7 +39,7 @@ function Header({ title, back, sub, right }: { title: ReactNode; back: () => voi
   return (
     <div className="flex shrink-0 items-center gap-2 border-b-2 border-line px-3 py-2.5">
       <button onClick={back} aria-label="Indietro" className="press sticker-sm grid h-11 w-11 place-items-center rounded-full bg-surface">
-        <ChevronLeft size={22} />
+        <IconChevronLeft size={22} />
       </button>
       <div className="min-w-0 flex-1">
         <h2 className="display truncate text-[22px]">{title}</h2>
@@ -163,11 +163,11 @@ export function Instacampo({ back }: { back: () => void }) {
             <p className="display text-[20px]">Pubblicato!</p>
             <div className="mt-2 flex items-center gap-4 text-[17px]">
               <span className="flex items-center gap-1.5">
-                <Heart size={20} className="fill-danger text-danger" />
+                <IconHeart size={20} className="fill-danger text-danger" />
                 <b className="num">{fresh.likes}</b>
               </span>
               <span className={clsx("flex items-center gap-1.5", fresh.gained >= 0 ? "text-ok" : "text-danger")}>
-                <UserPlus size={20} />
+                <IconUserPlus size={20} />
                 <b className="num">
                   {fresh.gained >= 0 ? "+" : ""}
                   {fresh.gained}
@@ -215,7 +215,7 @@ export function Instacampo({ back }: { back: () => void }) {
                 <div key={p.id} className="relative">
                   <PostTile emoji={KIND_EMOJI[p.kind]} kind={p.kind} />
                   <span className="num absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full bg-[#1d1a16]/70 px-1.5 text-[11.5px] text-white">
-                    <Heart size={11} className="fill-white" /> {fmtK(p.likes)}
+                    <IconHeart size={11} className="fill-white" /> {fmtK(p.likes)}
                   </span>
                 </div>
               ))}
@@ -236,7 +236,7 @@ export function Instacampo({ back }: { back: () => void }) {
                 <p className="text-[14px]">{f.text}</p>
               </div>
               <span className="num flex items-center gap-1 text-[13px] text-muted">
-                <Heart size={13} /> {f.likes}
+                <IconHeart size={13} /> {f.likes}
               </span>
             </div>
           ))}

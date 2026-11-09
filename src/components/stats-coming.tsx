@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
+import { IconChartBar } from "@tabler/icons-react";
 import { useData } from "@/lib/data/provider";
 import { neededPlayers } from "@/lib/notifications/grouping";
 import { awaitingStats } from "@/lib/proposals";
@@ -42,7 +42,7 @@ export function StatsComing({ first }: { first?: boolean }) {
       className={`${first ? "mb-2 mt-1" : "mt-4"} flex items-center gap-3 rounded-[20px] border-2 border-dashed border-line-strong px-4 py-3`}
     >
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-edge bg-volt text-volt-ink">
-        <BarChart3 size={18} aria-hidden />
+        <IconChartBar size={18} aria-hidden />
       </span>
       <div className="min-w-0">
         <p className="title flex items-end text-[15px]">

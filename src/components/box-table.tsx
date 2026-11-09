@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Crown, RefreshCw } from "lucide-react";
+import { IconCrown, IconRefresh } from "@tabler/icons-react";
 import { useState } from "react";
 import { InfoTip } from "@/components/ui/info";
 import { Segmented } from "@/components/ui/basics";
@@ -163,14 +163,14 @@ export function BoxTable({
                     </span>
                   )}
                   {l.sub && (
-                    <RefreshCw
+                    <IconRefresh
                       size={11}
                       className="ml-1 inline align-[-1px] text-muted"
                       aria-label="cambio"
                     />
                   )}
                   {mvpId === l.playerId && (
-                    <Crown
+                    <IconCrown
                       size={12}
                       className="ml-1 inline align-[-1px] text-gold"
                       aria-label="MVP della partita"

@@ -4,15 +4,15 @@ import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ClipboardPaste,
-  Copy,
-  Link2,
-  Plus,
-  Share2,
-  UserCheck,
-  UserX,
-  Video,
-} from "lucide-react";
+  IconClipboardText,
+  IconCopy,
+  IconLink,
+  IconPlus,
+  IconShare,
+  IconUserCheck,
+  IconUserX,
+  IconVideo,
+} from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -169,7 +169,7 @@ function PlayerSheet({
                   toast("Ho copiato il link");
                 }}
               >
-                <Copy size={15} /> Copia
+                <IconCopy size={15} /> Copia
               </Button>
               {typeof navigator !== "undefined" && "share" in navigator && (
                 <Button
@@ -185,7 +185,7 @@ function PlayerSheet({
                       .catch(() => {})
                   }
                 >
-                  <Share2 size={15} /> Condividi
+                  <IconShare size={15} /> Condividi
                 </Button>
               )}
               <Button
@@ -197,7 +197,7 @@ function PlayerSheet({
                   toast("Ho creato un link nuovo, quello vecchio non vale più");
                 }}
               >
-                <Link2 size={15} /> Nuovo
+                <IconLink size={15} /> Nuovo
               </Button>
             </div>
           </div>
@@ -232,7 +232,7 @@ function PlayerSheet({
               }
             }}
           >
-            <UserX size={17} /> Scollega account Google
+            <IconUserX size={17} /> Scollega account Google
           </Button>
         )}
       </div>
@@ -284,7 +284,7 @@ export default function AdminPage() {
               aria-label="Aggiungi giocatore"
               className="press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface sticker-sm"
             >
-              <Plus size={20} strokeWidth={2.6} />
+              <IconPlus size={20} strokeWidth={2.6} />
             </button>
           ) : undefined
         }
@@ -294,19 +294,19 @@ export default function AdminPage() {
           {
             href: "/nuova",
             label: "Aggiungi partita",
-            icon: Plus,
+            icon: IconPlus,
             cls: "bg-ball text-ball-ink",
           },
           {
             href: "/importa",
             label: "Importa statistiche",
-            icon: ClipboardPaste,
+            icon: IconClipboardText,
             cls: "bg-court text-court-ink",
           },
           {
             href: "/video",
             label: "Segna dal video",
-            icon: Video,
+            icon: IconVideo,
             cls: "bg-text text-bg",
           },
         ].map(({ href, label, icon: Icon, cls }) => (
@@ -397,7 +397,7 @@ export default function AdminPage() {
                     className="flex-1"
                     onClick={() => setLinking(u)}
                   >
-                    <UserCheck size={15} /> Collega a un giocatore
+                    <IconUserCheck size={15} /> Collega a un giocatore
                   </Button>
                   <Button
                     size="sm"

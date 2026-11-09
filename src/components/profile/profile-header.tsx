@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { Crown, Settings, Trophy } from "lucide-react";
+import { IconCrown, IconSettings, IconTrophy } from "@tabler/icons-react";
 import { AVATAR_PRESETS, CHARACTER_TAGLINE } from "@/components/avatar-presets";
 import { BadgeMedal } from "@/components/badge-medal";
 import { Character, characterOf } from "@/components/character";
@@ -131,7 +131,7 @@ export function ProfileHeader({
             {isMvp && engine.mvp?.period.kind === "month" && (
               // Sui telefoni bassi basta la cornice d'oro attorno alla foto: una riga in meno.
               <span className="flex items-center gap-1 rounded-full border-2 border-[#1d1a16] bg-volt px-2.5 py-0.5 text-[12.5px] font-bold text-[#1d1a16] short:hidden">
-                <Crown size={13} /> MVP di{" "}
+                <IconCrown size={13} /> MVP di{" "}
                 {MONTHS_IT[engine.mvp.period.month].toLowerCase()}
               </span>
             )}
@@ -146,7 +146,7 @@ export function ProfileHeader({
             )}
             {trophies > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-[var(--chip)] px-2.5 py-1 text-[12.5px] font-semibold">
-                <Trophy size={13} /> {trophies}
+                <IconTrophy size={13} /> {trophies}
               </span>
             )}
           </div>
@@ -188,7 +188,7 @@ export function ProfileHeader({
             data-tour="profile-settings"
             className="press grid w-[52px] shrink-0 place-items-center rounded-2xl border-2 border-[#1d1a16] bg-[#fffaf0] text-[#1d1a16]"
           >
-            <Settings size={21} />
+            <IconSettings size={21} />
           </Link>
         )}
       </div>

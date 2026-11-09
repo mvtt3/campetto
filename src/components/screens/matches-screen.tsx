@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, Crown, Plus } from "lucide-react";
+import { IconChevronDown, IconCrown, IconPlus } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   memo,
@@ -136,7 +136,7 @@ const MatchRow = memo(function MatchRow({
             {mvp ? (
               <>
                 {" · "}
-                <Crown
+                <IconCrown
                   size={11}
                   className="inline align-[-1px] text-gold"
                   aria-hidden
@@ -236,7 +236,7 @@ function NightCard({
           </p>
         </div>
         <AvatarStack players={people} size={24} max={3} />
-        <ChevronDown
+        <IconChevronDown
           size={18}
           className={clsx(
             "shrink-0 text-faint transition-transform duration-200",
@@ -368,7 +368,7 @@ function MatchesInner() {
               data-tour="matches-add"
               className="sticker press flex h-11 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-bold text-ball-ink"
             >
-              <Plus size={18} strokeWidth={2.6} /> Aggiungi
+              <IconPlus size={18} strokeWidth={2.6} /> Aggiungi
             </Link>
           ) : undefined
         }

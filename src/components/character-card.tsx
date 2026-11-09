@@ -1,7 +1,13 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, Lock, RotateCw, Sparkles, X } from "lucide-react";
+import {
+  IconCheck,
+  IconLock,
+  IconRotateClockwise,
+  IconSparkles,
+  IconX,
+} from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -315,7 +321,7 @@ function StepBar({ step }: { step: GoalStep }) {
           )}
         >
           {step.done && (
-            <Check
+            <IconCheck
               size={13}
               strokeWidth={3}
               className="-mt-0.5 mr-1 inline"
@@ -423,7 +429,7 @@ export function CharacterCard({
             aria-label="Chiudi"
             className="press absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text"
           >
-            <X size={18} />
+            <IconX size={18} />
           </button>
           <span
             className="absolute left-3 top-3 z-10 rounded-full border-2 border-[#1d1a16] px-2.5 py-0.5 text-[11.5px] font-bold text-[#1d1a16]"
@@ -457,11 +463,11 @@ export function CharacterCard({
           </div>
           {!prog.unlocked && (
             <span className="pointer-events-none absolute left-1/2 top-[46%] grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[2.5px] border-edge bg-surface text-text">
-              <Lock size={24} />
+              <IconLock size={24} />
             </span>
           )}
           <p className="mt-1 flex items-center justify-center gap-1 text-[11.5px] font-semibold text-[#fffaf0]/90 [text-shadow:0_1px_0_rgb(0_0_0/0.35)]">
-            <RotateCw size={12} aria-hidden /> Trascina o tocca per girarlo
+            <IconRotateClockwise size={12} aria-hidden /> Trascina o tocca per girarlo
           </p>
         </div>
         <div className="px-5 pb-5 pt-4">
@@ -500,7 +506,7 @@ export function CharacterCard({
             {prog.unlocked ? (
               current ? (
                 <p className="flex h-12 items-center justify-center gap-2 text-[15px] font-bold text-ok">
-                  <Check size={18} strokeWidth={3} /> È il tuo personaggio
+                  <IconCheck size={18} strokeWidth={3} /> È il tuo personaggio
                 </p>
               ) : (
                 <Button variant="court" block onClick={() => onUse?.(shown)}>
@@ -596,7 +602,7 @@ export function CharacterGrid({
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1 text-[12px] font-bold text-court">
-                <Sparkles size={13} aria-hidden /> Il prossimo: {nextP.name}
+                <IconSparkles size={13} aria-hidden /> Il prossimo: {nextP.name}
               </span>
               <span className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-tight">
                 {nextStep.label}
@@ -690,7 +696,7 @@ export function CharacterGrid({
                     </span>
                     {!prog.unlocked && (
                       <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-edge bg-surface">
-                        <Lock size={10} />
+                        <IconLock size={10} />
                       </span>
                     )}
                     {!prog.unlocked && prog.pct > 0 && (
@@ -707,7 +713,7 @@ export function CharacterGrid({
                     {fresh && <NewTag className="left-0.5 top-0.5" />}
                     {on && (
                       <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-edge bg-ok text-white">
-                        <Check size={11} strokeWidth={3} />
+                        <IconCheck size={11} strokeWidth={3} />
                       </span>
                     )}
                     <span

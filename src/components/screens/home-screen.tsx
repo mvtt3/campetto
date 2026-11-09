@@ -3,15 +3,15 @@
 import clsx from "clsx";
 import Link from "next/link";
 import {
-  CalendarDays,
-  ChevronRight,
-  CircleCheck,
-  CloudRain,
-  Crown,
-  Plus,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
+  IconCalendar,
+  IconChevronRight,
+  IconCircleCheck,
+  IconCloudRain,
+  IconCrown,
+  IconPlus,
+  IconTrendingDown,
+  IconTrendingUp,
+} from "@tabler/icons-react";
 import {
   useEffect,
   useMemo,
@@ -28,7 +28,7 @@ import { Mascot } from "@/components/mascot";
 import { ProposalCard } from "@/components/proposal-card";
 import { markMatchOpenedFromElsewhere } from "@/components/screens/matches-screen";
 import { Avatar } from "@/components/ui/avatar";
-import { CountUp } from "@/components/ui/basics";
+import { CountUp, CourtLines } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { HighlightsHomeButton, PlayBadge } from "@/components/highlights/entry";
 import { GameHomeButton } from "@/components/game/entry";
@@ -92,7 +92,7 @@ function SectionLink({ href, children }: { href: string; children: ReactNode }) 
   return (
     <Link
       href={href}
-      className="press -mr-2 flex items-center gap-1 rounded-full px-2 py-1.5 text-[13px] font-semibold text-court"
+      className="press -mr-2 flex items-center gap-1 rounded-full px-2 py-1.5 text-[13px] font-semibold text-muted"
     >
       {children}
     </Link>
@@ -159,7 +159,7 @@ function RecentMatch({
           <Avatar player={bestPlayer} size={24} href={false} />
           <span className="min-w-0">
             <span className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gold">
-              <Crown size={11} /> MVP
+              <IconCrown size={11} /> MVP
             </span>
             <span className="block truncate text-[12.5px] font-semibold">
               {shortName(bestPlayer, players)}
@@ -281,19 +281,26 @@ export function HomeScreen() {
         <div className="flex flex-col gap-7 pb-8 pt-3">
           <section
             data-tour="home-month"
-            className="rise court relative mt-5 rounded-[28px]"
+            className="rise court relative mt-8 rounded-[28px]"
             style={rise(0)}
           >
             <div className="absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden>
               <span className="blob -right-16 -top-20 h-56 w-56 bg-[radial-gradient(circle,rgb(255_197_49/0.45),transparent_68%)]" />
               <span className="blob -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)]" />
               <span className="blob -bottom-10 right-10 h-32 w-32 bg-[radial-gradient(circle,rgb(255_250_240/0.14),transparent_70%)]" />
+              <CourtLines draw className="absolute inset-0 h-full w-full" />
             </div>
-            <Mascot
-              pose={mine.games > 0 && mine.winPct >= 0.5 ? "esulta" : "ciao"}
-              size={104}
-              className="absolute -top-9 right-3 drop-shadow-[0_10px_14px_rgb(0_0_0/0.25)]"
-            />
+            <span
+              className="absolute -top-12 right-4 drop-shadow-[0_10px_14px_rgb(0_0_0/0.25)]"
+              aria-hidden
+            >
+              <Character
+                id={characterOf(me)}
+                outfit={me.outfit}
+                number={me.jerseyNumber}
+                height={132}
+              />
+            </span>
             <div className="relative px-5 pb-5 pt-6">
               <p className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold">
                 Il tuo {MONTHS_IT[month].toLowerCase()}
@@ -336,7 +343,7 @@ export function HomeScreen() {
                           delta > 0 ? "bg-volt text-volt-ink" : "bg-white/20",
                         )}
                       >
-                        {delta > 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                        {delta > 0 ? <IconTrendingUp size={11} /> : <IconTrendingDown size={11} />}
                         {delta > 0 ? `+${delta}` : `−${-delta}`}
                       </span>
                     )}
@@ -365,12 +372,12 @@ export function HomeScreen() {
             title={
               rained ? (
                 <>
-                  <CloudRain size={18} className="text-court" aria-hidden />
+                  <IconCloudRain size={18} className="text-court" aria-hidden />
                   Oggi non si gioca
                 </>
               ) : nextPhase === "confirmed" ? (
                 <span className="flex items-center gap-1.5 text-ok">
-                  <CircleCheck size={18} aria-hidden />
+                  <IconCircleCheck size={18} aria-hidden />
                   Partita confermata
                 </span>
               ) : nextPhase === "live" ? (
@@ -381,7 +388,7 @@ export function HomeScreen() {
             }
             action={
               <SectionLink href="/organizza">
-                <CalendarDays size={15} /> Calendario
+                <IconCalendar size={15} /> Calendario
               </SectionLink>
             }
           >
@@ -408,7 +415,7 @@ export function HomeScreen() {
                     href="/organizza?nuova=1"
                     className="press flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-semibold text-ball-ink"
                   >
-                    <Plus size={16} strokeWidth={2.4} /> Proponi
+                    <IconPlus size={16} strokeWidth={2.4} /> Proponi
                   </Link>
                 </div>
               )}
@@ -421,7 +428,7 @@ export function HomeScreen() {
             action={
               recent.length > 0 && (
                 <SectionLink href="/partite">
-                  Tutte <ChevronRight size={15} />
+                  Tutte <IconChevronRight size={15} />
                 </SectionLink>
               )
             }
@@ -479,7 +486,7 @@ export function HomeScreen() {
                   </span>
                   <div className="relative min-w-0 pr-28">
                     <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] opacity-70">
-                      <Crown size={14} />
+                      <IconCrown size={14} />
                       {mvp.period.kind === "month"
                         ? MONTHS_IT[mvp.period.month]
                         : "MVP"}
@@ -491,7 +498,7 @@ export function HomeScreen() {
                       </p>
                     </div>
                     <p className="mt-3 flex items-center gap-0.5 text-[13px] font-semibold">
-                      Vedi la classifica <ChevronRight size={15} />
+                      Vedi la classifica <IconChevronRight size={15} />
                     </p>
                   </div>
                 </>

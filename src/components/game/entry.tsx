@@ -1,6 +1,6 @@
 "use client";
 
-import { Gamepad2 } from "lucide-react";
+import { IconDeviceGamepad2 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { NewDot } from "@/components/new-dot";
@@ -42,7 +42,7 @@ export function GameHomeButton() {
       className="press relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ball text-ball-ink"
       data-testid="game-home"
     >
-      <Gamepad2 size={21} aria-hidden />
+      <IconDeviceGamepad2 size={21} aria-hidden />
       {dot && <NewDot className="absolute -right-0.5 -top-0.5 !border-surface" />}
     </Link>
   );

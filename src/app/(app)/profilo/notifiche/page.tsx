@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, Moon } from "lucide-react";
+import { IconBellRinging, IconMoon } from "@tabler/icons-react";
 import { ScreenHeader, Spinner, Toggle } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
@@ -51,7 +51,7 @@ export default function NotificationsPage() {
       <main className="scroll-area min-h-0 flex-1 px-5 pb-6 pt-1">
         <section className="card mb-4 flex items-center gap-3 px-4 py-3.5">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-edge bg-volt text-volt-ink">
-            <BellRing size={19} />
+            <IconBellRinging size={19} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[15px] font-bold">Su questo telefono</p>
@@ -106,7 +106,7 @@ export default function NotificationsPage() {
         <section className="mb-4">
           <h2 className="title mb-2 px-1 text-[15px]">Quando</h2>
           <div className="card flex min-h-[62px] items-center gap-3 px-4 py-2.5">
-            <Moon size={18} className="shrink-0 text-court" aria-hidden />
+            <IconMoon size={18} className="shrink-0 text-court" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-semibold">Silenzio di notte</p>
               <p className="text-[12.5px] text-muted">

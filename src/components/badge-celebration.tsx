@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown } from "lucide-react";
+import { IconCrown } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { BADGE_BY_KEY, type BadgeUnlock } from "@/lib/badges";
@@ -350,7 +350,7 @@ function ResultBody({ item }: { item: ResultItem }) {
       )}
       {item.mvp && (
         <p className="sticker-sm relative mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-volt px-3 py-1 text-[13.5px] font-bold text-volt-ink">
-          <Crown size={15} aria-hidden /> Sei l&apos;MVP della partita
+          <IconCrown size={15} aria-hidden /> Sei l&apos;MVP della partita
         </p>
       )}
       {item.line && (

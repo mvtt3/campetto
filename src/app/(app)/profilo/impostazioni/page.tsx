@@ -4,24 +4,24 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Bell,
-  Camera,
-  ChevronRight,
-  Clapperboard,
-  Compass,
-  Repeat,
-  Download,
-  Eye,
-  LogOut,
-  MessageSquareWarning,
-  Palette,
-  Shield,
-  Check,
-  Lock,
-  Users,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
+  IconBell,
+  IconCamera,
+  IconCheck,
+  IconChevronRight,
+  IconCompass,
+  IconDownload,
+  IconEye,
+  IconLock,
+  IconLogout,
+  IconMessageReport,
+  IconMovie,
+  IconPalette,
+  IconRepeat,
+  IconShield,
+  IconUsers,
+  IconVolume,
+  IconVolumeOff,
+} from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import {
@@ -174,7 +174,7 @@ export default function SettingsPage() {
             <span className="relative">
               <Avatar player={me} size={64} href={false} />
               <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-edge bg-ball text-ball-ink">
-                {uploading ? <Spinner size={10} /> : <Camera size={14} />}
+                {uploading ? <Spinner size={10} /> : <IconCamera size={14} />}
               </span>
             </span>
             <span className="min-w-0 flex-1">
@@ -183,7 +183,7 @@ export default function SettingsPage() {
                 Una figurina o una tua foto
               </span>
             </span>
-            <ChevronRight size={18} className="text-faint" />
+            <IconChevronRight size={18} className="text-faint" />
           </button>
           <button
             className="press flex w-full items-center gap-4 border-t border-line px-4 py-3 text-left"
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                   : "Con i badge ne sblocchi di speciali"}
               </span>
             </span>
-            <ChevronRight size={18} className="text-faint" />
+            <IconChevronRight size={18} className="text-faint" />
           </button>
           <div className="border-t border-line px-4 py-3">
             <p className="mb-2.5 text-[15px]">Sfondo della figurina</p>
@@ -241,7 +241,7 @@ export default function SettingsPage() {
                     style={{ background: c.value }}
                   >
                     {on && (
-                      <Check
+                      <IconCheck
                         size={16}
                         strokeWidth={3.2}
                         className={
@@ -267,13 +267,13 @@ export default function SettingsPage() {
                 {me.nickname}
               </span>
               {nameUnlockDate(me) ? (
-                <Lock
+                <IconLock
                   size={16}
                   className="shrink-0 text-faint"
                   aria-label="bloccato per ora"
                 />
               ) : (
-                <ChevronRight size={18} className="shrink-0 text-faint" />
+                <IconChevronRight size={18} className="shrink-0 text-faint" />
               )}
             </button>
           </Row>
@@ -297,7 +297,7 @@ export default function SettingsPage() {
               className="tnum h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:text-faint"
             />
           </Row>
-          <Row icon={<Eye size={18} />}>
+          <Row icon={<IconEye size={18} />}>
             <Link
               href={playerHref(me.id, true)}
               className="flex min-w-0 flex-1 items-center gap-2"
@@ -310,13 +310,13 @@ export default function SettingsPage() {
                   Il tuo profilo, nella versione per il gruppo
                 </span>
               </span>
-              <ChevronRight size={18} className="shrink-0 text-faint" />
+              <IconChevronRight size={18} className="shrink-0 text-faint" />
             </Link>
           </Row>
         </Group>
 
         <Group>
-          <Row icon={<Palette size={18} />}>
+          <Row icon={<IconPalette size={18} />}>
             <Segmented
               className="flex-1"
               size="sm"
@@ -332,7 +332,7 @@ export default function SettingsPage() {
               ]}
             />
           </Row>
-          <Row icon={sounds ? <Volume2 size={18} /> : <VolumeX size={18} />}>
+          <Row icon={sounds ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}>
             <span className="min-w-0 flex-1">
               <span className="block text-[15px] font-semibold">Suoni</span>
               <span className="block text-[12.5px] text-muted">
@@ -353,9 +353,9 @@ export default function SettingsPage() {
           <Row
             icon={
               hlEnd === "loop" ? (
-                <Repeat size={18} />
+                <IconRepeat size={18} />
               ) : (
-                <Clapperboard size={18} />
+                <IconMovie size={18} />
               )
             }
           >
@@ -383,7 +383,7 @@ export default function SettingsPage() {
               />
             </span>
           </Row>
-          <Row icon={<Bell size={18} />}>
+          <Row icon={<IconBell size={18} />}>
             <Link
               href="/profilo/notifiche"
               className="flex min-w-0 flex-1 items-center gap-2"
@@ -398,11 +398,11 @@ export default function SettingsPage() {
                     : "Spente, tocca per sceglierle"}
                 </span>
               </span>
-              <ChevronRight size={18} className="shrink-0 text-faint" />
+              <IconChevronRight size={18} className="shrink-0 text-faint" />
             </Link>
           </Row>
           {!standalone && (
-            <Row icon={<Download size={18} />}>
+            <Row icon={<IconDownload size={18} />}>
               <p className="min-w-0 flex-1 text-[13.5px] text-muted">
                 {isIos()
                   ? "In Safari: Condividi, poi “Aggiungi alla schermata Home”"
@@ -422,16 +422,16 @@ export default function SettingsPage() {
         </Group>
 
         <Group>
-          <Row icon={<Compass size={18} />}>
+          <Row icon={<IconCompass size={18} />}>
             <button
               onClick={() => setGuide(true)}
               className="flex flex-1 items-center text-left text-[15px] font-semibold"
             >
               Guida all&apos;app
-              <ChevronRight size={18} className="ml-auto text-faint" />
+              <IconChevronRight size={18} className="ml-auto text-faint" />
             </button>
           </Row>
-          <Row icon={<MessageSquareWarning size={18} />}>
+          <Row icon={<IconMessageReport size={18} />}>
             <button
               onClick={() => setFeedback(true)}
               className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -444,14 +444,14 @@ export default function SettingsPage() {
                   O suggerisci un&apos;idea
                 </span>
               </span>
-              <ChevronRight size={18} className="shrink-0 text-faint" />
+              <IconChevronRight size={18} className="shrink-0 text-faint" />
             </button>
           </Row>
         </Group>
 
         <Group>
           {playerView.available && (
-            <Row icon={<Users size={18} />}>
+            <Row icon={<IconUsers size={18} />}>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">
                   Usa l&apos;app come un giocatore
@@ -475,17 +475,17 @@ export default function SettingsPage() {
             </Row>
           )}
           {me.isAdmin && (
-            <Row icon={<Shield size={18} />}>
+            <Row icon={<IconShield size={18} />}>
               <Link
                 href="/admin"
                 className="flex flex-1 items-center text-[15px] font-semibold"
               >
                 Gestione del gruppo
-                <ChevronRight size={18} className="ml-auto text-faint" />
+                <IconChevronRight size={18} className="ml-auto text-faint" />
               </Link>
             </Row>
           )}
-          <Row icon={<LogOut size={18} />}>
+          <Row icon={<IconLogout size={18} />}>
             <button
               onClick={async () => {
                 await backend.signOut();
@@ -546,7 +546,7 @@ export default function SettingsPage() {
                       {sec.steps.length} passaggi brevi
                     </span>
                   </span>
-                  <ChevronRight size={18} className="text-faint" />
+                  <IconChevronRight size={18} className="text-faint" />
                 </button>
               );
             })}

@@ -1,7 +1,13 @@
 "use client";
 
 import clsx from "clsx";
-import { Gift, Shirt, Smartphone, Target, Trophy } from "lucide-react";
+import {
+  IconDeviceMobile,
+  IconGift,
+  IconShirt,
+  IconTarget,
+  IconTrophy,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { Character } from "@/components/character";
 import { Button } from "@/components/ui/basics";
@@ -104,7 +110,7 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
           onClick={openDaily}
           className="press sticker flex items-center gap-3 rounded-2xl bg-volt px-4 py-3 text-left text-volt-ink"
         >
-          <Gift size={26} className="shrink-0" />
+          <IconGift size={26} className="shrink-0" />
           <span className="min-w-0 flex-1">
             <span className="block text-[16px] font-bold">Premio del giorno pronto</span>
             <span className="block text-[13px] font-semibold opacity-80">Giorno {daily.step} di 7: non saltarne uno</span>
@@ -200,7 +206,7 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
       {/* Le quattro porte del gioco */}
       <div className="grid grid-cols-2 gap-2">
         <BigTile
-          icon={<Smartphone size={30} />}
+          icon={<IconDeviceMobile size={30} />}
           name="Telefono"
           line={unread ? `${unread} da leggere` : "Messaggi, banca, shopping"}
           badge={unread + game.badges.banca + game.badges.contratti}
@@ -208,10 +214,10 @@ export function Hub({ go, openDaily }: { go: (v: View) => void; openDaily: () =>
           highlight={tut === 2 || tut === 3}
           testId="open-phone"
         />
-        <BigTile icon={<Target size={30} />} name="Sfide" line={`🎟️ ${game.tokens}/5 gettoni`} onClick={() => go("sfide")} testId="open-sfide" />
-        <BigTile icon={<Shirt size={30} />} name="Guardaroba" line={`${game.owned.length} ${game.owned.length === 1 ? "oggetto" : "oggetti"}`} onClick={() => go("guardaroba")} />
+        <BigTile icon={<IconTarget size={30} />} name="Sfide" line={`🎟️ ${game.tokens}/5 gettoni`} onClick={() => go("sfide")} testId="open-sfide" />
+        <BigTile icon={<IconShirt size={30} />} name="Guardaroba" line={`${game.owned.length} ${game.owned.length === 1 ? "oggetto" : "oggetti"}`} onClick={() => go("guardaroba")} />
         <BigTile
-          icon={<Trophy size={30} />}
+          icon={<IconTrophy size={30} />}
           name="Carriera"
           line={careerLine(game)}
           onClick={() => go("carriera")}

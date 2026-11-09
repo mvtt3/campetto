@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { IconChevronDown } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Avatar, AvatarStack } from "./ui/avatar";
 import { Button, Segmented } from "./ui/basics";
@@ -114,7 +114,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                     </span>
                   ))}
                 </span>
-                <ChevronDown
+                <IconChevronDown
                   size={15}
                   className={clsx(
                     "shrink-0 text-faint transition-transform duration-200",

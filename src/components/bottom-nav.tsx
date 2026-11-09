@@ -5,7 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useData } from "@/lib/data/provider";
-import { House, Rows3, Trophy, UserRound } from "lucide-react";
+import {
+  IconHome,
+  IconLayoutRows,
+  IconTrophy,
+  IconUser,
+} from "@tabler/icons-react";
 import { haptic } from "./ui/basics";
 import { NewDot } from "./new-dot";
 import { useNewRewards } from "./rewards";
@@ -14,26 +19,26 @@ const ITEMS = [
   {
     href: "/",
     label: "Home",
-    icon: House,
+    icon: IconHome,
     match: (p: string) => p === "/" || p.startsWith("/organizza"),
   },
   {
     href: "/classifiche",
     label: "Classifica",
-    icon: Trophy,
+    icon: IconTrophy,
     match: (p: string) =>
       p.startsWith("/classifiche") || p.startsWith("/giocatore"),
   },
   {
     href: "/partite",
     label: "Partite",
-    icon: Rows3,
+    icon: IconLayoutRows,
     match: (p: string) => p.startsWith("/partite"),
   },
   {
     href: "/profilo",
     label: "Profilo",
-    icon: UserRound,
+    icon: IconUser,
     match: (p: string) =>
       p.startsWith("/profilo") ||
       p.startsWith("/admin") ||
@@ -78,13 +83,13 @@ export function BottomNav({
       data-tour="nav"
       className="safe-bottom shrink-0 px-4 pb-3 pt-1"
     >
-      <ul className="sticker relative mx-auto grid h-[66px] max-w-md grid-cols-4 gap-1 rounded-[24px] bg-surface p-1.5">
+      <ul className="sticker relative mx-auto grid h-16 max-w-[340px] grid-cols-4 gap-1 rounded-full bg-surface p-1.5">
         {/* La pillola blu scorre da una scheda all'altra (e segue il dito durante lo swipe). */}
         {index >= 0 && (
           <span
             aria-hidden
             data-nav-pill
-            className="nav-pill pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-[18px] bg-court"
+            className="nav-pill pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-full bg-court"
             style={{ ["--i" as string]: index }}
           />
         )}
@@ -113,17 +118,16 @@ export function BottomNav({
                 }
                 aria-current={active ? "page" : undefined}
                 className={clsx(
-                  "flex w-full flex-col items-center justify-center gap-0.5 rounded-[18px] text-[11px] font-semibold transition-colors duration-300",
+                  "flex w-full items-center justify-center rounded-full transition-colors duration-300",
                   active ? "text-court-ink" : "text-muted",
                 )}
               >
                 <span className="relative">
-                  <Icon size={21} strokeWidth={active ? 2.4 : 2} aria-hidden />
+                  <Icon size={24} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
                   {href === "/profilo" && (
                     <NewDot count={news} className="absolute -right-3 -top-2" />
                   )}
                 </span>
-                <span>{label}</span>
               </Link>
             </li>
           );

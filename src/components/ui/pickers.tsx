@@ -1,7 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { CalendarDays, Check, ChevronDown, Clock3 } from "lucide-react";
+import {
+  IconCalendar,
+  IconCheck,
+  IconChevronDown,
+  IconClockHour3,
+} from "@tabler/icons-react";
 import {
   useEffect,
   useLayoutEffect,
@@ -123,7 +128,7 @@ export function Menu<T extends string>({
       >
         <span className="sr-only">{label}: </span>
         {trigger ?? <span className="truncate">{current?.label}</span>}
-        <ChevronDown
+        <IconChevronDown
           size={15}
           className={clsx(
             "text-muted transition-transform duration-200",
@@ -188,7 +193,7 @@ export function Menu<T extends string>({
                           </span>
                         )}
                       </span>
-                      <Check
+                      <IconCheck
                         size={17}
                         strokeWidth={3}
                         className={on ? "" : "invisible"}
@@ -549,7 +554,7 @@ export function TimeField({
               : "border-2 border-line-strong bg-surface",
           )}
         >
-          <Clock3 size={15} aria-hidden />
+          <IconClockHour3 size={15} aria-hidden />
           {custom ? (
             <span className="score text-[16px]">{value}</span>
           ) : (
@@ -698,7 +703,7 @@ export function DateTimeField({
         }}
         className="press flex h-14 w-full items-center gap-3 rounded-[18px] border-[2.5px] border-edge bg-surface px-4 text-left sticker-sm"
       >
-        <CalendarDays size={20} className="shrink-0 text-court" aria-hidden />
+        <IconCalendar size={20} className="shrink-0 text-court" aria-hidden />
         <span className="sr-only">{label}: </span>
         <span className="min-w-0 flex-1 truncate text-[15.5px] font-bold">
           {dayLabel(day)}

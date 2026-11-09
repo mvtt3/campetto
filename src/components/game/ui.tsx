@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { X } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Mascot } from "@/components/mascot";
 import { play, type SoundName } from "@/lib/sound";
@@ -33,7 +33,7 @@ export function Tip({ id, text, className }: { id: string; text?: string; classN
       <Mascot pose="ciao" size={38} animate={false} />
       <p className="min-w-0 flex-1 text-[13.5px] font-semibold leading-snug">{text ?? TIPS[id]}</p>
       <button onClick={close} aria-label="Ho capito" className="press grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/60">
-        <X size={18} />
+        <IconX size={18} />
       </button>
     </div>
   );
@@ -106,7 +106,7 @@ export function Sheet({
         <div className="mb-3 flex items-center gap-2">
           <h2 className="display min-w-0 flex-1 text-[24px]">{title}</h2>
           <button onClick={onClose} aria-label="Chiudi" className="press sticker-sm grid h-10 w-10 place-items-center rounded-full bg-surface">
-            <X size={20} />
+            <IconX size={20} />
           </button>
         </div>
         {children}

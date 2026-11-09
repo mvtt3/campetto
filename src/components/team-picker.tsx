@@ -3,13 +3,13 @@
 import { play } from "@/lib/sound";
 import clsx from "clsx";
 import {
-  RefreshCw,
-  Scale,
-  Shuffle,
-  UserPlus,
-  UserRound,
-  X,
-} from "lucide-react";
+  IconArrowsShuffle,
+  IconRefresh,
+  IconScale,
+  IconUser,
+  IconUserPlus,
+  IconX,
+} from "@tabler/icons-react";
 import { useData } from "@/lib/data/provider";
 import { winProbability } from "@/lib/stats/elo";
 import { balanceTeams } from "@/lib/stats/teams";
@@ -139,7 +139,7 @@ export function TeamPicker({
         {t} {Math.min(n, size)}/{size}
         {extra > 0 && (
           <span className="flex items-center gap-0.5 text-muted">
-            + <RefreshCw size={11} aria-hidden /> {extra}
+            + <IconRefresh size={11} aria-hidden /> {extra}
           </span>
         )}
       </span>
@@ -183,7 +183,7 @@ export function TeamPicker({
                 <Avatar player={p} size={34} href={false} ring="none" />
                 {subs.has(p.id) && (
                   <span className="absolute -bottom-1 -right-1 grid h-[18px] w-[18px] place-items-center rounded-full border-2 border-edge bg-volt text-volt-ink">
-                    <RefreshCw size={10} strokeWidth={3} aria-hidden />
+                    <IconRefresh size={10} strokeWidth={3} aria-hidden />
                   </span>
                 )}
               </span>
@@ -218,7 +218,7 @@ export function TeamPicker({
                 )}
               >
                 <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full border-2 border-dashed border-current opacity-80">
-                  <UserRound size={18} aria-hidden />
+                  <IconUser size={18} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block truncate text-[14px] font-semibold">
@@ -241,7 +241,7 @@ export function TeamPicker({
                   }}
                   className="press absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full border-2 border-edge bg-surface text-text"
                 >
-                  <X size={13} strokeWidth={3} />
+                  <IconX size={13} strokeWidth={3} />
                 </button>
               )}
             </div>
@@ -262,7 +262,7 @@ export function TeamPicker({
             className="press flex h-14 items-center gap-2.5 rounded-2xl border-2 border-dashed border-line-strong px-2.5 text-left text-muted"
           >
             <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-raised">
-              <UserPlus size={18} aria-hidden />
+              <IconUserPlus size={18} aria-hidden />
             </span>
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block text-[14px] font-semibold text-text">
@@ -298,7 +298,7 @@ export function TeamPicker({
             onClick={() => balance(0)}
             className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-raised text-[14px] font-semibold disabled:opacity-40"
           >
-            <Scale size={17} /> Equilibra
+            <IconScale size={17} /> Equilibra
           </button>
           <button
             disabled={!canBalance}
@@ -308,7 +308,7 @@ export function TeamPicker({
             }}
             className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-raised text-[14px] font-semibold disabled:opacity-40"
           >
-            <Shuffle size={17} /> Rimescola
+            <IconArrowsShuffle size={17} /> Rimescola
           </button>
         </div>
       </div>

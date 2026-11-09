@@ -1,7 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowUp, CornerUpLeft, RotateCcw, X } from "lucide-react";
+import {
+  IconArrowUp,
+  IconCornerUpLeft,
+  IconRotate,
+  IconX,
+} from "@tabler/icons-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { haptic } from "@/components/ui/basics";
@@ -223,7 +228,7 @@ export function CommentsPanel({
             className="press absolute right-3 top-2.5 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text"
             data-testid="hl-comments-close"
           >
-            <X size={18} strokeWidth={2.4} />
+            <IconX size={18} strokeWidth={2.4} />
           </button>
         </div>
 
@@ -251,7 +256,7 @@ export function CommentsPanel({
                 onClick={onReload}
                 className="press flex h-10 items-center gap-1.5 rounded-full border-2 border-edge bg-surface px-4 text-[14px] font-bold"
               >
-                <RotateCcw size={15} aria-hidden /> Riprova
+                <IconRotate size={15} aria-hidden /> Riprova
               </button>
             </div>
           ) : count === 0 ? (
@@ -298,7 +303,7 @@ export function CommentsPanel({
             className="flex shrink-0 items-center gap-2 border-t-2 border-line bg-raised px-3 py-2"
             data-testid="hl-reply-bar"
           >
-            <CornerUpLeft
+            <IconCornerUpLeft
               size={16}
               className="shrink-0 text-ball"
               aria-hidden
@@ -321,7 +326,7 @@ export function CommentsPanel({
               className="press grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted"
               data-testid="hl-reply-cancel"
             >
-              <X size={17} strokeWidth={2.4} />
+              <IconX size={17} strokeWidth={2.4} />
             </button>
           </div>
         )}
@@ -379,7 +384,7 @@ export function CommentsPanel({
             className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-edge bg-ball text-ball-ink disabled:opacity-40"
             data-testid="hl-comment-send"
           >
-            <ArrowUp size={20} strokeWidth={2.6} />
+            <IconArrowUp size={20} strokeWidth={2.6} />
           </button>
         </form>
       </div>
@@ -489,7 +494,7 @@ function CommentRow({
         }}
         aria-hidden
       >
-        <CornerUpLeft size={16} />
+        <IconCornerUpLeft size={16} />
       </span>
       <div
         className={clsx(

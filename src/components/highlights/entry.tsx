@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Clapperboard, Play } from "lucide-react";
+import { IconMovie, IconPlayerPlayFilled } from "@tabler/icons-react";
 import { NewDot } from "@/components/new-dot";
 import type { Highlight } from "@/lib/types";
 import { useHighlights } from "./provider";
@@ -53,7 +53,7 @@ export function HighlightCard({
         )}
         <span className="absolute inset-0 grid place-items-center">
           <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-[#1d1a16] bg-ball text-ball-ink">
-            <Play size={15} fill="currentColor" className="ml-0.5" />
+            <IconPlayerPlayFilled size={15} fill="currentColor" className="ml-0.5" />
           </span>
         </span>
         <span className="absolute bottom-1 right-1 rounded-md bg-[#17130f]/80 px-1 text-[10.5px] font-bold text-[#f6eedc] tnum">
@@ -87,7 +87,7 @@ export function NightHighlightsButton({ matchIds }: { matchIds: string[] }) {
       data-tour="matches-highlights"
     >
       <span className="grid h-6 w-6 place-items-center rounded-full bg-ball-ink text-ball">
-        <Play size={12} fill="currentColor" className="ml-px" />
+        <IconPlayerPlayFilled size={12} fill="currentColor" className="ml-px" />
       </span>
       {withVideo.length === 1
         ? "Guarda gli highlights"
@@ -121,7 +121,7 @@ export function PlayBadge({
       )}
       data-testid="hl-badge"
     >
-      <Play size={14} fill="currentColor" className="ml-0.5" aria-hidden />
+      <IconPlayerPlayFilled size={14} fill="currentColor" className="ml-0.5" aria-hidden />
       <span className="sr-only">, con gli highlights</span>
       {hl.unseen(matchId) && (
         <NewDot className="absolute -right-1 -top-1 !h-3 !w-3" />
@@ -149,7 +149,7 @@ export function HighlightsHomeButton() {
       data-testid="hl-home"
       data-tour="home-highlights"
     >
-      <Clapperboard size={20} aria-hidden />
+      <IconMovie size={20} aria-hidden />
       {hl.unseenCount > 0 && (
         <NewDot className="absolute -right-0.5 -top-0.5 !border-surface" />
       )}

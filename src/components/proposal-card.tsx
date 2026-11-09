@@ -2,7 +2,17 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
-import { ArrowUpRight, Check, ChevronDown, ChevronRight, CircleCheck, CloudRain, MapPin, Repeat2, X } from "lucide-react";
+import {
+  IconArrowUpRight,
+  IconCheck,
+  IconChevronDown,
+  IconChevronRight,
+  IconCircleCheck,
+  IconCloudRain,
+  IconMapPin,
+  IconRepeat,
+  IconX,
+} from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -270,7 +280,7 @@ export function ProposalCard({
           className="-mx-4 -mt-4 flex items-center gap-2 rounded-t-[19px] bg-ok px-4 py-2.5 text-white"
           role="status"
         >
-          <CircleCheck size={19} strokeWidth={2.6} aria-hidden />
+          <IconCircleCheck size={19} strokeWidth={2.6} aria-hidden />
           <span className="title text-[15.5px]">Partita confermata</span>
           <span className="ml-auto truncate text-[12.5px] font-semibold opacity-90">
             {full ? "al completo" : `siete in ${yes.length}, si gioca`}
@@ -327,7 +337,7 @@ export function ProposalCard({
                   {". "}
                   <span className={clsx(noteOpen && "font-semibold text-text")}>{proposal.note}</span>
                 </span>
-                <ChevronDown
+                <IconChevronDown
                   size={15}
                   className={clsx("mt-0.5 shrink-0 text-faint transition-transform duration-200", noteOpen && "rotate-180")}
                   aria-hidden
@@ -366,11 +376,11 @@ export function ProposalCard({
           className="press -mt-1 flex min-w-0 items-center gap-2 rounded-2xl bg-raised px-3 py-2 text-[14px] font-semibold"
           data-testid="indoor-address"
         >
-          <MapPin size={17} strokeWidth={2.6} className="shrink-0 text-ball" aria-hidden />
+          <IconMapPin size={17} strokeWidth={2.6} className="shrink-0 text-ball" aria-hidden />
           <span className="min-w-0 flex-1 truncate">{indoorVia}</span>
           <span className="flex shrink-0 items-center gap-0.5 text-[12.5px] text-muted">
             Indicazioni
-            <ArrowUpRight size={15} strokeWidth={2.4} aria-hidden />
+            <IconArrowUpRight size={15} strokeWidth={2.4} aria-hidden />
           </span>
         </a>
       )}
@@ -424,7 +434,7 @@ export function ProposalCard({
           </div>
         </div>
         {compact && (
-          <ChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
+          <IconChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
         )}
       </WhoRow>
 
@@ -466,7 +476,7 @@ export function ProposalCard({
                 key={g.key}
                 className="flex items-center gap-2 rounded-2xl border-2 border-dashed border-line-strong py-1.5 pl-2.5 pr-1.5"
               >
-                <Repeat2 size={18} className="shrink-0 text-ball" aria-hidden />
+                <IconRepeat size={18} className="shrink-0 text-ball" aria-hidden />
                 <p className="min-w-0 flex-1 truncate text-[13.5px] leading-tight">
                   <span className="font-bold">{altLabel(proposal, g)}</span>
                   <span className="text-muted">
@@ -549,7 +559,7 @@ export function ProposalCard({
             )}
             aria-hidden
           >
-            {rain ? <Check size={14} strokeWidth={3} /> : <CloudRain size={13} strokeWidth={2.6} />}
+            {rain ? <IconCheck size={14} strokeWidth={3} /> : <IconCloudRain size={13} strokeWidth={2.6} />}
           </span>
           <span className="min-w-0">
             È per la pioggia
@@ -572,7 +582,7 @@ export function ProposalCard({
                 "flex-1",
               )}
             >
-              <Repeat2 size={16} className="shrink-0 text-ball" aria-hidden />
+              <IconRepeat size={16} className="shrink-0 text-ball" aria-hidden />
               <span className="truncate">{altAria}</span>
             </button>
           )}
@@ -636,7 +646,7 @@ export function ProposalCard({
                 )}
                 onClick={() => setConfirmCancel(true)}
               >
-                <X size={18} />
+                <IconX size={18} />
                 {!showAlt && "Annulla la proposta"}
               </button>
             ))}
@@ -684,7 +694,7 @@ function PlaceTag({
         inline && "ml-2 align-[0.15em]",
       )}
     >
-      <MapPin size={13} strokeWidth={2.6} className="text-ball" aria-hidden />
+      <IconMapPin size={13} strokeWidth={2.6} className="text-ball" aria-hidden />
       {placeLabel(place)}
     </span>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Character, type Pose } from "@/components/character";
 import type { AvatarPresetId } from "@/components/avatar-presets";
@@ -556,7 +556,7 @@ export function GameScreen({
               aria-label="Esci"
               className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#FFF8EA]/30 text-[#FFF8EA]"
             >
-              <X size={20} />
+              <IconX size={20} />
             </button>
           )}
           <div className="min-w-0 flex-1">{hud}</div>

@@ -195,7 +195,7 @@ body {
 .court-lines rect,
 .court-lines circle {
   fill: none;
-  stroke: rgb(255 250 240 / 0.14);
+  stroke: rgb(255 250 240 / 0.3);
   stroke-width: 2.5;
 }
 .court-lines.draw path,

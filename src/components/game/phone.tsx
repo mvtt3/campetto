@@ -2,19 +2,19 @@
 
 import clsx from "clsx";
 import {
-  CalendarDays,
-  Camera,
-  Car,
-  ChevronLeft,
-  Dices,
-  FileSignature,
-  House,
-  Landmark,
-  Map as MapIcon,
-  MessageCircle,
-  PawPrint,
-  ShoppingBag,
-} from "lucide-react";
+  IconBuildingBank,
+  IconCalendar,
+  IconCamera,
+  IconCar,
+  IconChevronLeft,
+  IconDice5,
+  IconHome,
+  IconMap,
+  IconMessageCircle,
+  IconPaw,
+  IconShoppingBag,
+  IconSignature,
+} from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Character } from "@/components/character";
 import { PresetAvatar } from "@/components/avatar-presets";
@@ -102,7 +102,7 @@ function AppHeader({ title, back, sub }: { title: ReactNode; back: () => void; s
   return (
     <div className="flex shrink-0 items-center gap-2 border-b-2 border-line px-3 py-2.5">
       <button onClick={back} aria-label="Indietro" className="press sticker-sm grid h-11 w-11 place-items-center rounded-full bg-surface">
-        <ChevronLeft size={22} />
+        <IconChevronLeft size={22} />
       </button>
       <div className="min-w-0 flex-1">
         <h2 className="display truncate text-[22px]">{title}</h2>
@@ -121,17 +121,17 @@ function PhoneHome({ go, back }: { go: (v: View) => void; back: () => void }) {
     toast(`${name}: arriva presto`, "info");
   };
   const apps: { name: string; icon: ReactNode; bg: string; badge?: number; on: () => void; testId?: string }[] = [
-    { name: "Messaggi", icon: <MessageCircle size={30} />, bg: "#2E9E5B", badge: unread, on: () => go("telefono:messaggi"), testId: "app-messaggi" },
-    { name: "Banca", icon: <Landmark size={30} />, bg: "#1D3B66", badge: game.badges.banca, on: () => go("telefono:banca"), testId: "app-banca" },
-    { name: "Contratti", icon: <FileSignature size={30} />, bg: "#7C4DCC", badge: game.badges.contratti, on: () => go("telefono:contratti"), testId: "app-contratti" },
-    { name: "Shopping", icon: <ShoppingBag size={30} />, bg: "#F26A1B", on: () => go("telefono:shopping"), testId: "app-shopping" },
-    { name: "Calendario", icon: <CalendarDays size={30} />, bg: "#E5412D", on: () => go("telefono:calendario") },
-    { name: "Instacampo", icon: <Camera size={30} />, bg: "#C93B78", on: () => go("telefono:instacampo"), testId: "app-instacampo" },
-    { name: "Mappa", icon: <MapIcon size={30} />, bg: "#1597A6", badge: mapEvent(game) ? 1 : 0, on: () => go("telefono:mappa"), testId: "app-mappa" },
-    { name: "Motori", icon: <Car size={30} />, bg: "#3A342D", on: () => go("telefono:motori"), testId: "app-motori" },
-    { name: "Case", icon: <House size={30} />, bg: "#8A5A2B", on: soon("Le case") },
-    { name: "Scommesse", icon: <Dices size={30} />, bg: "#B3261E", on: soon("Le scommesse") },
-    { name: "Cucciolo", icon: <PawPrint size={30} />, bg: "#E8A80C", on: soon("Il tuo cucciolo") },
+    { name: "Messaggi", icon: <IconMessageCircle size={30} />, bg: "#2E9E5B", badge: unread, on: () => go("telefono:messaggi"), testId: "app-messaggi" },
+    { name: "Banca", icon: <IconBuildingBank size={30} />, bg: "#1D3B66", badge: game.badges.banca, on: () => go("telefono:banca"), testId: "app-banca" },
+    { name: "Contratti", icon: <IconSignature size={30} />, bg: "#7C4DCC", badge: game.badges.contratti, on: () => go("telefono:contratti"), testId: "app-contratti" },
+    { name: "Shopping", icon: <IconShoppingBag size={30} />, bg: "#F26A1B", on: () => go("telefono:shopping"), testId: "app-shopping" },
+    { name: "Calendario", icon: <IconCalendar size={30} />, bg: "#E5412D", on: () => go("telefono:calendario") },
+    { name: "Instacampo", icon: <IconCamera size={30} />, bg: "#C93B78", on: () => go("telefono:instacampo"), testId: "app-instacampo" },
+    { name: "Mappa", icon: <IconMap size={30} />, bg: "#1597A6", badge: mapEvent(game) ? 1 : 0, on: () => go("telefono:mappa"), testId: "app-mappa" },
+    { name: "Motori", icon: <IconCar size={30} />, bg: "#3A342D", on: () => go("telefono:motori"), testId: "app-motori" },
+    { name: "Case", icon: <IconHome size={30} />, bg: "#8A5A2B", on: soon("Le case") },
+    { name: "Scommesse", icon: <IconDice5 size={30} />, bg: "#B3261E", on: soon("Le scommesse") },
+    { name: "Cucciolo", icon: <IconPaw size={30} />, bg: "#E8A80C", on: soon("Il tuo cucciolo") },
   ];
   const tut = game.tutorial.step;
   return (

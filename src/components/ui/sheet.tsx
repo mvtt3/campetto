@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 import { Drawer } from "vaul";
 import type { ReactNode } from "react";
 
@@ -47,7 +47,7 @@ export function Sheet({
             aria-label="Chiudi"
             className="press absolute right-3.5 top-3.5 z-10 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text"
           >
-            <X size={18} strokeWidth={2.4} />
+            <IconX size={18} strokeWidth={2.4} />
           </Drawer.Close>
           <div className="shrink-0 px-12 pb-2 pt-3 text-center">
             <Drawer.Title className="display text-[22px]">{title}</Drawer.Title>

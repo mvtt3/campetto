@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { IconChevronRight } from "@tabler/icons-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
 import { fmt } from "@/components/ui/basics";
@@ -123,7 +123,7 @@ function AdvancedLink({ playerId, self }: { playerId: string; self: boolean }) {
             : "Mappa di tiro, assist, impatto"}
         </span>
       </span>
-      <ChevronRight size={18} className="shrink-0 text-faint" />
+      <IconChevronRight size={18} className="shrink-0 text-faint" />
     </Link>
   );
 }

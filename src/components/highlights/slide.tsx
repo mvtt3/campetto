@@ -2,13 +2,13 @@
 
 import clsx from "clsx";
 import {
-  ChevronsLeft,
-  ChevronsRight,
-  Heart,
-  MessageCircle,
-  Play,
-  RotateCcw,
-} from "lucide-react";
+  IconChevronsLeft,
+  IconChevronsRight,
+  IconHeart,
+  IconMessageCircle,
+  IconPlayerPlayFilled,
+  IconRotate,
+} from "@tabler/icons-react";
 import {
   memo,
   useCallback,
@@ -450,9 +450,9 @@ export const Slide = memo(function Slide(p: SlideProps) {
             aria-hidden
           >
             {skip.side === "l" ? (
-              <ChevronsLeft size={30} strokeWidth={2.4} />
+              <IconChevronsLeft size={30} strokeWidth={2.4} />
             ) : (
-              <ChevronsRight size={30} strokeWidth={2.4} />
+              <IconChevronsRight size={30} strokeWidth={2.4} />
             )}
             10 s
           </span>
@@ -460,7 +460,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
 
         {active && userPaused && !failed && (
           <span className="hl-paused pointer-events-none absolute left-1/2 top-1/2 grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#17130f]/45 text-[#f6eedc]">
-            <Play size={34} fill="currentColor" aria-hidden />
+            <IconPlayerPlayFilled size={34} fill="currentColor" aria-hidden />
           </span>
         )}
 
@@ -508,7 +508,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
                 }}
                 className="press flex h-10 items-center gap-1.5 rounded-full bg-[#f47a2e] px-4 text-[14px] font-bold text-[#fffaf0]"
               >
-                <RotateCcw size={16} aria-hidden /> Riprova
+                <IconRotate size={16} aria-hidden /> Riprova
               </button>
             </div>
           </div>
@@ -577,7 +577,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
             key={p.liked ? "on" : "off"}
             className={clsx("hl-icon", p.liked && "hl-pop")}
           >
-            <Heart
+            <IconHeart
               size={29}
               strokeWidth={2}
               className={p.liked ? "text-[#ff5a4a]" : "text-[#f6eedc]"}
@@ -595,7 +595,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
           className="press flex h-[58px] w-12 flex-col items-center justify-center gap-1"
           data-testid="hl-comments"
         >
-          <MessageCircle
+          <IconMessageCircle
             size={28}
             strokeWidth={2}
             className="hl-icon -scale-x-100 text-[#f6eedc]"

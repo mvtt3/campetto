@@ -1,7 +1,13 @@
 "use client";
 
 import clsx from "clsx";
-import { ChevronLeft, Heart, MoveUp, Volume2, VolumeX } from "lucide-react";
+import {
+  IconArrowNarrowUp,
+  IconChevronLeft,
+  IconHeart,
+  IconVolume,
+  IconVolumeOff,
+} from "@tabler/icons-react";
 import {
   useCallback,
   useEffect,
@@ -548,7 +554,7 @@ export default function HighlightsFeed({
             className="press pointer-events-auto grid h-11 w-11 place-items-center rounded-full text-[#f6eedc]"
             data-testid="hl-close"
           >
-            <ChevronLeft size={30} strokeWidth={2.4} className="hl-icon" />
+            <IconChevronLeft size={30} strokeWidth={2.4} className="hl-icon" />
           </button>
           {/* Solo il nome, come nelle app di video: niente contatori né barre di posizione. */}
           <span className="hl-brand display text-[19px] tracking-wide">
@@ -571,13 +577,13 @@ export default function HighlightsFeed({
             data-testid="hl-sound"
           >
             {music.state === "on" ? (
-              <Volume2 size={24} className="hl-icon" />
+              <IconVolume size={24} className="hl-icon" />
             ) : music.state === "blocked" ? (
               <>
-                <VolumeX size={17} aria-hidden /> Musica
+                <IconVolumeOff size={17} aria-hidden /> Musica
               </>
             ) : (
-              <VolumeX size={24} className="hl-icon" />
+              <IconVolumeOff size={24} className="hl-icon" />
             )}
           </button>
         </div>
@@ -606,12 +612,12 @@ export default function HighlightsFeed({
               >
                 {hint === "swipe" ? (
                   <>
-                    <MoveUp size={18} aria-hidden /> Scorri in su per la partita
+                    <IconArrowNarrowUp size={18} aria-hidden /> Scorri in su per la partita
                     dopo
                   </>
                 ) : (
                   <>
-                    <Heart size={18} aria-hidden /> Due tocchi per il mi piace
+                    <IconHeart size={18} aria-hidden /> Due tocchi per il mi piace
                   </>
                 )}
               </p>

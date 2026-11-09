@@ -2,7 +2,13 @@
 
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, MapPin, Plus, X } from "lucide-react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconMapPin,
+  IconPlus,
+  IconX,
+} from "@tabler/icons-react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RainedOut } from "@/components/rained-out";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
@@ -199,7 +205,7 @@ function NewProposalSheet({
           {/* Indoor: la via della palestra, subito sotto. Si ricorda l'ultima. */}
           {place === "indoor" && (
             <div className="fade-in mt-2 flex h-12 items-center gap-2 rounded-2xl bg-raised pl-3.5 pr-1.5 focus-within:ring-2 focus-within:ring-ball">
-              <MapPin size={18} strokeWidth={2.4} className="shrink-0 text-ball" aria-hidden />
+              <IconMapPin size={18} strokeWidth={2.4} className="shrink-0 text-ball" aria-hidden />
               <input
                 aria-label="Via della palestra"
                 value={address}
@@ -218,7 +224,7 @@ function NewProposalSheet({
                   aria-label="Cancella la via"
                   className="press grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted"
                 >
-                  <X size={17} />
+                  <IconX size={17} />
                 </button>
               )}
             </div>
@@ -345,7 +351,7 @@ function OrganizeInner() {
             aria-label="Proponi una partita"
             className="sticker press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ball text-ball-ink"
           >
-            <Plus size={22} strokeWidth={2.8} />
+            <IconPlus size={22} strokeWidth={2.8} />
           </button>
         }
       />
@@ -366,7 +372,7 @@ function OrganizeInner() {
             }}
             className="grid h-10 w-10 place-items-center rounded-full active:bg-raised disabled:opacity-25"
           >
-            <ChevronLeft size={20} />
+            <IconChevronLeft size={20} />
           </button>
           <p className="title text-[17px]">
             {thisWeek
@@ -381,7 +387,7 @@ function OrganizeInner() {
             }}
             className="grid h-10 w-10 place-items-center rounded-full active:bg-raised"
           >
-            <ChevronRight size={20} />
+            <IconChevronRight size={20} />
           </button>
         </div>
         <div className="grid grid-cols-7 gap-1.5">

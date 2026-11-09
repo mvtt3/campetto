@@ -3,19 +3,19 @@
 import clsx from "clsx";
 import Link from "next/link";
 import {
-  CalendarDays,
-  Clapperboard,
-  Crown,
-  Flame,
-  Layers2,
-  Lock,
-  Megaphone,
-  Newspaper,
-  Sparkles,
-  Trophy,
-  X,
-  Zap,
-} from "lucide-react";
+  IconBolt,
+  IconCalendar,
+  IconCrown,
+  IconFlame,
+  IconLock,
+  IconMovie,
+  IconNews,
+  IconSparkles,
+  IconSpeakerphone,
+  IconStack2,
+  IconTrophy,
+  IconX,
+} from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { Drawer } from "vaul";
 import { useData } from "@/lib/data/provider";
@@ -29,17 +29,17 @@ import { useNow } from "@/lib/use-now";
 import { useHighlights } from "@/components/highlights/provider";
 import { NewDot } from "@/components/new-dot";
 
-const ICON: Record<NewsIcon, typeof Flame> = {
-  record: Trophy,
-  fire: Flame,
-  double: Layers2,
-  streak: Zap,
-  crown: Crown,
-  calendar: CalendarDays,
-  season: Sparkles,
-  megaphone: Megaphone,
-  leader: Trophy,
-  video: Clapperboard,
+const ICON: Record<NewsIcon, typeof IconFlame> = {
+  record: IconTrophy,
+  fire: IconFlame,
+  double: IconStack2,
+  streak: IconBolt,
+  crown: IconCrown,
+  calendar: IconCalendar,
+  season: IconSparkles,
+  megaphone: IconSpeakerphone,
+  leader: IconTrophy,
+  video: IconMovie,
 };
 const TINT: Record<NewsIcon, string> = {
   record: "bg-volt text-volt-ink",
@@ -118,7 +118,7 @@ export function NewsButton({
       }
       className="sticker-sm press relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface"
     >
-      <Newspaper size={20} />
+      <IconNews size={20} />
       {unseen > 0 && (
         <span
           aria-hidden
@@ -164,11 +164,11 @@ function SeasonPreview() {
               )}
             >
               {t === 1 ? (
-                <Sparkles size={18} />
+                <IconSparkles size={18} />
               ) : t === 6 ? (
-                <Crown size={20} />
+                <IconCrown size={20} />
               ) : (
-                <Lock size={15} />
+                <IconLock size={15} />
               )}
               <span className="absolute -bottom-2 rounded-full border border-[#1d1a16] bg-[#fffaf0] px-1 text-[9px] font-bold text-[#1d1a16]">
                 {t}
@@ -312,7 +312,7 @@ export function NewsPanel({
           className="safe-top fixed inset-y-0 right-0 z-50 flex w-[88vw] max-w-[420px] flex-col rounded-l-[28px] border-[2.5px] border-r-0 border-edge bg-bg outline-none will-change-transform [contain:layout_paint]"
         >
           <div className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-3">
-            <Newspaper size={22} className="text-court" aria-hidden />
+            <IconNews size={22} className="text-court" aria-hidden />
             <Drawer.Title className="display flex-1 text-[24px]">
               Notizie
             </Drawer.Title>
@@ -320,7 +320,7 @@ export function NewsPanel({
               aria-label="Chiudi"
               className="press grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface"
             >
-              <X size={18} strokeWidth={2.4} />
+              <IconX size={18} strokeWidth={2.4} />
             </Drawer.Close>
           </div>
           <div
@@ -339,7 +339,7 @@ export function NewsPanel({
                     TINT.season,
                   )}
                 >
-                  <Sparkles size={18} aria-hidden />
+                  <IconSparkles size={18} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[14.5px] font-bold leading-snug">

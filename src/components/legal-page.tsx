@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { IconChevronLeft } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 export function LegalPage({
@@ -20,7 +20,7 @@ export function LegalPage({
             aria-label="Indietro"
             className="-ml-2 grid h-11 w-11 place-items-center rounded-full"
           >
-            <ChevronLeft size={24} />
+            <IconChevronLeft size={24} />
           </Link>
           <h1 className="title text-[24px]">{title}</h1>
         </div>

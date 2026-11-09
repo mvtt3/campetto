@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, ImagePlus } from "lucide-react";
+import { IconCheck, IconPhotoPlus } from "@tabler/icons-react";
 import { useRef } from "react";
 import {
   AVATAR_PRESETS,
@@ -73,7 +73,7 @@ export function AvatarPicker({
                   on ? "text-text" : "text-muted",
                 )}
               >
-                {on && <Check size={13} strokeWidth={3} className="text-ok" />}
+                {on && <IconCheck size={13} strokeWidth={3} className="text-ok" />}
                 {p.name}
               </span>
             </button>
@@ -90,7 +90,7 @@ export function AvatarPicker({
             isPhoto ? "sticker bg-volt text-volt-ink" : "sticker-sm bg-surface",
           )}
         >
-          {uploading ? <Spinner size={12} /> : <ImagePlus size={18} />}
+          {uploading ? <Spinner size={12} /> : <IconPhotoPlus size={18} />}
           {isPhoto ? "Foto tua (cambia)" : "Dalla galleria"}
         </button>
         {onInitials && (

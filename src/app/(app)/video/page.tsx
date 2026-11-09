@@ -2,7 +2,13 @@
 
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, FileVideo, ScanSearch, Undo2 } from "lucide-react";
+import {
+  IconArrowBackUp,
+  IconChevronLeft,
+  IconChevronRight,
+  IconScan,
+  IconVideo,
+} from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   teamIds,
@@ -283,7 +289,7 @@ export default function VideoPage() {
         />
         <main className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-3">
           <label className="flex h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl bg-surface px-4">
-            <FileVideo size={24} className="shrink-0 text-ball" />
+            <IconVideo size={24} className="shrink-0 text-ball" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[15px] font-semibold">
                 {file ? file.name : "Scegli il video della partita"}
@@ -306,7 +312,7 @@ export default function VideoPage() {
             />
           </label>
           <label className="flex h-14 shrink-0 cursor-pointer items-center gap-3 rounded-2xl bg-surface px-4">
-            <ScanSearch size={22} className="shrink-0 text-court" />
+            <IconScan size={22} className="shrink-0 text-court" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[14px] font-semibold">
                 {shots
@@ -518,7 +524,7 @@ export default function VideoPage() {
           }}
           className="grid h-10 w-10 place-items-center rounded-full bg-raised disabled:opacity-30"
         >
-          <Undo2 size={18} />
+          <IconArrowBackUp size={18} />
         </button>
       </div>
       <p
@@ -540,7 +546,7 @@ export default function VideoPage() {
             onClick={() => goToShot(shotIdx - 1)}
             className="grid h-9 w-9 place-items-center rounded-full bg-raised disabled:opacity-30"
           >
-            <ChevronLeft size={18} />
+            <IconChevronLeft size={18} />
           </button>
           <button
             onClick={() => goToShot(shotIdx)}
@@ -561,7 +567,7 @@ export default function VideoPage() {
             onClick={() => goToShot(shotIdx + 1)}
             className="grid h-9 w-9 place-items-center rounded-full bg-raised disabled:opacity-30"
           >
-            <ChevronRight size={18} />
+            <IconChevronRight size={18} />
           </button>
         </div>
       )}

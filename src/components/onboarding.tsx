@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, ShieldAlert } from "lucide-react";
+import { IconArrowLeft, IconShieldExclamation } from "@tabler/icons-react";
 import { useState } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { Mascot } from "@/components/mascot";
@@ -64,7 +64,7 @@ export function Onboarding({ me }: { me: Player }) {
               aria-label="Indietro"
               className="press -ml-2 grid h-11 w-11 place-items-center rounded-full"
             >
-              <ArrowLeft size={22} />
+              <IconArrowLeft size={22} />
             </button>
           )}
           <p className="ml-auto rounded-full border-2 border-[#1d1a16] bg-[#fffaf0] px-3 py-1 text-[13px] font-bold">
@@ -118,7 +118,7 @@ export function Onboarding({ me }: { me: Player }) {
                       role="alert"
                     >
                       <p className="flex items-center justify-center gap-1.5 text-[13.5px] font-bold text-[#b5281a]">
-                        <ShieldAlert size={16} aria-hidden /> {OFFENSIVE_NAME}
+                        <IconShieldExclamation size={16} aria-hidden /> {OFFENSIVE_NAME}
                       </p>
                       <p className="mt-1.5 text-[12.5px] font-semibold text-[#3d342a]">
                         Prova con

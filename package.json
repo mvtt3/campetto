@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
+    "@tabler/icons-react": "3.49.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "lucide-react": "^1.64.0",
     "motion": "^14.7.1",
     "next": "16.4.3",
     "react": "19.3.0",

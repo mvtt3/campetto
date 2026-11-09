@@ -3,7 +3,7 @@
 import { play, type SoundName } from "@/lib/sound";
 import clsx from "clsx";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { IconChevronLeft } from "@tabler/icons-react";
 import { animate, motion, useReducedMotion } from "motion/react";
 import {
   startTransition,
@@ -109,11 +109,11 @@ export function ScreenHeader({
         {back &&
           (typeof back === "string" ? (
             <Link href={back} aria-label="Indietro" className={backCls}>
-              <ChevronLeft size={22} />
+              <IconChevronLeft size={22} />
             </Link>
           ) : (
             <button onClick={back} aria-label="Indietro" className={backCls}>
-              <ChevronLeft size={22} />
+              <IconChevronLeft size={22} />
             </button>
           ))}
         <div className="min-w-0 flex-1">

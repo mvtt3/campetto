@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Crown } from "lucide-react";
+import { IconCrown } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, haptic } from "@/components/ui/basics";
@@ -221,7 +221,7 @@ function BoardLine({ pos, row, p, me, king }: { pos: number; row: BoardRow; p?: 
       </span>
       {king && (
         <span className="flex items-center gap-0.5 text-[11.5px] font-bold text-gold" title="Re di ieri">
-          <Crown size={15} /> ieri
+          <IconCrown size={15} /> ieri
         </span>
       )}
       <span className="num text-[18px]">{row.best}</span>

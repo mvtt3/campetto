@@ -1,6 +1,11 @@
 "use client";
 
-import { BookOpen, ChevronLeft, Gift, X } from "lucide-react";
+import {
+  IconBook,
+  IconChevronLeft,
+  IconGift,
+  IconX,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -144,11 +149,11 @@ function GameShell() {
         <header className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-[max(10px,env(safe-area-inset-top))]">
           {kind === "hub" ? (
             <button onClick={exit} aria-label="Esci dal gioco" className="press sticker-sm grid h-11 w-11 place-items-center rounded-full bg-surface" data-testid="game-exit">
-              <X size={22} />
+              <IconX size={22} />
             </button>
           ) : (
             <button onClick={back} aria-label="Indietro" className="press sticker-sm grid h-11 w-11 place-items-center rounded-full bg-surface">
-              <ChevronLeft size={22} />
+              <IconChevronLeft size={22} />
             </button>
           )}
           {kind === "hub" ? (
@@ -159,10 +164,10 @@ function GameShell() {
               </span>
               <span className="flex-1" />
               <button onClick={() => go("guida")} aria-label="Guida" className="press sticker-sm grid h-11 w-11 place-items-center rounded-full bg-surface">
-                <BookOpen size={20} />
+                <IconBook size={20} />
               </button>
               <button onClick={() => setDaily(true)} aria-label="Premio del giorno" className="press sticker-sm relative grid h-11 w-11 place-items-center rounded-full bg-surface">
-                <Gift size={20} />
+                <IconGift size={20} />
                 {!dailyStatus(game, today).claimed && <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-edge bg-danger" />}
               </button>
             </>
@@ -256,7 +261,7 @@ function Intro({ onStart, onSkip, onExit }: { onStart: () => void; onSkip: () =>
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(20px,env(safe-area-inset-bottom))] pt-[max(14px,env(safe-area-inset-top))]">
       <button onClick={onExit} aria-label="Esci" className="press sticker-sm grid h-11 w-11 place-items-center self-start rounded-full bg-surface">
-        <X size={22} />
+        <IconX size={22} />
       </button>
       <div className="court relative mt-3 flex items-end justify-center gap-2 rounded-[28px] px-4 pb-3 pt-5">
         <Mascot pose="ciao" size={96} className="short:h-[64px] short:w-auto" />

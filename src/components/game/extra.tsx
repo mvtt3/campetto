@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Lock } from "lucide-react";
+import { IconLock } from "@tabler/icons-react";
 import { useState } from "react";
 import { Character } from "@/components/character";
 import { Button } from "@/components/ui/basics";
@@ -299,7 +299,7 @@ export function Career({ go }: { go: (v: View) => void }) {
                 </span>
               </span>
               {k === cur && <span className="text-[12px] font-bold">Sei qui</span>}
-              {k > cur && <Lock size={18} />}
+              {k > cur && <IconLock size={18} />}
             </li>
           ))}
           <li className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-line-strong px-3 py-2 opacity-70">
@@ -310,7 +310,7 @@ export function Career({ go }: { go: (v: View) => void }) {
                 {LEGA_TEAMS[0]}, {LEGA_TEAMS[2]}… arriva più avanti
               </span>
             </span>
-            <Lock size={18} />
+            <IconLock size={18} />
           </li>
         </ol>
       </div>

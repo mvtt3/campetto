@@ -2,7 +2,7 @@
 
 import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
-import { MoveDown, MoveHorizontal, X } from "lucide-react";
+import { IconArrowNarrowDown, IconArrowsHorizontal, IconX } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -413,7 +413,7 @@ function Coach({
           aria-label={active.mode === "welcome" ? "Ora no" : "Chiudi la guida"}
           className="absolute right-2.5 top-2.5 grid h-9 w-9 place-items-center rounded-full text-muted"
         >
-          <X size={19} />
+          <IconX size={19} />
         </button>
         <div
           key={`${active.mode}-${active.section}-${active.step}`}
@@ -531,12 +531,12 @@ function GestureHint({ kind }: { kind: "swipe" | "pull" }) {
         >
           {kind === "swipe" ? (
             <>
-              <MoveHorizontal size={18} aria-hidden /> Scorri di lato per
+              <IconArrowsHorizontal size={18} aria-hidden /> Scorri di lato per
               cambiare scheda
             </>
           ) : (
             <>
-              <MoveDown size={18} aria-hidden /> Tira giù per aggiornare
+              <IconArrowNarrowDown size={18} aria-hidden /> Tira giù per aggiornare
             </>
           )}
         </p>
@@ -585,7 +585,7 @@ function Completion({
           aria-label="Chiudi"
           className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
         >
-          <X size={17} />
+          <IconX size={17} />
         </button>
       </div>
     </div>,

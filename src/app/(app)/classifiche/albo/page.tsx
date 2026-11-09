@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Crown, Trophy } from "lucide-react";
+import { IconCrown, IconTrophy } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { MatchSheet } from "@/components/match-sheet";
 import { Avatar } from "@/components/ui/avatar";
@@ -120,7 +120,7 @@ export default function HallPage() {
                             : "bg-raised text-muted",
                         )}
                       >
-                        <Trophy size={18} />
+                        <IconTrophy size={18} />
                       </span>
                       <p className="mt-1.5 text-[13px] font-bold leading-tight [text-wrap:balance]">
                         {seasonLabel(s.year, s.quarter).replace(
@@ -173,7 +173,7 @@ export default function HallPage() {
                     </p>
                     {mo.mvp ? (
                       <p className="mt-1.5 flex items-center justify-center gap-1.5 text-[14px]">
-                        <Crown size={16} className="text-gold" /> MVP{" "}
+                        <IconCrown size={16} className="text-gold" /> MVP{" "}
                         <span className="font-bold">
                           {name(mo.mvp.playerId)}
                         </span>

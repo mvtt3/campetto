@@ -2,7 +2,12 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, BookOpen, Crown } from "lucide-react";
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconBook,
+  IconCrown,
+} from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
@@ -100,7 +105,7 @@ function Podium({ rows }: { rows: Row[] }) {
           >
             <div className="flex w-full min-w-0 flex-col items-center">
               {place === 1 && (
-                <Crown size={22} className="mb-1 text-gold" aria-hidden />
+                <IconCrown size={22} className="mb-1 text-gold" aria-hidden />
               )}
               {/* Sul podio salgono i personaggi. */}
               {p && (
@@ -232,7 +237,7 @@ function MeDock({
   onGo: () => void;
 }) {
   const { me, data } = useData();
-  const Arrow = above ? ArrowUp : ArrowDown;
+  const Arrow = above ? IconArrowUp : IconArrowDown;
   return (
     <div className="sticky bottom-0 z-10 h-0">
       <button
@@ -450,7 +455,7 @@ export function RankingScreen() {
             aria-label="Record e albo d'oro"
             className="press flex h-11 items-center gap-2 rounded-full bg-surface px-4 text-[14px] font-semibold sticker-sm"
           >
-            <BookOpen size={17} className="text-court" /> Albo
+            <IconBook size={17} className="text-court" /> Albo
           </Link>
         }
       />

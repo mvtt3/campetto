@@ -14,7 +14,7 @@ import {
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
-import { Eye, WifiOff } from "lucide-react";
+import { IconEye, IconWifiOff } from "@tabler/icons-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { BadgeCelebration } from "@/components/badge-celebration";
 import { Mascot } from "@/components/mascot";
@@ -305,7 +305,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 className="safe-top flex items-center justify-center gap-2 bg-court px-3 py-1.5 text-[12.5px] font-semibold text-court-ink"
                 role="status"
               >
-                <Eye size={14} aria-hidden /> Stai vedendo l&apos;app come gli
+                <IconEye size={14} aria-hidden /> Stai vedendo l&apos;app come gli
                 altri
                 <button
                   onClick={() => playerView.set(false)}
@@ -317,7 +317,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             )}
             {!online && (
               <div className="safe-top flex items-center justify-center gap-2 bg-ball px-4 py-1.5 text-[12.5px] font-semibold text-ball-ink">
-                <WifiOff size={14} /> Sei offline: ti mostro gli ultimi dati che
+                <IconWifiOff size={14} /> Sei offline: ti mostro gli ultimi dati che
                 ho salvato
               </div>
             )}

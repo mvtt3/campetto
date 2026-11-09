@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { X } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 import {
   useEffect,
   useId,
@@ -146,7 +146,7 @@ export function InfoTip({
               onClick={() => setOpen(false)}
               className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full text-muted"
             >
-              <X size={15} />
+              <IconX size={15} />
             </button>
             {children}
           </div>,

@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { SkipForward } from "lucide-react";
+import { IconPlayerSkipForward } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Character } from "@/components/character";
 import { Button } from "@/components/ui/basics";
@@ -711,7 +711,7 @@ function LiveMatch({
                 className="press sticker-sm display flex h-14 min-w-0 flex-1 items-center justify-center gap-1 rounded-full bg-court px-2 text-[15.5px] text-court-ink disabled:opacity-50"
                 data-testid="live-skip"
               >
-                <SkipForward size={18} className="shrink-0" />
+                <IconPlayerSkipForward size={18} className="shrink-0" />
                 <span className="truncate">{moreForMe ? "Al tuo turno" : "Vai al finale"}</span>
               </button>
               <button

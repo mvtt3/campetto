@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { useRef } from "react";
 import {
   isBeforeStart,
@@ -93,7 +93,7 @@ export function PeriodPicker({
               disabled={isBeforeStart(shift(value, -1))}
               className="press grid h-10 w-10 place-items-center rounded-full disabled:opacity-25"
             >
-              <ChevronLeft size={20} />
+              <IconChevronLeft size={20} />
             </button>
             <p
               className="title min-w-0 flex-1 truncate text-center text-[16px]"
@@ -107,7 +107,7 @@ export function PeriodPicker({
               disabled={isFuture(shift(value, 1))}
               className="press grid h-10 w-10 place-items-center rounded-full disabled:opacity-25"
             >
-              <ChevronRight size={20} />
+              <IconChevronRight size={20} />
             </button>
           </>
         ) : (

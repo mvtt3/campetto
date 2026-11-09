@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Clock, Lock, ShieldAlert } from "lucide-react";
+import { IconClock, IconLock, IconShieldExclamation } from "@tabler/icons-react";
 import { useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/basics";
@@ -92,7 +92,7 @@ export function NameSheet({
       >
         <div className="flex flex-col items-center gap-3 pb-2 pt-1 text-center">
           <span className="grid h-16 w-16 place-items-center rounded-full bg-raised text-muted">
-            <Lock size={28} aria-hidden />
+            <IconLock size={28} aria-hidden />
           </span>
           <p className="max-w-[30ch] text-[15px] leading-snug">
             Hai già cambiato nome di recente. Potrai cambiarlo di nuovo da{" "}
@@ -170,7 +170,7 @@ export function NameSheet({
             role="alert"
           >
             <p className="flex items-center justify-center gap-1.5 text-[13.5px] font-bold text-danger">
-              <ShieldAlert size={15} aria-hidden /> {OFFENSIVE_NAME}
+              <IconShieldExclamation size={15} aria-hidden /> {OFFENSIVE_NAME}
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-1.5">
               {nickIdeas(
@@ -200,7 +200,7 @@ export function NameSheet({
           </p>
         )}
         <p className="flex w-full items-start gap-2 rounded-[16px] bg-court-soft px-3 py-2.5 text-left text-[13px] leading-snug">
-          <Clock size={16} className="mt-px shrink-0 text-court" aria-hidden />
+          <IconClock size={16} className="mt-px shrink-0 text-court" aria-hidden />
           <span>
             Il nome si cambia una volta ogni {NAME_COOLDOWN_DAYS} giorni: dopo
             questo, il prossimo cambio sarà possibile da {dayLong(nextFree)}
