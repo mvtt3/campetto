@@ -6,7 +6,6 @@ import {
   namesList,
   proposalPhase,
   rainedOutToday,
-  autoCancelAt,
 } from "@/lib/proposals";
 import type { Proposal } from "@/lib/types";
 
@@ -128,17 +127,5 @@ describe("partita annullata per pioggia", () => {
     const plain = { ...rained, cancelReason: null };
     expect(rainedOutToday([plain], new Date(2026, 10, 3, 18, 40))).toBeNull();
     expect(rainedOutToday([proposal([])], new Date(2026, 10, 3, 18, 40))).toBeNull();
-  });
-});
-
-describe("annullamento automatico", () => {
-  const base = { ...proposal([]), startsAt: "2026-11-05T17:00:00Z" };
-  it("12 ore prima se proposta con anticipo; se cade di notte, alle 8", () => {
-    expect(autoCancelAt({ ...base, startsAt: "2026-11-05T19:30:00Z", createdAt: "2026-11-03T10:00:00Z" })?.toISOString()).toBe("2026-11-05T07:30:00.000Z");
-    expect(autoCancelAt({ ...base, createdAt: "2026-11-03T10:00:00Z" })?.toISOString()).toBe("2026-11-05T07:00:00.000Z");
-  });
-  it("2 ore prima se proposta all'ultimo, mai se meno di 3 ore prima", () => {
-    expect(autoCancelAt({ ...base, createdAt: "2026-11-05T10:00:00Z" })?.toISOString()).toBe("2026-11-05T15:00:00.000Z");
-    expect(autoCancelAt({ ...base, createdAt: "2026-11-05T15:30:00Z" })).toBeNull();
   });
 });

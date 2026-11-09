@@ -132,27 +132,3 @@ export function rainedOutToday(proposals: Proposal[], now: Date): Proposal | nul
       .sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0] ?? null
   );
 }
-
-/**
- * Quando la partita si annulla da sola se non arriva al minimo di "ci sono" (come nel
- * database, cron_auto_cancel): 12 ore prima; per le proposte fatte con meno anticipo, 2 ore
- * prima (se fatte almeno 3 ore prima). null: non si annulla da sola.
- */
-export function autoCancelAt(p: Proposal): Date | null {
-  const start = new Date(p.startsAt).getTime();
-  const created = new Date(p.createdAt).getTime();
-  const h = 3_600_000;
-  let at: number;
-  if (created <= start - CONFIRM_HOURS * h) at = start - CONFIRM_HOURS * h;
-  else if (created <= start - 3 * h) at = start - 2 * h;
-  else return null;
-  // Di notte (23–8, ora di Roma) il giro non annulla: si decide alle 8.
-  const hour = (t: number) =>
-    Number(
-      new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Europe/Rome" }).format(t),
-    );
-  for (let i = 0; i < 24 && (hour(at) >= 23 || hour(at) < 8); i++) {
-    at = Math.ceil((at + 1) / (h / 2)) * (h / 2);
-  }
-  return at < start ? new Date(at) : null;
-}
