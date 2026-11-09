@@ -68,10 +68,49 @@ si riguardano uno per uno prima di pubblicarli.
 
 ## Da dove arriva
 
-La prima versione mandava il video a Gemini a spezzoni e gli chiedeva di segnare i canestri, poi
-ricontrollava ogni candidato su uno spezzone ravvicinato. Era lenta e segnava anche canestri che non
-c'erano, quindi è stata sostituita dal tracciamento fotogramma per fotogramma di `tiri.py`, che gira
-in locale, è gratis e si può tarare sui video veri.
+### La prima versione: un modello multimodale che guarda il video
+
+Il primo tentativo puntava al tabellino completo senza intervento umano. Uno script in Node prendeva
+il video della partita e lo faceva analizzare a un modello multimodale con input video, interrogato
+via API, in tre passaggi.
+
+1. **Dov'è il canestro.** Dal video si estraeva un fotogramma con ffmpeg e si chiedeva al modello il
+   riquadro del ferro e del tabellone, in coordinate normalizzate. Da lì si ricavava un ritaglio
+   quadrato attorno al canestro, usato per tutto il resto.
+2. **Ricerca a spezzoni.** Il video si tagliava in spezzoni di 70 secondi sovrapposti di 8, così che
+   un'azione a cavallo del taglio non andasse persa. Ogni spezzone partiva in due versioni
+   sincronizzate: l'inquadratura intera, ridotta a 640 px e 10 fotogrammi al secondo, e lo zoom sul
+   canestro a 480 px e 15 fotogrammi al secondo. Al modello si chiedeva un JSON con ogni canestro:
+   il secondo in cui la palla entra, quando parte il tiro, 2 o 3 punti, come riconoscere chi ha
+   segnato e chi ha passato (maglia, colore, pantaloncini), il tipo di tiro e quanto era sicuro. Nelle
+   zone sovrapposte lo stesso canestro poteva comparire due volte: si teneva quello più sicuro.
+3. **Verifica ravvicinata.** Ogni candidato si ricontrollava su uno spezzone di 8,5 secondi attorno al
+   momento, con lo zoom a 24 fotogrammi al secondo, chiedendo se la palla fosse davvero passata nella
+   retina ("sì", "no" o "incerto"). Per ogni canestro si salvava infine una striscia di fotogrammi,
+   per il controllo a occhio.
+
+### Perché è stata abbandonata
+
+- **Canestri che non c'erano.** Nel primo passaggio il modello segnava come canestri anche errori
+  seguiti da un rimbalzo vicino al ferro, palle che passavano davanti alla retina e azioni contate
+  due volte. La verifica ne toglieva una parte, ma ne restavano abbastanza da sballare il punteggio.
+- **Chi ha segnato non diventava un nome.** Il modello rispondeva con descrizioni come "maglia
+  chiara, pantaloncini rossi". Trasformarle in giocatori richiedeva comunque una persona, e con
+  colori simili tra le due squadre le descrizioni non bastavano a distinguere i giocatori.
+- **Lento e limitato.** Ogni partita richiedeva decine di richieste, con video da caricare ogni volta,
+  e il piano gratuito concede circa 20 richieste al giorno per modello. Con modelli sovraccarichi le richieste
+  andavano ripetute, anche per minuti.
+- **Non si poteva tarare.** Con un modello esterno non ci sono soglie da regolare né un modo
+  semplice per misurare e correggere gli errori su un insieme di partite.
+
+### La versione attuale
+
+Da qui la scelta di dividere il lavoro. La parte che un programma fa bene e in modo ripetibile,
+cioè trovare i tiri e capire se la palla entra, la fa `tiri.py` con la visione artificiale classica
+(OpenCV): gira in locale, è gratis, dà sempre lo stesso risultato sullo stesso video e si misura sui
+tabellini veri, come nella tabella sopra. La parte che sbagliava, cioè chi ha fatto cosa, la conferma
+una persona in **Segna dal video**, dove i tiri trovati sono già al loro posto e basta un tocco per
+dare un nome a ogni azione.
 
 ## Idee per migliorarlo
 
