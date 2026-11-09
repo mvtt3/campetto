@@ -365,26 +365,41 @@ export function ProposalCard({
       hour: "2-digit",
       minute: "2-digit",
     });
+    const minutes = Math.round((at.getTime() - now.getTime()) / 60_000);
+    const countdown =
+      minutes <= 0
+        ? null
+        : minutes < 60
+          ? `tra ${minutes} min`
+          : minutes < 48 * 60
+            ? `tra ${Math.round(minutes / 60)} ore`
+            : null;
     return (
       <div
         data-testid="proposal-card"
         data-phase={phase}
         className="flex flex-col gap-3.5 short:gap-3"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[14px] bg-ball-soft">
-            <span className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-ball">
+        <div className="flex items-stretch gap-3.5">
+          <div className="flex w-[60px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-court py-2 text-court-ink">
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] opacity-80">
               {at.toLocaleDateString("it-IT", { weekday: "short" })}
             </span>
-            <span className="num text-[19px] leading-none">{at.getDate()}</span>
+            <span className="num text-[26px] leading-none">{at.getDate()}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] opacity-70">
+              {at.toLocaleDateString("it-IT", { month: "short" })}
+            </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="title truncate text-[18px]">
-              <span className="first-letter:uppercase">{when}</span>
-              <span className="text-faint"> · </span>
-              <span className="tnum">{time}</span>
-            </p>
-            <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[13px] text-muted">
+          <div className="flex min-w-0 flex-1 flex-col justify-center">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
+                {when}
+                {countdown && <span className="text-ball"> · {countdown}</span>}
+              </p>
+              <WeatherChip at={proposal.startsAt} className="-mt-0.5 shrink-0" />
+            </div>
+            <p className="score text-[36px] leading-none">{time}</p>
+            <p className="mt-1.5 flex min-w-0 items-center gap-1 text-[13px] text-muted">
               {proposal.place && (
                 <IconMapPin size={13} className="shrink-0 text-ball" aria-hidden />
               )}
@@ -394,14 +409,16 @@ export function ProposalCard({
                   target="_blank"
                   rel="noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="truncate underline decoration-dotted underline-offset-2"
+                  className="truncate font-semibold text-text underline decoration-dotted underline-offset-2"
                   data-testid="indoor-address"
                 >
                   {indoorVia}
                 </a>
               ) : (
                 proposal.place && (
-                  <span className="truncate">{placeLabel(proposal.place)}</span>
+                  <span className="truncate font-semibold text-text">
+                    {placeLabel(proposal.place)}
+                  </span>
                 )
               )}
               {proposal.format && (
@@ -412,8 +429,8 @@ export function ProposalCard({
               )}
             </p>
           </div>
-          <WeatherChip at={proposal.startsAt} className="shrink-0" />
         </div>
+        <div className="h-px bg-line" aria-hidden />
         {who}
         {answers}
       </div>
