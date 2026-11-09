@@ -221,24 +221,23 @@ function MvpCard({
       {mvp && player ? (
         <>
           <span
-            className="mvp-float absolute -left-1 bottom-0 -z-10 drop-shadow-[0_14px_20px_rgb(120_50_0/0.35)]"
+            className="mvp-float absolute -bottom-24 -left-8 -z-10 drop-shadow-[0_10px_18px_rgb(242_106_27/0.35)]"
             aria-hidden
           >
             <Character
               id={characterOf(player)}
               outfit={player.outfit}
               number={player.jerseyNumber}
-              height={206}
+              height={300}
             />
           </span>
           <div className="ml-[42%] flex min-w-0 flex-1 flex-col">
-            <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em]">
-              <IconCrown size={13} />
+            <p className="text-[13px] font-semibold opacity-75">
               {mvp.period.kind === "month" && mvp.period.month !== undefined
-                ? MONTHS_IT[mvp.period.month]
-                : "MVP"}
-            </span>
-            <p className="display mt-3 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
+                ? `MVP di ${MONTHS_IT[mvp.period.month].toLowerCase()}`
+                : "MVP in carica"}
+            </p>
+            <p className="display mt-0.5 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
               {shortName(player, players)}
             </p>
             <div className="mt-3">
@@ -246,9 +245,9 @@ function MvpCard({
                 <span className="opacity-70">Punteggio MVP</span>
                 <span className="tnum">{score}</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/40">
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/35">
                 <span
-                  className="hero-bar block h-full rounded-full bg-volt-ink"
+                  className="hero-bar block h-full rounded-full bg-white"
                   style={{ width: `${score}%` }}
                 />
               </div>
