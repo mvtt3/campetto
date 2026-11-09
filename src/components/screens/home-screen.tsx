@@ -430,12 +430,11 @@ export function HomeScreen() {
             style={rise(hasNext ? 1 : 0)}
           >
             <div className="absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden>
-              <span className="blob -right-16 -top-20 h-56 w-56 bg-[radial-gradient(circle,rgb(255_197_49/0.45),transparent_68%)]" />
-              <span className="blob -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)]" />
-              <span className="blob -bottom-10 right-10 h-32 w-32 bg-[radial-gradient(circle,rgb(255_250_240/0.14),transparent_70%)]" />
+              <span className="blob hero-drift -right-16 -top-20 h-56 w-56 bg-[radial-gradient(circle,rgb(255_197_49/0.45),transparent_68%)]" />
+              <span className="blob hero-drift -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)] [animation-delay:-6s]" />
               <CourtLines draw className="absolute inset-0 h-full w-full" />
-              <span className="absolute -right-6 bottom-10 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgb(255_197_49/0.35),transparent_66%)]" />
-              <span className="absolute bottom-6 right-3 drop-shadow-[0_14px_20px_rgb(0_0_0/0.35)]">
+              <span className="absolute -right-6 bottom-12 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgb(255_197_49/0.38),transparent_66%)]" />
+              <span className="hero-char absolute bottom-8 right-3 drop-shadow-[0_14px_20px_rgb(0_0_0/0.35)]">
                 <Character
                   id={characterOf(me)}
                   outfit={me.outfit}
@@ -444,66 +443,78 @@ export function HomeScreen() {
                 />
               </span>
             </div>
-            <div className="relative px-5 pb-5 pt-6">
-              <p className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold">
+            <div className="relative px-5 pb-5 pt-5">
+              <p className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold backdrop-blur-sm">
                 Il tuo {MONTHS_IT[month].toLowerCase()}
               </p>
               <div
-                className="mt-4 flex items-end gap-5"
+                className="mt-4 flex items-end gap-3"
                 aria-label={`${mine.wins} vinte, ${mine.losses} perse`}
               >
-                <div>
-                  <p className="score text-[60px]">
-                    <CountUp value={mine.wins} />
-                  </p>
-                  <p className="mt-1 text-[13px] font-medium text-white/75">
-                    {mine.wins === 1 ? "vinta" : "vinte"}
-                  </p>
-                </div>
-                <div>
-                  <p className="score text-[60px] text-white/55">
-                    <CountUp value={mine.losses} />
-                  </p>
-                  <p className="mt-1 text-[13px] font-medium text-white/60">
-                    {mine.losses === 1 ? "persa" : "perse"}
-                  </p>
-                </div>
+                <p className="score text-[64px]">
+                  <CountUp value={mine.wins} />
+                </p>
+                <p className="mb-1.5 text-[13px] font-medium leading-tight text-white/75">
+                  {mine.wins === 1 ? "vinta" : "vinte"}
+                  <br />
+                  <span className="text-white/55">
+                    su {mine.games} {mine.games === 1 ? "giocata" : "giocate"}
+                  </span>
+                </p>
               </div>
-              <div className="mt-5 grid grid-cols-3 divide-x divide-white/15 rounded-[20px] bg-court-deep/80 py-3 backdrop-blur-md">
-                <div className="px-3.5">
+              <div className="mt-3 flex h-2 w-[52%] gap-1" aria-hidden>
+                {mine.games ? (
+                  <>
+                    <span
+                      className="hero-bar rounded-full bg-volt"
+                      style={{ flexGrow: mine.wins }}
+                    />
+                    <span
+                      className="hero-bar rounded-full bg-white/25 [animation-delay:120ms]"
+                      style={{ flexGrow: mine.losses }}
+                    />
+                  </>
+                ) : (
+                  <span className="flex-1 rounded-full bg-white/15" />
+                )}
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
                   <p className="num text-[20px]">{mine.games ? `${winPct}%` : "—"}</p>
-                  <p className="mt-1 text-[11.5px] font-medium text-white/70">Vittorie</p>
+                  <p className="mt-0.5 text-[11.5px] font-medium text-white/70">Vittorie</p>
                 </div>
-                <div className="px-3.5">
-                  <p className="flex items-center gap-1.5">
-                    <span className="num text-[20px]">
-                      <CountUp value={elo} />
-                    </span>
-                    {delta !== 0 && (
-                      <span
-                        className={clsx(
-                          "inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[11px] font-semibold",
-                          delta > 0 ? "bg-volt text-volt-ink" : "bg-white/20",
-                        )}
-                      >
-                        {delta > 0 ? <IconTrendingUp size={11} /> : <IconTrendingDown size={11} />}
-                        {delta > 0 ? `+${delta}` : `−${-delta}`}
-                      </span>
-                    )}
+                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                  <p className="num text-[20px]">
+                    <CountUp value={elo} />
                   </p>
-                  <p className="mt-1 flex items-center gap-1 text-[11.5px] font-medium text-white/70">
+                  <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-white/70">
                     ELO
-                    <InfoTip label="Cos'è l'ELO" size={13}>
+                    <InfoTip label="Cos'è l'ELO" size={12}>
                       Il tuo punteggio di forza. Si parte tutti da 1000:
                       vincendo sale, perdendo scende. Battere chi è più forte
                       vale di più
                     </InfoTip>
+                    {delta !== 0 && (
+                      <span
+                        className={clsx(
+                          "inline-flex items-center gap-0.5 rounded-full px-1.5 text-[10.5px] font-semibold",
+                          delta > 0 ? "bg-volt text-volt-ink" : "bg-white/20 text-white",
+                        )}
+                      >
+                        {delta > 0 ? (
+                          <IconTrendingUp size={10} />
+                        ) : (
+                          <IconTrendingDown size={10} />
+                        )}
+                        {delta > 0 ? `+${delta}` : `−${-delta}`}
+                      </span>
+                    )}
                   </p>
                 </div>
-                <div className="px-3.5">
-                  <p className="num text-[20px]">{mine.games}</p>
-                  <p className="mt-1 text-[11.5px] font-medium text-white/70">
-                    {mine.games === 1 ? "Partita" : "Partite"}
+                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                  <p className="num text-[20px]">{mine.losses}</p>
+                  <p className="mt-0.5 text-[11.5px] font-medium text-white/70">
+                    {mine.losses === 1 ? "Persa" : "Perse"}
                   </p>
                 </div>
               </div>
