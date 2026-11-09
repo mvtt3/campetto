@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { IconInfoCircle, IconX } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import {
   useEffect,
   useId,
@@ -115,7 +115,7 @@ export function InfoTip({
             ref={tip}
             id={id}
             role="tooltip"
-            className="menu-pop fixed z-[65] rounded-[20px] border border-[var(--hairline)] bg-surface py-3.5 pl-4 pr-10 text-left text-[13.5px] leading-snug text-text"
+            className="menu-pop fixed z-[65] rounded-[20px] border border-[var(--hairline)] bg-surface px-4 py-3.5 text-left text-[13.5px] leading-snug text-text"
             style={{
               left: pos?.left ?? -999,
               top: pos?.top ?? -999,
@@ -139,14 +139,6 @@ export function InfoTip({
               )}
               style={{ left: (pos?.arrow ?? 20) - 6 }}
             />
-            <button
-              type="button"
-              aria-label="Chiudi"
-              onClick={() => setOpen(false)}
-              className="press absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-raised text-muted"
-            >
-              <IconX size={14} strokeWidth={2.2} />
-            </button>
             {children}
           </div>,
           document.body,

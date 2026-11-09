@@ -191,12 +191,6 @@ function MvpCard({
         className="mvp-rays absolute -right-24 -top-16 -z-10 h-80 w-80"
         aria-hidden
       />
-      <span
-        className="display pointer-events-none absolute -bottom-6 -left-2 -z-10 text-[112px] leading-none text-white/25"
-        aria-hidden
-      >
-        MVP
-      </span>
       {SPARKS.map(([top, right, size, delay]) => (
         <IconSparkles
           key={`${top}${right}`}
@@ -209,14 +203,18 @@ function MvpCard({
       {mvp && player ? (
         <>
           <span
-            className="mvp-float absolute -bottom-[150px] -right-6"
+            className="absolute -right-2 top-4 -z-10 h-36 w-36 rounded-full bg-white/35 ring-8 ring-white/20"
+            aria-hidden
+          />
+          <span
+            className="mvp-float absolute -bottom-16 right-0 [mask-image:linear-gradient(to_bottom,#000_62%,transparent_92%)]"
             aria-hidden
           >
             <Character
               id={characterOf(player)}
               outfit={player.outfit}
               number={player.jerseyNumber}
-              height={300}
+              height={230}
             />
           </span>
           <div className="relative flex min-w-0 flex-col pr-32">
@@ -436,15 +434,15 @@ export function HomeScreen() {
               <span className="blob -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)]" />
               <span className="blob -bottom-10 right-10 h-32 w-32 bg-[radial-gradient(circle,rgb(255_250_240/0.14),transparent_70%)]" />
               <CourtLines draw className="absolute inset-0 h-full w-full" />
-              <span className="absolute -right-4 -top-2 opacity-90 drop-shadow-[0_12px_18px_rgb(0_0_0/0.3)]">
+              <span className="absolute bottom-[78px] right-0 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgb(255_250_240/0.22),transparent_65%)]" />
+              <span className="absolute bottom-[86px] right-5 [mask-image:linear-gradient(to_bottom,#000_72%,transparent)]">
                 <Character
                   id={characterOf(me)}
                   outfit={me.outfit}
                   number={me.jerseyNumber}
-                  height={230}
+                  height={150}
                 />
               </span>
-              <span className="absolute inset-y-0 left-0 w-2/3 bg-[linear-gradient(90deg,var(--court-deep)_0%,transparent_100%)] opacity-60" />
             </div>
             <div className="relative px-5 pb-5 pt-6">
               <p className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold">
