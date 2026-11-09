@@ -1,22 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Ultra } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Intro, introScript } from "@/components/intro";
 import { Providers } from "@/components/providers";
 
-// Solo l'alfabeto latino (le lettere accentate italiane ci sono) e solo lo spessore:
-// la larghezza variabile non la usiamo. Al primo avvio si scaricano 130 KB in meno.
-const archivo = Archivo({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-archivo",
-  display: "swap",
-});
-
-// Slab grosso da poster anni '30: titoli e numeri.
-const ultra = Ultra({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-ultra",
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -62,7 +52,7 @@ export default function RootLayout({
   return (
     <html
       lang="it"
-      className={`${archivo.variable} ${ultra.variable}`}
+      className={dmSans.variable}
       data-theme="light"
       suppressHydrationWarning
     >

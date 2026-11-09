@@ -1093,7 +1093,8 @@ export function Figure({
               x="50"
               y="94"
               textAnchor="middle"
-              fontFamily="var(--font-ultra), Georgia, serif"
+              fontFamily="var(--font-dm-sans), sans-serif"
+              fontWeight="800"
               fontSize="10"
               fill="#1597A6"
             >

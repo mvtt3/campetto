@@ -10,7 +10,7 @@ L'app del nostro campetto di basket a Nichelino: partite, statistiche in stile N
 
 ## Stile
 
-Poster da campetto in stile cartone animato anni '30: carta color crema con la grana, contorni d'inchiostro, ombre piene da adesivo, titoli e numeri in Ultra, testo in Archivo. La mascotte è **Spicchio** (`src/components/mascot.tsx`), una palla a spicchi con guanti bianchi e scarpe alte rosse, in tre pose (ciao, esulta, boh); il logo è Spicchio nel badge giallo e blu. Tema chiaro di base, scuro opzionale.
+Poster da campetto in stile cartone animato anni '30: carta color crema con la grana, contorni d'inchiostro, ombre piene da adesivo, tutto in DM Sans, con i pesi pieni per titoli e numeri. La mascotte è **Spicchio** (`src/components/mascot.tsx`), una palla a spicchi con guanti bianchi e scarpe alte rosse, in tre pose (ciao, esulta, boh); il logo è Spicchio nel badge giallo e blu. Tema chiaro di base, scuro opzionale.
 
 ## Cosa fa
 

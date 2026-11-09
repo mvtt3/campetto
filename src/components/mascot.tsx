@@ -454,7 +454,8 @@ export function Mascot({
         <text
           x="134"
           y="34"
-          fontFamily="var(--font-ultra), Georgia, serif"
+          fontFamily="var(--font-dm-sans), sans-serif"
+          fontWeight="800"
           fontSize="28"
           fill={INK}
           className="mascot-halo"
@@ -504,7 +505,8 @@ export function Logo({
       {!text && <circle cx="100" cy="100" r="96" fill={YELLOW} />}
       {text && (
         <g
-          fontFamily="var(--font-ultra), Georgia, serif"
+          fontFamily="var(--font-dm-sans), sans-serif"
+          fontWeight="800"
           fill={INK}
           letterSpacing="3"
         >

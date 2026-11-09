@@ -19,7 +19,7 @@ export function DoubleStamp({ n }: { n: number }) {
   return (
     <span
       className={clsx(
-        "ml-1 inline-grid h-[17px] place-items-center rounded-[5px] border-[1.5px] px-1 align-[1px] font-[family-name:var(--font-ultra)] text-[9.5px] leading-none tracking-wide",
+        "ml-1 inline-grid h-[17px] place-items-center rounded-[5px] border-[1.5px] px-1 align-[1px] font-extrabold text-[9.5px] leading-none tracking-wide",
         n >= 3
           ? "border-[#6b46b8] bg-[#6b46b8] text-white"
           : "border-gold text-gold",

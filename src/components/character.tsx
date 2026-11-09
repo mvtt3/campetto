@@ -472,7 +472,8 @@ export function Character({
             x="50"
             y="114"
             textAnchor="middle"
-            fontFamily="var(--font-ultra), Georgia, serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
+            fontWeight="800"
             fontSize="19"
             fill={kit.trim}
             stroke={INK}
@@ -489,7 +490,7 @@ export function Character({
                 x="50"
                 y="93"
                 textAnchor="middle"
-                fontFamily="var(--font-archivo), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontWeight="800"
                 fontSize="8"
                 letterSpacing="0.6"
@@ -507,7 +508,8 @@ export function Character({
               x="50"
               y="118"
               textAnchor="middle"
-              fontFamily="var(--font-ultra), Georgia, serif"
+              fontFamily="var(--font-dm-sans), sans-serif"
+              fontWeight="800"
               fontSize="24"
               fill={kit.trim}
               stroke={INK}

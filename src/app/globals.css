@@ -2,7 +2,7 @@
 
 /* Campetto: un poster da campetto in stile cartone animato anni '30.
    Carta color crema con la grana, contorni d'inchiostro, ombre piene "da adesivo",
-   arancione palla, blu retrò, giallo sole. Titoli e numeri in Ultra.
+   arancione palla, blu retrò, giallo sole. Titoli e numeri in DM Sans.
    Di notte (tema scuro) la carta diventa nera e i contorni color crema. */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
@@ -88,8 +88,8 @@
   --color-gold-soft: var(--gold-soft);
   --color-danger: var(--danger);
   --color-ok: var(--ok);
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  --font-poster: var(--font-ultra), Georgia, serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-poster: var(--font-sans);
 }
 
 html,
@@ -133,30 +133,29 @@ body {
   background-image: url("/grain-dark.png");
 }
 
-/* Titoli da poster. */
 .display {
   font-family: var(--font-poster);
-  font-weight: 400;
-  letter-spacing: 0.005em;
-  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
 }
 .title {
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
 }
-/* Punteggi e numeri grandi: stesso carattere dei titoli, cifre allineate. */
 .score {
   font-family: var(--font-poster);
-  font-weight: 400;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
+  letter-spacing: -0.035em;
   line-height: 0.92;
 }
 .num {
   font-family: var(--font-poster);
-  font-weight: 400;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   line-height: 1;
 }
 .tnum {
