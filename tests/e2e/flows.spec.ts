@@ -13,7 +13,7 @@ test("dal login con Google si entra nell'app", async ({ page }) => {
 test("app vuota: stati vuoti curati", async ({ page }) => {
   await openApp(page);
   await expect(
-    page.getByText("Nessuno ha ancora proposto un giorno"),
+    page.getByText("Nessuna partita in vista"),
   ).toBeVisible();
   await expect(page.getByText("Ancora nessuno")).toBeVisible();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
@@ -1149,7 +1149,7 @@ test("la partita aperta dalla Home, chiusa, torna alla Home", async ({
   page,
 }) => {
   await openApp(page, "demo");
-  await page.getByRole("link", { name: /Ultima partita/ }).click();
+  await page.locator('a[href^="/partite?m="]').first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();

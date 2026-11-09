@@ -1743,50 +1743,25 @@ html[data-shot="3"] .intro-ball-x {
   }
 }
 
-.last-card {
-  container: last / size;
+.rise {
+  animation: rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
-@container last (max-height: 214px) {
-  .last-mvp-art {
-    display: none;
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
   }
 }
-@container last (max-height: 168px) {
-  .last-mvp {
-    display: none;
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
   }
 }
-@container last (max-height: 110px) {
-  .last-pill {
-    display: none;
-  }
-}
-
-/* MVP in carica in Home: il personaggio prende l'altezza che c'è (mai tagliato) e sparisce
-   quando verrebbe troppo piccolo; nelle schede strette avatar e nome scendono di misura. */
-.mvp-card {
-  container: mvp / size;
-}
-.mvp-art svg {
-  height: 100%;
-  max-height: 112px;
-  width: auto;
-}
-@container mvp (max-height: 140px) {
-  .mvp-art {
-    display: none;
-  }
-}
-@container mvp (max-width: 132px) or (max-height: 120px) {
-  .mvp-av-big {
-    display: none;
-  }
-  .mvp-av-small {
-    display: inline;
-  }
-  .mvp-name {
-    font-size: 15px;
-  }
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
 }
 
 /* La partita in corso: bollino che pulsa, Spicchio che palleggia, la cronaca che scorre. */
