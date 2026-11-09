@@ -175,8 +175,8 @@ function RecentMatch({
 function MvpStat({ value, label }: { value: ReactNode; label: string }) {
   return (
     <div className="min-w-0">
-      <p className="num mvp-gold text-[19px]">{value}</p>
-      <p className="mt-0.5 truncate text-[10.5px] font-medium text-white/55">
+      <p className="num text-[19px]">{value}</p>
+      <p className="mt-0.5 truncate text-[10.5px] font-medium opacity-70">
         {label}
       </p>
     </div>
@@ -197,7 +197,7 @@ function MvpCard({
     <Link
       href="/classifiche"
       data-tour="home-mvp"
-      className="mvp-hero press relative isolate flex min-h-[232px] overflow-hidden rounded-[28px] p-5 text-[#fffaf0] shadow-[var(--shadow-pop)]"
+      className="mvp-hero press relative isolate flex min-h-[232px] overflow-hidden rounded-[28px] p-5 text-volt-ink shadow-[var(--shadow-pop)]"
     >
       <span
         className="mvp-rays absolute -left-28 -top-20 -z-10 h-96 w-96"
@@ -213,7 +213,7 @@ function MvpCard({
         <IconSparkles
           key={`${top}${left}`}
           size={size}
-          className="mvp-twinkle absolute text-volt"
+          className="mvp-twinkle absolute text-white"
           style={{ top, left, "--d": delay } as CSSProperties}
           aria-hidden
         />
@@ -221,7 +221,7 @@ function MvpCard({
       {mvp && player ? (
         <>
           <span
-            className="mvp-float absolute -left-1 bottom-0 -z-10 drop-shadow-[0_16px_24px_rgb(0_0_0/0.5)]"
+            className="mvp-float absolute -left-1 bottom-0 -z-10 drop-shadow-[0_14px_20px_rgb(120_50_0/0.35)]"
             aria-hidden
           >
             <Character
@@ -232,28 +232,28 @@ function MvpCard({
             />
           </span>
           <div className="ml-[42%] flex min-w-0 flex-1 flex-col">
-            <span className="flex w-fit items-center gap-1.5 rounded-full border border-volt/40 bg-volt/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-volt">
+            <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em]">
               <IconCrown size={13} />
               {mvp.period.kind === "month" && mvp.period.month !== undefined
                 ? MONTHS_IT[mvp.period.month]
                 : "MVP"}
             </span>
-            <p className="display mvp-gold mt-3 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
+            <p className="display mt-3 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
               {shortName(player, players)}
             </p>
             <div className="mt-3">
               <div className="flex items-baseline justify-between text-[11px] font-semibold">
-                <span className="text-white/55">Punteggio MVP</span>
-                <span className="tnum text-volt">{score}</span>
+                <span className="opacity-70">Punteggio MVP</span>
+                <span className="tnum">{score}</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/40">
                 <span
-                  className="hero-bar block h-full rounded-full bg-[linear-gradient(90deg,var(--gold),var(--volt))]"
+                  className="hero-bar block h-full rounded-full bg-volt-ink"
                   style={{ width: `${score}%` }}
                 />
               </div>
             </div>
-            <div className="mt-auto grid grid-cols-3 gap-2 rounded-[18px] border border-white/10 bg-black/45 px-3 py-2.5 backdrop-blur-md">
+            <div className="mt-auto grid grid-cols-3 gap-2 rounded-[18px] border border-white/50 bg-white/40 px-3 py-2.5 backdrop-blur-md">
               <MvpStat value={mvp.entry.games} label="Partite" />
               <MvpStat
                 value={`${Math.round(mvp.entry.winPct * 100)}%`}
@@ -272,8 +272,8 @@ function MvpCard({
         </>
       ) : (
         <div className="mt-auto">
-          <p className="display mvp-gold text-[24px]">Ancora nessuno</p>
-          <p className="mt-1 text-[13px] font-medium text-white/60">
+          <p className="display text-[24px]">Ancora nessuno</p>
+          <p className="mt-1 text-[13px] font-medium opacity-70">
             Serve giocare almeno 3 partite nel mese
           </p>
         </div>
