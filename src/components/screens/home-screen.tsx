@@ -172,6 +172,15 @@ function RecentMatch({
   );
 }
 
+function MvpStat({ value, label }: { value: ReactNode; label: string }) {
+  return (
+    <div className="rounded-[16px] border border-white/50 bg-white/35 px-2.5 py-2 backdrop-blur-md">
+      <p className="num text-[18px]">{value}</p>
+      <p className="mt-0.5 text-[11px] font-medium opacity-70">{label}</p>
+    </div>
+  );
+}
+
 function MvpCard({
   mvp,
   player,
@@ -181,11 +190,12 @@ function MvpCard({
   player: Player | undefined;
   players: Player[];
 }) {
+  const score = mvp ? Math.round(mvp.entry.score * 100) : 0;
   return (
     <Link
       href="/classifiche"
       data-tour="home-mvp"
-      className="mvp-hero press relative isolate flex min-h-[188px] overflow-hidden rounded-[28px] p-5 text-volt-ink shadow-[var(--shadow-pop)]"
+      className="mvp-hero press relative isolate flex min-h-[236px] flex-col overflow-hidden rounded-[28px] p-5 text-volt-ink shadow-[var(--shadow-pop)]"
     >
       <span
         className="mvp-rays absolute -right-24 -top-16 -z-10 h-80 w-80"
@@ -203,51 +213,63 @@ function MvpCard({
       {mvp && player ? (
         <>
           <span
-            className="absolute -right-2 top-4 -z-10 h-36 w-36 rounded-full bg-white/35 ring-8 ring-white/20"
+            className="absolute -right-1 top-6 -z-10 h-36 w-36 rounded-full bg-white/35 ring-8 ring-white/20"
             aria-hidden
           />
           <span
-            className="mvp-float absolute -bottom-16 right-0 [mask-image:linear-gradient(to_bottom,#000_62%,transparent_92%)]"
+            className="mvp-float absolute bottom-3 right-1 -z-10"
             aria-hidden
           >
             <Character
               id={characterOf(player)}
               outfit={player.outfit}
               number={player.jerseyNumber}
-              height={230}
+              height={200}
             />
           </span>
-          <div className="relative flex min-w-0 flex-col pr-32">
-            <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/45 px-2.5 py-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-volt-ink">
+          <div className="relative min-w-0 pr-32">
+            <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/45 px-2.5 py-1 text-[11.5px] font-semibold uppercase tracking-[0.08em]">
               <IconCrown size={13} />
               {mvp.period.kind === "month" && mvp.period.month !== undefined
                 ? MONTHS_IT[mvp.period.month]
                 : "MVP"}
             </span>
-            <p className="display mt-3 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
-              {shortName(player, players)}
-            </p>
-            <div className="mt-auto flex gap-4 pt-4">
-              <div>
-                <p className="num text-[18px]">{mvp.entry.games}</p>
-                <p className="text-[11px] font-medium opacity-70">Partite</p>
-              </div>
-              <div>
-                <p className="num text-[18px]">
-                  {Math.round(mvp.entry.winPct * 100)}%
-                </p>
-                <p className="text-[11px] font-medium opacity-70">Vittorie</p>
-              </div>
-              {mvp.entry.eloDelta !== 0 && (
-                <div>
-                  <p className="num text-[18px]">
-                    {mvp.entry.eloDelta > 0 ? "+" : "−"}
-                    {Math.abs(Math.round(mvp.entry.eloDelta))}
-                  </p>
-                  <p className="text-[11px] font-medium opacity-70">ELO</p>
-                </div>
-              )}
+            <div className="mt-3 flex items-center gap-2.5">
+              <Avatar player={player} size={36} href={false} />
+              <p className="display line-clamp-2 text-[28px] leading-[1.02] [overflow-wrap:anywhere]">
+                {shortName(player, players)}
+              </p>
             </div>
+            <div className="mt-3">
+              <div className="flex items-baseline justify-between text-[11.5px] font-semibold">
+                <span className="opacity-70">Punteggio MVP</span>
+                <span className="tnum">{score}</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/40">
+                <span
+                  className="hero-bar block h-full rounded-full bg-volt-ink"
+                  style={{ width: `${score}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="relative mt-auto grid grid-cols-3 gap-2 pt-4">
+            <MvpStat value={mvp.entry.games} label="Partite" />
+            <MvpStat
+              value={`${Math.round(mvp.entry.winPct * 100)}%`}
+              label="Vittorie"
+            />
+            {mvp.entry.effAvg !== null ? (
+              <MvpStat
+                value={mvp.entry.effAvg.toFixed(1)}
+                label="Valutazione"
+              />
+            ) : (
+              <MvpStat
+                value={`${mvp.entry.eloDelta >= 0 ? "+" : "−"}${Math.abs(Math.round(mvp.entry.eloDelta))}`}
+                label="ELO"
+              />
+            )}
           </div>
         </>
       ) : (
