@@ -1758,6 +1758,74 @@ html[data-shot="3"] .intro-ball-x {
     animation: none;
   }
 }
+.mvp-hero {
+  background: linear-gradient(150deg, #ffd65c 0%, var(--volt) 45%, var(--gold) 100%);
+}
+.mvp-rays {
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgb(255 250 240 / 0.38) 0deg 7deg,
+    transparent 7deg 18deg
+  );
+  mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+  animation: mvp-spin 26s linear infinite;
+}
+.mvp-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.45) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  animation: mvp-shine 4.5s ease-in-out 1.2s infinite;
+  pointer-events: none;
+}
+.mvp-float {
+  animation: mvp-float 3.2s ease-in-out infinite;
+}
+.mvp-twinkle {
+  animation: mvp-twinkle 2.4s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes mvp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes mvp-shine {
+  60%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+@keyframes mvp-float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes mvp-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(20deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mvp-rays,
+  .mvp-hero::after,
+  .mvp-float,
+  .mvp-twinkle {
+    animation: none;
+  }
+}
 .blob {
   position: absolute;
   border-radius: 9999px;

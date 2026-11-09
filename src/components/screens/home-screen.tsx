@@ -9,6 +9,7 @@ import {
   IconCloudRain,
   IconCrown,
   IconPlus,
+  IconSparkles,
   IconTrendingDown,
   IconTrendingUp,
 } from "@tabler/icons-react";
@@ -36,6 +37,7 @@ import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
 import { eloDelta, eloOf } from "@/lib/stats/elo";
+import type { MvpEntry } from "@/lib/stats/awards";
 import { matchMvp } from "@/lib/stats/match-mvp";
 import { computePlayerStats, teamOf } from "@/lib/stats/player";
 import { Character, characterOf } from "@/components/character";
@@ -43,7 +45,6 @@ import { shortName, winnerOf, type Match, type Player } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { InfoTip } from "@/components/ui/info";
 import { MvpMonthInfo } from "@/components/mvp-info";
-import { greeting } from "@/lib/greeting";
 import { useNav } from "@/lib/nav";
 
 const RECENT = 8;
@@ -171,6 +172,101 @@ function RecentMatch({
   );
 }
 
+function MvpCard({
+  mvp,
+  player,
+  players,
+}: {
+  mvp: { entry: MvpEntry; period: { kind: string; month?: number } } | null;
+  player: Player | undefined;
+  players: Player[];
+}) {
+  return (
+    <Link
+      href="/classifiche"
+      data-tour="home-mvp"
+      className="mvp-hero press relative isolate flex min-h-[188px] overflow-hidden rounded-[28px] p-5 text-volt-ink shadow-[var(--shadow-pop)]"
+    >
+      <span
+        className="mvp-rays absolute -right-24 -top-16 -z-10 h-80 w-80"
+        aria-hidden
+      />
+      <span
+        className="display pointer-events-none absolute -bottom-6 -left-2 -z-10 text-[112px] leading-none text-white/25"
+        aria-hidden
+      >
+        MVP
+      </span>
+      {SPARKS.map(([top, right, size, delay]) => (
+        <IconSparkles
+          key={`${top}${right}`}
+          size={size}
+          className="mvp-twinkle absolute text-white"
+          style={{ top, right, "--d": delay } as CSSProperties}
+          aria-hidden
+        />
+      ))}
+      {mvp && player ? (
+        <>
+          <span className="mvp-float absolute -bottom-3 right-3" aria-hidden>
+            <Character
+              id={characterOf(player)}
+              outfit={player.outfit}
+              number={player.jerseyNumber}
+              height={164}
+            />
+          </span>
+          <div className="relative flex min-w-0 flex-col pr-32">
+            <span className="flex w-fit items-center gap-1.5 rounded-full bg-volt-ink px-2.5 py-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-volt">
+              <IconCrown size={13} />
+              {mvp.period.kind === "month" && mvp.period.month !== undefined
+                ? MONTHS_IT[mvp.period.month]
+                : "MVP"}
+            </span>
+            <p className="display mt-3 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
+              {shortName(player, players)}
+            </p>
+            <div className="mt-auto flex gap-4 pt-4">
+              <div>
+                <p className="num text-[18px]">{mvp.entry.games}</p>
+                <p className="text-[11px] font-medium opacity-70">Partite</p>
+              </div>
+              <div>
+                <p className="num text-[18px]">
+                  {Math.round(mvp.entry.winPct * 100)}%
+                </p>
+                <p className="text-[11px] font-medium opacity-70">Vittorie</p>
+              </div>
+              {mvp.entry.eloDelta !== 0 && (
+                <div>
+                  <p className="num text-[18px]">
+                    {mvp.entry.eloDelta > 0 ? "+" : "−"}
+                    {Math.abs(Math.round(mvp.entry.eloDelta))}
+                  </p>
+                  <p className="text-[11px] font-medium opacity-70">ELO</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="relative mt-auto">
+          <p className="display text-[24px]">Ancora nessuno</p>
+          <p className="mt-1 text-[13px] font-medium opacity-70">
+            Serve giocare almeno 3 partite nel mese
+          </p>
+        </div>
+      )}
+    </Link>
+  );
+}
+
+const SPARKS = [
+  ["14%", "38%", 14, "0s"],
+  ["8%", "8%", 18, "0.8s"],
+  ["46%", "44%", 11, "1.5s"],
+] as const;
+
 export function HomeScreen() {
   const { data, me, engine } = useData();
   const hl = useHighlights();
@@ -236,7 +332,6 @@ export function HomeScreen() {
   const recent = data.matches.slice(0, RECENT);
   const mvp = engine.mvp;
   const mvpPlayer = data.players.find((p) => p.id === mvp?.entry.playerId);
-  const hello = greeting(now.getHours());
   const winPct = Math.round(mine.winPct * 100);
   const openDay = () => {
     const shown = rained ?? next;
@@ -247,21 +342,69 @@ export function HomeScreen() {
     );
   };
 
+  const hasNext = Boolean(rained ?? next);
+  const nextSection = (
+    <Section
+      index={hasNext ? 0 : 1}
+      title={
+        rained ? (
+          <>
+            <IconCloudRain size={18} className="text-court" aria-hidden />
+            Oggi non si gioca
+          </>
+        ) : nextPhase === "confirmed" ? (
+          <span className="flex items-center gap-1.5 text-ok">
+            <IconCircleCheck size={18} aria-hidden />
+            Partita confermata
+          </span>
+        ) : nextPhase === "live" ? (
+          "Si gioca adesso"
+        ) : (
+          "Prossima partita"
+        )
+      }
+      action={
+        <SectionLink href="/organizza">
+          <IconCalendar size={15} /> Calendario
+        </SectionLink>
+      }
+    >
+      <div
+        data-tour="home-next"
+        className="card cursor-pointer p-4"
+        onClick={(e) => {
+          if ((e.target as Element).closest("button, a")) return;
+          openDay();
+        }}
+      >
+        {rained ? (
+          <RainedOut proposal={rained} next={next} compact />
+        ) : next ? (
+          <ProposalCard proposal={next} compact />
+        ) : (
+          <div className="flex items-center gap-3">
+            <Mascot pose="boh" size={52} className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold">Nessuna partita in vista</p>
+              <p className="text-[13px] text-muted">Proponi tu un giorno</p>
+            </div>
+            <Link
+              href="/organizza?nuova=1"
+              className="press flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-semibold text-ball-ink"
+            >
+              <IconPlus size={16} strokeWidth={2.4} /> Proponi
+            </Link>
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+
   return (
     <>
       <header className="safe-top shrink-0 px-5">
-        <div className="flex h-16 items-center justify-between gap-3 short:h-14">
-          <h1 className="min-w-0">
-            <span className="block truncate text-[13px] font-medium text-muted">
-              {hello.lead}
-            </span>
-            <span className="display block truncate text-[24px]">
-              {mvp?.entry.playerId === me.id
-                ? "MVP"
-                : (me.nickname ?? me.firstName)}
-              {hello.question ? "?" : ""}
-            </span>
-          </h1>
+        <div className="flex h-16 items-center justify-end gap-3 short:h-14">
+          <h1 className="sr-only">Home</h1>
           <div className="flex shrink-0 items-center gap-1.5">
             <GameHomeButton />
             <HighlightsHomeButton />
@@ -279,10 +422,11 @@ export function HomeScreen() {
 
       <PullToRefresh className="px-5">
         <div className="flex flex-col gap-7 pb-8 pt-3">
+          {hasNext && nextSection}
           <section
             data-tour="home-month"
             className="rise court relative mt-8 rounded-[28px]"
-            style={rise(0)}
+            style={rise(hasNext ? 1 : 0)}
           >
             <div className="absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden>
               <span className="blob -right-16 -top-20 h-56 w-56 bg-[radial-gradient(circle,rgb(255_197_49/0.45),transparent_68%)]" />
@@ -367,63 +511,22 @@ export function HomeScreen() {
             </div>
           </section>
 
-          <Section
-            index={1}
-            title={
-              rained ? (
-                <>
-                  <IconCloudRain size={18} className="text-court" aria-hidden />
-                  Oggi non si gioca
-                </>
-              ) : nextPhase === "confirmed" ? (
-                <span className="flex items-center gap-1.5 text-ok">
-                  <IconCircleCheck size={18} aria-hidden />
-                  Partita confermata
-                </span>
-              ) : nextPhase === "live" ? (
-                "Si gioca adesso"
-              ) : (
-                "Prossima partita"
-              )
-            }
-            action={
-              <SectionLink href="/organizza">
-                <IconCalendar size={15} /> Calendario
-              </SectionLink>
-            }
-          >
-            <div
-              data-tour="home-next"
-              className="card cursor-pointer p-4"
-              onClick={(e) => {
-                if ((e.target as Element).closest("button, a")) return;
-                openDay();
-              }}
-            >
-              {rained ? (
-                <RainedOut proposal={rained} next={next} compact />
-              ) : next ? (
-                <ProposalCard proposal={next} compact />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Mascot pose="boh" size={52} className="shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-semibold">Nessuna partita in vista</p>
-                    <p className="text-[13px] text-muted">Proponi tu un giorno</p>
-                  </div>
-                  <Link
-                    href="/organizza?nuova=1"
-                    className="press flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-semibold text-ball-ink"
-                  >
-                    <IconPlus size={16} strokeWidth={2.4} /> Proponi
-                  </Link>
-                </div>
-              )}
-            </div>
-          </Section>
+          {!hasNext && nextSection}
 
           <Section
             index={2}
+            title="MVP in carica"
+            action={
+              <InfoTip label="Come si diventa MVP" size={16}>
+                <MvpMonthInfo />
+              </InfoTip>
+            }
+          >
+            <MvpCard mvp={mvp} player={mvpPlayer} players={data.players} />
+          </Section>
+
+          <Section
+            index={3}
             title="Ultime partite"
             action={
               recent.length > 0 && (
@@ -456,62 +559,6 @@ export function HomeScreen() {
             )}
           </Section>
 
-          <Section
-            index={3}
-            title="MVP in carica"
-            action={
-              <InfoTip label="Come si diventa MVP" size={16}>
-                <MvpMonthInfo />
-              </InfoTip>
-            }
-          >
-            <Link
-              href="/classifiche"
-              data-tour="home-mvp"
-              className="press relative flex min-h-[148px] items-end overflow-hidden rounded-[28px] bg-volt p-5 text-volt-ink shadow-[var(--shadow)]"
-            >
-              <span
-                className="blob -right-12 -top-16 h-52 w-52 bg-[radial-gradient(circle,rgb(255_250_240/0.55),transparent_68%)]"
-                aria-hidden
-              />
-              {mvp && mvpPlayer ? (
-                <>
-                  <span className="absolute -bottom-2 right-4" aria-hidden>
-                    <Character
-                      id={characterOf(mvpPlayer)}
-                      outfit={mvpPlayer.outfit}
-                      number={mvpPlayer.jerseyNumber}
-                      height={136}
-                    />
-                  </span>
-                  <div className="relative min-w-0 pr-28">
-                    <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] opacity-70">
-                      <IconCrown size={14} />
-                      {mvp.period.kind === "month"
-                        ? MONTHS_IT[mvp.period.month]
-                        : "MVP"}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2.5">
-                      <Avatar player={mvpPlayer} size={40} href={false} />
-                      <p className="display line-clamp-2 text-[24px] [overflow-wrap:anywhere]">
-                        {shortName(mvpPlayer, data.players)}
-                      </p>
-                    </div>
-                    <p className="mt-3 flex items-center gap-0.5 text-[13px] font-semibold">
-                      Vedi la classifica <IconChevronRight size={15} />
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="relative">
-                  <p className="display text-[22px]">Ancora nessuno</p>
-                  <p className="mt-1 text-[13px] font-medium opacity-70">
-                    Serve giocare almeno 3 partite nel mese
-                  </p>
-                </div>
-              )}
-            </Link>
-          </Section>
         </div>
       </PullToRefresh>
     </>
