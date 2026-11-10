@@ -25,7 +25,7 @@ import type {
   PlayerPrivate,
 } from "./backend";
 import type { BoardRow } from "../game/types";
-import { APP_START } from "../periods";
+import { APP_START, sortChrono } from "../periods";
 
 /**
  * Backend in memoria (salvato in localStorage) usato per i test automatici e per
@@ -585,6 +585,15 @@ export function createMockBackend(): Backend {
     for (const l of listeners) setTimeout(l, 0);
   };
   save();
+  if (params.get("festa") === "1") {
+    const mine = sortChrono(state.matches)
+      .filter((m) => m.players.some((p) => p.playerId === state.meId))
+      .map((m) => m.id);
+    localStorage.setItem(
+      `campetto:seen-matches:${state.meId}`,
+      JSON.stringify(mine.slice(0, -1)),
+    );
+  }
   const me = () => state.players.find((p) => p.id === state.meId)!;
   // ?mock=dati: i dati veri esportati, letti una volta all'apertura (vedi mock-dati.ts).
   let localData = mode === "dati";
