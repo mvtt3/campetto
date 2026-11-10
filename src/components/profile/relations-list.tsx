@@ -7,6 +7,14 @@ import { useData } from "@/lib/data/provider";
 import { chemistry, headToHead } from "@/lib/stats/relations";
 import { shortName } from "@/lib/types";
 
+const LABEL =
+  "mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
+const LIST =
+  "divide-y divide-line overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]";
+
+const ROW = "flex items-center gap-3 px-4 py-3";
+
 export function RelationsList({ playerId }: { playerId: string }) {
   const { data } = useData();
   const chem = useMemo(
@@ -40,13 +48,10 @@ export function RelationsList({ playerId }: { playerId: string }) {
     <div className="flex flex-col gap-5">
       {chem.length > 0 && (
         <section>
-          <h2 className="title mb-2 px-1 text-[16px]">Con chi vinci di più</h2>
-          <div className="flex flex-col gap-2">
+          <h2 className={LABEL}>Con chi vinci di più</h2>
+          <ul className={LIST}>
             {chem.map((l) => (
-              <div
-                key={l.playerId}
-                className="flex items-center gap-3 card px-3 py-2.5"
-              >
+              <li key={l.playerId} className={ROW}>
                 <Avatar
                   player={data.players.find((p) => p.id === l.playerId)}
                   size={36}
@@ -61,23 +66,20 @@ export function RelationsList({ playerId }: { playerId: string }) {
                     {l.assistsFrom > 0 && `, ${l.assistsFrom} ricevuti`}
                   </p>
                 </div>
-                <span className="num text-[22px]">
+                <span className="num text-[22px] text-ball">
                   {Math.round(l.winPct * 100)}%
                 </span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
       {h2h.length > 0 && (
         <section>
-          <h2 className="title mb-2 px-1 text-[16px]">Testa a testa</h2>
-          <div className="flex flex-col gap-2">
+          <h2 className={LABEL}>Testa a testa</h2>
+          <ul className={LIST}>
             {h2h.map(({ p, h }) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-3 card px-3 py-2.5"
-              >
+              <li key={p.id} className={ROW}>
                 <Avatar player={p} size={36} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">
@@ -100,9 +102,9 @@ export function RelationsList({ playerId }: { playerId: string }) {
                     {h.winsB}
                   </span>
                 </span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
     </div>

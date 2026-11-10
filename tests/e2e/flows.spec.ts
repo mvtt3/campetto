@@ -1255,7 +1255,7 @@ test("come ti vedono gli altri: il proprio profilo nella versione pubblica", asy
 test("statistiche avanzate: mappa di tiro da toccare", async ({ page }) => {
   await openApp(page, "demo");
   await page.goto("/profilo");
-  await page.getByRole("tab", { name: "Statistiche" }).click();
+  await page.getByRole("button", { name: "Numeri" }).click();
   await page.getByRole("link", { name: /Statistiche avanzate/ }).click();
   await expect(page).toHaveURL(/\/statistiche\?id=p1/);
   const court = page.getByRole("group", { name: "Mappa di tiro" });

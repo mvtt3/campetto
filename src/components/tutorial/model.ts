@@ -137,8 +137,8 @@ export function sections(
         ),
         step(
           "profile-tabs",
-          "Statistiche e mappa di tiro",
-          "In Statistiche apri le statistiche avanzate: tocca una zona del campo per vedere come tiri da sotto, dalla media e da tre",
+          "Numeri e mappa di tiro",
+          "In Numeri apri le statistiche avanzate: tocca una zona del campo per vedere come tiri da sotto, dalla media e da tre",
         ),
         step(
           "profile-settings",

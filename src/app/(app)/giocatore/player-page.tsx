@@ -9,11 +9,17 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconCrown,
+  IconSettings,
   IconTrophy,
 } from "@tabler/icons-react";
+import { AVATAR_PRESETS, CHARACTER_TAGLINE } from "@/components/avatar-presets";
 import { BadgeMedal } from "@/components/badge-medal";
 import { Character, characterOf } from "@/components/character";
+import { NewDot } from "@/components/new-dot";
+import { RelationsList } from "@/components/profile/relations-list";
 import { StatsDashboard } from "@/components/profile/stats-dashboard";
+import { TrendChart } from "@/components/profile/trend-chart";
+import { useNewRewards } from "@/components/rewards";
 import { Avatar, isLightColor, playerColor } from "@/components/ui/avatar";
 import {
   Chips,
@@ -34,14 +40,21 @@ import {
   type PlayerStats,
 } from "@/lib/stats/player";
 import { form, headToHead } from "@/lib/stats/relations";
-import { shortName } from "@/lib/types";
+import { displayName, shortName } from "@/lib/types";
 
-type Tab = "panoramica" | "numeri";
+type Tab = "panoramica" | "numeri" | "compagni";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "panoramica", label: "Panoramica" },
   { value: "numeri", label: "Numeri" },
 ];
+
+const MY_TABS: { value: Tab; label: string }[] = [
+  ...TABS,
+  { value: "compagni", label: "Compagni" },
+];
+
+const CHARACTERS_HREF = "/profilo/impostazioni?personaggi=1";
 
 const LABEL =
   "mb-2 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
@@ -89,10 +102,23 @@ function rating(mine: number | null, all: (number | null)[]): number | null {
 export function PlayerPage() {
   const params = useSearchParams();
   const id = params.get("id") ?? "";
-  const { data, me, engine } = useData();
+  const { me } = useData();
   const router = useRouter();
   const preview = params.get("anteprima") === "1";
   const self = me?.id === id;
+  useEffect(() => {
+    if (self && !preview) router.replace("/profilo");
+  }, [self, preview, router]);
+  return <PlayerView id={id} />;
+}
+
+export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
+  const { data, me, engine } = useData();
+  const router = useRouter();
+  const self = me?.id === id;
+  const news = useNewRewards();
+  const newBadges = mine ? news.badges.size : 0;
+  const newChars = mine ? news.characters.size : 0;
   const player = data.players.find((p) => p.id === id);
   const [tab, setTab] = useState<Tab>("panoramica");
   const h = useMemo(
@@ -118,10 +144,6 @@ export function PlayerPage() {
     [stats, group],
   );
 
-  useEffect(() => {
-    if (self && !preview) router.replace("/profilo");
-  }, [self, preview, router]);
-
   if (!player) {
     return (
       <>
@@ -133,7 +155,8 @@ export function PlayerPage() {
       </>
     );
   }
-  const name = shortName(player, data.players);
+  const name = mine ? displayName(player) : shortName(player, data.players);
+  const charId = characterOf(player);
   const elo = eloOf(engine.elo, player.id);
   const trophies = trophiesOf(player.id, engine.seasons).length;
   const monthMvp =
@@ -169,6 +192,7 @@ export function PlayerPage() {
       <PullToRefresh className="px-5 pb-6">
         <section
           aria-label="Giocatore"
+          data-tour={mine ? "profile-card" : undefined}
           className={clsx(
             "relative isolate -mx-5 overflow-hidden rounded-b-[30px]",
             light
@@ -216,17 +240,36 @@ export function PlayerPage() {
             transition={{ delay: 0.6, duration: 1.2, ease: "easeInOut" }}
           />
 
-          <div className="safe-top flex items-start justify-between px-5 pt-5">
-            <button
-              onClick={() => router.back()}
-              aria-label="Indietro"
-              className={clsx(
-                GLASS,
-                "press grid h-11 w-11 place-items-center rounded-full",
-              )}
-            >
-              <IconChevronLeft size={22} />
-            </button>
+          <div
+            className={clsx(
+              "safe-top flex items-start px-5 pt-5",
+              mine ? "justify-end" : "justify-between",
+            )}
+          >
+            {mine ? (
+              <Link
+                href="/profilo/impostazioni"
+                aria-label="Impostazioni"
+                data-tour="profile-settings"
+                className={clsx(
+                  GLASS,
+                  "press relative z-10 grid h-11 w-11 place-items-center rounded-full",
+                )}
+              >
+                <IconSettings size={21} />
+              </Link>
+            ) : (
+              <button
+                onClick={() => router.back()}
+                aria-label="Indietro"
+                className={clsx(
+                  GLASS,
+                  "press grid h-11 w-11 place-items-center rounded-full",
+                )}
+              >
+                <IconChevronLeft size={22} />
+              </button>
+            )}
           </div>
 
           <motion.span
@@ -253,19 +296,47 @@ export function PlayerPage() {
                   </span>
                 </motion.span>
               )}
-              <Character
-                id={characterOf(player)}
-                outfit={player.outfit}
-                number={player.jerseyNumber}
-                height={190}
-                title={name}
-                className="short:h-[150px] short:w-auto"
-              />
+              {mine ? (
+                <Link
+                  href={CHARACTERS_HREF}
+                  data-tour="profile-character"
+                  className="press pointer-events-auto relative block"
+                >
+                  <span className="sr-only">
+                    Il tuo personaggio,{" "}
+                    {AVATAR_PRESETS.find((p) => p.id === charId)?.name}: apri la
+                    collezione
+                    {newChars
+                      ? `, ${newChars === 1 ? "un personaggio nuovo" : `${newChars} personaggi nuovi`}`
+                      : ""}
+                  </span>
+                  <NewDot
+                    count={newChars || -1}
+                    className="absolute right-6 top-2 z-10"
+                  />
+                  <Character
+                    id={charId}
+                    outfit={player.outfit}
+                    number={player.jerseyNumber}
+                    height={190}
+                    className="short:h-[150px] short:w-auto"
+                  />
+                </Link>
+              ) : (
+                <Character
+                  id={charId}
+                  outfit={player.outfit}
+                  number={player.jerseyNumber}
+                  height={190}
+                  title={name}
+                  className="short:h-[150px] short:w-auto"
+                />
+              )}
             </span>
           </motion.span>
 
           <div className="relative flex min-h-[190px] w-[60%] flex-col px-5 pb-4 pt-3 short:min-h-[150px]">
-            {self && (
+            {self && !mine && (
               <motion.h2
                 {...rise(0.05)}
                 className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]"
@@ -311,13 +382,34 @@ export function PlayerPage() {
                   {trophies}
                 </span>
               )}
+              {mine && (
+                <Link
+                  href={CHARACTERS_HREF}
+                  className={clsx(PILL, "press")}
+                  title={CHARACTER_TAGLINE[charId]}
+                >
+                  {AVATAR_PRESETS.find((p) => p.id === charId)?.name}
+                </Link>
+              )}
             </motion.div>
             <motion.div {...rise(0.32)} className="mt-auto pt-3">
               <Link
-                href={`/giocatore/badge?id=${encodeURIComponent(player.id)}`}
-                aria-label="Vedi tutti i badge"
-                className="press inline-flex items-center gap-1"
+                href={
+                  mine
+                    ? "/profilo/badge"
+                    : `/giocatore/badge?id=${encodeURIComponent(player.id)}`
+                }
+                aria-label={
+                  newBadges
+                    ? `Vedi tutti i badge, ${newBadges === 1 ? "uno nuovo" : `${newBadges} nuovi`}`
+                    : "Vedi tutti i badge"
+                }
+                className="press relative inline-flex items-center gap-1"
               >
+                <NewDot
+                  count={newBadges || -1}
+                  className="absolute -right-3 -top-1 z-10"
+                />
                 {showcase.length ? (
                   <span className="flex -space-x-1.5">
                     {showcase.map((s, i) => (
@@ -389,12 +481,20 @@ export function PlayerPage() {
           </motion.dl>
         </section>
 
-        <div className="mt-5">
-          <Chips value={tab} onChange={setTab} options={TABS} scroll />
+        <div className="mt-5" data-tour={mine ? "profile-tabs" : undefined}>
+          <Chips
+            value={tab}
+            onChange={setTab}
+            options={mine ? MY_TABS : TABS}
+            scroll
+          />
         </div>
 
         {tab === "panoramica" ? (
-          <div className="mt-3 flex flex-col gap-5">
+          <div
+            className="mt-3 flex flex-col gap-5"
+            data-tour={mine ? "profile-stats" : undefined}
+          >
             <section aria-label="Attributi">
               <h2 className={clsx(LABEL, "flex items-center gap-1.5")}>
                 Attributi
@@ -502,10 +602,25 @@ export function PlayerPage() {
                 )}
               </div>
             </section>
+            {mine && (
+              <section
+                aria-label="Andamento"
+                className="h-[210px] rounded-[22px] bg-surface p-4 shadow-[var(--shadow)]"
+              >
+                <TrendChart playerId={player.id} />
+              </section>
+            )}
+          </div>
+        ) : tab === "numeri" ? (
+          <div
+            className="mt-3"
+            data-tour={mine ? "profile-advanced" : undefined}
+          >
+            <StatsDashboard playerId={player.id} advanced={mine} />
           </div>
         ) : (
           <div className="mt-3">
-            <StatsDashboard playerId={player.id} />
+            <RelationsList playerId={player.id} />
           </div>
         )}
       </PullToRefresh>

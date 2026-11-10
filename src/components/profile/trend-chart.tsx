@@ -75,7 +75,7 @@ export function TrendChart({ playerId }: { playerId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="title flex shrink-0 items-center gap-1.5 text-[16px]">
+        <h2 className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
           Andamento
           <InfoTip label="Cosa mostra il grafico" size={15}>
             Come vai mese dopo mese. Voto: punti, rimbalzi, assist, rubate e
@@ -108,12 +108,12 @@ export function TrendChart({ playerId }: { playerId: string }) {
               className="absolute inset-0 h-full w-full"
               aria-hidden
             >
-              {area && <path d={area} fill="var(--court)" opacity="0.14" />}
+              {area && <path d={area} fill="var(--ball)" opacity="0.14" />}
               {pts.length > 1 && (
                 <path
                   d={line}
                   fill="none"
-                  stroke="var(--court)"
+                  stroke="var(--ball)"
                   strokeWidth="3"
                   strokeLinejoin="round"
                   strokeLinecap="round"
@@ -129,14 +129,14 @@ export function TrendChart({ playerId }: { playerId: string }) {
             {pts.map((p) => (
               <span
                 key={p.i}
-                className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-edge bg-volt"
+                className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-surface bg-ball"
                 style={{ left: pct(p.i), top: `${(y(p.v) / H) * 100}%` }}
                 aria-hidden
               />
             ))}
           </div>
           <div
-            className="relative mt-2 h-9 shrink-0 border-t-2 border-line"
+            className="relative mt-2 h-9 shrink-0 border-t border-line"
             aria-hidden
           >
             {series.map((s, i) => {
