@@ -3,7 +3,7 @@
 import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
-import { IconRefresh, IconX } from "@tabler/icons-react";
+import { IconChevronLeft, IconRefresh, IconX } from "@tabler/icons-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BoxEditor } from "@/components/box-editor";
 import {
@@ -39,6 +39,9 @@ import { say } from "@/lib/voice";
 
 const STEPS = ["Formato", "Squadre", "Risultato", "Tabellino"] as const;
 
+const LABEL =
+  "mb-2 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
 function toLocalInput(d: Date): string {
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 16);
@@ -57,16 +60,20 @@ function ScoreSide({
   names: string;
   target: number;
 }) {
+  const step = (d: number) => {
+    haptic(5);
+    onChange(Math.max(0, Math.min(200, value + d)));
+  };
   return (
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-3">
-      <p className="flex max-w-full items-center gap-1.5 truncate text-[14px] font-semibold">
-        <span
-          className={clsx(
-            "h-2.5 w-2.5 shrink-0 rounded-full",
-            team === "A" ? "bg-ball" : "bg-text",
-          )}
-        />
-        <span className="truncate">{names}</span>
+    <div className="flex min-w-0 flex-1 flex-col items-center rounded-[22px] bg-surface px-3 pb-3 pt-4 shadow-[var(--shadow)]">
+      <span
+        className={clsx(
+          "h-1.5 w-7 rounded-full",
+          team === "A" ? "bg-court" : "bg-ball",
+        )}
+      />
+      <p className="mt-2 line-clamp-2 min-h-[2.5em] w-full text-center text-[13px] font-semibold leading-tight [text-wrap:balance]">
+        {names}
       </p>
       <input
         inputMode="numeric"
@@ -81,35 +88,29 @@ function ScoreSide({
           )
         }
         onFocus={(e) => e.target.select()}
-        className="num w-full bg-transparent text-center text-[84px] outline-none"
+        className="score w-full bg-transparent text-center text-[72px] leading-none outline-none"
       />
-      <div className="flex w-full gap-2">
+      <div className="mt-2 flex w-full gap-2">
         <button
           aria-label={`Togli un punto alla squadra ${team}`}
-          onClick={() => {
-            haptic(5);
-            onChange(Math.max(0, value - 1));
-          }}
-          className="h-12 flex-1 rounded-2xl bg-raised text-[22px]"
+          onClick={() => step(-1)}
+          className="press h-11 flex-1 rounded-full bg-raised text-[22px]"
         >
           −
         </button>
         <button
           aria-label={`Aggiungi un punto alla squadra ${team}`}
-          onClick={() => {
-            haptic(5);
-            onChange(Math.min(200, value + 1));
-          }}
-          className="h-12 flex-1 rounded-2xl bg-raised text-[22px]"
+          onClick={() => step(1)}
+          className="press h-11 flex-1 rounded-full bg-raised text-[22px]"
         >
           +
         </button>
       </div>
       <button
         onClick={() => onChange(target)}
-        className="h-10 w-full rounded-2xl text-[14px] font-semibold text-ball ring-1 ring-ball/40 ring-inset"
+        className="press mt-2 h-9 w-full rounded-full text-[13px] font-semibold text-muted ring-1 ring-line-strong ring-inset"
       >
-        {target}
+        Metti {target}
       </button>
     </div>
   );
@@ -399,66 +400,84 @@ function NewMatchInner() {
     void mutate;
   };
 
-  const next = () => {
-    if (step === 1 && !teamsOk)
-      return toast(
-        a.length > maxPerTeam(format) || b.length > maxPerTeam(format)
-          ? "Al massimo due cambi per squadra: togline uno"
-          : `Mi servono ${size} giocatori per squadra`,
-        "error",
-      );
-    if (step === 2 && !scoreOk)
-      return toast(
-        "Al campetto non si pareggia: controlla il punteggio",
-        "error",
-      );
-    setStep((s) => Math.min(3, s + 1));
+  const blocked = (to: number) => {
+    if (to > 1 && !teamsOk)
+      return a.length > maxPerTeam(format) || b.length > maxPerTeam(format)
+        ? "Al massimo due cambi per squadra: togline uno"
+        : `Mi servono ${size} giocatori per squadra`;
+    if (to > 2 && !scoreOk)
+      return "Al campetto non si pareggia: controlla il punteggio";
+    return null;
   };
+  const goTo = (to: number) => {
+    const why = blocked(to);
+    if (why) return toast(why, "error");
+    setStep(to);
+  };
+
+  const next = () => goTo(Math.min(3, step + 1));
 
   return (
     <>
-      <header className="safe-top shrink-0 px-4">
-        <div className="flex h-14 items-center gap-2">
+      <header className="safe-top shrink-0 px-5">
+        <div className="flex min-h-16 items-center gap-3 pt-5">
           <button
             onClick={() =>
-              step > 0 && !(editing && step === 2)
-                ? setStep(step - 1)
-                : router.back()
+              step > 0 && !editing ? setStep(step - 1) : router.back()
             }
-            aria-label={step > 0 ? "Passo precedente" : "Chiudi"}
-            className="-ml-2 grid h-11 w-11 place-items-center rounded-full active:bg-raised"
+            aria-label={step > 0 && !editing ? "Passo precedente" : "Chiudi"}
+            className="sticker-sm press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface"
           >
-            <IconX size={22} />
+            {step > 0 && !editing ? (
+              <IconChevronLeft size={22} />
+            ) : (
+              <IconX size={20} />
+            )}
           </button>
-          <div className="min-w-0 flex-1">
-            <h1 className="title truncate text-[22px]">
-              {editing ? "Modifica partita" : "Nuova partita"}
-            </h1>
-            <p className="text-[12.5px] text-muted">
-              Passo {step + 1} di 4: {STEPS[step]}
-            </p>
-          </div>
+          <h1 className="display min-w-0 flex-1 truncate pb-0.5 text-[24px]">
+            {editing ? "Modifica partita" : "Nuova partita"}
+          </h1>
         </div>
-        <div className="flex gap-1.5 pb-3" aria-hidden>
-          {STEPS.map((s, i) => (
-            <span
-              key={s}
-              className={clsx(
-                "h-1 flex-1 rounded-full",
-                i <= step ? "bg-ball" : "bg-line",
-              )}
-            />
-          ))}
-        </div>
+        <nav aria-label="Passi" className="grid grid-cols-4 gap-1.5 pb-4 pt-3">
+          {STEPS.map((s, i) => {
+            const reachable = i <= step || (!!editing && !blocked(i));
+            return (
+              <button
+                key={s}
+                disabled={!reachable}
+                onClick={() => goTo(i)}
+                aria-current={i === step ? "step" : undefined}
+                className="flex flex-col gap-1.5 text-left disabled:cursor-default"
+              >
+                <span
+                  className={clsx(
+                    "h-1 w-full rounded-full transition-colors",
+                    i <= step ? "bg-ball" : "bg-line",
+                  )}
+                />
+                <span
+                  className={clsx(
+                    "text-[11.5px] font-semibold",
+                    i === step
+                      ? "text-text"
+                      : reachable
+                        ? "text-muted"
+                        : "text-faint",
+                  )}
+                >
+                  {s}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col px-4 pb-3">
+      <main className="flex min-h-0 flex-1 flex-col px-5 pb-3">
         {step === 0 && (
           <div className="flex flex-col gap-6">
             <section>
-              <h2 className="mb-2 text-[13px] font-semibold text-muted">
-                Formato
-              </h2>
+              <h2 className={LABEL}>Formato</h2>
               <div className="grid grid-cols-4 gap-2">
                 {FORMATS.map((f) => (
                   <button
@@ -469,8 +488,10 @@ function NewMatchInner() {
                     }}
                     aria-pressed={format === f}
                     className={clsx(
-                      "num h-20 rounded-2xl text-[28px]",
-                      format === f ? "bg-ball text-ball-ink" : "bg-raised",
+                      "num press h-16 rounded-[18px] text-[24px] transition-colors",
+                      format === f
+                        ? "bg-text text-bg"
+                        : "sticker-sm bg-surface text-muted",
                     )}
                   >
                     {f}
@@ -479,9 +500,7 @@ function NewMatchInner() {
               </div>
             </section>
             <section>
-              <h2 className="mb-2 text-[13px] font-semibold text-muted">
-                Quando
-              </h2>
+              <h2 className={LABEL}>Quando</h2>
               <DateTimeField
                 value={playedAt}
                 onChange={setPlayedAt}
@@ -490,9 +509,7 @@ function NewMatchInner() {
               />
             </section>
             <section>
-              <h2 className="mb-2 text-[13px] font-semibold text-muted">
-                Si gioca fino a
-              </h2>
+              <h2 className={LABEL}>Si gioca fino a</h2>
               <Stepper
                 value={target}
                 onChange={setTarget}
@@ -519,7 +536,7 @@ function NewMatchInner() {
 
         {step === 2 && (
           <div className="flex flex-1 flex-col justify-center">
-            <div className="flex items-start gap-4">
+            <div className="flex items-stretch gap-2.5">
               <ScoreSide
                 team="A"
                 value={scoreA}
@@ -536,14 +553,14 @@ function NewMatchInner() {
               />
             </div>
             {!scoreOk && (scoreA > 0 || scoreB > 0) && (
-              <p className="mt-4 text-center text-[13px] text-danger">
+              <p className="mt-4 text-center text-[13px] font-semibold text-danger">
                 Il risultato non può essere un pareggio
               </p>
             )}
             {scoreOk && Math.max(scoreA, scoreB) < target && (
               <p className="mt-4 text-center text-[13px] text-muted">
                 Nessuno è arrivato a {target}: va bene lo stesso se avete smesso
-                prima.
+                prima
               </p>
             )}
           </div>
@@ -566,19 +583,19 @@ function NewMatchInner() {
 
         {step === 3 && withBox && cur && (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
-            <div className="scroll-x -mx-4 flex shrink-0 gap-2 px-4 py-1">
+            <div className="scroll-x -mx-5 flex shrink-0 gap-2 px-5 py-1">
               {ordered.map((id) => (
                 <button
                   key={id}
                   onClick={() => setCurrent(id)}
                   aria-pressed={id === cur}
                   className={clsx(
-                    "flex h-11 shrink-0 items-center gap-2 rounded-full pl-1 pr-3 text-[13.5px] font-semibold",
+                    "press flex h-11 shrink-0 items-center gap-2 rounded-full pl-1 pr-3 text-[13.5px] font-semibold transition-colors",
                     id === cur
                       ? assign[id] === "A"
-                        ? "bg-ball text-ball-ink"
-                        : "bg-text text-bg"
-                      : "bg-raised",
+                        ? "bg-court text-court-ink"
+                        : "bg-ball text-ball-ink"
+                      : "sticker-sm bg-surface",
                   )}
                 >
                   <Avatar
@@ -609,21 +626,49 @@ function NewMatchInner() {
             </div>
             {pointsCheck && (
               <div
-                className={clsx(
-                  "flex shrink-0 flex-col items-center gap-1.5 text-center text-[12.5px]",
-                  pointsBad ? "text-danger" : "text-ok",
-                )}
+                className="flex shrink-0 flex-col items-center gap-2"
                 role={pointsBad ? "alert" : undefined}
                 data-testid="points-check"
               >
-                <p>
-                  Dal tabellino: A {pointsCheck.pa} su {scoreA}, B{" "}
-                  {pointsCheck.pb} su {scoreB}
+                <div className="flex w-full gap-2">
+                  {(
+                    [
+                      ["A", pointsCheck.pa, scoreA],
+                      ["B", pointsCheck.pb, scoreB],
+                    ] as const
+                  ).map(([t, got, want]) => (
+                    <p
+                      key={t}
+                      className={clsx(
+                        "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold",
+                        got === want
+                          ? "bg-ok/12 text-ok"
+                          : "bg-danger/12 text-danger",
+                      )}
+                    >
+                      <span
+                        className={clsx(
+                          "h-2 w-2 rounded-full",
+                          t === "A" ? "bg-court" : "bg-ball",
+                        )}
+                      />
+                      <span className="num text-[14px]">
+                        {got} su {want}
+                      </span>
+                      punti
+                    </p>
+                  ))}
+                </div>
+                <p
+                  className={clsx(
+                    "text-center text-[12.5px]",
+                    pointsBad ? "text-danger" : "text-muted",
+                  )}
+                >
                   {pointsBad
-                    ? ". I punti devono tornare col risultato"
-                    : " · tutto torna"}
+                    ? "I punti del tabellino devono tornare con il risultato"
+                    : "I punti del tabellino tornano con il risultato"}
                 </p>
-                {/* Se il tabellino è giusto e il risultato no, un tocco lo sistema. */}
                 {pointsBad &&
                   pointsCheck.pa !== pointsCheck.pb &&
                   pointsCheck.pa + pointsCheck.pb > 0 && (
@@ -632,7 +677,7 @@ function NewMatchInner() {
                         setScoreA(pointsCheck.pa);
                         setScoreB(pointsCheck.pb);
                       }}
-                      className="press rounded-full border-2 border-edge bg-surface px-3 py-1 text-[12.5px] font-bold text-text"
+                      className="sticker-sm press rounded-full bg-surface px-3.5 py-1.5 text-[12.5px] font-semibold"
                     >
                       Usa {pointsCheck.pa}–{pointsCheck.pb} come risultato
                     </button>
@@ -643,14 +688,9 @@ function NewMatchInner() {
         )}
       </main>
 
-      <footer className="shrink-0 border-t border-line px-4 py-3">
+      <footer className="shrink-0 px-5 pb-4 pt-2">
         {step < 3 ? (
           <div className="flex gap-2">
-            {step === 2 && editing && (
-              <Button className="flex-1" onClick={() => setStep(1)}>
-                Squadre
-              </Button>
-            )}
             <Button
               variant="primary"
               className="flex-1"

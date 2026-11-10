@@ -133,7 +133,7 @@ export function TeamPicker({
         <span
           className={clsx(
             "h-2.5 w-2.5 rounded-full",
-            t === "A" ? "bg-ball" : "bg-text",
+            t === "A" ? "bg-court" : "bg-ball",
           )}
         />{" "}
         {t} {Math.min(n, size)}/{size}
@@ -173,10 +173,10 @@ export function TeamPicker({
               data-testid={`pick-${p.id}`}
               aria-label={`${shortName(p, data.players)}${t ? `, squadra ${t}${subs.has(p.id) ? ", cambio" : ""}` : ""}`}
               className={clsx(
-                "flex h-14 items-center gap-2.5 rounded-2xl px-2.5 text-left transition-colors",
-                t === "A" && "bg-ball text-ball-ink",
-                t === "B" && "bg-text text-bg",
-                !t && "bg-raised",
+                "press flex h-14 items-center gap-2.5 rounded-[18px] px-2.5 text-left transition-colors",
+                t === "A" && "bg-court text-court-ink",
+                t === "B" && "bg-ball text-ball-ink",
+                !t && "sticker-sm bg-surface",
               )}
             >
               <span className="relative shrink-0">
@@ -211,10 +211,10 @@ export function TeamPicker({
                 data-testid={`pick-${p.id}`}
                 aria-label={`${shortName(p)}, ospite${t ? `, squadra ${t}` : ""}`}
                 className={clsx(
-                  "flex h-14 w-full items-center gap-2.5 rounded-2xl border-2 border-dashed px-2.5 text-left transition-colors",
-                  t === "A" && "border-ball-ink/40 bg-ball text-ball-ink",
-                  t === "B" && "border-bg/40 bg-text text-bg",
-                  !t && "border-line-strong bg-raised",
+                  "press flex h-14 w-full items-center gap-2.5 rounded-[18px] border-2 border-dashed px-2.5 text-left transition-colors",
+                  t === "A" && "border-court-ink/40 bg-court text-court-ink",
+                  t === "B" && "border-ball-ink/40 bg-ball text-ball-ink",
+                  !t && "border-line-strong bg-surface",
                 )}
               >
                 <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full border-2 border-dashed border-current opacity-80">
@@ -259,7 +259,7 @@ export function TeamPicker({
               else if (b.length < max) next[id] = "B";
               onChange(next);
             }}
-            className="press flex h-14 items-center gap-2.5 rounded-2xl border-2 border-dashed border-line-strong px-2.5 text-left text-muted"
+            className="press flex h-14 items-center gap-2.5 rounded-[18px] border-2 border-dashed border-line-strong px-2.5 text-left text-muted"
           >
             <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-raised">
               <IconUserPlus size={18} aria-hidden />
@@ -284,9 +284,9 @@ export function TeamPicker({
               <span className="text-muted">Previsione</span>
               <span>B {Math.round((1 - prob) * 100)}%</span>
             </div>
-            <div className="flex h-2 overflow-hidden rounded-full bg-text">
+            <div className="flex h-2 overflow-hidden rounded-full bg-ball">
               <div
-                className="h-full bg-ball transition-[width]"
+                className="h-full bg-court transition-[width]"
                 style={{ width: `${prob * 100}%` }}
               />
             </div>
@@ -296,7 +296,7 @@ export function TeamPicker({
           <button
             disabled={!canBalance}
             onClick={() => balance(0)}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-raised text-[14px] font-semibold disabled:opacity-40"
+            className="sticker-sm press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-surface text-[14px] font-semibold disabled:opacity-40"
           >
             <IconScale size={17} /> Equilibra
           </button>
@@ -306,7 +306,7 @@ export function TeamPicker({
               play("shuffle");
               balance(1);
             }}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-raised text-[14px] font-semibold disabled:opacity-40"
+            className="sticker-sm press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-surface text-[14px] font-semibold disabled:opacity-40"
           >
             <IconArrowsShuffle size={17} /> Rimescola
           </button>
