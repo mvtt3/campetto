@@ -42,17 +42,20 @@ const ICON: Record<NewsIcon, typeof IconFlame> = {
   video: IconMovie,
 };
 const TINT: Record<NewsIcon, string> = {
-  record: "bg-volt text-volt-ink",
-  fire: "bg-ball text-ball-ink",
-  double: "bg-[#6b46b8] text-white",
-  streak: "bg-volt text-volt-ink",
-  crown: "bg-volt text-volt-ink",
-  calendar: "bg-court text-court-ink",
-  season: "bg-ball text-ball-ink",
-  megaphone: "bg-court text-court-ink",
-  leader: "bg-ok text-white",
-  video: "bg-ball text-ball-ink",
+  record: "bg-volt/30 text-volt-ink",
+  fire: "bg-ball-soft text-ball",
+  double: "bg-[#6b46b8]/15 text-[#6b46b8]",
+  streak: "bg-volt/30 text-volt-ink",
+  crown: "bg-volt/30 text-volt-ink",
+  calendar: "bg-raised text-text",
+  season: "bg-ball-soft text-ball",
+  megaphone: "bg-raised text-text",
+  leader: "bg-ok/15 text-ok",
+  video: "bg-ball-soft text-ball",
 };
+
+const ICON_BOX =
+  "grid h-10 w-10 shrink-0 place-items-center rounded-[14px]";
 
 const SEEN_KEY = (id: string) => `campetto:notizie-viste:${id}`;
 
@@ -136,31 +139,30 @@ function SeasonPreview() {
   const tiers = [1, 2, 3, 4, 5, 6];
   return (
     <div
-      className="overflow-hidden rounded-[20px] border-[2.5px] border-edge bg-court text-court-ink"
+      className="overflow-hidden rounded-[18px] bg-[linear-gradient(135deg,#ffd451_0%,#ffb238_55%,#ff8f2b_100%)] text-[#1d1a16]"
       aria-hidden
     >
-      <div className="halftone relative px-3 pb-3 pt-2.5">
+      <div className="relative px-3.5 pb-3.5 pt-3">
         <div className="flex items-center justify-between">
           <span className="display text-[17px] leading-none">
             Pass di stagione
           </span>
-          <span className="rotate-[-4deg] rounded-md border-2 border-[#1d1a16] bg-volt px-1.5 py-0.5 text-[10.5px] font-bold text-volt-ink">
+          <span className="rounded-full bg-[#1d1a16] px-2 py-0.5 text-[10.5px] font-bold text-volt">
             Presto
           </span>
         </div>
-        {/* Il percorso: sei tappe con i premi coperti, la prima già illuminata. */}
-        <div className="relative mt-3 flex items-center justify-between">
-          <span className="absolute inset-x-3 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#fffaf0]/25" />
-          <span className="absolute left-3 top-1/2 h-1.5 w-[14%] -translate-y-1/2 rounded-full bg-volt" />
+        <div className="relative mt-3.5 flex items-center justify-between">
+          <span className="absolute inset-x-3 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#1d1a16]/15" />
+          <span className="absolute left-3 top-1/2 h-1 w-[14%] -translate-y-1/2 rounded-full bg-[#1d1a16]" />
           {tiers.map((t) => (
             <span
               key={t}
               className={clsx(
-                "relative grid h-10 w-10 place-items-center rounded-[12px] border-2 border-[#1d1a16]",
+                "relative grid h-10 w-10 place-items-center rounded-[12px]",
                 t === 1
-                  ? "bg-volt text-volt-ink"
-                  : "bg-[#fffaf0] text-[#1d1a16]/45",
-                t === 6 && "h-12 w-12 bg-ball text-ball-ink",
+                  ? "bg-[#1d1a16] text-volt"
+                  : "bg-[#fffaf0]/70 text-[#1d1a16]/40",
+                t === 6 && "h-12 w-12 !bg-[#fffaf0] !text-ball",
               )}
             >
               {t === 1 ? (
@@ -170,13 +172,13 @@ function SeasonPreview() {
               ) : (
                 <IconLock size={15} />
               )}
-              <span className="absolute -bottom-2 rounded-full border border-[#1d1a16] bg-[#fffaf0] px-1 text-[9px] font-bold text-[#1d1a16]">
+              <span className="absolute -bottom-2 rounded-full bg-[#1d1a16] px-1.5 text-[9px] font-bold text-[#fffaf0]">
                 {t}
               </span>
             </span>
           ))}
         </div>
-        <p className="mt-3.5 text-[11.5px] font-semibold opacity-90">
+        <p className="mt-3.5 text-[11.5px] font-semibold opacity-75">
           Gioca, sali di livello, sblocca premi
         </p>
       </div>
@@ -204,18 +206,13 @@ function StoryCard({
           <span className="sr-only">Nuova: </span>
         </>
       )}
-      <span
-        className={clsx(
-          "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-edge",
-          TINT[s.icon],
-        )}
-      >
-        <Icon size={18} aria-hidden />
+      <span className={clsx(ICON_BOX, TINT[s.icon])}>
+        <Icon size={19} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
         <span
           className={clsx(
-            "block text-[14.5px] font-bold leading-snug",
+            "block text-[14.5px] font-semibold leading-snug",
             fresh && "pr-4",
           )}
         >
@@ -224,7 +221,7 @@ function StoryCard({
         <span className="mt-0.5 block text-[13px] leading-snug text-muted">
           {s.body}
         </span>
-        <span className="mt-1 block text-[11.5px] font-semibold text-faint">
+        <span className="mt-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
           {when(s.date)}
         </span>
       </span>
@@ -309,40 +306,33 @@ export function NewsPanel({
         <Drawer.Overlay className="fixed inset-0 z-40 bg-[#1d1a16]/45" />
         <Drawer.Content
           aria-describedby={undefined}
-          className="safe-top fixed inset-y-0 right-0 z-50 flex w-[88vw] max-w-[420px] flex-col rounded-l-[28px] border-[2.5px] border-r-0 border-edge bg-bg outline-none will-change-transform [contain:layout_paint]"
+          className="safe-top fixed inset-y-0 right-0 z-50 flex w-[88vw] max-w-[420px] flex-col rounded-l-[28px] bg-bg shadow-[-12px_0_40px_-12px_rgb(29_26_22/0.35)] outline-none will-change-transform [contain:layout_paint]"
         >
-          <div className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-3">
-            <IconNews size={22} className="text-court" aria-hidden />
-            <Drawer.Title className="display flex-1 text-[24px]">
+          <div className="flex shrink-0 items-center gap-3 px-5 pb-3 pt-5">
+            <Drawer.Title className="display flex-1 text-[26px]">
               Notizie
             </Drawer.Title>
             <Drawer.Close
               aria-label="Chiudi"
-              className="press grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface"
+              className="press grid h-9 w-9 place-items-center rounded-full bg-surface text-muted shadow-[var(--shadow)]"
             >
-              <IconX size={18} strokeWidth={2.4} />
+              <IconX size={17} strokeWidth={2.4} />
             </Drawer.Close>
           </div>
           <div
             className="scroll-area safe-bottom flex min-h-0 flex-1 flex-col gap-2.5 px-4 pb-6"
             data-vaul-no-drag=""
           >
-            {/* Le stagioni: un'anteprima, i dettagli a dicembre. */}
             <section
-              className="card flex flex-col gap-2.5 p-3"
+              className="card flex flex-col gap-3 p-3"
               aria-label="Arrivano le stagioni"
             >
               <div className="flex items-start gap-3">
-                <span
-                  className={clsx(
-                    "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-edge",
-                    TINT.season,
-                  )}
-                >
-                  <IconSparkles size={18} aria-hidden />
+                <span className={clsx(ICON_BOX, TINT.season)}>
+                  <IconSparkles size={19} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14.5px] font-bold leading-snug">
+                  <span className="block text-[14.5px] font-semibold leading-snug">
                     {before
                       ? "Dal 1° dicembre arrivano le stagioni"
                       : "Le stagioni sono arrivate"}
@@ -357,7 +347,7 @@ export function NewsPanel({
               <SeasonPreview />
             </section>
             {stories.length === 0 ? (
-              <p className="px-2 py-8 text-center text-[14px] text-muted">
+              <p className="px-6 py-10 text-center text-[13.5px] text-muted">
                 Le notizie arrivano con le prime partite: record, serate e chi
                 va più forte
               </p>
