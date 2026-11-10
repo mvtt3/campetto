@@ -87,14 +87,6 @@ function rating(mine: number | null, all: (number | null)[]): number | null {
   return Math.round(45 + (54 * below) / (pool.length - 1));
 }
 
-function tier(r: number): string {
-  if (r >= 90) return "from-[#c9a6ff] to-[#7c4dff]";
-  if (r >= 80) return "from-[#ffe58a] to-[#f0a01c]";
-  if (r >= 70) return "from-[#8be3a8] to-[#2e9e5b]";
-  if (r >= 60) return "from-[#ffd0a1] to-[#f26a1b]";
-  return "from-[#ffb3a7] to-[#d64531]";
-}
-
 export function PlayerPage() {
   const params = useSearchParams();
   const id = params.get("id") ?? "";
@@ -216,17 +208,6 @@ export function PlayerPage() {
               <path d="M168 32c-30 30-30 106 0 136" />
             </svg>
           </span>
-          {player.jerseyNumber !== null && (
-            <motion.span
-              aria-hidden
-              className="display pointer-events-none absolute -right-6 top-16 -z-10 bg-linear-to-b from-white/50 to-white/0 bg-clip-text text-[240px] leading-none text-transparent"
-              initial={{ opacity: 0, x: 70 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
-            >
-              {player.jerseyNumber}
-            </motion.span>
-          )}
           <motion.span
             aria-hidden
             className="pointer-events-none absolute inset-y-0 -z-10 w-1/3 -skew-x-12 bg-linear-to-r from-transparent via-white/35 to-transparent"
@@ -246,31 +227,6 @@ export function PlayerPage() {
             >
               <IconChevronLeft size={22} />
             </button>
-            {ovr !== null && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.6, rotate: -8 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ ...SPRING, delay: 0.35 }}
-                className={clsx(
-                  "rounded-[18px] bg-linear-to-br p-[2px] shadow-[0_10px_24px_-8px_rgb(0_0_0/0.6)]",
-                  tier(ovr),
-                )}
-              >
-                <span className="flex h-[60px] w-[60px] flex-col items-center justify-center rounded-[16px] bg-[#1d1a16] text-white">
-                  <span
-                    className={clsx(
-                      "num bg-linear-to-b bg-clip-text text-[30px] leading-none text-transparent",
-                      tier(ovr),
-                    )}
-                  >
-                    <CountUp value={ovr} />
-                  </span>
-                  <span className="mt-0.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/70">
-                    OVR
-                  </span>
-                </span>
-              </motion.div>
-            )}
           </div>
 
           <motion.span
@@ -288,6 +244,21 @@ export function PlayerPage() {
               title={name}
               className="short:h-[150px] short:w-auto"
             />
+            {ovr !== null && (
+              <motion.span
+                className="absolute -left-12 bottom-4 flex flex-col items-center text-white"
+                initial={{ opacity: 0, scale: 0.5, x: -20 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                transition={{ ...SPRING, delay: 0.4 }}
+              >
+                <span className="display text-[76px] leading-[0.8] [text-shadow:0_4px_18px_rgb(0_0_0/0.35)]">
+                  <CountUp value={ovr} />
+                </span>
+                <span className="mt-1 rounded-full bg-[#1d1a16] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-volt">
+                  OVR
+                </span>
+              </motion.span>
+            )}
           </motion.span>
 
           <div className="relative flex min-h-[190px] w-[60%] flex-col px-5 pb-4 pt-3 short:min-h-[150px]">
@@ -449,10 +420,7 @@ export function PlayerPage() {
                     <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-raised">
                       {a.value !== null && (
                         <motion.div
-                          className={clsx(
-                            "h-full rounded-full bg-linear-to-r",
-                            tier(a.value),
-                          )}
+                          className="h-full rounded-full bg-linear-to-r from-ball to-volt"
                           initial={{ width: 0 }}
                           animate={{ width: `${a.value}%` }}
                           transition={{
