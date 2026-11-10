@@ -269,8 +269,8 @@ a,
   mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
 }
 .scroll-area[data-scrolled] {
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 24px);
-  mask-image: linear-gradient(to bottom, transparent, #000 24px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12px);
+  mask-image: linear-gradient(to bottom, transparent, #000 12px);
 }
 .scroll-area::-webkit-scrollbar,
 .scroll-x::-webkit-scrollbar {
