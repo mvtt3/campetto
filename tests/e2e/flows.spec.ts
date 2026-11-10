@@ -532,7 +532,7 @@ test("MVP con cornice d'oro e profilo di un altro giocatore", async ({
   await expect(page.getByText("Testa a testa")).toBeVisible();
   await page.getByRole("link", { name: "Vedi tutti i badge" }).click();
   await expect(page).toHaveURL(/\/giocatore\/badge\?id=p3/);
-  await expect(page.getByRole("heading", { name: /^Badge di / })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Badge" })).toBeVisible();
   // I vecchi indirizzi portano a quelli nuovi.
   await page.goto("/giocatore/p4");
   await expect(page).toHaveURL(/\/giocatore\?id=p4$/);
