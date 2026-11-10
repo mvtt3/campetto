@@ -623,10 +623,7 @@ html[data-intro="off"] .intro {
 .intro-word {
   font-size: 58px;
   line-height: 1;
-  color: #fffaf0;
-  -webkit-text-stroke: 2.5px #1d1a16;
-  paint-order: stroke fill;
-  text-shadow: 4px 4px 0 #1d1a16;
+  color: #1d1a16;
 }
 .intro-word span {
   display: inline-block;
@@ -762,16 +759,20 @@ html[data-shot="2"] .intro-pose-c {
   position: absolute;
   left: 104px;
   top: 116px;
-  font-size: 28px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: #1d1a16;
+  color: #ffc531;
+  font-size: 22px;
   white-space: nowrap;
-  color: #e5412d;
-  text-shadow: 2px 2px 0 #1d1a16;
-  transform: rotate(-10deg) scale(0);
+  box-shadow: 0 10px 24px -10px rgb(29 26 22 / 0.5);
+  transform: rotate(-8deg) scale(0);
   opacity: 0;
 }
 .intro-say-miss,
 .intro-say-rim {
-  color: #fffaf0;
+  background: #fffaf0;
+  color: #1d1a16;
 }
 html[data-shot="1"] .intro-say-in {
   animation: intro-say 0.5s 1.7s cubic-bezier(0.2, 0.9, 0.3, 1.5) both;
@@ -788,7 +789,7 @@ html[data-shot="2"] .intro-say-rim {
 @keyframes intro-say {
   to {
     opacity: 1;
-    transform: rotate(-10deg) scale(1);
+    transform: rotate(-8deg) scale(1);
   }
 }
 .intro-pose {
@@ -814,11 +815,10 @@ html[data-shot="2"] .intro-say-rim {
 .intro-caption {
   min-height: 48px;
   max-width: 300px;
-  padding: 11px 18px;
-  border: 2.5px solid #1d1a16;
+  padding: 12px 18px;
   border-radius: 20px;
-  background: #fffaf0;
-  box-shadow: 3px 3px 0 #1d1a16;
+  background: rgb(255 250 240 / 0.92);
+  box-shadow: 0 12px 30px -14px rgb(29 26 22 / 0.45);
   text-align: center;
   font-size: 16px;
   font-weight: 700;
