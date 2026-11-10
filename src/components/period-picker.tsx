@@ -122,13 +122,14 @@ export function PeriodPicker({
           label="Formato"
           value={format ?? "all"}
           onChange={onFormat}
-          trigger={<span>{format === "all" || !format ? "Tutti" : format}</span>}
+          trigger={
+            <span>{format === "all" || !format ? "Tutti" : format}</span>
+          }
           options={[
             { value: "all", label: "Tutti i formati" },
             ...FORMATS.map((f) => ({
               value: f as FormatFilter,
               label: f,
-              hint: `${f[0]} contro ${f[0]}`,
             })),
           ]}
         />
