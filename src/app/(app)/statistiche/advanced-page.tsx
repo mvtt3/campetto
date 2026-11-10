@@ -4,8 +4,6 @@ import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { defaultPeriod } from "@/components/period-picker";
-import { Group, Row, Stat } from "@/components/profile/stats-dashboard";
-import { Avatar } from "@/components/ui/avatar";
 import { ShotChart, TIER_TINT, ZONE_NAME } from "@/components/stats/shot-chart";
 import {
   Chips,
@@ -100,30 +98,55 @@ function Compare({
   );
 }
 
-function Partner({
-  label,
-  playerId,
-  n,
-}: {
+interface Item {
+  value: ReactNode;
   label: string;
-  playerId: string | null;
-  n: number;
-}) {
-  const { data } = useData();
-  const p = playerId ? data.players.find((x) => x.id === playerId) : undefined;
+  sub?: ReactNode;
+}
+
+function Tile({
+  value,
+  label,
+  sub,
+  weight,
+}: Item & { weight: "hero" | "main" | "minor" }) {
+  const long = typeof value === "string" && value.length > 6;
   return (
-    <div className="flex items-center gap-2 border-b border-line py-2 first:pt-0 last:border-b-0 last:pb-0">
-      <Avatar player={p} size={26} href={false} ring="none" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[11px] font-semibold text-muted">
-          {label}
-        </span>
-        <span className="block truncate text-[13px] font-semibold">
-          {p ? shortName(p, data.players) : "—"}
-        </span>
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate text-[12px] font-semibold text-muted">
+        {label}
       </span>
-      {p && <span className="num shrink-0 text-[15px]">{n}</span>}
+      <span
+        className={clsx(
+          "num mt-1 block max-w-full truncate whitespace-nowrap leading-none",
+          weight === "hero" && "text-[32px] text-ball",
+          weight === "main" && (long ? "text-[17px]" : "text-[24px]"),
+          weight === "minor" && (long ? "text-[15px]" : "text-[19px]"),
+        )}
+      >
+        {value}
+      </span>
+      {sub && (
+        <span className="mt-1 truncate text-[11px] text-faint">{sub}</span>
+      )}
     </div>
+  );
+}
+
+function Board({ main, minor }: { main: Item[]; minor: Item[] }) {
+  return (
+    <>
+      <div className="grid grid-cols-3 items-end gap-3">
+        {main.map((it, i) => (
+          <Tile key={it.label} {...it} weight={i === 0 ? "hero" : "main"} />
+        ))}
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
+        {minor.map((it) => (
+          <Tile key={it.label} {...it} weight="minor" />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -178,154 +201,124 @@ export function AdvancedPage() {
   const z = zones[zone];
   const zp = z.att ? z.made / z.att : null;
   const tier = zoneTier(z);
-  const totalShots = zones.sotto.att + zones.media.att + zones.tre.att;
-  const share = totalShots ? z.att / totalShots : null;
   const g = group[zone];
   const gp = g.att ? g.made / g.att : null;
   const has = s.statGames > 0;
   const possessions = s.fga + s.totals.tov;
   const made = split ? split.assisted + split.alone : 0;
 
-  const plus = s.games ? s.plusMinusAvg : null;
+  const name = (pid: string) =>
+    shortName(
+      data.players.find((p) => p.id === pid),
+      data.players,
+    );
   const tiles: Record<Tab, ReactNode> = {
     tiro: (
-      <>
-        <Group title="Precisione">
-          <div className="grid grid-cols-[1.4fr_1fr_1fr] items-end gap-3">
-            <Stat
-              big
-              value={pct(s.fgPct)}
-              label="Al tiro"
-              sub={`${s.fgm} su ${s.fga}`}
-            />
-            <Stat value={pct(s.efgPct)} label="Tiro effettivo" />
-            <Stat
-              value={s.fga ? fmt(s.totals.pts / s.fga, 2) : "—"}
-              label="Punti per tiro"
-            />
-          </div>
-        </Group>
-        <div className="grid grid-cols-2 gap-2.5">
-          <Group title="Volume">
-            <Stat
-              value={has ? fmt(s.fga / s.statGames) : "—"}
-              label="Tiri a partita"
-              sub={`${s.fga} in tutto`}
-            />
-          </Group>
-          <Group title="Come segni">
-            {split && made ? (
-              <>
-                <div className="flex h-2 overflow-hidden rounded-full bg-raised">
-                  <span
-                    className="h-full bg-ball"
-                    style={{ width: `${(split.assisted / made) * 100}%` }}
-                  />
-                  <span className="h-full flex-1 bg-volt" />
-                </div>
-                <div className="mt-2 flex justify-between gap-2 text-[11.5px] font-semibold">
-                  <span>
-                    <span className="num block text-[18px] text-ball">
-                      {pct(split.assisted / made)}
-                    </span>
-                    <span className="text-muted">su assist</span>
-                  </span>
-                  <span className="text-right">
-                    <span className="num block text-[18px]">
-                      {pct(split.alone / made)}
-                    </span>
-                    <span className="text-muted">da solo</span>
-                  </span>
-                </div>
-              </>
-            ) : (
-              <p className="text-[12.5px] text-muted">
-                Serve una partita raccontata azione per azione
-              </p>
-            )}
-          </Group>
-        </div>
-      </>
+      <Board
+        main={[
+          {
+            value: pct(s.fgPct),
+            label: "Al tiro",
+            sub: `${s.fgm} su ${s.fga}`,
+          },
+          { value: pct(s.efgPct), label: "Tiro effettivo" },
+          {
+            value: s.fga ? fmt(s.totals.pts / s.fga, 2) : "—",
+            label: "Punti per tiro",
+          },
+        ]}
+        minor={[
+          {
+            value: has ? fmt(s.fga / s.statGames) : "—",
+            label: "Tiri a partita",
+          },
+          {
+            value: split && made ? pct(split.assisted / made) : "—",
+            label: "Su assist",
+            sub: split && made ? `${split.assisted} su ${made}` : undefined,
+          },
+          {
+            value: split && made ? pct(split.alone / made) : "—",
+            label: "Da solo",
+            sub: split && made ? `${split.alone} su ${made}` : undefined,
+          },
+        ]}
+      />
     ),
     gioco: (
-      <>
-        <Group title="Possesso">
-          <div className="grid grid-cols-[1.4fr_1fr_1fr] items-end gap-3">
-            <Stat
-              big
-              value={possessions ? fmt(s.totals.pts / possessions, 2) : "—"}
-              label="Punti per possesso"
-            />
-            <Stat value={has ? fmt(s.avg.ast) : "—"} label="Assist a partita" />
-            <Stat
-              value={s.astTov !== null ? fmt(s.astTov, 1) : "—"}
-              label="Assist per persa"
-            />
-          </div>
-        </Group>
-        <div className="grid grid-cols-2 gap-2.5">
-          <Group title="Rimbalzi">
-            <Row value={has ? fmt(s.avg.oreb) : "—"} label="In attacco" />
-            <Row value={has ? fmt(s.avg.dreb) : "—"} label="In difesa" />
-          </Group>
-          <Group title="Intesa">
-            <Partner
-              label="Passa di più a"
-              playerId={split?.bestTarget?.id ?? null}
-              n={split?.bestTarget?.n ?? 0}
-            />
-            <Partner
-              label="Riceve di più da"
-              playerId={split?.bestPasser?.id ?? null}
-              n={split?.bestPasser?.n ?? 0}
-            />
-          </Group>
-        </div>
-      </>
+      <Board
+        main={[
+          {
+            value: possessions ? fmt(s.totals.pts / possessions, 2) : "—",
+            label: "Punti per possesso",
+          },
+          { value: has ? fmt(s.avg.ast) : "—", label: "Assist a partita" },
+          {
+            value: s.astTov !== null ? fmt(s.astTov, 1) : "—",
+            label: "Assist per persa",
+          },
+        ]}
+        minor={[
+          {
+            value: has ? `${fmt(s.avg.oreb)} · ${fmt(s.avg.dreb)}` : "—",
+            label: "Rimbalzi",
+            sub: "attacco · difesa",
+          },
+          {
+            value: split?.bestTarget ? name(split.bestTarget.id) : "—",
+            label: "Passa di più a",
+            sub: split?.bestTarget ? `${split.bestTarget.n} assist` : undefined,
+          },
+          {
+            value: split?.bestPasser ? name(split.bestPasser.id) : "—",
+            label: "Riceve di più da",
+            sub: split?.bestPasser ? `${split.bestPasser.n} assist` : undefined,
+          },
+        ]}
+      />
     ),
     impatto: (
-      <>
-        <Group title="In campo">
-          <div className="grid grid-cols-[1.4fr_1fr_1fr] items-end gap-3">
-            <Stat
-              big
-              value={plus === null ? "—" : signed(plus, 1)}
-              label="+/− a partita"
-            />
-            <Stat
-              value={s.games ? pct(s.winPct) : "—"}
-              label="Vittorie"
-              sub={`${s.wins} su ${s.games}`}
-            />
-            <Stat value={eloOf(engine.elo, id)} label="ELO" />
-          </div>
-        </Group>
-        <Group title="La tua squadra">
-          <div className="grid grid-cols-3 gap-3">
-            <Stat
-              value={s.games ? fmt(s.pointsFor / s.games) : "—"}
-              label="Punti fatti"
-            />
-            <Stat
-              value={s.games ? fmt(s.pointsAgainst / s.games) : "—"}
-              label="Punti subiti"
-            />
-            <Stat value={has ? fmt(s.effAvg) : "—"} label="Voto medio" />
-          </div>
-        </Group>
-      </>
+      <Board
+        main={[
+          {
+            value: s.games ? signed(s.plusMinusAvg, 1) : "—",
+            label: "+/− a partita",
+          },
+          {
+            value: s.games ? pct(s.winPct) : "—",
+            label: "Vittorie",
+            sub: `${s.wins} su ${s.games}`,
+          },
+          { value: eloOf(engine.elo, id), label: "ELO" },
+        ]}
+        minor={[
+          {
+            value: s.games ? fmt(s.pointsFor / s.games) : "—",
+            label: "Punti fatti",
+            sub: "dalla squadra",
+          },
+          {
+            value: s.games ? fmt(s.pointsAgainst / s.games) : "—",
+            label: "Punti subiti",
+            sub: "dalla squadra",
+          },
+          { value: has ? fmt(s.effAvg) : "—", label: "Voto medio" },
+        ]}
+      />
     ),
     record: (
-      <Group title="Il meglio in una partita">
-        <div className="grid grid-cols-3 gap-x-3 gap-y-4">
-          <Stat value={best.pts} label="Punti" />
-          <Stat value={best.reb} label="Rimbalzi" />
-          <Stat value={best.ast} label="Assist" />
-          <Stat value={best.fg3m} label="Triple" />
-          <Stat value={best.stl} label="Rubate" />
-          <Stat value={best.blk} label="Stoppate" />
-        </div>
-      </Group>
+      <Board
+        main={[
+          { value: best.pts, label: "Punti" },
+          { value: best.reb, label: "Rimbalzi" },
+          { value: best.ast, label: "Assist" },
+        ]}
+        minor={[
+          { value: best.fg3m, label: "Triple" },
+          { value: best.stl, label: "Rubate" },
+          { value: best.blk, label: "Stoppate" },
+        ]}
+      />
     ),
   };
 
@@ -387,16 +380,10 @@ export function AdvancedPage() {
                       <Compare label="Gruppo" value={gp} tone="none" />
                     </div>
                   </div>
-                  {share !== null && z.att > 0 && (
-                    <p className="mt-3 text-[12px] text-muted">
-                      Il {Math.round(share * 100)}% dei tuoi tiri arriva da qui
-                    </p>
-                  )}
                 </div>
                 {zones.unknown2 > 0 && (
                   <p className="border-t border-line px-4 py-2 text-[11.5px] text-faint">
-                    {zones.unknown2} tiri da 2 senza la zona (partite importate
-                    o dal video): contano nei totali, non nella mappa
+                    {zones.unknown2} tiri da 2 senza zona, fuori dalla mappa
                   </p>
                 )}
               </div>
@@ -404,7 +391,10 @@ export function AdvancedPage() {
 
             <section className="flex shrink-0 flex-col gap-2.5">
               <Chips value={tab} onChange={setTab} options={TABS} scroll />
-              <div key={tab} className="tab-enter-right flex flex-col gap-2.5">
+              <div
+                key={tab}
+                className={clsx(CARD, "tab-enter-right px-4 py-4")}
+              >
                 {tiles[tab]}
               </div>
             </section>
