@@ -14,7 +14,6 @@ import {
 import { BadgeMedal } from "@/components/badge-medal";
 import { Character, characterOf } from "@/components/character";
 import { StatsDashboard } from "@/components/profile/stats-dashboard";
-import { Form } from "@/components/profile/key-stats";
 import { Avatar, isLightColor, playerColor } from "@/components/ui/avatar";
 import {
   Chips,
@@ -34,7 +33,7 @@ import {
   defenseAvg,
   type PlayerStats,
 } from "@/lib/stats/player";
-import { headToHead } from "@/lib/stats/relations";
+import { form, headToHead } from "@/lib/stats/relations";
 import { shortName } from "@/lib/types";
 
 type Tab = "panoramica" | "numeri";
@@ -146,6 +145,7 @@ export function PlayerPage() {
     engine.badges(player.id).states,
     player.showcase,
   );
+  const recent = form(player.id, data.matches, 6);
   const tint = playerColor(player);
   const light = isLightColor(tint);
   const boxed = stats.statGames > 0;
@@ -480,7 +480,36 @@ export function PlayerPage() {
                 </div>
               </section>
             )}
-            <Form playerId={player.id} />
+            <section aria-label="Forma">
+              <h2 className={LABEL}>Forma</h2>
+              <div
+                className="flex items-center gap-2 rounded-[22px] bg-surface px-4 py-3.5 shadow-[var(--shadow)]"
+                aria-label={`Ultime partite: ${recent.join(" ") || "nessuna"}`}
+              >
+                {recent.length ? (
+                  recent.map((r, i) => (
+                    <span
+                      key={i}
+                      className={clsx(
+                        "grid h-9 flex-1 place-items-center rounded-full text-[13px] font-bold",
+                        r === "V"
+                          ? "bg-volt text-volt-ink"
+                          : "bg-raised text-faint",
+                      )}
+                    >
+                      {r}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[13.5px] text-muted">
+                    Nessuna partita ancora
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 px-1 text-[12px] text-muted">
+                Le ultime 6 partite, dalla più recente
+              </p>
+            </section>
           </div>
         ) : (
           <div className="mt-3">
