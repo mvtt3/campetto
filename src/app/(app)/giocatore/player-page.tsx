@@ -389,12 +389,7 @@ export function PlayerPage() {
           </motion.dl>
         </section>
 
-        <p className="mt-2 text-center text-[12px] text-muted">
-          {stats.games === 1 ? "1 partita" : `${stats.games} partite`}
-          {boxed && ` · medie su ${stats.statGames} con il tabellino`}
-        </p>
-
-        <div className="mt-4">
+        <div className="mt-5">
           <Chips value={tab} onChange={setTab} options={TABS} scroll />
         </div>
 
