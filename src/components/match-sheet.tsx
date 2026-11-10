@@ -72,7 +72,7 @@ function TeamSide({
     >
       <span
         className={clsx(
-          "mb-1 h-1 w-6 rounded-full",
+          "mb-1.5 h-1.5 w-7 rounded-full",
           team === "A" ? "bg-court" : "bg-ball",
         )}
       />
@@ -218,25 +218,25 @@ export function MatchSheet({
     >
       {m && (
         <div className="flex flex-col gap-3 pb-1 pt-1">
-          <section className="overflow-hidden rounded-[22px] bg-raised">
+          <section className="overflow-hidden rounded-[22px] bg-linear-to-r from-court/12 via-raised to-ball/12">
             {record && (
-              <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+              <div className="flex items-center gap-2 bg-gold-soft/80 px-4 py-2">
                 <IconTrophy
                   size={15}
                   className="shrink-0 text-gold"
                   aria-hidden
                 />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-muted">
+                <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
                   {record.label}
                 </span>
-                <span className="num shrink-0 text-[15px]">
+                <span className="num shrink-0 text-[16px]">
                   {record.display}
                 </span>
               </div>
             )}
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-5">
               <TeamSide m={withGuestLines(m)} team="A" players={everyone} />
-              <p className="score whitespace-nowrap text-[34px] leading-none">
+              <p className="score whitespace-nowrap text-[42px] leading-none">
                 <span className={clsx(winnerOf(m) === "B" && "text-faint")}>
                   {m.scoreA}
                 </span>
@@ -252,15 +252,15 @@ export function MatchSheet({
           {mvp && mvpPlayer && mvpLine ? (
             <section
               aria-label="MVP della partita"
-              className="flex items-center gap-3 rounded-[22px] bg-raised px-3 py-2.5"
+              className="flex items-center gap-3 rounded-[22px] bg-linear-to-r from-gold-soft to-raised px-3 py-3"
             >
-              <Avatar player={mvpPlayer} size={42} href={false} ring="gold" />
+              <Avatar player={mvpPlayer} size={46} href={false} ring="gold" />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gold">
                   <IconCrown size={12} className="shrink-0" aria-hidden />
                   MVP
                 </p>
-                <p className="truncate text-[14.5px] font-semibold leading-tight">
+                <p className="truncate text-[15.5px] font-semibold leading-tight">
                   {shortName(mvpPlayer, players)}
                 </p>
                 {mvpShare !== null && (
@@ -269,13 +269,16 @@ export function MatchSheet({
                   </p>
                 )}
               </div>
-              <dl className="flex shrink-0 gap-3 text-center">
+              <dl className="flex shrink-0 gap-1.5 text-center">
                 {[
                   [mvpLine.pts, "pt"],
                   [mvpLine.oreb + mvpLine.dreb, "rb"],
                   [mvpLine.ast, "as"],
                 ].map(([v, l]) => (
-                  <div key={l}>
+                  <div
+                    key={l}
+                    className="min-w-[40px] rounded-[14px] bg-surface px-1.5 py-1.5 shadow-[var(--shadow)]"
+                  >
                     <dd className="num text-[18px] leading-none">{v}</dd>
                     <dt className="mt-0.5 text-[10.5px] font-semibold uppercase text-muted">
                       {l}
@@ -290,7 +293,7 @@ export function MatchSheet({
               </span>
             </section>
           ) : (
-            <p className="rounded-[22px] bg-raised px-4 py-3 text-[13.5px] leading-snug text-muted">
+            <p className="rounded-[22px] bg-raised px-4 py-3.5 text-[14px] leading-snug">
               {matchRecap(m, players)}
             </p>
           )}
