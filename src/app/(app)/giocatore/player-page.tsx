@@ -236,29 +236,32 @@ export function PlayerPage() {
             transition={{ ...SPRING, delay: 0.1 }}
           >
             <span className="absolute -bottom-1 left-1/2 -z-10 h-6 w-32 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(0_0_0/0.4),transparent)]" />
-            <Character
-              id={characterOf(player)}
-              outfit={player.outfit}
-              number={player.jerseyNumber}
-              height={190}
-              title={name}
-              className="short:h-[150px] short:w-auto"
-            />
-            {ovr !== null && (
-              <motion.span
-                className="absolute -left-12 bottom-4 flex flex-col items-center text-white"
-                initial={{ opacity: 0, scale: 0.5, x: -20 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
-                transition={{ ...SPRING, delay: 0.4 }}
-              >
-                <span className="display text-[76px] leading-[0.8] [text-shadow:0_4px_18px_rgb(0_0_0/0.35)]">
-                  <CountUp value={ovr} />
-                </span>
-                <span className="mt-1 rounded-full bg-[#1d1a16] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-volt">
-                  OVR
-                </span>
-              </motion.span>
-            )}
+            <span className="duo-idle relative isolate block">
+              {ovr !== null && (
+                <motion.span
+                  aria-label={`Valutazione ${ovr}`}
+                  className="absolute right-[38%] top-3 -z-10 flex flex-col items-end"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...SPRING, delay: 0.35 }}
+                >
+                  <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.22em] text-[var(--soft)]">
+                    OVR
+                  </span>
+                  <span className="display bg-linear-to-b from-white via-white/80 to-white/0 bg-clip-text pr-1 text-[132px] leading-[0.78] text-transparent">
+                    <CountUp value={ovr} />
+                  </span>
+                </motion.span>
+              )}
+              <Character
+                id={characterOf(player)}
+                outfit={player.outfit}
+                number={player.jerseyNumber}
+                height={190}
+                title={name}
+                className="short:h-[150px] short:w-auto"
+              />
+            </span>
           </motion.span>
 
           <div className="relative flex min-h-[190px] w-[60%] flex-col px-5 pb-4 pt-3 short:min-h-[150px]">

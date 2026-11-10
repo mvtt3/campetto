@@ -1954,6 +1954,9 @@ html[data-shot="3"] .intro-ball-x {
 .ball-spin {
   animation: spin 50s linear infinite;
 }
+.duo-idle {
+  animation: hero-char-idle 3.6s ease-in-out 1s infinite;
+}
 @keyframes badge-float {
   50% {
     transform: translateY(-4px) rotate(3deg);
@@ -1964,7 +1967,8 @@ html[data-shot="3"] .intro-ball-x {
   .hero-char,
   .hero-bar,
   .badge-float,
-  .ball-spin {
+  .ball-spin,
+  .duo-idle {
     animation: none;
   }
 }
