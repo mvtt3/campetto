@@ -127,6 +127,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         : null;
   const pathRef = useRef(path);
   useEffect(() => {
+    const onScroll = (e: Event) => {
+      const el = e.target;
+      if (el instanceof HTMLElement && el.classList.contains("scroll-area"))
+        el.toggleAttribute("data-scrolled", el.scrollTop > 2);
+    };
+    document.addEventListener("scroll", onScroll, {
+      capture: true,
+      passive: true,
+    });
+    return () =>
+      document.removeEventListener("scroll", onScroll, { capture: true });
+  }, []);
+  useEffect(() => {
     // Per le segnalazioni: l'ultima schermata vista prima delle impostazioni.
     if (!path.startsWith("/profilo/impostazioni")) {
       try {

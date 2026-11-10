@@ -87,7 +87,13 @@ function Section({
   );
 }
 
-function SectionLink({ href, children }: { href: string; children: ReactNode }) {
+function SectionLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
   return (
     <Link
       href={href}
@@ -140,14 +146,22 @@ function RecentMatch({
             !outcome && "bg-raised text-muted",
           )}
         >
-          {outcome === "won" ? "Vinta" : outcome === "lost" ? "Persa" : match.format}
+          {outcome === "won"
+            ? "Vinta"
+            : outcome === "lost"
+              ? "Persa"
+              : match.format}
         </span>
         <PlayBadge matchId={match.id} className="!h-7 !w-7" />
       </div>
       <p className="score mt-3 whitespace-nowrap text-[34px]">
-        <span className={clsx(team === "B" && "text-faint")}>{match.scoreA}</span>
+        <span className={clsx(team === "B" && "text-faint")}>
+          {match.scoreA}
+        </span>
         <span className="mx-0.5 text-line-strong">–</span>
-        <span className={clsx(team === "A" && "text-faint")}>{match.scoreB}</span>
+        <span className={clsx(team === "A" && "text-faint")}>
+          {match.scoreB}
+        </span>
       </p>
       <p className="mt-1.5 truncate text-[12.5px] text-muted">
         {outcome ? `${match.format} · ` : ""}
@@ -393,7 +407,9 @@ export function HomeScreen() {
           <div className="flex items-center gap-3">
             <Mascot pose="boh" size={52} className="shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-semibold">Nessuna partita in vista</p>
+              <p className="text-[15px] font-semibold">
+                Nessuna partita in vista
+              </p>
               <p className="text-[13px] text-muted">Proponi tu un giorno</p>
             </div>
             <Link
@@ -432,7 +448,10 @@ export function HomeScreen() {
             className="rise court relative rounded-[28px]"
             style={rise(hasNext ? 1 : 0)}
           >
-            <div className="absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden>
+            <div
+              className="absolute inset-0 overflow-hidden rounded-[28px]"
+              aria-hidden
+            >
               <span className="blob hero-drift -right-16 -top-20 h-56 w-56 bg-[radial-gradient(circle,rgb(255_197_49/0.45),transparent_68%)]" />
               <span className="blob hero-drift -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)] [animation-delay:-6s]" />
               <CourtLines draw className="absolute inset-0 h-full w-full" />
@@ -483,30 +502,34 @@ export function HomeScreen() {
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2">
                 <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
-                  <p className="num text-[20px]">{mine.games ? `${winPct}%` : "—"}</p>
-                  <p className="mt-0.5 text-[11.5px] font-medium text-white/70">Vittorie</p>
+                  <p className="num text-[20px]">
+                    {mine.games ? `${winPct}%` : "—"}
+                  </p>
+                  <p className="mt-0.5 text-[11.5px] font-medium text-white/70">
+                    Vittorie
+                  </p>
                 </div>
-                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
-                  <div className="flex items-center gap-1.5">
-                    <p className="num text-[20px]">
-                      <CountUp value={elo} />
-                    </p>
-                    {delta !== 0 && (
-                      <span
-                        className={clsx(
-                          "inline-flex items-center gap-0.5 rounded-full px-1.5 text-[10.5px] font-semibold",
-                          delta > 0 ? "bg-volt text-volt-ink" : "bg-white/20 text-white",
-                        )}
-                      >
-                        {delta > 0 ? (
-                          <IconTrendingUp size={10} />
-                        ) : (
-                          <IconTrendingDown size={10} />
-                        )}
-                        {delta > 0 ? `+${delta}` : `−${-delta}`}
-                      </span>
-                    )}
-                  </div>
+                <div className="relative rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                  {delta !== 0 && (
+                    <span
+                      className={clsx(
+                        "absolute bottom-full right-2 mb-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[10.5px] font-semibold",
+                        delta > 0
+                          ? "bg-volt text-volt-ink"
+                          : "bg-white/20 text-white",
+                      )}
+                    >
+                      {delta > 0 ? (
+                        <IconTrendingUp size={10} />
+                      ) : (
+                        <IconTrendingDown size={10} />
+                      )}
+                      {delta > 0 ? `+${delta}` : `−${-delta}`}
+                    </span>
+                  )}
+                  <p className="num text-[20px]">
+                    <CountUp value={elo} />
+                  </p>
                   <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-white/70">
                     ELO
                     <InfoTip label="Cos'è l'ELO" size={12}>
@@ -573,7 +596,6 @@ export function HomeScreen() {
               </div>
             )}
           </Section>
-
         </div>
       </PullToRefresh>
     </>

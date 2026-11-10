@@ -569,21 +569,21 @@ export default function HighlightsFeed({
             aria-pressed={music.state === "on"}
             data-music={music.state}
             className={clsx(
-              "press pointer-events-auto mr-1 flex h-10 items-center justify-center rounded-full",
-              music.state === "blocked"
-                ? "hl-unmute gap-1.5 bg-white px-3.5 text-[13px] font-bold text-[#1d1a16] shadow-[0_6px_18px_rgb(0_0_0/0.3)]"
-                : "w-10 bg-black/35 text-white backdrop-blur-md",
+              "press pointer-events-auto relative mr-1 grid h-10 w-10 place-items-center rounded-full bg-black/35 text-white backdrop-blur-md",
+              music.state === "blocked" && "hl-unmute",
             )}
             data-testid="hl-sound"
           >
             {music.state === "on" ? (
               <IconVolume size={20} />
-            ) : music.state === "blocked" ? (
-              <>
-                <IconVolumeOff size={17} aria-hidden /> Musica
-              </>
             ) : (
               <IconVolumeOff size={20} />
+            )}
+            {music.state === "blocked" && (
+              <span
+                className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-ball"
+                aria-hidden
+              />
             )}
           </button>
         </div>

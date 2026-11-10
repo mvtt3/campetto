@@ -497,7 +497,6 @@ test("link diretto senza tocco: la musica aspetta il permesso, poi parte", async
   const sound = page.getByTestId("hl-sound");
   await expect(sound).toHaveAttribute("data-music", /blocked|on/);
   if ((await sound.getAttribute("data-music")) === "blocked") {
-    await expect(sound).toContainText("Musica");
     await sound.click();
     await expect(sound).toHaveAttribute("data-music", "on");
   }
