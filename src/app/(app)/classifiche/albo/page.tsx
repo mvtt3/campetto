@@ -312,7 +312,7 @@ export default function HallPage() {
       </PullToRefresh>
       <MatchSheet
         match={data.matches.find((m) => m.id === openRecord?.matchId) ?? null}
-        record={openRecord ?? undefined}
+        record
         onClose={() => setOpenRecord(null)}
       />
     </>
