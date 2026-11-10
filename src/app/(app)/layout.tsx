@@ -84,7 +84,7 @@ function useKeptTabs(active: string | null, ready: boolean) {
 
 function Splash() {
   return (
-    <div className="flex h-dvh flex-col items-center justify-center gap-4">
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-4">
       <Spinner size={30} />
     </div>
   );
@@ -100,7 +100,7 @@ function Message({
   children: ReactNode;
 }) {
   return (
-    <main className="safe-top mx-auto flex h-dvh max-w-sm flex-col items-center justify-center px-8 text-center">
+    <main className="safe-top fixed inset-0 mx-auto flex max-w-sm flex-col items-center justify-center px-8 text-center">
       <Mascot pose="boh" size={120} />
       <h1 className="display mt-4 text-[26px]">{title}</h1>
       <p className="mt-3 text-[15px] text-muted">{text}</p>
@@ -312,7 +312,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <OutfitsVisible.Provider value={gameAllowed(me)}>
         <HighlightsProvider>
           <TutorialProvider me={me}>
-            <div className="mx-auto flex h-dvh max-w-lg flex-col">
+            <div className="fixed inset-0 mx-auto flex max-w-lg flex-col">
               {playerView.on && (
                 <div
                   className="safe-top flex items-center justify-center gap-2 bg-court px-3 py-1.5 text-[12.5px] font-semibold text-court-ink"

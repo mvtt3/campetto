@@ -17,7 +17,7 @@ export function Welcome({
   children: ReactNode;
 }) {
   return (
-    <main className="halftone relative flex h-dvh flex-col overflow-hidden bg-volt text-[#1d1a16]">
+    <main className="halftone fixed inset-0 flex flex-col overflow-hidden bg-volt text-[#1d1a16]">
       <div className="safe-top relative mx-auto flex w-full max-w-lg flex-1 flex-col px-6">
         <div className="flex flex-1 items-center justify-center pt-4">
           <motion.div

@@ -55,7 +55,7 @@ export function Onboarding({ me }: { me: Player }) {
   const preview: Player = { ...me, nickname: clean || null, avatarUrl: avatar };
 
   return (
-    <main className="halftone relative flex h-dvh flex-col overflow-hidden bg-volt text-[#1d1a16]">
+    <main className="halftone fixed inset-0 flex flex-col overflow-hidden bg-volt text-[#1d1a16]">
       <div className="safe-top safe-bottom relative mx-auto flex w-full max-w-lg flex-1 flex-col px-6 pb-6">
         <div className="flex h-12 items-center">
           {step === 1 && (

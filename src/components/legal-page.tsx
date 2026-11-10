@@ -12,7 +12,7 @@ export function LegalPage({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex h-dvh max-w-lg flex-col">
+    <div className="fixed inset-0 mx-auto flex max-w-lg flex-col">
       <header className="safe-top shrink-0 px-4">
         <div className="flex h-14 items-center gap-2">
           <Link
