@@ -607,32 +607,30 @@ export const Slide = memo(function Slide(p: SlideProps) {
         </button>
       </div>
 
-      {/* Titolo e descrizione in basso. */}
       <div className="hl-meta pointer-events-none absolute left-0 right-[60px] z-10 px-4 text-[#f6eedc]">
-        <h2 className="hl-title title truncate text-[17px] leading-tight">
+        <h2 className="hl-title truncate text-[11px] font-bold uppercase tracking-[0.14em] text-[#f6eedc]/75">
           {p.title}
         </h2>
-        {/* Il titoletto della partita, al posto dell'apertura: il risultato sempre in vista, poi
-            chi contro chi (che si taglia, se lungo). */}
         {p.score && (
           <p
-            className="hl-score mt-0.5 truncate text-[13.5px] font-semibold text-[#f6eedc]/85"
+            className="hl-score mt-1 flex items-baseline gap-2 truncate text-[13.5px] font-semibold text-[#f6eedc]/90"
             data-testid="hl-score"
           >
-            <span className="score mr-1.5 align-[-1px] text-[16px] text-[#ef7d2d] tnum">
+            <span className="score shrink-0 text-[26px] leading-none text-ball tnum">
               {p.score.score}
             </span>
-            {p.score.a} contro {p.score.b}
+            <span className="truncate">
+              {p.score.a} contro {p.score.b}
+            </span>
           </p>
         )}
         {description && (
           <button
-            className="pointer-events-auto mt-1 block w-full text-left text-[14px] leading-snug text-[#f6eedc]/90"
+            className="pointer-events-auto mt-1.5 block w-full text-left text-[14px] leading-snug text-[#f6eedc]/90"
             onClick={() => setExpanded((x) => !x)}
             aria-expanded={expanded}
             data-testid="hl-desc"
           >
-            {/* Due righe, il resto con un tocco (sul bottone il taglio non funziona: serve lo span). */}
             <span className={clsx(!expanded && "line-clamp-2")}>
               {description}
             </span>

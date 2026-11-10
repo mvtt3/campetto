@@ -551,13 +551,13 @@ export default function HighlightsFeed({
             data-hl-close
             onClick={onRequestClose}
             aria-label="Chiudi gli highlights"
-            className="press pointer-events-auto grid h-11 w-11 place-items-center rounded-full text-[#f6eedc]"
+            className="press pointer-events-auto ml-1 grid h-10 w-10 place-items-center rounded-full bg-black/35 text-white backdrop-blur-md"
             data-testid="hl-close"
           >
-            <IconChevronLeft size={30} strokeWidth={2.4} className="hl-icon" />
+            <IconChevronLeft size={22} strokeWidth={2.4} />
           </button>
-          {/* Solo il nome, come nelle app di video: niente contatori né barre di posizione. */}
-          <span className="hl-brand display text-[19px] tracking-wide">
+          <span className="hl-brand flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full bg-ball" aria-hidden />
             Highlights
           </span>
           {/* Audio bloccato dal telefono (si parte muti): il tasto diventa un invito a toccarlo. */}
@@ -569,21 +569,21 @@ export default function HighlightsFeed({
             aria-pressed={music.state === "on"}
             data-music={music.state}
             className={clsx(
-              "press pointer-events-auto flex h-11 items-center justify-center rounded-full",
+              "press pointer-events-auto mr-1 flex h-10 items-center justify-center rounded-full",
               music.state === "blocked"
-                ? "hl-unmute mr-1 h-9 gap-1.5 border-2 border-[#1d1a16] bg-[#f6eedc] px-3 text-[13px] font-bold text-[#1d1a16]"
-                : "w-11 text-[#f6eedc]",
+                ? "hl-unmute gap-1.5 bg-white px-3.5 text-[13px] font-bold text-[#1d1a16] shadow-[0_6px_18px_rgb(0_0_0/0.3)]"
+                : "w-10 bg-black/35 text-white backdrop-blur-md",
             )}
             data-testid="hl-sound"
           >
             {music.state === "on" ? (
-              <IconVolume size={24} className="hl-icon" />
+              <IconVolume size={20} />
             ) : music.state === "blocked" ? (
               <>
                 <IconVolumeOff size={17} aria-hidden /> Musica
               </>
             ) : (
-              <IconVolumeOff size={24} className="hl-icon" />
+              <IconVolumeOff size={20} />
             )}
           </button>
         </div>
@@ -604,20 +604,22 @@ export default function HighlightsFeed({
             >
               <p
                 key={hint}
-                className="swipe-pill flex items-center gap-2 rounded-full border-[2.5px] border-[#1d1a16] bg-volt py-2 pl-3 pr-4 text-[14.5px] font-bold text-volt-ink"
-                style={{
-                  boxShadow: "3px 3px 0 #1d1a16",
-                  animationDuration: "2.2s",
-                }}
+                className="swipe-pill flex items-center gap-2 rounded-full bg-white py-2.5 pl-3.5 pr-4 text-[14px] font-semibold text-[#1d1a16] shadow-[0_10px_28px_rgb(0_0_0/0.35)]"
+                style={{ animationDuration: "2.2s" }}
               >
                 {hint === "swipe" ? (
                   <>
-                    <IconArrowNarrowUp size={18} aria-hidden /> Scorri in su per la partita
-                    dopo
+                    <IconArrowNarrowUp
+                      size={18}
+                      className="text-ball"
+                      aria-hidden
+                    />{" "}
+                    Scorri in su per la partita dopo
                   </>
                 ) : (
                   <>
-                    <IconHeart size={18} aria-hidden /> Due tocchi per il mi piace
+                    <IconHeart size={18} className="text-ball" aria-hidden />{" "}
+                    Due tocchi per il mi piace
                   </>
                 )}
               </p>

@@ -37,11 +37,11 @@ export function HighlightCard({
         onOpen?.(replace);
         hl.open(matchId, { replace });
       }}
-      className="sticker press relative flex w-full items-center gap-3 overflow-hidden rounded-[20px] bg-surface p-1.5 pr-3 text-left text-text"
+      className="press relative flex w-full items-center gap-3 overflow-hidden rounded-[22px] bg-surface p-2 pr-3.5 text-left text-text shadow-[var(--shadow)]"
       data-testid="hl-open"
       data-tour="match-highlights"
     >
-      <span className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded-[14px] border-2 border-edge bg-[#17130f]">
+      <span className="relative aspect-video w-[112px] shrink-0 overflow-hidden rounded-[16px] bg-[#17130f]">
         {h.posterUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -52,8 +52,12 @@ export function HighlightCard({
           />
         )}
         <span className="absolute inset-0 grid place-items-center">
-          <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-[#1d1a16] bg-ball text-ball-ink">
-            <IconPlayerPlayFilled size={15} fill="currentColor" className="ml-0.5" />
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-ball text-ball-ink shadow-[0_4px_12px_rgb(0_0_0/0.35)]">
+            <IconPlayerPlayFilled
+              size={15}
+              fill="currentColor"
+              className="ml-0.5"
+            />
           </span>
         </span>
         <span className="absolute bottom-1 right-1 rounded-md bg-[#17130f]/80 px-1 text-[10.5px] font-bold text-[#f6eedc] tnum">
@@ -61,8 +65,11 @@ export function HighlightCard({
         </span>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="title block text-[16px] leading-tight">
-          Guarda gli highlights
+        <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+          Highlights
+        </span>
+        <span className="title mt-0.5 block text-[16px] leading-tight">
+          Guarda il video
         </span>
         <span className="mt-0.5 block truncate text-[12.5px] text-muted">
           {baskets(h)}
@@ -82,16 +89,18 @@ export function NightHighlightsButton({ matchIds }: { matchIds: string[] }) {
   return (
     <button
       onClick={() => hl.open(withVideo[0])}
-      className="sticker press relative flex h-11 w-full items-center justify-center gap-2 rounded-full bg-ball text-[14px] font-bold text-ball-ink"
+      className="press relative flex h-12 w-full items-center gap-3 rounded-[18px] bg-linear-to-br from-[#1d1a16] via-[#2a1d14] to-[#7a3410] pl-1.5 pr-4 text-left text-[14px] font-semibold text-white"
       data-testid="hl-night"
       data-tour="matches-highlights"
     >
-      <span className="grid h-6 w-6 place-items-center rounded-full bg-ball-ink text-ball">
-        <IconPlayerPlayFilled size={12} fill="currentColor" className="ml-px" />
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[13px] bg-ball text-ball-ink">
+        <IconPlayerPlayFilled size={15} fill="currentColor" className="ml-px" />
       </span>
-      {withVideo.length === 1
-        ? "Guarda gli highlights"
-        : `Highlights della giornata · ${withVideo.length} video`}
+      <span className="min-w-0 flex-1 truncate">
+        {withVideo.length === 1
+          ? "Guarda gli highlights"
+          : `Highlights della giornata · ${withVideo.length} video`}
+      </span>
       {fresh && <NewDot className="absolute -right-1 -top-1" />}
     </button>
   );
@@ -116,12 +125,17 @@ export function PlayBadge({
       data-hl-badge
       title="Guarda gli highlights"
       className={clsx(
-        "sticker-sm press relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ball text-ball-ink",
+        "press relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ball text-ball-ink",
         className,
       )}
       data-testid="hl-badge"
     >
-      <IconPlayerPlayFilled size={14} fill="currentColor" className="ml-0.5" aria-hidden />
+      <IconPlayerPlayFilled
+        size={14}
+        fill="currentColor"
+        className="ml-0.5"
+        aria-hidden
+      />
       <span className="sr-only">, con gli highlights</span>
       {hl.unseen(matchId) && (
         <NewDot className="absolute -right-1 -top-1 !h-3 !w-3" />

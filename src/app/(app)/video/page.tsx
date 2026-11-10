@@ -421,7 +421,7 @@ export default function VideoPage() {
               <thead>
                 <tr className="text-left text-[11.5px] text-muted">
                   <th className="py-1.5 font-semibold">Giocatore</th>
-                  {["Punti", "Rimb.", "Ass.", "Rub.", "Stop.", "Perse"].map(
+                  {["Punti", "Rimb.", "Ass.", "Rub.", "Stop.", "Pers."].map(
                     (h) => (
                       <th key={h} className="px-1 text-right font-semibold">
                         {h}

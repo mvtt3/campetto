@@ -225,7 +225,7 @@ export function CommentsPanel({
           <button
             onClick={onClose}
             aria-label="Chiudi"
-            className="press absolute right-3 top-2.5 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text"
+            className="press absolute right-3 top-2.5 grid h-9 w-9 place-items-center rounded-full bg-surface text-muted shadow-[var(--shadow)]"
             data-testid="hl-comments-close"
           >
             <IconX size={18} strokeWidth={2.4} />
@@ -254,7 +254,7 @@ export function CommentsPanel({
               </p>
               <button
                 onClick={onReload}
-                className="press flex h-10 items-center gap-1.5 rounded-full border-2 border-edge bg-surface px-4 text-[14px] font-bold"
+                className="press flex h-10 items-center gap-1.5 rounded-full bg-surface px-4 text-[14px] font-semibold shadow-[var(--shadow)]"
               >
                 <IconRotate size={15} aria-hidden /> Riprova
               </button>
@@ -300,7 +300,7 @@ export function CommentsPanel({
 
         {replyTo && (
           <div
-            className="flex shrink-0 items-center gap-2 border-t-2 border-line bg-raised px-3 py-2"
+            className="flex shrink-0 items-center gap-2 border-t border-line bg-raised px-3 py-2"
             data-testid="hl-reply-bar"
           >
             <IconCornerUpLeft
@@ -363,7 +363,7 @@ export function CommentsPanel({
               }
               aria-label={replyTo ? "Scrivi la risposta" : "Scrivi un commento"}
               enterKeyHint="send"
-              className="block max-h-[104px] min-h-[40px] w-full resize-none rounded-[20px] border-2 border-line-strong bg-bg px-3.5 py-[7px] text-[15px] leading-snug outline-none focus:border-edge"
+              className="block max-h-[104px] min-h-[40px] w-full resize-none rounded-[20px] bg-raised px-3.5 py-[9px] text-[15px] leading-snug outline-none focus:ring-2 focus:ring-ball"
               data-testid="hl-comment-input"
             />
             {left <= 40 && (
@@ -381,7 +381,7 @@ export function CommentsPanel({
             type="submit"
             disabled={!cleanComment(text)}
             aria-label="Invia"
-            className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-edge bg-ball text-ball-ink disabled:opacity-40"
+            className="press grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ball text-ball-ink disabled:opacity-40"
             data-testid="hl-comment-send"
           >
             <IconArrowUp size={20} strokeWidth={2.6} />
@@ -522,12 +522,12 @@ function CommentRow({
               type="button"
               onClick={() => quoted && onQuote(quoted.id)}
               disabled={!quoted}
-              className="press mt-1 block w-full max-w-full rounded-[10px] border-l-[3px] border-court bg-raised px-2 py-1 text-left"
+              className="press mt-1 block w-full max-w-full rounded-[10px] border-l-[3px] border-ball bg-raised px-2 py-1 text-left"
               data-testid="hl-quote"
             >
               {quoted ? (
                 <>
-                  <span className="block truncate text-[12px] font-bold text-court">
+                  <span className="block truncate text-[12px] font-bold text-ball">
                     {quotedName}
                   </span>
                   <span className="block truncate text-[12.5px] text-muted">

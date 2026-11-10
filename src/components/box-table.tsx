@@ -60,9 +60,9 @@ export function BoxTable({
       : [
           "Rimb.",
           "Assist",
-          "Rubate",
-          "Stopp.",
-          "Perse",
+          "Rub.",
+          "Stop.",
+          "Pers.",
           ...(fouls ? ["Falli"] : []),
         ];
 
