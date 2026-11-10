@@ -189,8 +189,8 @@ export function BadgeTile({
   /** Appena riscattato: un piccolo salto. */
   popped?: boolean;
 }) {
-  const { def, tier, value, next, prev } = state;
-  const progress = next ? Math.min(1, (value - prev) / (next - prev)) : 1;
+  const { def, tier, value, next } = state;
+  const progress = next ? Math.min(1, value / next) : 1;
   return (
     <button
       onClick={onClick}

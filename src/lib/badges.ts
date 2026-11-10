@@ -405,8 +405,6 @@ export interface BadgeState {
   tier: Tier;
   /** Next threshold to reach, null at Leggenda. */
   next: number | null;
-  /** Previous threshold (0 when locked), useful for progress bars. */
-  prev: number;
   unlockedAt: string | null;
 }
 
@@ -598,7 +596,6 @@ export function computeBadges(
       value,
       tier,
       next: tier < 5 ? (def.thresholds as readonly number[])[tier] : null,
-      prev: tier > 0 ? def.thresholds[tier - 1] : 0,
       unlockedAt: last?.date ?? null,
     };
   });

@@ -25,7 +25,7 @@ function states(
   return BADGES.map((def) => {
     const tier = (tiers[def.key] ?? 0) as BadgeState["tier"];
     const value = values[def.key] ?? (tier ? def.thresholds[tier - 1] : 0);
-    return { def, value, tier, next: null, prev: 0, unlockedAt: null };
+    return { def, value, tier, next: null, unlockedAt: null };
   });
 }
 

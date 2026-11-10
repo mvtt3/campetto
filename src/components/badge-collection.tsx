@@ -39,8 +39,7 @@ export function BadgeCollection({
   const tierCount = [0, 0, 0, 0, 0, 0];
   for (const s of states) tierCount[s.tier]++;
 
-  const progress = (s: BadgeState) =>
-    s.next ? (s.value - s.prev) / (s.next - s.prev) : 1;
+  const progress = (s: BadgeState) => (s.next ? s.value / s.next : 1);
   // Nella propria collezione, i badge appena guadagnati stanno in cima con "Nuovo" finché non li apri.
   const rewards = useNewRewards();
   const fresh = editable ? rewards.badges : new Set<string>();
