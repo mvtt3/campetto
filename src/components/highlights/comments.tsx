@@ -508,12 +508,7 @@ function CommentRow({
           <span className="h-[34px] w-[34px] shrink-0 rounded-full bg-line" />
         )}
         <div className="min-w-0 flex-1">
-          <div
-            className={clsx(
-              "rounded-[18px] rounded-tl-[6px] px-3 py-2 shadow-[var(--shadow)]",
-              mine ? "bg-ball-soft" : "bg-surface",
-            )}
-          >
+          <div className="rounded-[18px] rounded-tl-[6px] bg-surface px-3 py-2 shadow-[var(--shadow)]">
             <p className="flex items-baseline gap-1.5 text-[12px] text-muted">
               <span className="truncate font-bold text-text">
                 {shortName(who, players)}
@@ -551,7 +546,12 @@ function CommentRow({
                 )}
               </button>
             )}
-            <p className="mt-0.5 whitespace-pre-wrap break-words text-[14.5px] leading-snug [overflow-wrap:anywhere]">
+            <p
+              className={clsx(
+                "whitespace-pre-wrap break-words text-[14.5px] leading-snug [overflow-wrap:anywhere]",
+                quoted !== undefined ? "mt-[5px]" : "mt-0.5",
+              )}
+            >
               {c.body}
             </p>
           </div>

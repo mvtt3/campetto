@@ -623,11 +623,11 @@ export const Slide = memo(function Slide(p: SlideProps) {
 
       <div className="hl-meta pointer-events-none absolute left-0 right-[64px] z-10 pl-3 text-white">
         <div className="overflow-hidden rounded-[20px] bg-black/45 backdrop-blur-md">
-          <h2 className="hl-title truncate px-3 pt-2.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/60">
+          <h2 className="hl-title truncate px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">
             {p.title}
           </h2>
           {p.score && (
-            <div className="px-3 pb-2.5 pt-1" data-testid="hl-score">
+            <div className="px-3 pb-1.5" data-testid="hl-score">
               <span className="sr-only">{p.score.score}</span>
               {(
                 [
@@ -639,7 +639,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
                 return (
                   <div
                     key={t}
-                    className="flex h-7 items-center gap-2"
+                    className="flex h-[22px] items-center gap-2"
                     aria-hidden
                   >
                     <span
@@ -650,7 +650,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
                     />
                     <span
                       className={clsx(
-                        "min-w-0 flex-1 truncate text-[14px]",
+                        "min-w-0 flex-1 truncate text-[13px]",
                         won ? "font-bold" : "text-white/60",
                       )}
                     >
@@ -658,7 +658,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
                     </span>
                     <span
                       className={clsx(
-                        "score text-[22px] leading-none tnum",
+                        "score text-[17px] leading-none tnum",
                         won ? "text-ball" : "text-white/40",
                       )}
                     >
@@ -671,7 +671,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
           )}
           {description && (
             <button
-              className="pointer-events-auto block w-full border-t border-white/10 px-3 py-2 text-left text-[13px] leading-snug text-white/80"
+              className="pointer-events-auto block w-full border-t border-white/10 px-3 py-1.5 text-left text-[12.5px] leading-snug text-white/80"
               onClick={() => setExpanded((x) => !x)}
               aria-expanded={expanded}
               data-testid="hl-desc"
