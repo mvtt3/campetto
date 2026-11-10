@@ -501,9 +501,6 @@ export function PlayerPage() {
                   </span>
                 )}
               </div>
-              <p className="mt-1.5 px-1 text-[12px] text-muted">
-                Le ultime 6 partite, dalla più recente
-              </p>
             </section>
           </div>
         ) : (

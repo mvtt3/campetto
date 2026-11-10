@@ -23,25 +23,20 @@ function Tile({
   accent?: boolean;
 }) {
   return (
-    <div
-      className={clsx(
-        "flex min-w-0 flex-col items-center justify-center rounded-[18px] px-1.5 py-2.5 text-center",
-        accent ? "bg-volt text-volt-ink" : "bg-raised",
-      )}
-    >
-      <span className="num text-[21px] leading-none">{value}</span>
-      <span className="mt-1.5 text-[11.5px] font-bold leading-tight">
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate text-[12px] font-semibold text-muted">
         {label}
       </span>
+      <span
+        className={clsx(
+          "num mt-1 text-[24px] leading-none",
+          accent && "text-ball",
+        )}
+      >
+        {value}
+      </span>
       {sub && (
-        <span
-          className={clsx(
-            "mt-0.5 text-[11px] leading-tight",
-            accent ? "opacity-70" : "text-muted",
-          )}
-        >
-          {sub}
-        </span>
+        <span className="mt-1 truncate text-[11px] text-faint">{sub}</span>
       )}
     </div>
   );
@@ -57,27 +52,28 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="card px-3 pb-3 pt-2.5">
-      <h3 className="title mb-2.5 flex items-center justify-center gap-1.5 text-center text-[15px]">
+    <section aria-label={title}>
+      <h3 className="mb-2 flex items-center gap-1.5 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
         {title}
         {info && (
-          <InfoTip label={`Cosa vuol dire ${title.toLowerCase()}`} size={15}>
+          <InfoTip label={`Cosa vuol dire ${title.toLowerCase()}`} size={14}>
             {info}
           </InfoTip>
         )}
       </h3>
-      {children}
+      <div className="grid grid-cols-3 gap-x-4 gap-y-4 rounded-[22px] bg-surface px-4 py-4 shadow-[var(--shadow)]">
+        {children}
+      </div>
     </section>
   );
 }
 
-/** L'ingresso alle statistiche avanzate: una metà campo in miniatura e due parole. */
 function AdvancedLink({ playerId, self }: { playerId: string; self: boolean }) {
   return (
     <Link
       href={`/statistiche?id=${playerId}`}
       data-tour="stats-advanced"
-      className="card press flex items-center gap-3 px-3.5 py-3"
+      className="press flex items-center gap-3 rounded-[22px] bg-surface px-3.5 py-3 shadow-[var(--shadow)]"
     >
       <svg viewBox="0 0 60 46" className="h-11 w-14 shrink-0" aria-hidden>
         <rect
@@ -114,7 +110,7 @@ function AdvancedLink({ playerId, self }: { playerId: string; self: boolean }) {
         />
       </svg>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-bold">
+        <span className="block text-[14.5px] font-semibold">
           Statistiche avanzate
         </span>
         <span className="block truncate text-[12.5px] text-muted">
@@ -155,7 +151,7 @@ export function StatsDashboard({
   const per = (n: number) => `${n} in tutto`;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-5">
       <AdvancedLink playerId={playerId} self={advanced} />
       <PeriodPicker
         value={period}
@@ -171,16 +167,14 @@ export function StatsDashboard({
       ) : (
         <>
           <Section title="Partite">
-            <div className="grid grid-cols-3 gap-2">
-              <Tile value={s.games} label="Giocate" />
-              <Tile
-                value={s.wins}
-                label="Vinte"
-                sub={`${Math.round(s.winPct * 100)}%`}
-                accent
-              />
-              <Tile value={s.losses} label="Perse" />
-            </div>
+            <Tile value={s.games} label="Giocate" />
+            <Tile
+              value={s.wins}
+              label="Vinte"
+              sub={`${Math.round(s.winPct * 100)}%`}
+              accent
+            />
+            <Tile value={s.losses} label="Perse" />
           </Section>
 
           <Section
@@ -191,50 +185,48 @@ export function StatsDashboard({
                 : "Le medie arrivano con le partite che hanno il tabellino"
             }
           >
-            <div className="grid grid-cols-3 gap-2">
-              <Tile
-                value={avg(s.avg.pts)}
-                label="Punti"
-                sub={has ? per(s.totals.pts) : undefined}
-                accent
-              />
-              <Tile
-                value={avg(s.rebAvg)}
-                label="Rimbalzi"
-                sub={has ? per(s.reb) : undefined}
-              />
-              <Tile
-                value={avg(s.avg.ast)}
-                label="Assist"
-                sub={has ? per(s.totals.ast) : undefined}
-              />
-              <Tile
-                value={avg(s.avg.stl)}
-                label="Rubate"
-                sub={has ? per(s.totals.stl) : undefined}
-              />
-              <Tile
-                value={avg(s.avg.blk)}
-                label="Stoppate"
-                sub={has ? per(s.totals.blk) : undefined}
-              />
-              <Tile
-                value={avg(s.avg.tov)}
-                label="Palle perse"
-                sub={has ? per(s.totals.tov) : undefined}
-              />
-              <Tile
-                value={avg(s.avg.fg3m)}
-                label="Triple"
-                sub={has ? per(s.totals.fg3m) : undefined}
-              />
-              <Tile
-                value={avg(s.avg.fouls)}
-                label="Falli"
-                sub={has ? per(s.totals.fouls) : undefined}
-              />
-              <Tile value={has ? fmt(s.effAvg) : "—"} label="Valutazione" />
-            </div>
+            <Tile
+              value={avg(s.avg.pts)}
+              label="Punti"
+              sub={has ? per(s.totals.pts) : undefined}
+              accent
+            />
+            <Tile
+              value={avg(s.rebAvg)}
+              label="Rimbalzi"
+              sub={has ? per(s.reb) : undefined}
+            />
+            <Tile
+              value={avg(s.avg.ast)}
+              label="Assist"
+              sub={has ? per(s.totals.ast) : undefined}
+            />
+            <Tile
+              value={avg(s.avg.stl)}
+              label="Rubate"
+              sub={has ? per(s.totals.stl) : undefined}
+            />
+            <Tile
+              value={avg(s.avg.blk)}
+              label="Stoppate"
+              sub={has ? per(s.totals.blk) : undefined}
+            />
+            <Tile
+              value={avg(s.avg.tov)}
+              label="Palle perse"
+              sub={has ? per(s.totals.tov) : undefined}
+            />
+            <Tile
+              value={avg(s.avg.fg3m)}
+              label="Triple"
+              sub={has ? per(s.totals.fg3m) : undefined}
+            />
+            <Tile
+              value={avg(s.avg.fouls)}
+              label="Falli"
+              sub={has ? per(s.totals.fouls) : undefined}
+            />
+            <Tile value={has ? fmt(s.effAvg) : "—"} label="Valutazione" />
           </Section>
         </>
       )}
