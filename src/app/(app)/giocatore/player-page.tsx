@@ -603,11 +603,18 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
               </div>
             </section>
             {mine && (
-              <section
-                aria-label="Andamento"
-                className="h-[210px] rounded-[22px] bg-surface p-4 shadow-[var(--shadow)]"
-              >
-                <TrendChart playerId={player.id} />
+              <section aria-label="Andamento">
+                <h2 className={clsx(LABEL, "flex items-center gap-1.5")}>
+                  Andamento
+                  <InfoTip label="Cosa mostra il grafico" size={14}>
+                    Come vai mese dopo mese. Voto: punti, rimbalzi, assist,
+                    rubate e stoppate, meno tiri sbagliati e palle perse. Punti:
+                    la media a partita. ELO: il punteggio di forza
+                  </InfoTip>
+                </h2>
+                <div className="h-[220px] rounded-[22px] bg-surface p-4 shadow-[var(--shadow)]">
+                  <TrendChart playerId={player.id} />
+                </div>
               </section>
             )}
           </div>

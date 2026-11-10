@@ -71,15 +71,37 @@ import { say } from "@/lib/voice";
 
 type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void> };
 
-function Group({ children }: { children: ReactNode }) {
-  return <section className="card mb-3 overflow-hidden">{children}</section>;
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mb-5">
+      <h2 className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
+        {title}
+      </h2>
+      <div className="divide-y divide-line overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]">
+        {children}
+      </div>
+    </section>
+  );
 }
 
-function Row({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+function Row({
+  icon,
+  danger,
+  children,
+}: {
+  icon?: ReactNode;
+  danger?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex min-h-[60px] items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0">
+    <div className="flex min-h-[60px] items-center gap-3 px-4 py-2.5">
       {icon && (
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-court-soft text-court">
+        <span
+          className={clsx(
+            "grid h-9 w-9 shrink-0 place-items-center rounded-[12px]",
+            danger ? "bg-danger/12 text-danger" : "bg-ball-soft text-ball",
+          )}
+        >
           {icon}
         </span>
       )}
@@ -166,54 +188,72 @@ export default function SettingsPage() {
     <>
       <ScreenHeader title="Impostazioni" back="/profilo" />
       <main className="scroll-area min-h-0 flex-1 px-5 pb-6 pt-1">
-        <Group>
+        <button
+          className="press relative isolate mb-5 flex w-full items-end gap-3 overflow-hidden rounded-[26px] px-4 pb-4 pt-5 text-left shadow-[var(--shadow)]"
+          style={{ backgroundColor: playerColor(me) }}
+          onClick={() => setCharacters(true)}
+          data-tour="settings-character"
+        >
+          <span
+            aria-hidden
+            className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_10%_0%,rgb(255_255_255/0.3),transparent_60%),linear-gradient(170deg,transparent_35%,rgb(0_0_0/0.45))]"
+          />
+          <span
+            className={clsx(
+              "min-w-0 flex-1",
+              isLightColor(playerColor(me)) ? "text-[#1d1a16]" : "text-white",
+            )}
+          >
+            <span className="block text-[11px] font-bold uppercase tracking-[0.12em] opacity-70">
+              Il tuo personaggio
+            </span>
+            <span className="display mt-1 flex items-center gap-2 text-[28px] uppercase leading-none">
+              {AVATAR_PRESETS.find((p) => p.id === characterOf(me))?.name}
+              <NewDot count={newChars || -1} />
+            </span>
+            <span className="mt-2 block text-[13px] opacity-80">
+              {newChars
+                ? newChars === 1
+                  ? "Ne hai sbloccato uno nuovo: aprilo"
+                  : `Ne hai sbloccati ${newChars} nuovi: aprili`
+                : "Con i badge ne sblocchi di speciali"}
+            </span>
+          </span>
+          <span className="-mb-4 shrink-0">
+            <Character
+              id={characterOf(me)}
+              outfit={me.outfit}
+              number={me.jerseyNumber}
+              height={128}
+            />
+          </span>
+        </button>
+
+        <Group title="Profilo">
           <button
-            className="press flex w-full items-center gap-4 px-4 py-4 text-left"
+            className="press flex w-full items-center gap-3 px-4 py-3 text-left"
             onClick={() => setPicking(true)}
           >
             <span className="relative">
-              <Avatar player={me} size={64} href={false} />
-              <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-edge bg-ball text-ball-ink">
-                {uploading ? <Spinner size={10} /> : <IconCamera size={14} />}
+              <Avatar player={me} size={44} href={false} />
+              <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full border-2 border-surface bg-ball text-ball-ink">
+                {uploading ? <Spinner size={10} /> : <IconCamera size={12} />}
               </span>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="title block text-[17px]">Foto profilo</span>
-              <span className="block text-[13px] text-muted">
+              <span className="block text-[15px] font-semibold">
+                Foto profilo
+              </span>
+              <span className="block text-[12.5px] text-muted">
                 Una figurina o una tua foto
               </span>
             </span>
             <IconChevronRight size={18} className="text-faint" />
           </button>
-          <button
-            className="press flex w-full items-center gap-4 border-t border-line px-4 py-3 text-left"
-            onClick={() => setCharacters(true)}
-            data-tour="settings-character"
-          >
-            <span className="grid h-[72px] w-16 place-items-end justify-center">
-              <Character
-                id={characterOf(me)}
-                outfit={me.outfit}
-                number={me.jerseyNumber}
-                height={72}
-              />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="title flex items-center gap-2 text-[17px]">
-                Il tuo personaggio <NewDot count={newChars || -1} />
-              </span>
-              <span className="block text-[13px] text-muted">
-                {newChars
-                  ? newChars === 1
-                    ? "Ne hai sbloccato uno nuovo: aprilo"
-                    : `Ne hai sbloccati ${newChars} nuovi: aprili`
-                  : "Con i badge ne sblocchi di speciali"}
-              </span>
-            </span>
-            <IconChevronRight size={18} className="text-faint" />
-          </button>
-          <div className="border-t border-line px-4 py-3">
-            <p className="mb-2.5 text-[15px]">Sfondo della figurina</p>
+          <div className="px-4 py-3.5">
+            <p className="mb-3 text-[15px] font-semibold">
+              Sfondo della figurina
+            </p>
             <div
               className="grid grid-cols-8 gap-1.5"
               role="radiogroup"
@@ -235,8 +275,9 @@ export default function SettingsPage() {
                       )
                     }
                     className={clsx(
-                      "press grid aspect-square w-full max-w-[38px] place-items-center justify-self-center rounded-full border-[2.5px] border-edge",
-                      on && "sticker-sm scale-110",
+                      "press grid aspect-square w-full max-w-[36px] place-items-center justify-self-center rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition-transform",
+                      on &&
+                        "scale-110 ring-2 ring-text ring-offset-2 ring-offset-surface",
                     )}
                     style={{ background: c.value }}
                   >
@@ -257,13 +298,14 @@ export default function SettingsPage() {
             </div>
           </div>
           <Row>
-            {/* Il nome si cambia in un pannello a parte: anteprima, avviso e pausa di 14 giorni. */}
             <button
               className="press flex min-h-10 min-w-0 flex-1 items-center gap-2 text-left"
               onClick={() => setNaming(true)}
             >
-              <span className="shrink-0 text-[15px]">Nome nell&apos;app</span>
-              <span className="min-w-0 flex-1 truncate text-right text-[15px] font-semibold">
+              <span className="shrink-0 text-[15px] font-semibold">
+                Nome nell&apos;app
+              </span>
+              <span className="min-w-0 flex-1 truncate text-right text-[15px] text-muted">
                 {me.nickname}
               </span>
               {nameUnlockDate(me) ? (
@@ -278,7 +320,10 @@ export default function SettingsPage() {
             </button>
           </Row>
           <Row>
-            <label htmlFor="jersey" className="shrink-0 text-[15px]">
+            <label
+              htmlFor="jersey"
+              className="shrink-0 text-[15px] font-semibold"
+            >
               Numero di maglia
             </label>
             <input
@@ -294,7 +339,7 @@ export default function SettingsPage() {
                 if (v !== me.jerseyNumber)
                   void patchMe({ jerseyNumber: v }, "Ho salvato il numero");
               }}
-              className="tnum h-10 min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold outline-none placeholder:text-faint"
+              className="num ml-auto h-10 w-16 rounded-[12px] bg-raised text-center text-[18px] outline-none placeholder:text-faint focus:ring-2 focus:ring-ball"
             />
           </Row>
           <Row icon={<IconEye size={18} />}>
@@ -315,11 +360,10 @@ export default function SettingsPage() {
           </Row>
         </Group>
 
-        <Group>
+        <Group title="App">
           <Row icon={<IconPalette size={18} />}>
             <Segmented
               className="flex-1"
-              size="sm"
               value={theme}
               onChange={(t) => {
                 setTheme(t);
@@ -332,7 +376,11 @@ export default function SettingsPage() {
               ]}
             />
           </Row>
-          <Row icon={sounds ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}>
+          <Row
+            icon={
+              sounds ? <IconVolume size={18} /> : <IconVolumeOff size={18} />
+            }
+          >
             <span className="min-w-0 flex-1">
               <span className="block text-[15px] font-semibold">Suoni</span>
               <span className="block text-[12.5px] text-muted">
@@ -421,7 +469,7 @@ export default function SettingsPage() {
           )}
         </Group>
 
-        <Group>
+        <Group title="Aiuto">
           <Row icon={<IconCompass size={18} />}>
             <button
               onClick={() => setGuide(true)}
@@ -449,7 +497,7 @@ export default function SettingsPage() {
           </Row>
         </Group>
 
-        <Group>
+        <Group title="Account">
           {playerView.available && (
             <Row icon={<IconUsers size={18} />}>
               <span className="min-w-0 flex-1">
@@ -485,7 +533,7 @@ export default function SettingsPage() {
               </Link>
             </Row>
           )}
-          <Row icon={<IconLogout size={18} />}>
+          <Row icon={<IconLogout size={18} />} danger>
             <button
               onClick={async () => {
                 await backend.signOut();
@@ -526,7 +574,7 @@ export default function SettingsPage() {
           >
             Ricomincia da capo
           </Button>
-          <div className="card overflow-hidden">
+          <div className="divide-y divide-line overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]">
             {SECTION_IDS.map((id) => {
               const sec = sections(me.isAdmin)[id];
               return (
@@ -536,7 +584,7 @@ export default function SettingsPage() {
                     setGuide(false);
                     window.setTimeout(() => tour?.begin(id), 350);
                   }}
-                  className="flex min-h-[56px] w-full items-center gap-3 border-t border-line px-4 text-left first:border-t-0 active:bg-raised"
+                  className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left active:bg-raised"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-semibold">

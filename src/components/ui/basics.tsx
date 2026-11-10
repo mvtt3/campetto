@@ -102,7 +102,7 @@ export function ScreenHeader({
   subtitle?: ReactNode;
 }) {
   const backCls =
-    "sticker-sm press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface";
+    "press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface shadow-[var(--shadow)]";
   return (
     <header className="safe-top shrink-0 px-5">
       <div className="flex min-h-16 items-center gap-3 pt-5">
@@ -513,13 +513,13 @@ export function Toggle({
         onChange(!checked);
       }}
       className={clsx(
-        "relative h-8 w-[54px] shrink-0 rounded-full border-2 border-edge transition-colors disabled:opacity-40",
-        checked ? "bg-ok" : "bg-raised",
+        "relative h-8 w-[52px] shrink-0 rounded-full transition-colors disabled:opacity-40",
+        checked ? "bg-ball" : "bg-raised",
       )}
     >
       <motion.span
-        className="absolute left-[2px] top-[2px] h-6 w-6 rounded-full border-2 border-edge bg-surface"
-        animate={{ x: checked ? 22 : 0 }}
+        className="absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-[0_2px_6px_rgb(0_0_0/0.25)]"
+        animate={{ x: checked ? 20 : 0 }}
         transition={{ type: "spring", stiffness: 600, damping: 32 }}
       />
     </button>
