@@ -240,7 +240,7 @@ export function PlayerPage() {
               {ovr !== null && (
                 <motion.span
                   aria-label={`Valutazione ${ovr}`}
-                  className="absolute right-[38%] top-3 -z-10 flex flex-col items-end"
+                  className="absolute right-[56%] top-3 -z-10 flex flex-col items-end"
                   initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ ...SPRING, delay: 0.35 }}
