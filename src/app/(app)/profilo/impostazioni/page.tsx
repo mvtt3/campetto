@@ -254,10 +254,7 @@ export default function SettingsPage() {
               data-tour="settings-character"
               className="press relative -mb-1 shrink-0"
             >
-              <span className="sr-only">
-                Il tuo personaggio,{" "}
-                {AVATAR_PRESETS.find((p) => p.id === characterOf(me))?.name}
-              </span>
+              <span className="sr-only">Apri la collezione dei personaggi</span>
               <NewDot
                 count={newChars || -1}
                 className="absolute right-2 top-1 z-10"
