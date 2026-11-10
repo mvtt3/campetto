@@ -273,13 +273,7 @@ export function ProposalCard({
               ? ""
               : ` per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
           </span>
-          {full ? (
-            <span className="font-bold text-ok"> al completo</span>
-          ) : (
-            phase === "confirmed" && (
-              <span className="font-bold text-ok"> · confermata</span>
-            )
-          )}
+          {full && <span className="font-bold text-ok"> al completo</span>}
           {yes.length > needed && (
             <span className="font-semibold text-muted">
               {" "}
@@ -357,11 +351,7 @@ export function ProposalCard({
       <div
         className={clsx(
           "flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[18px]",
-          !compact
-            ? "bg-raised"
-            : phase === "confirmed"
-              ? "bg-ok text-white"
-              : "bg-court text-court-ink",
+          compact ? "bg-court text-court-ink" : "bg-raised",
         )}
       >
         <span
@@ -415,6 +405,19 @@ export function ProposalCard({
     </div>
   );
 
+  const confirmedBanner = phase === "confirmed" && (
+    <div
+      className="-mx-4 -mt-4 flex items-center gap-2 rounded-t-[19px] bg-ok px-4 py-2.5 text-white"
+      role="status"
+    >
+      <IconCircleCheck size={19} strokeWidth={2.6} aria-hidden />
+      <span className="title text-[15.5px]">Partita confermata</span>
+      <span className="ml-auto truncate text-[12.5px] font-semibold opacity-90">
+        {full ? "al completo" : `siete in ${yes.length}, si gioca`}
+      </span>
+    </div>
+  );
+
   if (compact) {
     return (
       <div
@@ -422,6 +425,7 @@ export function ProposalCard({
         data-phase={phase}
         className="flex flex-col gap-3.5 short:gap-3"
       >
+        {confirmedBanner}
         {head}
         <div className="h-px bg-line" aria-hidden />
         {who}
@@ -439,18 +443,7 @@ export function ProposalCard({
         "gap-3 short:gap-2.5",
       )}
     >
-      {phase === "confirmed" && (
-        <div
-          className="-mx-4 -mt-4 flex items-center gap-2 rounded-t-[19px] bg-ok px-4 py-2.5 text-white"
-          role="status"
-        >
-          <IconCircleCheck size={19} strokeWidth={2.6} aria-hidden />
-          <span className="title text-[15.5px]">Partita confermata</span>
-          <span className="ml-auto truncate text-[12.5px] font-semibold opacity-90">
-            {full ? "al completo" : `siete in ${yes.length}, si gioca`}
-          </span>
-        </div>
-      )}
+      {confirmedBanner}
       {head}
       <div className="flex items-start gap-2.5">
         {creator && <Avatar player={creator} size={30} href={false} />}
