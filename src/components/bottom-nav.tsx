@@ -81,7 +81,7 @@ export function BottomNav({
     <nav
       aria-label="Navigazione principale"
       data-tour="nav"
-      className="safe-bottom shrink-0 px-4 pb-3 pt-1"
+      className="shrink-0 px-4 pb-[max(12px,calc(env(safe-area-inset-bottom)-10px))] pt-1"
     >
       <ul className="sticker relative mx-auto grid h-16 max-w-[340px] grid-cols-4 gap-1 rounded-full bg-surface p-1.5">
         {/* La pillola blu scorre da una scheda all'altra (e segue il dito durante lo swipe). */}
@@ -123,7 +123,11 @@ export function BottomNav({
                 )}
               >
                 <span className="relative">
-                  <Icon size={24} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                  <Icon
+                    size={24}
+                    strokeWidth={active ? 2.2 : 1.8}
+                    aria-hidden
+                  />
                   {href === "/profilo" && (
                     <NewDot count={news} className="absolute -right-3 -top-2" />
                   )}

@@ -289,6 +289,9 @@ a,
 .safe-bottom {
   margin-bottom: env(safe-area-inset-bottom);
 }
+:root {
+  --hl-safe: calc(env(safe-area-inset-bottom) * 0.4);
+}
 
 /* Cornice dell'MVP in carica: oro che gira lentamente */
 .mvp-ring {
@@ -2136,7 +2139,7 @@ html[data-shot="3"] .intro-ball-x {
   content: "";
   position: absolute;
   inset: auto 0 0 0;
-  height: calc(env(safe-area-inset-bottom) + 230px);
+  height: calc(var(--hl-safe) + 230px);
   background: linear-gradient(
     to top,
     rgba(23, 19, 15, 0.82),
@@ -2155,7 +2158,7 @@ html[data-shot="3"] .intro-ball-x {
   left: 0;
   right: 0;
   top: calc(env(safe-area-inset-top) + 52px);
-  bottom: calc(env(safe-area-inset-bottom) + 188px);
+  bottom: calc(var(--hl-safe) + 188px);
   z-index: 1;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -2188,7 +2191,7 @@ html[data-shot="3"] .intro-ball-x {
 }
 .hl-ticker {
   bottom: 0;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--hl-safe);
   background: #0d0b09;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -2208,7 +2211,7 @@ html[data-shot="3"] .intro-ball-x {
 }
 /* La barretta che si trascina: sottile da ferma, il tocco prende una fascia più alta. */
 .hl-seek {
-  bottom: calc(env(safe-area-inset-bottom) + 25px);
+  bottom: calc(var(--hl-safe) + 31px);
   height: 21px;
   touch-action: none;
   cursor: pointer;
@@ -2282,10 +2285,10 @@ html[data-shot="3"] .intro-ball-x {
   }
 }
 .hl-meta {
-  bottom: calc(env(safe-area-inset-bottom) + 46px);
+  bottom: calc(var(--hl-safe) + 54px);
 }
 .hl-rail {
-  bottom: calc(env(safe-area-inset-bottom) + 46px);
+  bottom: calc(var(--hl-safe) + 54px);
 }
 .hl-unmute {
   animation:
@@ -2372,7 +2375,7 @@ html[data-shot="3"] .intro-ball-x {
   }
   .hl-stage {
     top: 0;
-    bottom: calc(env(safe-area-inset-bottom) + 34px);
+    bottom: calc(var(--hl-safe) + 34px);
   }
   .hl-meta [data-testid="hl-desc"] {
     display: none;
@@ -2414,7 +2417,7 @@ html[data-shot="3"] .intro-ball-x {
 }
 /* La guida della prima volta nel feed: il dito che scorre in su, poi i due tocchi. */
 .hl-hint-pill {
-  bottom: calc(env(safe-area-inset-bottom) + 150px);
+  bottom: calc(var(--hl-safe) + 150px);
 }
 .hl-finger-up,
 .hl-finger-tap {
