@@ -69,6 +69,8 @@ function pickCaption(): string {
   return CAPTIONS[i];
 }
 
+const TITLE = [..."Campetto"];
+
 const DONE_EVENT = "campetto:intro-done";
 
 function introGone(): boolean {
@@ -173,7 +175,7 @@ export function Intro() {
   if (phase === "gone") return null;
   return (
     <div
-      className={`intro halftone ${phase === "leaving" ? "intro-leave" : ""}`}
+      className={`intro ${phase === "leaving" ? "intro-leave" : ""}`}
       role="status"
       aria-label="Campetto si sta aprendo"
       onClick={() => {
@@ -182,7 +184,13 @@ export function Intro() {
       }}
     >
       <div className="intro-title">
-        <p className="display intro-word">Campetto</p>
+        <p className="display intro-word" aria-label="Campetto">
+          {TITLE.map((c, i) => (
+            <span key={i} aria-hidden style={{ animationDelay: `${i * 45}ms` }}>
+              {c}
+            </span>
+          ))}
+        </p>
         <p className="intro-sub">★ Nichelino ★</p>
       </div>
       <div className="intro-stage" aria-hidden>

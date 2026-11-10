@@ -497,16 +497,10 @@ export function HomeScreen() {
                   <p className="mt-0.5 text-[11.5px] font-medium text-white/70">Vittorie</p>
                 </div>
                 <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
-                  <p className="num text-[20px]">
-                    <CountUp value={elo} />
-                  </p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-white/70">
-                    ELO
-                    <InfoTip label="Cos'è l'ELO" size={12}>
-                      Il tuo punteggio di forza. Si parte tutti da 1000:
-                      vincendo sale, perdendo scende. Battere chi è più forte
-                      vale di più
-                    </InfoTip>
+                  <div className="flex items-center gap-1.5">
+                    <p className="num text-[20px]">
+                      <CountUp value={elo} />
+                    </p>
                     {delta !== 0 && (
                       <span
                         className={clsx(
@@ -522,6 +516,14 @@ export function HomeScreen() {
                         {delta > 0 ? `+${delta}` : `−${-delta}`}
                       </span>
                     )}
+                  </div>
+                  <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-white/70">
+                    ELO
+                    <InfoTip label="Cos'è l'ELO" size={12}>
+                      Il tuo punteggio di forza. Si parte tutti da 1000:
+                      vincendo sale, perdendo scende. Battere chi è più forte
+                      vale di più
+                    </InfoTip>
                   </p>
                 </div>
                 <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
