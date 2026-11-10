@@ -197,7 +197,7 @@ export function CommentsPanel({
         aria-modal="true"
         aria-label="Commenti"
         className={clsx(
-          "hl-comments absolute inset-x-0 mx-auto flex max-w-lg flex-col rounded-t-[26px] border-[2.5px] border-b-0 border-edge bg-surface text-text",
+          "hl-comments absolute inset-x-0 mx-auto flex max-w-lg flex-col rounded-t-[28px] bg-bg text-text shadow-[0_-12px_40px_-12px_rgb(0_0_0/0.5)]",
           drag === 0 && "transition-transform duration-[260ms] ease-out",
         )}
         style={{
@@ -208,24 +208,25 @@ export function CommentsPanel({
         data-testid="hl-comments-panel"
       >
         <div
-          className="relative shrink-0 touch-none select-none px-12 pb-2 pt-3 text-center"
+          className="relative shrink-0 touch-none select-none px-4 pb-3 pt-2.5"
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerCancel={onUp}
         >
-          <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-line-strong" />
-          <h3 className="title text-[16px]">
-            {count === 0
-              ? "Commenti"
-              : count === 1
-                ? "1 commento"
-                : `${count} commenti`}
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line-strong" />
+          <h3 className="title flex items-center gap-2 pr-10 text-[18px]">
+            Commenti
+            {count > 0 && (
+              <span className="tnum rounded-full bg-raised px-2 py-0.5 text-[12px] font-semibold text-muted">
+                {count}
+              </span>
+            )}
           </h3>
           <button
             onClick={onClose}
             aria-label="Chiudi"
-            className="press absolute right-3 top-2.5 grid h-9 w-9 place-items-center rounded-full bg-surface text-muted shadow-[var(--shadow)]"
+            className="press absolute right-4 top-5 grid h-9 w-9 place-items-center rounded-full bg-surface text-muted shadow-[var(--shadow)]"
             data-testid="hl-comments-close"
           >
             <IconX size={18} strokeWidth={2.4} />
@@ -268,7 +269,7 @@ export function CommentsPanel({
               </p>
             </div>
           ) : (
-            <ul className="flex flex-col gap-1.5 py-2">
+            <ul className="flex flex-col gap-3 py-2">
               {comments.map((c) => (
                 <CommentRow
                   key={c.id}
@@ -300,7 +301,7 @@ export function CommentsPanel({
 
         {replyTo && (
           <div
-            className="flex shrink-0 items-center gap-2 border-t border-line bg-raised px-3 py-2"
+            className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-3 py-2"
             data-testid="hl-reply-bar"
           >
             <IconCornerUpLeft
@@ -332,8 +333,8 @@ export function CommentsPanel({
         )}
         <form
           className={clsx(
-            "safe-bottom flex shrink-0 items-end gap-2 px-3 pb-3 pt-2.5",
-            !replyTo && "border-t-2 border-line",
+            "safe-bottom flex shrink-0 items-end gap-2 bg-surface px-3 pb-3 pt-2.5",
+            !replyTo && "border-t border-line",
           )}
           onSubmit={(e) => {
             e.preventDefault();
@@ -474,7 +475,7 @@ function CommentRow({
     <li
       data-cid={c.id}
       className={clsx(
-        "hl-comment relative -mx-2 rounded-[14px] px-2 py-1",
+        "hl-comment relative",
         c.state === "sending" && "opacity-60",
         flash && "hl-flash",
       )}
@@ -509,43 +510,50 @@ function CommentRow({
           <span className="h-[34px] w-[34px] shrink-0 rounded-full bg-line" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="flex items-baseline gap-1.5 text-[12.5px] text-muted">
-            <span className="truncate font-bold text-text">
-              {shortName(who, players)}
-            </span>
-            <span className="shrink-0">
-              {c.state === "sending" ? "invio…" : timeAgo(c.createdAt, now)}
-            </span>
-          </p>
-          {quoted !== undefined && (
-            <button
-              type="button"
-              onClick={() => quoted && onQuote(quoted.id)}
-              disabled={!quoted}
-              className="press mt-1 block w-full max-w-full rounded-[10px] border-l-[3px] border-ball bg-raised px-2 py-1 text-left"
-              data-testid="hl-quote"
-            >
-              {quoted ? (
-                <>
-                  <span className="block truncate text-[12px] font-bold text-ball">
-                    {quotedName}
+          <div
+            className={clsx(
+              "rounded-[18px] rounded-tl-[6px] px-3 py-2 shadow-[var(--shadow)]",
+              mine ? "bg-ball-soft" : "bg-surface",
+            )}
+          >
+            <p className="flex items-baseline gap-1.5 text-[12px] text-muted">
+              <span className="truncate font-bold text-text">
+                {shortName(who, players)}
+              </span>
+              <span className="shrink-0">
+                {c.state === "sending" ? "invio…" : timeAgo(c.createdAt, now)}
+              </span>
+            </p>
+            {quoted !== undefined && (
+              <button
+                type="button"
+                onClick={() => quoted && onQuote(quoted.id)}
+                disabled={!quoted}
+                className="press mt-1 block w-full max-w-full rounded-[10px] border-l-[3px] border-ball bg-black/5 px-2 py-1 text-left"
+                data-testid="hl-quote"
+              >
+                {quoted ? (
+                  <>
+                    <span className="block truncate text-[12px] font-bold text-ball">
+                      {quotedName}
+                    </span>
+                    <span className="block truncate text-[12.5px] text-muted">
+                      {quoted.body}
+                    </span>
+                  </>
+                ) : (
+                  <span className="block text-[12.5px] italic text-faint">
+                    Commento eliminato
                   </span>
-                  <span className="block truncate text-[12.5px] text-muted">
-                    {quoted.body}
-                  </span>
-                </>
-              ) : (
-                <span className="block text-[12.5px] italic text-faint">
-                  Commento eliminato
-                </span>
-              )}
-            </button>
-          )}
-          <p className="mt-0.5 whitespace-pre-wrap break-words text-[14.5px] leading-snug [overflow-wrap:anywhere]">
-            {c.body}
-          </p>
+                )}
+              </button>
+            )}
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-[14.5px] leading-snug [overflow-wrap:anywhere]">
+              {c.body}
+            </p>
+          </div>
           {c.state === "failed" ? (
-            <div className="mt-1 flex gap-3 text-[12.5px] font-bold">
+            <div className="mt-1 flex gap-3 px-1 text-[12.5px] font-bold">
               <span className="text-danger">Non inviato</span>
               <button className="press underline" onClick={onRetry}>
                 Riprova
@@ -556,7 +564,7 @@ function CommentRow({
             </div>
           ) : (
             c.state !== "sending" && (
-              <div className="mt-0.5 flex gap-4 text-[12.5px] font-semibold text-muted">
+              <div className="mt-1 flex gap-4 px-1 text-[12px] font-semibold text-muted">
                 <button
                   className="press py-0.5"
                   onClick={onReply}

@@ -2182,19 +2182,34 @@ html[data-shot="3"] .intro-ball-x {
 .hl-meta button {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
-/* Il nastro dei numeri: inchiostro con un doppio filetto crema in alto, come nei manifesti. */
 .hl-ticker {
   bottom: 0;
   padding-bottom: env(safe-area-inset-bottom);
-  background: #17130f;
-  border-top: 3px double rgba(246, 238, 220, 0.42);
-}
-.hl-ticker-k {
-  transform: translateY(0.5px);
+  background: linear-gradient(
+    to top,
+    rgba(23, 19, 15, 0.9),
+    rgba(23, 19, 15, 0.55) 70%,
+    rgba(23, 19, 15, 0)
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent
+  );
 }
 .hl-ticker-track {
-  height: 30px;
+  height: 34px;
   align-items: center;
+  padding-left: 12px;
   animation: hl-marquee linear infinite;
 }
 .hl-still {

@@ -51,6 +51,9 @@ const LOADER_DELAY = 280;
 /** Senza nemmeno un fotogramma per così tanto, il video non sta arrivando. */
 const STALL_MS = 15_000;
 
+const RAIL_BTN =
+  "grid h-11 w-11 place-items-center rounded-full bg-black/35 backdrop-blur-md";
+
 /**
  * Un video del feed. Solo quello attivo e i due vicini hanno il <video>: gli altri sono
  * il poster, così anche con tanti highlights il telefono non si appesantisce.
@@ -59,6 +62,7 @@ const STALL_MS = 15_000;
 export const Slide = memo(function Slide(p: SlideProps) {
   const { h, index, active, near, onEnded, onHold, onLike } = p;
   const description = p.story ?? h.description;
+  const scores = p.score?.score.split("–").map(Number) ?? [];
   const video = useRef<HTMLVideoElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
@@ -563,70 +567,99 @@ export const Slide = memo(function Slide(p: SlideProps) {
         </div>
       )}
 
-      {/* Pallone e commenti, a destra come nelle app di video. */}
-      {/* Icone leggere a contorno, numero sotto, area di tocco ampia. */}
-      <div className="hl-rail absolute right-1.5 z-[16] flex flex-col items-center gap-3">
+      <div className="hl-rail absolute right-2 z-[16] flex flex-col items-center gap-2.5">
         <button
           onClick={() => onLike(h.id, !p.liked)}
           aria-pressed={p.liked}
           aria-label={`${p.liked ? "Togli il mi piace" : "Mi piace"}: ${compactCount(p.likes)}`}
-          className="press flex h-[58px] w-12 flex-col items-center justify-center gap-1"
+          className="press flex flex-col items-center gap-1"
           data-testid="hl-like"
         >
           <span
             key={p.liked ? "on" : "off"}
-            className={clsx("hl-icon", p.liked && "hl-pop")}
+            className={clsx(RAIL_BTN, p.liked && "hl-pop")}
           >
             <IconHeart
-              size={29}
-              strokeWidth={2}
-              className={p.liked ? "text-[#ff5a4a]" : "text-[#f6eedc]"}
+              size={23}
+              strokeWidth={2.2}
+              className={p.liked ? "text-[#ff5a4a]" : "text-white"}
               fill={p.liked ? "currentColor" : "none"}
               aria-hidden
             />
           </span>
-          <span className="hl-count text-[12px] font-semibold text-[#f6eedc] tnum">
+          <span className="hl-count text-[11.5px] font-semibold text-white tnum">
             {compactCount(p.likes)}
           </span>
         </button>
         <button
           onClick={() => p.onComments(h.id)}
           aria-label={`Commenti: ${compactCount(p.comments)}`}
-          className="press flex h-[58px] w-12 flex-col items-center justify-center gap-1"
+          className="press flex flex-col items-center gap-1"
           data-testid="hl-comments"
         >
-          <IconMessageCircle
-            size={28}
-            strokeWidth={2}
-            className="hl-icon -scale-x-100 text-[#f6eedc]"
-            aria-hidden
-          />
-          <span className="hl-count text-[12px] font-semibold text-[#f6eedc] tnum">
+          <span className={RAIL_BTN}>
+            <IconMessageCircle
+              size={22}
+              strokeWidth={2.2}
+              className="-scale-x-100 text-white"
+              aria-hidden
+            />
+          </span>
+          <span className="hl-count text-[11.5px] font-semibold text-white tnum">
             {compactCount(p.comments)}
           </span>
         </button>
       </div>
 
-      <div className="hl-meta pointer-events-none absolute left-0 right-[60px] z-10 px-4 text-[#f6eedc]">
-        <h2 className="hl-title truncate text-[11px] font-bold uppercase tracking-[0.14em] text-[#f6eedc]/75">
+      <div className="hl-meta pointer-events-none absolute left-0 right-[64px] z-10 pl-3 text-white">
+        <h2 className="hl-title truncate px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">
           {p.title}
         </h2>
         {p.score && (
-          <p
-            className="hl-score mt-1 flex items-baseline gap-2 truncate text-[13.5px] font-semibold text-[#f6eedc]/90"
+          <div
+            className="mt-1.5 rounded-[18px] bg-black/40 px-3 py-2 backdrop-blur-md"
             data-testid="hl-score"
           >
-            <span className="score shrink-0 text-[26px] leading-none text-ball tnum">
-              {p.score.score}
-            </span>
-            <span className="truncate">
-              {p.score.a} contro {p.score.b}
-            </span>
-          </p>
+            <span className="sr-only">{p.score.score}</span>
+            {(
+              [
+                ["A", p.score.a, scores[0]],
+                ["B", p.score.b, scores[1]],
+              ] as const
+            ).map(([t, names, pts]) => {
+              const won = pts === Math.max(...scores);
+              return (
+                <div key={t} className="flex items-center gap-2" aria-hidden>
+                  <span
+                    className={clsx(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      t === "A" ? "bg-court" : "bg-ball",
+                    )}
+                  />
+                  <span
+                    className={clsx(
+                      "min-w-0 flex-1 truncate text-[13.5px]",
+                      won ? "font-bold" : "text-white/65",
+                    )}
+                  >
+                    {names}
+                  </span>
+                  <span
+                    className={clsx(
+                      "score text-[22px] leading-tight tnum",
+                      won ? "text-ball" : "text-white/45",
+                    )}
+                  >
+                    {pts}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         )}
         {description && (
           <button
-            className="pointer-events-auto mt-1.5 block w-full text-left text-[14px] leading-snug text-[#f6eedc]/90"
+            className="pointer-events-auto mt-2 block w-full px-1 text-left text-[13.5px] leading-snug text-white/85"
             onClick={() => setExpanded((x) => !x)}
             aria-expanded={expanded}
             data-testid="hl-desc"
@@ -638,11 +671,9 @@ export const Slide = memo(function Slide(p: SlideProps) {
         )}
       </div>
 
-      {/* La striscia coi numeri della partita, che scorre: un nastro da manifesto, inchiostro e
-          crema, con l'etichetta arancione e un pallone tra una voce e l'altra. */}
       {p.ticker.length > 0 && (
         <div
-          className="hl-ticker absolute inset-x-0 z-10 overflow-hidden text-[#f6eedc]"
+          className="hl-ticker absolute inset-x-0 z-10 overflow-hidden"
           aria-label={tickerText(p.ticker)}
           role="marquee"
         >
@@ -657,17 +688,18 @@ export const Slide = memo(function Slide(p: SlideProps) {
             aria-hidden
           >
             {[0, 1].map((k) => (
-              <span key={k} className="flex shrink-0">
+              <span key={k} className="flex shrink-0 gap-1.5 pr-1.5">
                 {p.ticker.map((t, i) => (
                   <span
                     key={i}
-                    className="flex items-center whitespace-nowrap pl-4"
+                    className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white/12 px-2.5 py-1"
                   >
-                    <span className="hl-ticker-k text-[10.5px] font-extrabold uppercase tracking-[0.2em] text-[#ef7d2d]">
+                    <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-ball">
                       {t.k}
                     </span>
-                    <span className="display ml-2 text-[14.5px]">{t.v}</span>
-                    <TickerBall />
+                    <span className="text-[12.5px] font-semibold text-white">
+                      {t.v}
+                    </span>
                   </span>
                 ))}
               </span>
@@ -685,25 +717,6 @@ export const Slide = memo(function Slide(p: SlideProps) {
     </section>
   );
 });
-
-/** Il pallino tra una voce e l'altra della striscia: un piccolo pallone a spicchi. */
-function TickerBall() {
-  return (
-    <svg
-      viewBox="0 0 12 12"
-      width={11}
-      height={11}
-      className="ml-4"
-      aria-hidden
-    >
-      <circle cx="6" cy="6" r="5.4" fill="#ef7d2d" />
-      <g fill="none" stroke="#17130f" strokeWidth="0.9" strokeLinecap="round">
-        <path d="M6 0.8v10.4M0.8 6h10.4" />
-        <path d="M2.6 2.4c1.3 1 2 2.2 2 3.6s-.7 2.6-2 3.6M9.4 2.4c-1.3 1-2 2.2-2 3.6s.7 2.6 2 3.6" />
-      </g>
-    </svg>
-  );
-}
 
 /** 0:07, 1:12: il minuto del video mentre trascini. */
 function clock(t: number): string {
