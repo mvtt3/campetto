@@ -86,70 +86,98 @@ const BOARD_LABEL = new Map(BOARDS.map((b) => [b.value, b.label]));
 const LABEL =
   "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
 
-function Leader({ row, board }: { row: Row; board: Board }) {
-  const { data, me } = useData();
-  const p = data.players.find((x) => x.id === row.playerId);
-  return (
-    <Link
-      href={row.playerId === me?.id ? "/profilo" : playerHref(row.playerId)}
-      className="press relative flex min-h-[148px] items-stretch overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#ffd451_0%,#ffb238_55%,#ff8f2b_100%)] p-4 text-[#1d1a16] shadow-[var(--shadow)]"
-    >
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <span className="flex items-center gap-1 self-start rounded-full bg-[#1d1a16] px-2.5 py-1 text-[11.5px] font-bold text-volt">
-          <IconCrown size={13} aria-hidden />
-          1°
-        </span>
-        <p className="display mt-2 truncate text-[26px] leading-tight">
-          {shortName(p, data.players)}
-        </p>
-        <p className="mt-auto flex items-baseline gap-1.5">
-          <span className="num text-[38px] leading-none">{row.value}</span>
-          <span className="text-[12px] font-semibold uppercase tracking-[0.06em] opacity-70">
-            {BOARD_LABEL.get(board)}
-          </span>
-        </p>
-        {row.sub && (
-          <p className="mt-1 truncate text-[12.5px] font-medium opacity-75">
-            {row.sub}
-          </p>
-        )}
-      </div>
-      {p && (
-        <div className="pointer-events-none absolute -bottom-2 right-3">
-          <Character
-            id={characterOf(p)}
-            outfit={p.outfit}
-            number={p.jerseyNumber}
-            height={128}
-            title={shortName(p, data.players)}
-          />
-        </div>
-      )}
-    </Link>
-  );
-}
+const STEPS = [
+  {
+    place: 2,
+    height: 70,
+    tone: "bg-[linear-gradient(180deg,#eef1f7_0%,#d3d9e6_100%)] text-[#3a4256]",
+  },
+  {
+    place: 1,
+    height: 100,
+    tone: "bg-[linear-gradient(180deg,#ffd451_0%,#ffb238_60%,#ff9a2e_100%)] text-[#1d1a16]",
+  },
+  {
+    place: 3,
+    height: 50,
+    tone: "bg-[linear-gradient(180deg,#ffd9bd_0%,#f5a877_100%)] text-[#5a2a10]",
+  },
+];
 
-function RunnerUp({ row }: { row: Row }) {
+function Podium({ rows }: { rows: Row[] }) {
   const { data, me } = useData();
-  const p = data.players.find((x) => x.id === row.playerId);
   return (
-    <Link
-      href={row.playerId === me?.id ? "/profilo" : playerHref(row.playerId)}
-      className="card press flex min-w-0 items-center gap-2.5 p-3"
-    >
-      <span className="relative shrink-0">
-        <Avatar player={p} size={40} href={false} ring="none" />
-        <span className="num absolute -bottom-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-text px-1 text-[11px] text-bg">
-          {row.rank}
-        </span>
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-semibold">
-          {shortName(p, data.players)}
-        </span>
-        <span className="num block text-[20px] leading-tight">{row.value}</span>
-      </span>
-    </Link>
+    <div className="grid grid-cols-3 items-end gap-2 pt-3">
+      {STEPS.map(({ place, height, tone }, i) => {
+        const row = rows[place - 1];
+        if (!row) return <div key={place} />;
+        const p = data.players.find((x) => x.id === row.playerId);
+        const name = shortName(p, data.players);
+        const first = place === 1;
+        return (
+          <Link
+            key={place}
+            href={
+              row.playerId === me?.id ? "/profilo" : playerHref(row.playerId)
+            }
+            className="press flex min-w-0 flex-col items-center"
+          >
+            {first && (
+              <IconCrown size={22} className="mb-0.5 text-gold" aria-hidden />
+            )}
+            {p && (
+              <Character
+                id={characterOf(p)}
+                outfit={p.outfit}
+                number={p.jerseyNumber}
+                height={first ? 92 : 72}
+                title={name}
+              />
+            )}
+            <p
+              className={clsx(
+                "mt-1.5 w-full truncate text-center font-semibold leading-tight",
+                first ? "text-[15px]" : "text-[13.5px]",
+              )}
+            >
+              {row.playerId === me?.id ? "Tu" : name}
+            </p>
+            <motion.div
+              className={clsx(
+                "mt-1.5 flex w-full flex-col items-center rounded-t-[18px] pt-2 shadow-[var(--shadow)]",
+                tone,
+              )}
+              style={{ height, transformOrigin: "bottom" }}
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 240,
+                damping: 24,
+                delay: i * 0.06,
+              }}
+            >
+              <span
+                className={clsx(
+                  "num leading-none",
+                  first ? "text-[26px]" : "text-[20px]",
+                )}
+              >
+                {row.value}
+              </span>
+              <span className="mt-1 text-[11px] font-bold opacity-60">
+                {place}°
+              </span>
+              {row.value === "—" && row.sub && (
+                <span className="mt-0.5 px-1 text-center text-[10.5px] font-semibold leading-tight opacity-70">
+                  {row.sub}
+                </span>
+              )}
+            </motion.div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 
@@ -422,7 +450,6 @@ export function RankingScreen() {
     el.classList.add("row-flash");
   };
 
-  const runners = podium.slice(1, 3);
   const listKey = `${board}-${period.kind}-${format}`;
 
   return (
@@ -452,19 +479,12 @@ export function RankingScreen() {
             transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
           >
             <div ref={podiumRef} data-tour="rank-podium" aria-label="Podio">
-              {podium[0] ? (
-                <Leader row={podium[0]} board={board} />
+              {podium.length > 0 ? (
+                <Podium rows={podium} />
               ) : (
                 <p className="px-10 py-6 text-center text-[14px] font-semibold text-muted">
                   Nessuno ha ancora tirato abbastanza per entrare in classifica
                 </p>
-              )}
-              {runners.length > 0 && (
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {runners.map((r) => (
-                    <RunnerUp key={r.playerId} row={r} />
-                  ))}
-                </div>
               )}
             </div>
 
@@ -489,7 +509,10 @@ export function RankingScreen() {
                       ref={mine ? myRowRef : undefined}
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: Math.min(i, 10) * 0.025, duration: 0.2 }}
+                      transition={{
+                        delay: Math.min(i, 10) * 0.025,
+                        duration: 0.2,
+                      }}
                       className="border-b border-line last:border-b-0"
                     >
                       <Link
@@ -560,7 +583,11 @@ export function RankingScreen() {
                   I migliori di sempre, mese per mese
                 </span>
               </span>
-              <IconChevronRight size={19} className="shrink-0 text-faint" aria-hidden />
+              <IconChevronRight
+                size={19}
+                className="shrink-0 text-faint"
+                aria-hidden
+              />
             </Link>
           </motion.div>
           {(myRest || myPending) && (
