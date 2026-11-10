@@ -169,7 +169,7 @@ export function Segmented<T extends string>({
       role="tablist"
       className={clsx(
         "relative flex rounded-full p-1",
-        tone === "court" ? "bg-white/15" : "sticker-sm bg-surface",
+        tone === "court" ? "bg-white/15" : "bg-raised",
         className,
       )}
     >
@@ -177,8 +177,8 @@ export function Segmented<T extends string>({
       <span
         aria-hidden
         className={clsx(
-          "absolute inset-y-1 left-1 rounded-full border-2 border-edge transition-transform duration-200 ease-out",
-          tone === "court" ? "bg-white" : "bg-court",
+          "absolute inset-y-1 left-1 rounded-full transition-transform duration-200 ease-out",
+          tone === "court" ? "bg-white" : "bg-text",
         )}
         style={{
           width: `calc((100% - 0.5rem) / ${options.length})`,
@@ -199,7 +199,7 @@ export function Segmented<T extends string>({
               active
                 ? tone === "court"
                   ? "text-court"
-                  : "text-court-ink"
+                  : "text-bg"
                 : tone === "court"
                   ? "text-white/80"
                   : "text-muted",

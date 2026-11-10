@@ -4,7 +4,6 @@ import clsx from "clsx";
 import Link from "next/link";
 import {
   IconChevronRight,
-  IconCircleCheck,
   IconCloudRain,
   IconCrown,
   IconPlus,
@@ -371,11 +370,6 @@ export function HomeScreen() {
             <IconCloudRain size={18} className="text-court" aria-hidden />
             Oggi non si gioca
           </>
-        ) : nextPhase === "confirmed" ? (
-          <span className="flex items-center gap-1.5 text-ok">
-            <IconCircleCheck size={18} aria-hidden />
-            Partita confermata
-          </span>
         ) : nextPhase === "live" ? (
           "Si gioca adesso"
         ) : (

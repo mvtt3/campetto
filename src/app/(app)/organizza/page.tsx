@@ -19,7 +19,6 @@ import {
   Button,
   Card,
   EmptyState,
-  ScreenHeader,
   Segmented,
 } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -40,6 +39,9 @@ function startOfWeek(d: Date): Date {
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const localIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const LABEL =
+  "mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
 
 const PLACE_KEY = "campetto:ultimo-campetto";
 /** L'ultima via usata per Indoor: di solito la palestra è sempre quella. */
@@ -168,7 +170,7 @@ function NewProposalSheet({
       open={open}
       onOpenChange={(o) => !o && onClose()}
       title="Proponi una partita"
-      description="Tutti ricevono una notifica e rispondono con un tocco"
+      description="Arriva una notifica a tutti"
       footer={
         <Button variant="primary" block onClick={submit} disabled={busy}>
           {busy ? "Invio…" : "Proponi"}
@@ -177,9 +179,9 @@ function NewProposalSheet({
     >
       <div className="flex flex-col gap-5 pb-2">
         <section>
-          <h3 className="mb-2 flex items-baseline justify-between text-[13px] font-semibold text-muted">
+          <h3 className={`${LABEL} flex items-baseline justify-between`}>
             Giorno{" "}
-            <span className="text-[14px] font-bold text-text">
+            <span className="text-[13px] font-semibold normal-case tracking-normal text-text">
               {dayLabel(day)}
             </span>
           </h3>
@@ -192,17 +194,16 @@ function NewProposalSheet({
           />
         </section>
         <section>
-          <h3 className="mb-2 text-[13px] font-semibold text-muted">Ora</h3>
+          <h3 className={LABEL}>Ora</h3>
           <TimeField value={time} onChange={setTime} />
         </section>
         <section>
-          <h3 className="mb-2 text-[13px] font-semibold text-muted">Dove</h3>
+          <h3 className={LABEL}>Dove</h3>
           <Segmented
             value={place}
             onChange={setPlace}
             options={PLACES.map((x) => ({ value: x.value, label: x.label }))}
           />
-          {/* Indoor: la via della palestra, subito sotto. Si ricorda l'ultima. */}
           {place === "indoor" && (
             <div className="fade-in mt-2 flex h-12 items-center gap-2 rounded-2xl bg-raised pl-3.5 pr-1.5 focus-within:ring-2 focus-within:ring-ball">
               <IconMapPin size={18} strokeWidth={2.4} className="shrink-0 text-ball" aria-hidden />
@@ -231,7 +232,7 @@ function NewProposalSheet({
           )}
         </section>
         <section>
-          <h3 className="mb-2 text-[13px] font-semibold text-muted">Formato</h3>
+          <h3 className={LABEL}>Formato</h3>
           <Segmented
             value={format}
             onChange={setFormat}
@@ -244,7 +245,7 @@ function NewProposalSheet({
         <section>
           <label
             htmlFor="note"
-            className="mb-2 block text-[13px] font-semibold text-muted"
+            className={`${LABEL} block`}
           >
             Nota
           </label>
@@ -342,20 +343,8 @@ function OrganizeInner() {
 
   return (
     <>
-      <ScreenHeader
-        title="Calendario"
-        back="/"
-        action={
-          <button
-            onClick={() => router.push("/organizza?nuova=1")}
-            aria-label="Proponi una partita"
-            className="press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ball text-ball-ink shadow-[var(--shadow)]"
-          >
-            <IconPlus size={22} strokeWidth={2.8} />
-          </button>
-        }
-      />
-      <div className="shrink-0 px-5 pb-4 pt-2">
+      <h1 className="sr-only">Calendario</h1>
+      <div className="safe-top shrink-0 px-5 pb-4 pt-5">
         <div className="mb-3 flex items-center justify-between">
           <button
             aria-label="Settimana precedente"
@@ -407,7 +396,7 @@ function OrganizeInner() {
                 className={clsx(
                   "press flex h-[64px] flex-col items-center justify-center rounded-[18px] transition-colors",
                   isSel
-                    ? "bg-court text-court-ink shadow-[var(--shadow)]"
+                    ? "bg-text text-bg shadow-[var(--shadow)]"
                     : sameDay(d, today)
                       ? "bg-ball-soft"
                       : "bg-surface",
@@ -435,7 +424,7 @@ function OrganizeInner() {
                 <span
                   className={clsx(
                     "mt-0.5 h-1.5 w-1.5 rounded-full",
-                    count ? (isSel ? "bg-court-ink" : "bg-ball") : "bg-transparent",
+                    count ? "bg-ball" : "bg-transparent",
                   )}
                 />
               </button>
@@ -454,14 +443,6 @@ function OrganizeInner() {
                 : "Nessuna partita in programma"
             }
             text="Proponi un giorno e un orario: arriva una notifica a tutti"
-            action={
-              <Button
-                variant="primary"
-                onClick={() => router.push("/organizza?nuova=1")}
-              >
-                Proponi una partita
-              </Button>
-            }
           />
         ) : (
           <div className="flex flex-col gap-3">
@@ -482,7 +463,21 @@ function OrganizeInner() {
             ))}
           </div>
         )}
-        {/* Finita una partita: le statistiche in arrivo, nello spazio libero sotto. */}
+        <button
+          onClick={() => router.push("/organizza?nuova=1")}
+          className="card press mt-3 flex w-full items-center gap-3.5 p-3 text-left"
+        >
+          <span className="grid h-[58px] w-[58px] shrink-0 place-items-center rounded-[18px] bg-ball text-ball-ink">
+            <IconPlus size={24} strokeWidth={2.6} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="title block text-[16px]">Proponi una partita</span>
+            <span className="block truncate text-[13px] text-muted">
+              {selected ? dayLabel(localIso(selected)) : "Scegli giorno e orario"}
+            </span>
+          </span>
+          <IconChevronRight size={20} className="shrink-0 text-faint" aria-hidden />
+        </button>
         {list.length > 0 && <StatsComing />}
       </PullToRefresh>
       {creating && (

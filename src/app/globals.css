@@ -873,9 +873,7 @@ html[data-shot="2"] .intro-say-rim {
 
 /* ---------- Messaggi di Spicchio: entrano ed escono con calma ---------- */
 .toast {
-  box-shadow:
-    0 10px 28px -12px rgb(29 26 22 / 0.45),
-    2px 2px 0 var(--edge);
+  box-shadow: 0 8px 24px -10px rgb(29 26 22 / 0.4);
   animation: toast-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .toast-leave {

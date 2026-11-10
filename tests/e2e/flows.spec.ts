@@ -365,8 +365,8 @@ test("partita confermata e poi in corso, nel calendario e nella Home", async ({
   await skipTour(page);
   await page.goto("/?mock=demo&as=p4&partita=confermata");
   await expect(
-    page.getByRole("heading", { name: "Partita confermata" }),
-  ).toBeVisible();
+    page.locator('[data-testid="proposal-card"]:visible').first(),
+  ).toHaveAttribute("data-phase", "confirmed");
   await page.goto("/organizza");
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
   await expect(card).toHaveAttribute("data-phase", "confirmed");

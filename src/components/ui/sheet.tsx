@@ -30,7 +30,7 @@ export function Sheet({
         <Drawer.Overlay className="fixed inset-0 z-40 bg-[#1d1a16]/50" />
         <Drawer.Content
           // Un livello solo che si sposta col dito: niente ridisegni del contenuto durante il trascinamento.
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-lg flex-col rounded-t-[30px] border-[2.5px] border-b-0 border-edge bg-surface outline-none will-change-transform [backface-visibility:hidden] [contain:layout_paint]"
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-lg flex-col rounded-t-[28px] bg-surface shadow-[0_-12px_40px_-12px_rgb(29_26_22/0.35)] outline-none will-change-transform [backface-visibility:hidden] [contain:layout_paint]"
           aria-describedby={undefined}
           // Le schede aperte sopra al pannello (es. il personaggio) non lo chiudono.
           onInteractOutside={(e) => {
@@ -41,16 +41,15 @@ export function Sheet({
             if (document.querySelector("[data-over-sheet]")) e.preventDefault();
           }}
         >
-          <div className="mx-auto mt-3 h-1.5 w-11 shrink-0 rounded-full bg-line-strong" />
-          {/* Si chiude con un tocco: non serve trascinare. */}
+          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line-strong" />
           <Drawer.Close
             aria-label="Chiudi"
-            className="press absolute right-3.5 top-3.5 z-10 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text"
+            className="press absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-raised text-muted"
           >
-            <IconX size={18} strokeWidth={2.4} />
+            <IconX size={17} strokeWidth={2.4} />
           </Drawer.Close>
-          <div className="shrink-0 px-12 pb-2 pt-3 text-center">
-            <Drawer.Title className="display text-[22px]">{title}</Drawer.Title>
+          <div className="shrink-0 px-14 pb-3 pt-3 text-center">
+            <Drawer.Title className="display text-[21px]">{title}</Drawer.Title>
             {description && (
               <Drawer.Description className="mx-auto mt-0.5 max-w-[34ch] text-[13px] text-muted">
                 {description}

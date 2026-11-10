@@ -8,8 +8,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
 import { play } from "@/lib/sound";
-import { SpicchioFace } from "./pull-to-refresh";
 
 interface ToastItem {
   id: number;
@@ -55,28 +55,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         aria-live="polite"
         className="pointer-events-none fixed inset-x-0 top-0 z-[100] grid justify-items-center px-4"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)" }}
       >
         {items.map((t) => (
           <div
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
             className={clsx(
-              "toast pointer-events-auto col-start-1 row-start-1 flex max-w-sm items-center gap-2.5 rounded-[22px] border-2 border-edge bg-surface py-2 pl-2 pr-4 text-[14px] font-semibold leading-snug text-text [text-wrap:pretty]",
+              "toast pointer-events-auto col-start-1 row-start-1 flex max-w-[22rem] items-center gap-2 rounded-full bg-text py-2 pl-2.5 pr-4 text-[13px] font-semibold leading-snug text-bg [text-wrap:pretty]",
               t.leaving && "toast-leave",
             )}
           >
-            <span
-              className={clsx(
-                "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16]",
-                t.tone === "error" ? "bg-ball-soft" : "bg-volt",
-              )}
-            >
-              <SpicchioFace
-                size={30}
-                pose={t.tone === "error" ? "boh" : "ciao"}
-              />
-            </span>
+            {t.tone === "error" ? (
+              <IconAlertCircle size={17} className="shrink-0 text-danger" aria-hidden />
+            ) : (
+              <IconCheck size={17} strokeWidth={2.6} className="shrink-0 text-ok" aria-hidden />
+            )}
             <span className="min-w-0">{t.text}</span>
           </div>
         ))}

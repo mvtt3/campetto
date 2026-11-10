@@ -52,7 +52,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
       title: "Forse",
       short: "Forse",
       players: by("forse"),
-      tone: "bg-court",
+      tone: "bg-ball",
     },
     {
       title: "Non ci sono",
@@ -104,7 +104,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                       <span
                         className={clsx(
                           "font-semibold",
-                          p.id === me?.id ? "text-court" : "text-text",
+                          p.id === me?.id ? "text-ball" : "text-text",
                         )}
                       >
                         {name(p)}
@@ -135,7 +135,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                         key={p.id}
                         className={clsx(
                           "flex items-center gap-1.5 rounded-full border border-line bg-surface py-0.5 pl-0.5 pr-2.5 text-[13px] font-semibold",
-                          p.id === me?.id && "!border-court bg-court-soft",
+                          p.id === me?.id && "!border-ball bg-ball-soft",
                         )}
                       >
                         <Avatar player={p} size={22} href={false} ring="none" />
@@ -251,7 +251,7 @@ export function AltForm({
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-[20px] bg-raised p-3"
+      className="flex flex-col gap-3 rounded-[18px] border border-line p-3"
       role="group"
       aria-label={
         mode === "move" ? "Sposta la partita" : "Proponi un'alternativa"

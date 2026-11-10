@@ -2,45 +2,17 @@
 
 import { play } from "@/lib/sound";
 import clsx from "clsx";
+import { IconBallBasketball } from "@tabler/icons-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Mascot } from "@/components/mascot";
 import { useData } from "@/lib/data/provider";
 import { haptic } from "./basics";
 
 const MAX = 128;
 const TRIGGER = 74;
-const REST = 64;
+const REST = 60;
 
 type Phase = "idle" | "pull" | "ready" | "loading" | "done";
 
-/** La faccia di Spicchio, ritagliata dalla mascotte. */
-export function SpicchioFace({
-  size = 34,
-  pose = "ciao",
-}: {
-  size?: number;
-  pose?: "ciao" | "boh";
-}) {
-  return (
-    <svg
-      viewBox="31 33 98 98"
-      width={size}
-      height={size}
-      aria-hidden
-      className="overflow-hidden rounded-full"
-    >
-      <Mascot pose={pose} size={160} animate={false} />
-    </svg>
-  );
-}
-
-/**
- * Contenitore con "tira giù per aggiornare": Spicchio scende dall'alto girando
- * come una palla, al rilascio ricarica i dati e compare il cartellino
- * "Aggiornato alle HH:MM". Il trascinamento aggiorna direttamente lo stile
- * (niente ridisegni di React a ogni movimento), così resta fluido anche sui
- * telefoni economici.
- */
 export function PullToRefresh({
   children,
   className,
@@ -88,11 +60,11 @@ export function PullToRefresh({
       i.style.transition = animate
         ? `transform 320ms ${ease}, opacity 200ms`
         : "none";
-      i.style.transform = `translate3d(-50%, ${d - 60}px, 0)`;
+      i.style.transform = `translate3d(-50%, ${d - 50}px, 0)`;
       i.style.opacity = d > 6 ? "1" : "0";
       if (phaseRef.current !== "loading") {
         const k = Math.min(1, d / TRIGGER);
-        ball.current!.style.transform = `rotate(${d * 3}deg) scale(${0.55 + k * 0.45})`;
+        ball.current!.style.transform = `rotate(${d * 3}deg) scale(${0.6 + k * 0.4})`;
       }
     };
 
@@ -155,7 +127,7 @@ export function PullToRefresh({
       );
       setPhase("done");
       paint(0, true);
-      doneTimer = window.setTimeout(() => setPhase("idle"), 2200);
+      doneTimer = window.setTimeout(() => setPhase("idle"), 1500);
     };
 
     el.addEventListener("touchstart", start, { passive: true });
@@ -183,48 +155,26 @@ export function PullToRefresh({
     >
       <div
         ref={ind}
-        className="pointer-events-none absolute left-1/2 top-0 z-20 flex flex-col items-center"
-        style={{ transform: "translate3d(-50%, -60px, 0)", opacity: 0 }}
+        className="pointer-events-none absolute left-1/2 top-0 z-20"
+        style={{ transform: "translate3d(-50%, -50px, 0)", opacity: 0 }}
         aria-hidden
       >
-        <span
-          className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-[2.5px] border-edge bg-volt"
-          style={{ boxShadow: "2px 2px 0 var(--edge)" }}
-        >
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-surface shadow-[var(--shadow)]">
           <span
             ref={ball}
             className={clsx(
-              "grid place-items-center",
+              "grid place-items-center text-ball",
               phase === "loading" && "ptr-spin",
             )}
           >
-            <SpicchioFace size={40} />
+            <IconBallBasketball size={24} strokeWidth={2} />
           </span>
-        </span>
-        <span
-          className={clsx(
-            "mt-1.5 whitespace-nowrap rounded-full border-2 border-edge bg-surface px-2.5 py-0.5 text-[11.5px] font-bold transition-opacity duration-150",
-            phase === "pull" || phase === "ready" ? "opacity-100" : "opacity-0",
-          )}
-        >
-          {phase === "ready" ? "Lascia e aggiorno!" : "Tira giù"}
         </span>
       </div>
       {phase === "done" && (
-        <div
-          className="pointer-events-none absolute inset-x-0 top-1 z-20 flex justify-center"
-          role="status"
-        >
-          <span
-            className="ptr-done flex items-center gap-2 rounded-full border-[2.5px] border-edge bg-volt py-1 pl-1 pr-3.5 text-[13px] font-bold text-volt-ink"
-            style={{ boxShadow: "3px 3px 0 var(--edge)" }}
-          >
-            <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full border-2 border-[#1d1a16] bg-court">
-              <SpicchioFace size={24} />
-            </span>
-            Aggiornato alle {stamp}
-          </span>
-        </div>
+        <p className="sr-only" role="status">
+          Aggiornato alle {stamp}
+        </p>
       )}
       <div ref={content} className={clsx(!scroll && "h-full")}>
         {children}

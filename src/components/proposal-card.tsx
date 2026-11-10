@@ -227,9 +227,9 @@ export function ProposalCard({
       ? "Cambia la tua proposta"
       : "Proponi un altro orario o campetto";
   const slotHint = canMove
-    ? "Decidi tu, avviso io chi c'è"
+    ? "Decidi tu"
     : canVote
-      ? "Tocca quella che preferisci"
+      ? "Scegli la tua"
       : `Decide ${shortName(creator, data.players)}`;
   const altIds = new Set(alts.flatMap((g) => g.playerIds));
   const slots = [
@@ -273,7 +273,13 @@ export function ProposalCard({
               ? ""
               : ` per ${proposal.format ? `il ${proposal.format}` : "giocare"}`}
           </span>
-          {full && <span className="font-bold text-ok"> al completo</span>}
+          {full ? (
+            <span className="font-bold text-ok"> al completo</span>
+          ) : (
+            phase === "confirmed" && (
+              <span className="font-bold text-ok"> · confermata</span>
+            )
+          )}
           {yes.length > needed && (
             <span className="font-semibold text-muted">
               {" "}
@@ -348,8 +354,22 @@ export function ProposalCard({
   const time = hhmm(proposal.startsAt);
   const head = (
     <div className="flex items-stretch gap-3.5">
-      <div className="flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-court text-court-ink">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] opacity-80">
+      <div
+        className={clsx(
+          "flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[18px]",
+          !compact
+            ? "bg-raised"
+            : phase === "confirmed"
+              ? "bg-ok text-white"
+              : "bg-court text-court-ink",
+        )}
+      >
+        <span
+          className={clsx(
+            "text-[10.5px] font-semibold uppercase tracking-[0.1em]",
+            compact ? "opacity-80" : "text-ball",
+          )}
+        >
           {at.toLocaleDateString("it-IT", { weekday: "short" })}
         </span>
         <span className="num text-[22px] leading-none">{at.getDate()}</span>
@@ -549,18 +569,18 @@ export function ProposalCard({
       {(alts.length > 0 || canPropose) && (
         <section
           aria-label="Orario e campetto"
-          className="flex flex-col gap-2 border-t border-line pt-3"
+          className="flex flex-col gap-1.5 border-t border-line pt-3"
         >
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
-              Orario e campetto
-            </p>
-            {alts.length > 0 && (
-              <p className="mt-0.5 text-[12.5px] text-muted">{slotHint}</p>
-            )}
-          </div>
           {alts.length > 0 && (
-            <ul className="flex flex-col gap-1.5" aria-label="Controproposte">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
+                Orario e campetto
+              </p>
+              <p className="truncate text-[12px] text-muted">{slotHint}</p>
+            </div>
+          )}
+          {alts.length > 0 && (
+            <ul className="flex flex-col gap-1" aria-label="Controproposte">
               {slots.map((s) => {
                 const chosen =
                   mine === "si" && (myAltKey ? myAltKey === s.key : s.current);
@@ -568,33 +588,29 @@ export function ProposalCard({
                   <>
                     <span
                       aria-hidden
-                      className="absolute inset-y-0 left-0 -z-10 bg-court-soft transition-[width] duration-300"
+                      className="absolute inset-y-0 left-0 -z-10 bg-volt/25 transition-[width] duration-300"
                       style={{
                         width: `${(s.players.length / yes.length) * 100}%`,
                       }}
                     />
-                    <span className="num tnum text-[18px] leading-none">
+                    <span className="num tnum text-[15px] leading-none">
                       {hhmm(s.startsAt)}
                     </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-[13.5px] font-semibold">
-                        {placeLabel(s.place)}
-                      </span>
-                      {s.current && (
-                        <span className="text-[11.5px] text-muted">attuale</span>
-                      )}
+                    <span className="min-w-0 flex-1 truncate text-[13px]">
+                      <span className="font-semibold">{placeLabel(s.place)}</span>
+                      {s.current && <span className="text-muted"> · attuale</span>}
                     </span>
                     {s.players.length > 0 && (
-                      <AvatarStack players={s.players} size={22} max={3} />
+                      <AvatarStack players={s.players} size={18} max={3} />
                     )}
-                    <span className="tnum w-4 text-right text-[13px] font-semibold">
+                    <span className="tnum w-3 text-right text-[12.5px] font-semibold">
                       {s.players.length}
                     </span>
                   </>
                 );
                 const rowClass = clsx(
-                  "relative isolate flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-[16px] bg-raised px-3 py-2 text-left",
-                  chosen && "outline outline-[1.5px] -outline-offset-[1.5px] outline-court",
+                  "relative isolate flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-[14px] bg-raised px-3 py-1.5 text-left",
+                  chosen && "outline outline-[1.5px] -outline-offset-[1.5px] outline-text",
                 );
                 return (
                   <li key={s.key}>
@@ -609,13 +625,13 @@ export function ProposalCard({
                         <span
                           aria-hidden
                           className={clsx(
-                            "grid h-5 w-5 shrink-0 place-items-center rounded-full border-[1.5px]",
+                            "grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-[1.5px]",
                             chosen
-                              ? "border-court bg-court text-court-ink"
+                              ? "border-text bg-text text-bg"
                               : "border-line-strong",
                           )}
                         >
-                          {chosen && <IconCheck size={12} strokeWidth={3.2} />}
+                          {chosen && <IconCheck size={11} strokeWidth={3.2} />}
                         </span>
                       </button>
                     ) : (
@@ -629,10 +645,10 @@ export function ProposalCard({
                                 : setConfirmMove(s.key)
                             }
                             className={clsx(
-                              "press h-8 shrink-0 rounded-full px-3 text-[12.5px] font-semibold",
+                              "press h-7 shrink-0 rounded-full px-2.5 text-[12px] font-semibold",
                               confirmMove === s.key
                                 ? "bg-ok text-white"
-                                : "bg-court text-court-ink",
+                                : "bg-text text-bg",
                             )}
                           >
                             {confirmMove === s.key ? "Confermi?" : "Sposta qui"}
@@ -667,9 +683,9 @@ export function ProposalCard({
                   key="add"
                   type="button"
                   onClick={() => openAlt(canMove ? "move" : "alt")}
-                  className="press flex h-11 items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-line-strong text-[13.5px] font-semibold text-muted"
+                  className="press -ml-1 flex h-8 items-center gap-1 self-start rounded-full px-1 text-[13px] font-semibold text-muted"
                 >
-                  <IconPlus size={16} aria-hidden />
+                  <IconPlus size={15} aria-hidden />
                   {addLabel}
                 </button>
               )
@@ -758,7 +774,7 @@ export function ProposalCard({
             </>
           ) : (
             <button
-              className="press flex h-10 shrink-0 items-center justify-center rounded-full px-3 text-[13.5px] font-semibold text-danger"
+              className="press flex h-9 shrink-0 items-center justify-center rounded-full bg-danger/10 px-4 text-[13px] font-semibold text-danger"
               onClick={() => setConfirmCancel(true)}
             >
               Annulla la proposta

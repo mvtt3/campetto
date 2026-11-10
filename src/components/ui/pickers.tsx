@@ -528,10 +528,8 @@ export function TimeField({
               }}
               aria-pressed={on}
               className={clsx(
-                "score press h-11 rounded-full text-[17px]",
-                on
-                  ? "sticker-sm bg-court text-court-ink"
-                  : "border-2 border-line-strong bg-surface",
+                "score press h-11 rounded-full text-[17px] transition-colors",
+                on ? "bg-text text-bg" : "bg-raised",
               )}
             >
               {t}
@@ -548,10 +546,8 @@ export function TimeField({
           aria-expanded={dial}
           aria-label={custom ? `Altro orario: ${value}` : "Altro orario"}
           className={clsx(
-            "press flex h-11 items-center justify-center gap-1 rounded-full text-[14px] font-bold",
-            dial || custom
-              ? "sticker-sm bg-ball text-ball-ink"
-              : "border-2 border-line-strong bg-surface",
+            "press flex h-11 items-center justify-center gap-1 rounded-full text-[14px] font-bold transition-colors",
+            dial || custom ? "bg-text text-bg" : "bg-raised",
           )}
         >
           <IconClockHour3 size={15} aria-hidden />
@@ -655,15 +651,15 @@ export function DayStrip({
             aria-pressed={on}
             aria-label={dayLabel(iso)}
             className={clsx(
-              "press flex h-[70px] w-[58px] shrink-0 flex-col items-center justify-center rounded-[18px] border-[2.5px] border-edge",
-              on ? "sticker-sm bg-ball text-ball-ink" : "bg-surface",
+              "press flex h-[64px] w-[52px] shrink-0 flex-col items-center justify-center rounded-[18px] transition-colors",
+              on ? "bg-text text-bg" : "bg-raised",
             )}
           >
-            <span className="text-[11px] font-bold uppercase opacity-80">
+            <span className="text-[11px] font-semibold uppercase opacity-70">
               {iso === today ? "oggi" : WEEKDAY.format(d)}
             </span>
-            <span className="num text-[22px] leading-none">{d.getDate()}</span>
-            <span className="text-[10.5px] font-semibold opacity-70">
+            <span className="num text-[20px] leading-none">{d.getDate()}</span>
+            <span className="text-[10.5px] font-semibold opacity-60">
               {MONTH.format(d)}
             </span>
           </button>
