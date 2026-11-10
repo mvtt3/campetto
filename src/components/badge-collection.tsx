@@ -89,7 +89,7 @@ export function BadgeCollection({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-[22px] bg-surface p-4 shadow-[var(--shadow)]">
+      <div className="m-3 rounded-[22px] bg-surface p-4 shadow-[var(--shadow)]">
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
