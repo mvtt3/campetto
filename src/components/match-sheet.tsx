@@ -27,8 +27,6 @@ import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { HighlightCard } from "./highlights/entry";
 import { useToast } from "./ui/toast";
-import { InfoTip } from "@/components/ui/info";
-import { MvpMatchInfo } from "@/components/mvp-info";
 import { say } from "@/lib/voice";
 import { BoxTable } from "./box-table";
 
@@ -275,11 +273,6 @@ export function MatchSheet({
                   </div>
                 ))}
               </dl>
-              <span className="self-start">
-                <InfoTip label="Come si sceglie l'MVP della partita" size={15}>
-                  <MvpMatchInfo />
-                </InfoTip>
-              </span>
             </section>
           ) : (
             <p className="rounded-[22px] bg-raised px-4 py-3.5 text-[14px] leading-snug">
