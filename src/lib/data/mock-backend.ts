@@ -282,13 +282,13 @@ function demoProposals() {
   const at = new Date().toISOString();
   // ?partita=confermata | quasi | incorso: per vedere la proposta nelle sue fasi.
   const phase =
-    typeof window !== "undefined"
+    (typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("partita")
-      : null;
+      : null) ?? "oggi";
   if (phase === "incorso") d.setTime(Date.now() - 25 * 60_000);
   if (phase === "quasi") d.setTime(Date.now() + 5 * 3_600_000);
   // ?partita=stasera: più tardi ma sempre oggi (per le prove che dipendono dal giorno).
-  if (phase === "stasera") {
+  if (phase === "stasera" || phase === "oggi") {
     const end = new Date();
     end.setHours(23, 59, 0, 0);
     d.setTime(Date.now() + Math.min(3 * 3_600_000, (end.getTime() - Date.now()) / 2));
@@ -298,7 +298,7 @@ function demoProposals() {
   const rained = phase === "annullata";
   if (rained) d.setTime(Date.now() - 40 * 60_000);
   const extra =
-    phase === "confermata"
+    phase === "confermata" || phase === "oggi"
       ? ["p1", "p3", "p6"]
       : phase === "incorso" || phase === "quasi" || phase === "stasera" || phase === "finita" || rained
         ? ["p3"]
