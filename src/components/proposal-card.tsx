@@ -115,7 +115,8 @@ export function ProposalCard({
   const needed = neededPlayers(proposal.format);
   const full = yes.length >= needed;
   /** La via della palestra, se si gioca Indoor. */
-  const indoorVia = proposal.place === "indoor" ? proposal.address?.trim() || null : null;
+  const indoorVia =
+    proposal.place === "indoor" ? proposal.address?.trim() || null : null;
   const creator = byId.get(proposal.createdBy);
   const canCancel = me && (me.id === proposal.createdBy || me.isAdmin);
 
@@ -263,9 +264,7 @@ export function ProposalCard({
       ) : null}
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px]">
-          <span className="tnum font-bold">
-            {Math.min(yes.length, needed)}
-          </span>
+          <span className="tnum font-bold">{Math.min(yes.length, needed)}</span>
           <span className="text-muted">
             {" "}
             di {needed}
@@ -294,10 +293,7 @@ export function ProposalCard({
           aria-hidden
         >
           <motion.div
-            className={clsx(
-              "h-full rounded-full",
-              full ? "bg-ok" : "bg-court",
-            )}
+            className={clsx("h-full rounded-full", full ? "bg-ok" : "bg-court")}
             initial={false}
             animate={{ width: `${progress * 100}%` }}
             transition={{ type: "spring", stiffness: 200, damping: 26 }}
@@ -305,7 +301,11 @@ export function ProposalCard({
         </div>
       </div>
       {compact && (
-        <IconChevronRight size={18} className="shrink-0 text-faint" aria-hidden />
+        <IconChevronRight
+          size={18}
+          className="shrink-0 text-faint"
+          aria-hidden
+        />
       )}
     </WhoRow>
   );
@@ -403,7 +403,7 @@ export function ProposalCard({
       <IconCircleCheck size={19} strokeWidth={2.6} aria-hidden />
       <span className="title text-[15.5px]">Partita confermata</span>
       <span className="ml-auto truncate text-[12.5px] font-semibold opacity-90">
-        {full ? "al completo" : `siete in ${yes.length}, si gioca`}
+        {full ? "al completo" : `siete in ${yes.length} di ${needed}, si gioca`}
       </span>
     </div>
   );
@@ -428,10 +428,7 @@ export function ProposalCard({
     <div
       data-testid="proposal-card"
       data-phase={phase}
-      className={clsx(
-        "flex flex-col",
-        "gap-3 short:gap-2.5",
-      )}
+      className={clsx("flex flex-col", "gap-3 short:gap-2.5")}
     >
       {confirmedBanner}
       {head}
@@ -502,7 +499,12 @@ export function ProposalCard({
             Formazione
           </p>
           <p className="text-[13px] text-muted">
-            <span className={clsx("num text-[18px]", full ? "text-ok" : "text-text")}>
+            <span
+              className={clsx(
+                "num text-[18px]",
+                full ? "text-ok" : "text-text",
+              )}
+            >
               {Math.min(yes.length, needed)}
             </span>
             /{needed}
@@ -523,7 +525,10 @@ export function ProposalCard({
           {Array.from({ length: needed }, (_, i) => {
             const p = yes[i];
             return (
-              <li key={p?.id ?? `slot-${i}`} className="flex min-w-0 flex-col items-center gap-1">
+              <li
+                key={p?.id ?? `slot-${i}`}
+                className="flex min-w-0 flex-col items-center gap-1"
+              >
                 {p ? (
                   <Avatar player={p} size={40} href={false} />
                 ) : (
@@ -537,7 +542,11 @@ export function ProposalCard({
                     p ? "font-semibold" : "text-faint",
                   )}
                 >
-                  {p ? (p.id === me?.id ? "Tu" : shortName(p, data.players)) : "Libero"}
+                  {p
+                    ? p.id === me?.id
+                      ? "Tu"
+                      : shortName(p, data.players)
+                    : "Libero"}
                 </span>
               </li>
             );
@@ -580,8 +589,12 @@ export function ProposalCard({
                       {hhmm(s.startsAt)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[13px]">
-                      <span className="font-semibold">{placeLabel(s.place)}</span>
-                      {s.current && <span className="text-muted"> · attuale</span>}
+                      <span className="font-semibold">
+                        {placeLabel(s.place)}
+                      </span>
+                      {s.current && (
+                        <span className="text-muted"> · attuale</span>
+                      )}
                     </span>
                     {s.players.length > 0 && (
                       <AvatarStack players={s.players} size={18} max={3} />
@@ -593,7 +606,8 @@ export function ProposalCard({
                 );
                 const rowClass = clsx(
                   "relative isolate flex min-h-10 w-full items-center gap-2.5 overflow-hidden rounded-[14px] bg-raised px-3 py-1.5 text-left",
-                  chosen && "outline outline-[1.5px] -outline-offset-[1.5px] outline-text",
+                  chosen &&
+                    "outline outline-[1.5px] -outline-offset-[1.5px] outline-text",
                 );
                 return (
                   <li key={s.key}>
@@ -690,11 +704,17 @@ export function ProposalCard({
           <span
             className={clsx(
               "grid h-6 w-6 shrink-0 place-items-center rounded-full border",
-              rain ? "border-court bg-court text-court-ink" : "border-line-strong text-court",
+              rain
+                ? "border-court bg-court text-court-ink"
+                : "border-line-strong text-court",
             )}
             aria-hidden
           >
-            {rain ? <IconCheck size={14} strokeWidth={3} /> : <IconCloudRain size={13} strokeWidth={2.6} />}
+            {rain ? (
+              <IconCheck size={14} strokeWidth={3} />
+            ) : (
+              <IconCloudRain size={13} strokeWidth={2.6} />
+            )}
           </span>
           <span className="min-w-0">
             È per la pioggia
@@ -765,7 +785,6 @@ export function ProposalCard({
           )}
         </div>
       )}
-
     </div>
   );
 }
@@ -790,4 +809,3 @@ function WhoRow({
     <div className="flex items-center gap-3">{children}</div>
   );
 }
-
