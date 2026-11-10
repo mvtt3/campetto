@@ -702,11 +702,6 @@ export function CharacterGrid({
                       on ? "bg-ball-soft ring-2 ring-ball" : "bg-surface",
                       fresh && "ring-2 ring-danger",
                     )}
-                    style={
-                      g !== "base" && !on
-                        ? { boxShadow: `inset 0 -4px 0 ${RARITY[g].ring}` }
-                        : undefined
-                    }
                   >
                     <span
                       className={clsx(
@@ -745,11 +740,18 @@ export function CharacterGrid({
                     )}
                     <span
                       className={clsx(
-                        "mt-1 w-full truncate px-0.5 text-[11.5px] font-bold",
+                        "mt-1 flex w-full items-center justify-center gap-1 px-0.5 text-[11.5px] font-bold",
                         on && "text-ball",
                       )}
                     >
-                      {p.name}
+                      {g !== "base" && (
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{ background: RARITY[g].ring }}
+                          aria-hidden
+                        />
+                      )}
+                      <span className="truncate">{p.name}</span>
                     </span>
                   </button>
                 );
