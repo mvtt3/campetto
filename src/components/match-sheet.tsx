@@ -22,6 +22,7 @@ import {
   type StatsSource,
   type Team,
 } from "@/lib/types";
+import { Avatar } from "./ui/avatar";
 import { Button } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { HighlightCard } from "./highlights/entry";
@@ -233,7 +234,7 @@ export function MatchSheet({
                 </span>
               </div>
             )}
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3.5">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4">
               <TeamSide m={withGuestLines(m)} team="A" players={everyone} />
               <p className="score whitespace-nowrap text-[34px] leading-none">
                 <span className={clsx(winnerOf(m) === "B" && "text-faint")}>
@@ -246,35 +247,53 @@ export function MatchSheet({
               </p>
               <TeamSide m={withGuestLines(m)} team="B" players={everyone} />
             </div>
-            {mvp && mvpPlayer && mvpLine ? (
-              <div className="flex items-center gap-2.5 border-t border-line px-4 py-2.5">
-                <IconCrown
-                  size={16}
-                  className="shrink-0 text-gold"
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1 truncate text-[13.5px]">
-                  <span className="font-semibold">
-                    MVP {shortName(mvpPlayer, players)}
-                  </span>
-                  {mvpShare !== null && (
-                    <span className="text-muted"> · {mvpShare}% del gioco</span>
-                  )}
-                </span>
-                <span className="num shrink-0 text-[13px] text-muted">
-                  {mvpLine.pts} pt · {mvpLine.oreb + mvpLine.dreb} rb ·{" "}
-                  {mvpLine.ast} as
-                </span>
+          </section>
+
+          {mvp && mvpPlayer && mvpLine ? (
+            <section
+              aria-label="MVP della partita"
+              className="flex items-center gap-3 rounded-[22px] bg-raised px-3 py-2.5"
+            >
+              <Avatar player={mvpPlayer} size={42} href={false} ring="gold" />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gold">
+                  <IconCrown size={12} className="shrink-0" aria-hidden />
+                  MVP
+                </p>
+                <p className="truncate text-[14.5px] font-semibold leading-tight">
+                  {shortName(mvpPlayer, players)}
+                </p>
+                {mvpShare !== null && (
+                  <p className="truncate text-[12px] text-muted">
+                    {mvpShare}% del gioco della squadra
+                  </p>
+                )}
+              </div>
+              <dl className="flex shrink-0 gap-3 text-center">
+                {[
+                  [mvpLine.pts, "pt"],
+                  [mvpLine.oreb + mvpLine.dreb, "rb"],
+                  [mvpLine.ast, "as"],
+                ].map(([v, l]) => (
+                  <div key={l}>
+                    <dd className="num text-[18px] leading-none">{v}</dd>
+                    <dt className="mt-0.5 text-[10.5px] font-semibold uppercase text-muted">
+                      {l}
+                    </dt>
+                  </div>
+                ))}
+              </dl>
+              <span className="self-start">
                 <InfoTip label="Come si sceglie l'MVP della partita" size={15}>
                   <MvpMatchInfo />
                 </InfoTip>
-              </div>
-            ) : (
-              <p className="border-t border-line px-4 py-3 text-[13.5px] leading-snug text-muted">
-                {matchRecap(m, players)}
-              </p>
-            )}
-          </section>
+              </span>
+            </section>
+          ) : (
+            <p className="rounded-[22px] bg-raised px-4 py-3 text-[13.5px] leading-snug text-muted">
+              {matchRecap(m, players)}
+            </p>
+          )}
 
           <HighlightCard
             matchId={m.id}
