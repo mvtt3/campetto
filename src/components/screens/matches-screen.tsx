@@ -3,7 +3,12 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { IconChevronDown, IconCrown, IconPlus } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconCrown,
+  IconPlus,
+} from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   memo,
@@ -15,13 +20,9 @@ import {
   useState,
 } from "react";
 import { MatchSheet } from "@/components/match-sheet";
-import {
-  NightHighlightsButton,
-  PlayBadge,
-} from "@/components/highlights/entry";
-import { useHighlights } from "@/components/highlights/provider";
-import { Chips, EmptyState, ScreenHeader } from "@/components/ui/basics";
-import { AvatarStack } from "@/components/ui/avatar";
+import { NightHighlightsButton } from "@/components/highlights/entry";
+import { EmptyState, Segmented } from "@/components/ui/basics";
+import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { monthLabel, monthOf } from "@/lib/periods";
@@ -68,19 +69,14 @@ const MatchRow = memo(function MatchRow({
   const w = winnerOf(m);
   const mine = me ? teamOf(m, me.id) : null;
   const mvp = matchMvp(m);
-  const hl = useHighlights();
-  const video = Boolean(hl.forMatch(m.id));
+  const mvpPlayer = mvp
+    ? data.players.find((x) => x.id === mvp.playerId)
+    : undefined;
   return (
     <button
-      onClick={(e) => {
-        if (video && (e.target as Element).closest("[data-hl-badge]")) {
-          hl.open(m.id);
-          return;
-        }
-        onOpen(m.id);
-      }}
+      onClick={() => onOpen(m.id)}
       data-testid="match-row"
-      className="press flex w-full items-center gap-2 rounded-[18px] bg-raised p-3 text-left [contain-intrinsic-size:auto_96px] [content-visibility:auto]"
+      className="press flex w-full items-center gap-2 rounded-[18px] bg-raised px-3.5 py-3 text-left [contain-intrinsic-size:auto_96px] [content-visibility:auto]"
     >
       <div className="min-w-0 flex-1">
         {(["A", "B"] as const).map((t) => (
@@ -124,14 +120,21 @@ const MatchRow = memo(function MatchRow({
             {m.format}
           </span>
           {mvp ? (
-            <span
-              className={clsx(
-                PILL,
-                "flex items-center gap-1 bg-gold-soft text-text",
-              )}
-            >
-              <IconCrown size={12} className="text-gold" aria-hidden />
-              MVP {nm(mvp.playerId)}
+            <span className="flex items-center gap-1.5 rounded-full bg-gold-soft py-0.5 pl-0.5 pr-2.5">
+              <span className="relative">
+                <Avatar player={mvpPlayer} size={20} href={false} ring="none" />
+                <IconCrown
+                  size={11}
+                  className="absolute -right-1 -top-1.5 rotate-12 fill-gold text-gold"
+                  aria-hidden
+                />
+              </span>
+              <span className="text-[11.5px] font-bold">
+                {nm(mvp.playerId)}
+              </span>
+              <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-gold">
+                MVP
+              </span>
             </span>
           ) : (
             m.players.some((p) => p.hasStats) && (
@@ -142,7 +145,6 @@ const MatchRow = memo(function MatchRow({
           )}
         </div>
       </div>
-      {video && <PlayBadge matchId={m.id} />}
     </button>
   );
 });
@@ -341,30 +343,9 @@ function MatchesInner() {
 
   return (
     <>
-      <ScreenHeader
-        title="Partite"
-        subtitle={
-          data.matches.length
-            ? `${data.matches.length} ${data.matches.length === 1 ? "giocata" : "giocate"}`
-            : undefined
-        }
-        action={
-          me?.isAdmin ? (
-            <Link
-              href="/nuova"
-              aria-label="Aggiungi partita"
-              data-tour="matches-add"
-              className="sticker press flex h-11 items-center gap-1.5 rounded-full bg-ball px-4 text-[14px] font-bold text-ball-ink"
-            >
-              <IconPlus size={18} strokeWidth={2.6} /> Aggiungi
-            </Link>
-          ) : undefined
-        }
-      />
-      {data.matches.length > 0 && me && (
-        <div className="shrink-0 px-5 pb-2">
-          <Chips
-            scroll
+      <div className="safe-top shrink-0 px-5 pb-3 pt-5">
+        {data.matches.length > 0 && me && (
+          <Segmented
             value={only}
             onChange={pickOnly}
             options={[
@@ -372,9 +353,34 @@ function MatchesInner() {
               { value: "mie" as const, label: "Le mie" },
             ]}
           />
-        </div>
-      )}
+        )}
+      </div>
       <PullToRefresh className="px-5 pb-4 pt-1">
+        {me?.isAdmin && (
+          <Link
+            href="/nuova"
+            aria-label="Aggiungi partita"
+            data-tour="matches-add"
+            className="card press mb-4 flex w-full items-center gap-3.5 p-3"
+          >
+            <span className="grid h-[58px] w-[58px] shrink-0 place-items-center rounded-[18px] bg-ball text-ball-ink">
+              <IconPlus size={24} strokeWidth={2.6} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="title block text-[16px]">
+                Aggiungi una partita
+              </span>
+              <span className="block truncate text-[13px] text-muted">
+                Squadre e risultato
+              </span>
+            </span>
+            <IconChevronRight
+              size={20}
+              className="shrink-0 text-faint"
+              aria-hidden
+            />
+          </Link>
+        )}
         <div data-tour="matches-list">
           {loading && !data.matches.length ? (
             <div className="flex flex-col gap-2">
@@ -417,12 +423,16 @@ function MatchesInner() {
           ) : (
             groups.map((g) => (
               <section key={g.label} className="mb-5">
-                <h2 className="sticky -top-1 z-10 -mx-1 mb-2 flex items-baseline justify-between bg-bg/95 px-2 pb-2 pt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted backdrop-blur-sm">
-                  {g.label}
-                  <span className="tnum normal-case tracking-normal">
-                    {countLabel(
-                      g.nights.reduce((t, x) => t + x.items.length, 0),
-                    )}
+                <h2 className="sticky top-1 z-10 mb-2.5 flex">
+                  <span className="flex items-center gap-2 rounded-full bg-surface py-1.5 pl-3.5 pr-1.5 shadow-[var(--shadow)]">
+                    <span className="title text-[14px] first-letter:uppercase">
+                      {g.label}
+                    </span>
+                    <span className="tnum rounded-full bg-raised px-2 py-0.5 text-[11.5px] font-semibold text-muted">
+                      {countLabel(
+                        g.nights.reduce((t, x) => t + x.items.length, 0),
+                      )}
+                    </span>
                   </span>
                 </h2>
                 <div className="flex flex-col gap-3">
