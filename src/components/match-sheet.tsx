@@ -39,7 +39,16 @@ export const SOURCE_LABEL: Record<StatsSource, string> = {
   importata: "Con statistiche",
 };
 
-function TeamBlock({
+const LABEL =
+  "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
+export interface SheetRecord {
+  label: string;
+  display: string;
+  playerIds: string[];
+}
+
+function TeamSide({
   m,
   team,
   players,
@@ -48,7 +57,8 @@ function TeamBlock({
   team: Team;
   players: Player[];
 }) {
-  const won = winnerOf(m) === team;
+  const winner = winnerOf(m);
+  const won = winner === team;
   const ids = m.players
     .filter((p) => p.team === team)
     .sort((x, y) => Number(!!x.sub) - Number(!!y.sub));
@@ -59,42 +69,50 @@ function TeamBlock({
     return p?.guest ? `${shortName(p)} (ospite)` : shortName(p, players);
   };
   return (
-    <div
-      className={clsx(
-        "sticker halftone relative flex min-w-0 flex-1 flex-col items-center rounded-3xl px-2 pb-2.5 pt-3",
-        team === "A" ? "bg-court text-court-ink" : "bg-ball text-ball-ink",
-        !won && "opacity-75",
-      )}
-    >
-      {won && (
-        <span className="absolute -top-3 rounded-full border-2 border-[#1d1a16] bg-volt px-2.5 py-0.5 text-[12px] font-bold text-volt-ink">
-          Vince
-        </span>
-      )}
-      <p className="score text-[44px] short:text-[38px]">
+    <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+      <span
+        className={clsx(
+          "h-1.5 w-8 rounded-full",
+          team === "A" ? "bg-court" : "bg-ball",
+        )}
+      />
+      <p
+        className={clsx(
+          "score mt-2.5 text-[48px] leading-none short:text-[40px]",
+          !won && "text-faint",
+        )}
+      >
         {team === "A" ? m.scoreA : m.scoreB}
       </p>
-      {/* La squadra in campo: i personaggini, uno accanto all'altro. */}
-      <div className="mt-0.5 flex items-end justify-center -space-x-2 short:hidden">
+      <span
+        className={clsx(
+          "mt-2 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]",
+          won ? "bg-volt text-volt-ink" : "text-muted",
+          !winner && "invisible",
+        )}
+      >
+        {won ? "Vince" : "Perde"}
+      </span>
+      <div className="mt-3 flex h-[46px] items-end justify-center -space-x-2 short:hidden">
         {ids.map((l) => {
           const pl = players.find((p) => p.id === l.playerId);
           return pl ? (
-            <span key={l.playerId} className={clsx(l.sub && "opacity-80")}>
+            <span key={l.playerId} className={clsx(l.sub && "opacity-70")}>
               <Character
                 id={characterOf(pl)}
                 outfit={pl.outfit}
                 number={pl.jerseyNumber}
-                height={(ids.length > 3 ? 36 : 42) * (l.sub ? 0.86 : 1)}
+                height={(ids.length > 3 ? 38 : 44) * (l.sub ? 0.86 : 1)}
               />
             </span>
           ) : null;
         })}
       </div>
-      <p className="mt-1.5 text-center text-[12.5px] font-semibold leading-tight">
+      <p className="mt-2 w-full text-[13px] font-semibold leading-tight [text-wrap:balance]">
         {starters.map((l) => nm(l.playerId)).join(", ")}
       </p>
       {subs.length > 0 && (
-        <p className="mt-0.5 text-center text-[11.5px] font-bold leading-tight opacity-85">
+        <p className="mt-1 w-full text-[11.5px] font-semibold leading-tight text-muted">
           <IconRefresh
             size={11}
             className="mr-1 inline align-[-1px]"
@@ -108,11 +126,22 @@ function TeamBlock({
   );
 }
 
+function MvpStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="min-w-0">
+      <dd className="num text-[22px] leading-none">{value}</dd>
+      <dt className="mt-1 text-[11px] font-semibold text-muted">{label}</dt>
+    </div>
+  );
+}
+
 export function MatchSheet({
   match,
+  record,
   onClose,
 }: {
   match: Match | null;
+  record?: SheetRecord;
   onClose: () => void;
 }) {
   const { data, me, backend, refresh, mutate } = useData();
@@ -232,15 +261,38 @@ export function MatchSheet({
       }
     >
       {m && (
-        <div className="flex flex-col gap-3 pb-1">
-          {/* Per chi usa il lettore di schermo: il risultato in una riga. */}
+        <div className="flex flex-col gap-3 pb-1 pt-1">
+          {record && (
+            <section
+              aria-label="Record"
+              className="rounded-[22px] bg-linear-to-b from-[#ffd65c] via-[#ffad33] to-[#e9781a] px-4 py-4 text-center text-[#1d1a16] shadow-[var(--shadow-pop)]"
+            >
+              <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[#1d1a16]/65">
+                Record · {record.label}
+              </p>
+              <p className="num mt-1.5 text-[34px] leading-none">
+                {record.display}
+              </p>
+              <p className="mt-2 truncate text-[14px] font-semibold">
+                {record.playerIds
+                  .map((id) =>
+                    shortName(
+                      players.find((p) => p.id === id),
+                      players,
+                    ),
+                  )
+                  .join(", ")}
+              </p>
+            </section>
+          )}
           <p className="sr-only">
             Risultato {m.scoreA}–{m.scoreB}
           </p>
-          <div className="flex items-stretch gap-2 pt-2">
-            <TeamBlock m={withGuestLines(m)} team="A" players={everyone} />
-            <TeamBlock m={withGuestLines(m)} team="B" players={everyone} />
-          </div>
+          <section className="flex items-stretch gap-3 rounded-[22px] bg-raised px-3 pb-4 pt-4">
+            <TeamSide m={withGuestLines(m)} team="A" players={everyone} />
+            <span className="w-px shrink-0 bg-line" aria-hidden />
+            <TeamSide m={withGuestLines(m)} team="B" players={everyone} />
+          </section>
 
           <HighlightCard
             matchId={m.id}
@@ -251,41 +303,51 @@ export function MatchSheet({
 
           {mvp && mvpPlayer && mvpLine ? (
             <section
-              className="sticker relative flex items-center gap-2.5 overflow-hidden rounded-[20px] bg-volt py-1.5 pl-2 pr-2.5 text-volt-ink"
+              className="flex items-center gap-3 rounded-[22px] bg-gold-soft px-3 py-3"
               aria-label="MVP della partita"
             >
-              <span className="grid w-10 shrink-0 place-items-end justify-center">
+              <span className="shrink-0">
                 <Character
                   id={characterOf(mvpPlayer)}
                   outfit={mvpPlayer.outfit}
                   number={mvpPlayer.jerseyNumber}
-                  height={46}
+                  height={64}
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1 truncate text-[15px] font-bold leading-tight">
-                  <IconCrown size={14} aria-hidden className="shrink-0" />{" "}
-                  <span className="truncate">
-                    MVP {shortName(mvpPlayer, players)}
-                  </span>
+                <p className={clsx(LABEL, "flex items-center gap-1")}>
+                  <IconCrown
+                    size={13}
+                    aria-hidden
+                    className="shrink-0 text-gold"
+                  />
+                  MVP della partita
                 </p>
-                <p className="truncate text-[12.5px] font-semibold opacity-80">
-                  {mvpLine.pts} punti · {mvpLine.oreb + mvpLine.dreb} rimbalzi ·{" "}
-                  {mvpLine.ast} assist
+                <p className="truncate text-[16px] font-semibold leading-tight">
+                  {shortName(mvpPlayer, players)}
                 </p>
+                <dl className="mt-2 grid grid-cols-3 gap-2">
+                  <MvpStat value={mvpLine.pts} label="punti" />
+                  <MvpStat
+                    value={mvpLine.oreb + mvpLine.dreb}
+                    label="rimbalzi"
+                  />
+                  <MvpStat value={mvpLine.ast} label="assist" />
+                </dl>
                 {mvpShare !== null && (
-                  <p className="truncate text-[11.5px] font-bold opacity-70">
+                  <p className="mt-2 text-[12px] font-semibold text-muted">
                     {mvpShare}% del gioco della squadra
                   </p>
                 )}
               </div>
-              <InfoTip label="Come si sceglie l'MVP della partita" size={16}>
-                <MvpMatchInfo />
-              </InfoTip>
+              <span className="self-start">
+                <InfoTip label="Come si sceglie l'MVP della partita" size={16}>
+                  <MvpMatchInfo />
+                </InfoTip>
+              </span>
             </section>
           ) : (
-            // Senza tabellino il racconto della partita è l'unica cosa in più da dire.
-            <p className="rounded-2xl border-2 border-dashed border-line-strong bg-raised px-4 py-2.5 text-[14.5px] leading-snug">
+            <p className="rounded-[18px] bg-raised px-4 py-3 text-[14px] leading-snug">
               {matchRecap(m, players)}
             </p>
           )}

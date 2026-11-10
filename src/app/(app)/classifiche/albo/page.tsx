@@ -10,8 +10,8 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
 import { monthLabel, seasonLabel } from "@/lib/periods";
 import { KING_LABELS } from "@/lib/stats/awards";
-import { groupRecords } from "@/lib/stats/records";
-import { shortName, type Match } from "@/lib/types";
+import { groupRecords, type GroupRecord } from "@/lib/stats/records";
+import { shortName } from "@/lib/types";
 
 const LABEL =
   "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
@@ -115,7 +115,7 @@ function Tile({
 export default function HallPage() {
   const { data, engine } = useData();
   const [tab, setTab] = useState<"record" | "albo">("record");
-  const [openMatch, setOpenMatch] = useState<Match | null>(null);
+  const [openRecord, setOpenRecord] = useState<GroupRecord | null>(null);
   const records = useMemo(() => groupRecords(data.matches), [data.matches]);
   const name = (id: string) =>
     shortName(
@@ -126,7 +126,7 @@ export default function HallPage() {
   return (
     <>
       <ScreenHeader title="Albo" back="/classifiche" />
-      <div className="shrink-0 px-5 pb-3">
+      <div className="shrink-0 px-5 pb-3 pt-3">
         <Segmented
           value={tab}
           onChange={setTab}
@@ -152,15 +152,7 @@ export default function HallPage() {
                   hero={r.display}
                   playerIds={r.playerIds}
                   caption={r.playerIds.map(name).join(", ")}
-                  onClick={
-                    r.matchId
-                      ? () =>
-                          setOpenMatch(
-                            data.matches.find((m) => m.id === r.matchId) ??
-                              null,
-                          )
-                      : undefined
-                  }
+                  onClick={r.matchId ? () => setOpenRecord(r) : undefined}
                 />
               ))}
             </div>
@@ -318,7 +310,11 @@ export default function HallPage() {
           </div>
         )}
       </PullToRefresh>
-      <MatchSheet match={openMatch} onClose={() => setOpenMatch(null)} />
+      <MatchSheet
+        match={data.matches.find((m) => m.id === openRecord?.matchId) ?? null}
+        record={openRecord ?? undefined}
+        onClose={() => setOpenRecord(null)}
+      />
     </>
   );
 }
