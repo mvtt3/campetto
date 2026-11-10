@@ -928,7 +928,7 @@ test("segnala un problema dalle impostazioni", async ({ page }) => {
   await page.getByRole("button", { name: /Segnala un problema/ }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("button", { name: "Invia" })).toBeDisabled();
-  await dialog.getByRole("radio", { name: "Un'idea" }).click();
+  await dialog.getByRole("tab", { name: "Idea" }).click();
   await dialog
     .getByRole("textbox")
     .fill("Vorrei vedere chi ha fatto più triple questa settimana");
