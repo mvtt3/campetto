@@ -4,12 +4,17 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { IconChevronRight, IconCrown, IconTrophy } from "@tabler/icons-react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconCrown,
+  IconTrophy,
+} from "@tabler/icons-react";
 import { BadgeMedal } from "@/components/badge-medal";
 import { Character, characterOf } from "@/components/character";
 import { StatsDashboard } from "@/components/profile/stats-dashboard";
-import { Form, KeyRings } from "@/components/profile/key-stats";
-import { Avatar, playerColor } from "@/components/ui/avatar";
+import { Form } from "@/components/profile/key-stats";
+import { Avatar, isLightColor, playerColor } from "@/components/ui/avatar";
 import { Chips, EmptyState, ScreenHeader } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -18,6 +23,7 @@ import { useData } from "@/lib/data/provider";
 import { MONTHS_IT } from "@/lib/periods";
 import { trophiesOf } from "@/lib/stats/awards";
 import { eloOf } from "@/lib/stats/elo";
+import { computePlayerStats } from "@/lib/stats/player";
 import { headToHead } from "@/lib/stats/relations";
 import { shortName } from "@/lib/types";
 
@@ -32,7 +38,9 @@ const LABEL =
   "mb-2 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
 
 const PILL =
-  "sticker-sm flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[12.5px] font-semibold";
+  "flex items-center gap-1.5 rounded-full bg-[var(--chip)] px-2.5 py-1 text-[12px] font-semibold backdrop-blur-sm";
+
+const avg = (v: number) => v.toFixed(1).replace(".", ",");
 
 export function PlayerPage() {
   const params = useSearchParams();
@@ -46,6 +54,10 @@ export function PlayerPage() {
   const h = useMemo(
     () => (me ? headToHead(me.id, id, data.matches) : null),
     [me, id, data.matches],
+  );
+  const stats = useMemo(
+    () => computePlayerStats(id, data.matches),
+    [id, data.matches],
   );
 
   useEffect(() => {
@@ -76,60 +88,124 @@ export function PlayerPage() {
     player.showcase,
   );
 
+  const tint = playerColor(player);
+  const light = isLightColor(tint);
+  const boxed = stats.statGames > 0;
+  const line = [
+    { label: "Punti", value: boxed ? avg(stats.avg.pts) : "—" },
+    { label: "Rimbalzi", value: boxed ? avg(stats.rebAvg) : "—" },
+    { label: "Assist", value: boxed ? avg(stats.avg.ast) : "—" },
+    {
+      label: "Vittorie",
+      value: stats.games ? `${Math.round(stats.winPct * 100)}%` : "—",
+    },
+  ];
+
   return (
     <>
-      <ScreenHeader
-        title={self ? "Come ti vedono" : name}
-        subtitle={self ? "Il tuo profilo, visto dagli altri" : undefined}
-        back={() => router.back()}
-      />
       <PullToRefresh className="px-5 pb-6">
         <section
           aria-label="Giocatore"
-          className="relative isolate -mx-5 flex flex-col items-center overflow-hidden px-5 pb-1 pt-2"
+          className={clsx(
+            "relative isolate -mx-5 overflow-hidden",
+            light
+              ? "text-[#1d1a16] [--chip:rgb(29_26_22/0.12)] [--soft:rgb(29_26_22/0.7)]"
+              : "text-white [--chip:rgb(255_255_255/0.18)] [--soft:rgb(255_255_255/0.75)]",
+          )}
+          style={{ backgroundColor: tint }}
         >
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{
-              background: `radial-gradient(ellipse 42% 46% at 50% 44%, ${playerColor(player)}66, transparent)`,
-            }}
+            className={clsx(
+              "absolute inset-0 -z-10 bg-linear-to-br from-transparent",
+              light ? "to-black/20" : "to-black/50",
+            )}
           />
-          <span className="relative">
+          {player.jerseyNumber !== null && (
+            <span
+              aria-hidden
+              className="display pointer-events-none absolute -right-4 top-6 -z-10 text-[220px] leading-none opacity-[0.14]"
+            >
+              {player.jerseyNumber}
+            </span>
+          )}
+          <div className="safe-top px-5 pt-5">
+            <button
+              onClick={() => router.back()}
+              aria-label="Indietro"
+              className="press grid h-11 w-11 place-items-center rounded-full bg-[var(--chip)] backdrop-blur-sm"
+            >
+              <IconChevronLeft size={22} />
+            </button>
+          </div>
+          <span className="pointer-events-none absolute -bottom-3 right-1">
             <Character
               id={characterOf(player)}
               outfit={player.outfit}
               number={player.jerseyNumber}
-              height={150}
+              height={200}
               title={name}
-              className="short:h-[110px] short:w-auto"
+              className="short:h-[160px] short:w-auto"
             />
-            <span className="absolute -bottom-1 left-1/2 -z-10 h-4 w-24 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(29_26_22/0.35),transparent)]" />
           </span>
-          <p className="mt-3 line-clamp-2 max-w-[30ch] text-center text-[13px] leading-snug text-muted [text-wrap:balance]">
-            {player.roles.join(", ") || "Giocatore"}
-          </p>
-          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5">
-            <span className={clsx(PILL, "pr-1.5")}>
-              ELO <span className="num text-[14px]">{elo}</span>
-              <InfoTip label="Cos'è l'ELO" size={15}>
-                Il punteggio di forza. Si parte tutti da 1000: vincendo sale,
-                perdendo scende. Battere chi è più forte vale di più
-              </InfoTip>
-            </span>
-            {monthMvp && (
-              <span className={clsx(PILL, "bg-volt text-volt-ink")}>
-                <IconCrown size={13} aria-hidden /> MVP di {monthMvp}
-              </span>
+          <div className="relative w-[58%] px-5 pb-12 pt-10 short:pt-6">
+            {self && (
+              <h2 className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]">
+                Come ti vedono gli altri
+              </h2>
             )}
-            {trophies > 0 && (
-              <span className={PILL}>
-                <IconTrophy size={13} className="text-gold" aria-hidden />
-                {trophies === 1 ? "1 trofeo" : `${trophies} trofei`}
+            <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]">
+              {player.jerseyNumber !== null && `#${player.jerseyNumber} · `}
+              {player.roles[0] ?? "Giocatore"}
+            </p>
+            <h1
+              className={clsx(
+                "display mt-1 break-words uppercase leading-[0.95] [overflow-wrap:anywhere]",
+                name.length > 9 ? "text-[30px]" : "text-[40px]",
+              )}
+            >
+              {name}
+            </h1>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <span className={clsx(PILL, "pr-1.5")}>
+                ELO <span className="num text-[13.5px]">{elo}</span>
+                <InfoTip label="Cos'è l'ELO" size={14}>
+                  Il punteggio di forza. Si parte tutti da 1000: vincendo sale,
+                  perdendo scende. Battere chi è più forte vale di più
+                </InfoTip>
               </span>
-            )}
+              {monthMvp && (
+                <span className={clsx(PILL, "bg-volt text-volt-ink")}>
+                  <IconCrown size={13} aria-hidden /> MVP di {monthMvp}
+                </span>
+              )}
+              {trophies > 0 && (
+                <span className={PILL}>
+                  <IconTrophy size={13} aria-hidden />
+                  {trophies}
+                </span>
+              )}
+            </div>
           </div>
         </section>
+
+        <dl className="relative z-10 -mt-7 grid grid-cols-4 divide-x divide-line rounded-[22px] bg-surface py-3.5 shadow-[var(--shadow-pop)]">
+          {line.map((it) => (
+            <div
+              key={it.label}
+              className="flex flex-col-reverse items-center gap-1"
+            >
+              <dt className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted">
+                {it.label}
+              </dt>
+              <dd className="num text-[24px] leading-none">{it.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-2 text-center text-[12px] text-muted">
+          {stats.games === 1 ? "1 partita" : `${stats.games} partite`}
+          {boxed && ` · medie su ${stats.statGames} con il tabellino`}
+        </p>
 
         <Link
           href={`/giocatore/badge?id=${encodeURIComponent(player.id)}`}
@@ -162,7 +238,6 @@ export function PlayerPage() {
 
         {tab === "panoramica" ? (
           <div className="mt-3 flex flex-col gap-5">
-            <KeyRings playerId={player.id} />
             {me && h && !self && (
               <section aria-label="Testa a testa">
                 <h2 className={LABEL}>Testa a testa</h2>
