@@ -321,22 +321,25 @@ test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
   await expect(
     roster.getByRole("region", { name: "Non hanno ancora risposto" }),
   ).toBeVisible();
-  // La controproposta di prova (un'ora dopo, al Niche): "Anch'io".
   const alts = card.getByRole("list", { name: "Controproposte" });
-  await expect(alts).toContainText("al Niche");
-  await alts.getByRole("button", { name: "Anch'io" }).click();
-  await expect(alts).toContainText("la preferiscono");
-  await expect(alts.getByRole("button", { name: "Ritira" })).toBeVisible();
-  // La propria: stesso giorno, un altro orario.
-  await alts.getByRole("button", { name: "Ritira" }).click();
+  const niche = alts.getByRole("button", { name: /Niche/ });
+  const current = alts.getByRole("button", { name: /attuale/ });
+  await expect(current).toHaveAttribute("aria-pressed", "true");
+  await niche.click();
+  await expect(niche).toHaveAttribute("aria-pressed", "true");
+  await expect(current).toHaveAttribute("aria-pressed", "false");
+  await current.click();
+  await expect(current).toHaveAttribute("aria-pressed", "true");
   await card
     .getByRole("button", { name: "Proponi un altro orario o campetto" })
     .click();
-  // Si apre lì, dentro la scheda: niente finestre.
   const form = card.getByRole("group", { name: "Proponi un'alternativa" });
   await form.getByRole("button", { name: "17:30" }).click();
   await form.getByRole("button", { name: "Proponi", exact: true }).click();
-  await expect(alts).toContainText("Alle 17:30");
+  await expect(alts.getByRole("button", { name: /17:30/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(form).toHaveCount(0);
 });
 

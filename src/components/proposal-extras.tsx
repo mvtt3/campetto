@@ -259,8 +259,8 @@ export function AltForm({
     >
       <p className="text-[13px] font-semibold text-muted">
         {mode === "move"
-          ? "Stesso giorno: cambia orario, campetto o tutti e due. Avviso io chi c'è"
-          : `Stesso giorno: un altro orario, l'altro campetto o tutti e due. Lo dico a ${shortName(creator, data.players)}`}
+          ? "Stesso giorno, avviso io chi c'è"
+          : `Stesso giorno, lo dico a ${shortName(creator, data.players)}`}
       </p>
       <TimeField value={time} onChange={setTime} />
       <Segmented

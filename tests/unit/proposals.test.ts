@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   alternativesOf,
-  altLabel,
   awaitingStats,
   namesList,
   proposalPhase,
@@ -47,13 +46,6 @@ describe("controproposte", () => {
     ]);
     const g = alternativesOf(p);
     expect(g.map((x) => x.playerIds)).toEqual([["p2", "p4"], ["p3"]]);
-    expect(altLabel(p, g[0])).toBe("Alle 19:00 al Niche");
-    expect(altLabel(p, g[1])).toBe("Alle 19:30");
-  });
-
-  it("solo il campetto diverso", () => {
-    const p = proposal([yes("p2", null, "niche")]);
-    expect(altLabel(p, alternativesOf(p)[0])).toBe("Al Niche");
   });
 
   it("ignora chi non ha detto sì e le alternative uguali alla partita", () => {

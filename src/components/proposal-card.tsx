@@ -11,7 +11,6 @@ import {
   IconCloudRain,
   IconMapPin,
   IconPlus,
-  IconRepeat,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
@@ -20,10 +19,10 @@ import { dayLabel, neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
 import { useNow } from "@/lib/use-now";
 import {
+  altKey,
   alternativesOf,
-  altLabel,
   CONFIRM_MIN,
-  namesList,
+  hhmm,
   proposalPhase,
 } from "@/lib/proposals";
 import {
@@ -220,17 +219,38 @@ export function ProposalCard({
     }
   };
 
-  const showAlt = !altForm.open && future && (canMove || mine === "si");
-  const altAria = canMove
+  const canPropose = future && (canMove || mine === "si");
+  const canVote = mine === "si" && future && !canMove;
+  const addLabel = canMove
     ? "Cambia orario o campetto"
     : myAltKey
-      ? "Cambia la tua alternativa"
+      ? "Cambia la tua proposta"
       : "Proponi un altro orario o campetto";
-  const altShort = canMove
-    ? "Sposta la partita"
-    : myAltKey
-      ? "Cambia alternativa"
-      : "Altro orario";
+  const slotHint = canMove
+    ? "Decidi tu, avviso io chi c'è"
+    : canVote
+      ? "Tocca quella che preferisci"
+      : `Decide ${shortName(creator, data.players)}`;
+  const altIds = new Set(alts.flatMap((g) => g.playerIds));
+  const slots = [
+    {
+      key: altKey(proposal.startsAt, proposal.place ?? null),
+      startsAt: proposal.startsAt,
+      place: proposal.place ?? null,
+      players: yes.filter((p) => !altIds.has(p.id)),
+      current: true,
+    },
+    ...alts.map((g) => ({
+      ...g,
+      players: g.playerIds.map((id) => byId.get(id)!).filter(Boolean),
+      current: false,
+    })),
+  ];
+  const choose = (s: (typeof slots)[number]) => {
+    if (!s.current) return void backAlt(s.startsAt, s.place);
+    const my = alts.find((g) => g.key === myAltKey);
+    if (my) void backAlt(my.startsAt, my.place);
+  };
 
   // Al completo, o in 4 a meno di 12 ore: confermata. Iniziata: in corso, con la cronaca.
   const phase = proposalPhase(proposal, now, needed);
@@ -325,10 +345,7 @@ export function ProposalCard({
     return <LiveMatch proposal={proposal} compact={compact} />;
 
   const at = new Date(proposal.startsAt);
-  const time = at.toLocaleTimeString("it-IT", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const time = hhmm(proposal.startsAt);
   const head = (
     <div className="flex items-stretch gap-3.5">
       <div className="flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-court text-court-ink">
@@ -529,92 +546,138 @@ export function ProposalCard({
 
       <RosterPanel proposal={proposal} />
 
-      {alts.length > 0 && (
-        <div className="flex flex-col gap-2 border-t border-line pt-3">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
-            Altre proposte
-          </p>
-          <ul className="flex flex-col gap-2" aria-label="Controproposte">
-            {alts.map((g) => {
-              const mineToo = myAltKey === g.key;
-              const names = g.playerIds.map((id) =>
-                id === me?.id ? "tu" : shortName(byId.get(id), data.players),
-              );
-              return (
-                <li
-                  key={g.key}
-                  className="flex items-center gap-3 rounded-[16px] bg-raised px-3 py-2.5"
+      {(alts.length > 0 || canPropose) && (
+        <section
+          aria-label="Orario e campetto"
+          className="flex flex-col gap-2 border-t border-line pt-3"
+        >
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
+              Orario e campetto
+            </p>
+            {alts.length > 0 && (
+              <p className="mt-0.5 text-[12.5px] text-muted">{slotHint}</p>
+            )}
+          </div>
+          {alts.length > 0 && (
+            <ul className="flex flex-col gap-1.5" aria-label="Controproposte">
+              {slots.map((s) => {
+                const chosen =
+                  mine === "si" && (myAltKey ? myAltKey === s.key : s.current);
+                const row = (
+                  <>
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-0 left-0 -z-10 bg-court-soft transition-[width] duration-300"
+                      style={{
+                        width: `${(s.players.length / yes.length) * 100}%`,
+                      }}
+                    />
+                    <span className="num tnum text-[18px] leading-none">
+                      {hhmm(s.startsAt)}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[13.5px] font-semibold">
+                        {placeLabel(s.place)}
+                      </span>
+                      {s.current && (
+                        <span className="text-[11.5px] text-muted">attuale</span>
+                      )}
+                    </span>
+                    {s.players.length > 0 && (
+                      <AvatarStack players={s.players} size={22} max={3} />
+                    )}
+                    <span className="tnum w-4 text-right text-[13px] font-semibold">
+                      {s.players.length}
+                    </span>
+                  </>
+                );
+                const rowClass = clsx(
+                  "relative isolate flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-[16px] bg-raised px-3 py-2 text-left",
+                  chosen && "outline outline-[1.5px] -outline-offset-[1.5px] outline-court",
+                );
+                return (
+                  <li key={s.key}>
+                    {canVote ? (
+                      <button
+                        type="button"
+                        aria-pressed={chosen}
+                        onClick={() => choose(s)}
+                        className={clsx("press", rowClass)}
+                      >
+                        {row}
+                        <span
+                          aria-hidden
+                          className={clsx(
+                            "grid h-5 w-5 shrink-0 place-items-center rounded-full border-[1.5px]",
+                            chosen
+                              ? "border-court bg-court text-court-ink"
+                              : "border-line-strong",
+                          )}
+                        >
+                          {chosen && <IconCheck size={12} strokeWidth={3.2} />}
+                        </span>
+                      </button>
+                    ) : (
+                      <div className={rowClass}>
+                        {row}
+                        {canMove && !s.current && (
+                          <button
+                            onClick={() =>
+                              confirmMove === s.key
+                                ? void moveTo(s.startsAt, s.place)
+                                : setConfirmMove(s.key)
+                            }
+                            className={clsx(
+                              "press h-8 shrink-0 rounded-full px-3 text-[12.5px] font-semibold",
+                              confirmMove === s.key
+                                ? "bg-ok text-white"
+                                : "bg-court text-court-ink",
+                            )}
+                          >
+                            {confirmMove === s.key ? "Confermi?" : "Sposta qui"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <AnimatePresence initial={false}>
+            {altForm.open ? (
+              <motion.div
+                key={`alt-${altForm.n}`}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                className="-m-1 overflow-hidden p-1"
+              >
+                <AltForm
+                  proposal={proposal}
+                  mode={altForm.mode}
+                  onClose={() => setAltForm((s) => ({ ...s, open: false }))}
+                />
+              </motion.div>
+            ) : (
+              canPropose && (
+                <button
+                  key="add"
+                  type="button"
+                  onClick={() => openAlt(canMove ? "move" : "alt")}
+                  className="press flex h-11 items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-line-strong text-[13.5px] font-semibold text-muted"
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ball-soft text-ball">
-                    <IconRepeat size={17} aria-hidden />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-semibold">
-                      {altLabel(proposal, g)}
-                    </p>
-                    <p className="truncate text-[12.5px] text-muted first-letter:uppercase">
-                      {g.playerIds.length === 1
-                        ? "la preferisce"
-                        : "la preferiscono"}{" "}
-                      {namesList(names)}
-                    </p>
-                  </div>
-                  {canMove ? (
-                    <button
-                      onClick={() =>
-                        confirmMove === g.key
-                          ? void moveTo(g.startsAt, g.place)
-                          : setConfirmMove(g.key)
-                      }
-                      className={clsx(
-                        "press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold",
-                        confirmMove === g.key
-                          ? "bg-ok text-white"
-                          : "bg-court text-court-ink",
-                      )}
-                    >
-                      {confirmMove === g.key ? "Confermi?" : "Sposta qui"}
-                    </button>
-                  ) : mine === "si" && future ? (
-                    <button
-                      onClick={() => void backAlt(g.startsAt, g.place)}
-                      aria-pressed={mineToo}
-                      className={clsx(
-                        "press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold",
-                        mineToo
-                          ? "bg-surface text-muted"
-                          : "bg-volt text-volt-ink",
-                      )}
-                    >
-                      {mineToo ? "Ritira" : "Anch'io"}
-                    </button>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                  <IconPlus size={16} aria-hidden />
+                  {addLabel}
+                </button>
+              )
+            )}
+          </AnimatePresence>
+        </section>
       )}
 
-      {/* Un altro orario o l'altro campetto, stesso giorno: per chi c'è, e per chi l'ha proposta. */}
-      <AnimatePresence initial={false}>
-        {altForm.open && (
-          <motion.div
-            key={`alt-${altForm.n}`}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-            className="-m-1 overflow-hidden p-1"
-          >
-            <AltForm
-              proposal={proposal}
-              mode={altForm.mode}
-              onClose={() => setAltForm((s) => ({ ...s, open: false }))}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
       {canCancel && confirmCancel && (
         <button
           type="button"
@@ -642,82 +705,65 @@ export function ProposalCard({
           </span>
         </button>
       )}
-      {/* Una riga sola per le azioni: squadre, orario o campetto, annulla. */}
-      {(showAlt || canCancel) && (
-        <div className="-mx-1 -mb-1 flex items-center justify-between gap-2 border-t border-line pt-2">
-          {showAlt && !confirmCancel && (
+      {canCancel && (
+        <div className="-mx-1 -mb-1 flex items-center justify-end gap-2 border-t border-line pt-2">
+          {confirmCancel ? (
+            <>
+              <button
+                className="press h-11 flex-1 rounded-full bg-raised text-[13.5px] font-semibold text-muted"
+                onClick={() => {
+                  setConfirmCancel(false);
+                  setRain(false);
+                }}
+              >
+                Lascia stare
+              </button>
+              <button
+                className="press h-11 flex-1 rounded-full bg-danger text-[13.5px] font-semibold text-white"
+                onClick={async () => {
+                  const reason = rain ? ("meteo" as const) : undefined;
+                  mutate((d) => ({
+                    ...d,
+                    proposals: reason
+                      ? d.proposals.map((x) =>
+                          x.id === proposal.id
+                            ? {
+                                ...x,
+                                status: "annullata" as const,
+                                cancelReason: reason,
+                                cancelledAt: new Date().toISOString(),
+                              }
+                            : x,
+                        )
+                      : d.proposals.filter((x) => x.id !== proposal.id),
+                  }));
+                  try {
+                    await backend.cancelProposal(proposal.id, reason);
+                    void backend.notify({
+                      type: "proposal_cancelled",
+                      proposalId: proposal.id,
+                    });
+                    toast(
+                      reason
+                        ? "Annullata per pioggia: ho avvisato chi aveva risposto"
+                        : "Ho annullato la proposta e avvisato chi aveva risposto",
+                    );
+                  } catch (e) {
+                    toast(say(e), "error");
+                  }
+                }}
+              >
+                Annulla la proposta
+              </button>
+            </>
+          ) : (
             <button
-              type="button"
-              onClick={() => openAlt(canMove ? "move" : "alt")}
-              aria-label={altAria}
-              className="press flex h-10 min-w-0 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold"
+              className="press flex h-10 shrink-0 items-center justify-center rounded-full px-3 text-[13.5px] font-semibold text-danger"
+              onClick={() => setConfirmCancel(true)}
             >
-              <IconRepeat size={16} className="shrink-0 text-ball" aria-hidden />
-              <span className="truncate">{altShort}</span>
+              Annulla la proposta
             </button>
           )}
-          {canCancel &&
-            (confirmCancel ? (
-              <>
-                <button
-                  className="press h-11 flex-1 rounded-full bg-raised text-[13.5px] font-semibold text-muted"
-                  onClick={() => {
-                    setConfirmCancel(false);
-                    setRain(false);
-                  }}
-                >
-                  Lascia stare
-                </button>
-                <button
-                  className="press h-11 flex-1 rounded-full bg-danger text-[13.5px] font-semibold text-white"
-                  onClick={async () => {
-                    const reason = rain ? ("meteo" as const) : undefined;
-                    mutate((d) => ({
-                      ...d,
-                      proposals: reason
-                        ? d.proposals.map((x) =>
-                            x.id === proposal.id
-                              ? {
-                                  ...x,
-                                  status: "annullata" as const,
-                                  cancelReason: reason,
-                                  cancelledAt: new Date().toISOString(),
-                                }
-                              : x,
-                          )
-                        : d.proposals.filter((x) => x.id !== proposal.id),
-                    }));
-                    try {
-                      await backend.cancelProposal(proposal.id, reason);
-                      void backend.notify({
-                        type: "proposal_cancelled",
-                        proposalId: proposal.id,
-                      });
-                      toast(
-                        reason
-                          ? "Annullata per pioggia: ho avvisato chi aveva risposto"
-                          : "Ho annullato la proposta e avvisato chi aveva risposto",
-                      );
-                    } catch (e) {
-                      toast(say(e), "error");
-                    }
-                  }}
-                >
-                  Annulla la proposta
-                </button>
-              </>
-            ) : (
-              <button
-                aria-label="Annulla la proposta"
-                className={clsx(
-                  "press flex h-10 shrink-0 items-center justify-center rounded-full px-3 text-[13.5px] font-semibold text-danger",
-                  !showAlt && "ml-auto",
-                )}
-                onClick={() => setConfirmCancel(true)}
-              >
-                {showAlt ? "Annulla" : "Annulla la proposta"}
-              </button>
-            ))}
         </div>
       )}
 
