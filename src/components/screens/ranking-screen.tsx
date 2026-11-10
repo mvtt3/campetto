@@ -89,94 +89,137 @@ const LABEL =
 const STEPS = [
   {
     place: 2,
-    height: 70,
-    tone: "bg-[linear-gradient(180deg,#eef1f7_0%,#d3d9e6_100%)] text-[#3a4256]",
+    height: 86,
+    numeral: "text-[64px]",
+    tone: "bg-linear-to-b from-[#f6f8fc] to-[#aeb8cf] text-[#2b3245]",
   },
   {
     place: 1,
-    height: 100,
-    tone: "bg-[linear-gradient(180deg,#ffd451_0%,#ffb238_60%,#ff9a2e_100%)] text-[#1d1a16]",
+    height: 122,
+    numeral: "text-[88px]",
+    tone: "bg-linear-to-b from-[#ffe58a] via-[#ffb73a] to-[#f0841c] text-[#1d1a16]",
   },
   {
     place: 3,
-    height: 50,
-    tone: "bg-[linear-gradient(180deg,#ffd9bd_0%,#f5a877_100%)] text-[#5a2a10]",
+    height: 64,
+    numeral: "text-[52px]",
+    tone: "bg-linear-to-b from-[#ffd9bc] to-[#d97f4a] text-[#4a2410]",
   },
 ];
+
+const SPRING = { type: "spring", stiffness: 260, damping: 22 } as const;
 
 function Podium({ rows }: { rows: Row[] }) {
   const { data, me } = useData();
   return (
-    <div className="grid grid-cols-3 items-end gap-2 pt-3">
-      {STEPS.map(({ place, height, tone }, i) => {
-        const row = rows[place - 1];
-        if (!row) return <div key={place} />;
-        const p = data.players.find((x) => x.id === row.playerId);
-        const name = shortName(p, data.players);
-        const first = place === 1;
-        return (
-          <Link
-            key={place}
-            href={
-              row.playerId === me?.id ? "/profilo" : playerHref(row.playerId)
-            }
-            className="press flex min-w-0 flex-col items-center"
-          >
-            {first && (
-              <IconCrown size={22} className="mb-0.5 text-gold" aria-hidden />
-            )}
-            {p && (
-              <Character
-                id={characterOf(p)}
-                outfit={p.outfit}
-                number={p.jerseyNumber}
-                height={first ? 92 : 72}
-                title={name}
-              />
-            )}
-            <p
-              className={clsx(
-                "mt-1.5 w-full truncate text-center font-semibold leading-tight",
-                first ? "text-[15px]" : "text-[13.5px]",
-              )}
+    <div className="relative isolate overflow-hidden rounded-[28px] bg-surface px-3 pt-5 shadow-[var(--shadow-pop)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[-70%] -z-10 aspect-square w-[150%] -translate-x-1/2 animate-[spin_40s_linear_infinite] rounded-full bg-[repeating-conic-gradient(rgb(255_197_49/0.22)_0deg_7deg,transparent_7deg_22deg)] [mask-image:radial-gradient(closest-side,#000_20%,transparent)] motion-reduce:animate-none"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-56 w-56 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(255_197_49/0.5),transparent)]"
+      />
+      <div className="grid grid-cols-3 items-end gap-1.5">
+        {STEPS.map(({ place, height, numeral, tone }, i) => {
+          const row = rows[place - 1];
+          if (!row) return <div key={place} />;
+          const p = data.players.find((x) => x.id === row.playerId);
+          const name = shortName(p, data.players);
+          const mine = row.playerId === me?.id;
+          const first = place === 1;
+          return (
+            <Link
+              key={place}
+              href={mine ? "/profilo" : playerHref(row.playerId)}
+              className="press flex min-w-0 flex-col items-center"
             >
-              {row.playerId === me?.id ? "Tu" : name}
-            </p>
-            <motion.div
-              className={clsx(
-                "mt-1.5 flex w-full flex-col items-center rounded-t-[18px] pt-2 shadow-[var(--shadow)]",
-                tone,
-              )}
-              style={{ height, transformOrigin: "bottom" }}
-              initial={{ scaleY: 0 }}
-              animate={{ scaleY: 1 }}
-              transition={{
-                type: "spring",
-                stiffness: 240,
-                damping: 24,
-                delay: i * 0.06,
-              }}
-            >
+              <motion.div
+                className="flex flex-col items-center"
+                initial={{ opacity: 0, y: -28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...SPRING, delay: 0.3 + i * 0.08 }}
+              >
+                {first && (
+                  <motion.span
+                    className="mb-0.5 text-gold drop-shadow-[0_2px_6px_rgb(232_161_0/0.5)]"
+                    initial={{ scale: 0, rotate: -30 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ ...SPRING, delay: 0.6 }}
+                  >
+                    <IconCrown size={26} aria-hidden />
+                  </motion.span>
+                )}
+                {p && (
+                  <Character
+                    id={characterOf(p)}
+                    outfit={p.outfit}
+                    number={p.jerseyNumber}
+                    height={first ? 96 : 74}
+                    title={name}
+                  />
+                )}
+              </motion.div>
+              <p
+                className={clsx(
+                  "mt-1.5 w-full truncate text-center font-semibold leading-tight",
+                  first ? "text-[15px]" : "text-[13px]",
+                )}
+              >
+                {mine ? "Tu" : name}
+              </p>
               <span
                 className={clsx(
-                  "num leading-none",
-                  first ? "text-[26px]" : "text-[20px]",
+                  "num mt-1 rounded-full px-2.5 py-0.5 leading-tight",
+                  first
+                    ? "bg-[#1d1a16] text-[18px] text-volt"
+                    : "bg-text/90 text-[15px] text-bg",
                 )}
               >
                 {row.value}
               </span>
-              <span className="mt-1 text-[11px] font-bold opacity-60">
-                {place}°
-              </span>
-              {row.value === "—" && row.sub && (
-                <span className="mt-0.5 px-1 text-center text-[10.5px] font-semibold leading-tight opacity-70">
-                  {row.sub}
+              <motion.div
+                className={clsx(
+                  "relative mt-2 w-full overflow-hidden rounded-t-[18px]",
+                  tone,
+                )}
+                style={{ height, transformOrigin: "bottom" }}
+                initial={{ scaleY: 0 }}
+                animate={{ scaleY: 1 }}
+                transition={{ ...SPRING, delay: i * 0.06 }}
+              >
+                <span className="absolute inset-x-0 top-0 h-2.5 bg-white/45" />
+                <span
+                  className={clsx(
+                    "display absolute inset-x-0 -bottom-[0.18em] text-center leading-none text-white/55",
+                    numeral,
+                  )}
+                >
+                  {place}
                 </span>
-              )}
-            </motion.div>
-          </Link>
-        );
-      })}
+                {row.value === "—" && row.sub && (
+                  <span className="absolute inset-x-1 top-4 text-center text-[10.5px] font-semibold leading-tight opacity-75">
+                    {row.sub}
+                  </span>
+                )}
+                {first && (
+                  <motion.span
+                    className="absolute inset-y-0 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/60 to-transparent"
+                    initial={{ x: "-120%" }}
+                    animate={{ x: "320%" }}
+                    transition={{
+                      delay: 0.7,
+                      duration: 1.1,
+                      ease: "easeInOut",
+                    }}
+                  />
+                )}
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
