@@ -192,10 +192,8 @@ function Podium({ rows }: { rows: Row[] }) {
                   ) : (
                     <span
                       className={clsx(
-                        "num mt-1 rounded-full bg-[#1d1a16]/85 px-2.5 py-0.5 leading-tight",
-                        first
-                          ? "text-[18px] text-volt"
-                          : "text-[14.5px] text-white",
+                        "num mt-0.5 leading-none [text-shadow:0_1px_0_rgb(255_255_255/0.55)]",
+                        first ? "text-[26px]" : "text-[20px]",
                       )}
                     >
                       {row.value}
