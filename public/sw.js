@@ -1,5 +1,5 @@
 /* Campetto service worker: apertura veloce anche con poca rete, offline di base e notifiche push. */
-const VERSION = "campetto-v2";
+const VERSION = "campetto-v3";
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 /** Con la rete lenta (al campetto, una tacca) non si aspetta più di così: si apre l'ultima versione salvata. */
 const NAV_TIMEOUT = 1500;
