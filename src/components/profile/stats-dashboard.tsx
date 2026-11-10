@@ -11,60 +11,69 @@ import { useData } from "@/lib/data/provider";
 import { filterMatches, type FormatFilter, type Period } from "@/lib/periods";
 import { computePlayerStats } from "@/lib/stats/player";
 
-function Tile({
+const LABEL =
+  "flex items-center gap-1.5 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
+const CARD = "rounded-[22px] bg-surface shadow-[var(--shadow)]";
+
+function Group({
+  title,
+  className,
+  children,
+}: {
+  title: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={clsx(CARD, "px-4 pb-4 pt-3", className)}>
+      <p className="mb-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-faint">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function Stat({
   value,
   label,
   sub,
-  accent,
+  big,
 }: {
   value: ReactNode;
   label: string;
   sub?: ReactNode;
-  accent?: boolean;
+  big?: boolean;
 }) {
   return (
     <div className="flex min-w-0 flex-col">
-      <span className="truncate text-[12px] font-semibold text-muted">
-        {label}
-      </span>
       <span
         className={clsx(
-          "num mt-1 text-[24px] leading-none",
-          accent && "text-ball",
+          "num leading-none",
+          big ? "text-[40px] text-ball" : "text-[24px]",
         )}
       >
         {value}
       </span>
+      <span className="mt-1.5 truncate text-[12px] font-semibold text-muted">
+        {label}
+      </span>
       {sub && (
-        <span className="mt-1 truncate text-[11px] text-faint">{sub}</span>
+        <span className="mt-0.5 truncate text-[11px] text-faint">{sub}</span>
       )}
     </div>
   );
 }
 
-function Section({
-  title,
-  info,
-  children,
-}: {
-  title: string;
-  info?: ReactNode;
-  children: ReactNode;
-}) {
+function Row({ value, label }: { value: ReactNode; label: string }) {
   return (
-    <section aria-label={title}>
-      <h3 className="mb-2 flex items-center gap-1.5 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
-        {title}
-        {info && (
-          <InfoTip label={`Cosa vuol dire ${title.toLowerCase()}`} size={14}>
-            {info}
-          </InfoTip>
-        )}
-      </h3>
-      <div className="grid grid-cols-3 gap-x-4 gap-y-4 rounded-[22px] bg-surface px-4 py-4 shadow-[var(--shadow)]">
-        {children}
-      </div>
-    </section>
+    <div className="flex items-baseline justify-between gap-2 border-b border-line py-2 first:pt-0 last:border-b-0 last:pb-0">
+      <span className="min-w-0 truncate text-[12.5px] font-semibold text-muted">
+        {label}
+      </span>
+      <span className="num shrink-0 text-[19px] leading-none">{value}</span>
+    </div>
   );
 }
 
@@ -166,68 +175,86 @@ export function StatsDashboard({
         </p>
       ) : (
         <>
-          <Section title="Partite">
-            <Tile value={s.games} label="Giocate" />
-            <Tile
-              value={s.wins}
-              label="Vinte"
-              sub={`${Math.round(s.winPct * 100)}%`}
-              accent
-            />
-            <Tile value={s.losses} label="Perse" />
-          </Section>
+          <section aria-label="Partite">
+            <h3 className={clsx(LABEL, "mb-2")}>Partite</h3>
+            <div className={clsx(CARD, "px-4 py-4")}>
+              <div className="flex items-end justify-between gap-3">
+                <p className="score text-[44px] leading-none">
+                  {s.wins}
+                  <span className="mx-1 text-line-strong">–</span>
+                  <span className="text-faint">{s.losses}</span>
+                </p>
+                <p className="text-right">
+                  <span className="num block text-[24px] leading-none text-ok">
+                    {Math.round(s.winPct * 100)}%
+                  </span>
+                  <span className="mt-1 block text-[12px] font-semibold text-muted">
+                    vinte
+                  </span>
+                </p>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-raised">
+                <div
+                  className="h-full rounded-full bg-ok"
+                  style={{ width: `${s.winPct * 100}%` }}
+                />
+              </div>
+              <p className="mt-2 text-[12px] text-muted">
+                {s.wins} vinte e {s.losses} perse su {s.games}{" "}
+                {s.games === 1 ? "partita" : "partite"}
+              </p>
+            </div>
+          </section>
 
-          <Section
-            title="A partita"
-            info={
-              has
-                ? `La media a partita, sulle ${s.statGames} partite con il tabellino`
-                : "Le medie arrivano con le partite che hanno il tabellino"
-            }
-          >
-            <Tile
-              value={avg(s.avg.pts)}
-              label="Punti"
-              sub={has ? per(s.totals.pts) : undefined}
-              accent
-            />
-            <Tile
-              value={avg(s.rebAvg)}
-              label="Rimbalzi"
-              sub={has ? per(s.reb) : undefined}
-            />
-            <Tile
-              value={avg(s.avg.ast)}
-              label="Assist"
-              sub={has ? per(s.totals.ast) : undefined}
-            />
-            <Tile
-              value={avg(s.avg.stl)}
-              label="Rubate"
-              sub={has ? per(s.totals.stl) : undefined}
-            />
-            <Tile
-              value={avg(s.avg.blk)}
-              label="Stoppate"
-              sub={has ? per(s.totals.blk) : undefined}
-            />
-            <Tile
-              value={avg(s.avg.tov)}
-              label="Palle perse"
-              sub={has ? per(s.totals.tov) : undefined}
-            />
-            <Tile
-              value={avg(s.avg.fg3m)}
-              label="Triple"
-              sub={has ? per(s.totals.fg3m) : undefined}
-            />
-            <Tile
-              value={avg(s.avg.fouls)}
-              label="Falli"
-              sub={has ? per(s.totals.fouls) : undefined}
-            />
-            <Tile value={has ? fmt(s.effAvg) : "—"} label="Valutazione" />
-          </Section>
+          <section aria-label="A partita" className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className={LABEL}>
+                A partita
+                <InfoTip label="Cosa vuol dire a partita" size={14}>
+                  {has
+                    ? `La media a partita, sulle ${s.statGames} partite con il tabellino`
+                    : "Le medie arrivano con le partite che hanno il tabellino"}
+                </InfoTip>
+              </h3>
+              {has && (
+                <span className="flex items-center gap-1.5 rounded-full bg-volt px-2.5 py-1 text-[12px] font-semibold text-volt-ink">
+                  Valutazione
+                  <span className="num text-[14px]">{fmt(s.effAvg)}</span>
+                </span>
+              )}
+            </div>
+            <Group title="Attacco">
+              <div className="grid grid-cols-[1.4fr_1fr_1fr] items-end gap-3">
+                <Stat
+                  big
+                  value={avg(s.avg.pts)}
+                  label="Punti"
+                  sub={has ? per(s.totals.pts) : undefined}
+                />
+                <Stat
+                  value={avg(s.avg.ast)}
+                  label="Assist"
+                  sub={has ? per(s.totals.ast) : undefined}
+                />
+                <Stat
+                  value={avg(s.avg.fg3m)}
+                  label="Triple"
+                  sub={has ? per(s.totals.fg3m) : undefined}
+                />
+              </div>
+            </Group>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Group title="Difesa">
+                <Row value={avg(s.rebAvg)} label="Rimbalzi" />
+                <Row value={avg(s.avg.stl)} label="Rubate" />
+                <Row value={avg(s.avg.blk)} label="Stoppate" />
+              </Group>
+              <Group title="Errori">
+                <Row value={avg(s.avg.tov)} label="Palle perse" />
+                <Row value={avg(s.avg.fouls)} label="Falli" />
+              </Group>
+            </div>
+          </section>
         </>
       )}
     </div>
