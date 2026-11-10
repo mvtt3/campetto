@@ -348,18 +348,8 @@ export function ProposalCard({
   const time = hhmm(proposal.startsAt);
   const head = (
     <div className="flex items-stretch gap-3.5">
-      <div
-        className={clsx(
-          "flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[18px]",
-          compact ? "bg-court text-court-ink" : "bg-raised",
-        )}
-      >
-        <span
-          className={clsx(
-            "text-[10.5px] font-semibold uppercase tracking-[0.1em]",
-            compact ? "opacity-80" : "text-ball",
-          )}
-        >
+      <div className="flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-raised">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ball">
           {at.toLocaleDateString("it-IT", { weekday: "short" })}
         </span>
         <span className="num text-[22px] leading-none">{at.getDate()}</span>
