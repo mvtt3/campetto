@@ -16,7 +16,7 @@ const LABEL =
 
 const CARD = "rounded-[22px] bg-surface shadow-[var(--shadow)]";
 
-function Group({
+export function Group({
   title,
   className,
   children,
@@ -35,7 +35,7 @@ function Group({
   );
 }
 
-function Stat({
+export function Stat({
   value,
   label,
   sub,
@@ -66,7 +66,7 @@ function Stat({
   );
 }
 
-function Row({ value, label }: { value: ReactNode; label: string }) {
+export function Row({ value, label }: { value: ReactNode; label: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2 border-b border-line py-2 first:pt-0 last:border-b-0 last:pb-0">
       <span className="min-w-0 truncate text-[12.5px] font-semibold text-muted">
