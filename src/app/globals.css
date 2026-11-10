@@ -1795,14 +1795,6 @@ html[data-shot="3"] .intro-ball-x {
   stroke: #fff8ea;
 }
 
-/* Mappa di tiro: le zone non scelte si spengono in grigio (più scuro nel tema scuro). */
-:root {
-  --zone-off: rgb(70 64 56 / 0.2);
-}
-:root[data-theme="dark"] {
-  --zone-off: rgb(0 0 0 / 0.38);
-}
-
 /* La tua riga in classifica, quando ci arrivi da "Tu": un lampo per trovarla subito. */
 .row-flash {
   animation: row-flash 1.1s ease-out 0.35s;

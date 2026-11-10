@@ -13,7 +13,6 @@ import {
   ScreenHeader,
   signed,
 } from "@/components/ui/basics";
-import { InfoTip } from "@/components/ui/info";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, type Period } from "@/lib/periods";
 import { eloOf } from "@/lib/stats/elo";
@@ -23,7 +22,6 @@ import {
   groupZones,
   pctTone,
   shotZones,
-  ZONE_MIN_ATT,
   zoneTier,
   type ZoneKey,
 } from "@/lib/stats/zones";
@@ -112,34 +110,6 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "record", label: "Record" },
 ];
 
-const GLOSSARY: Record<Tab, ReactNode> = {
-  tiro: (
-    <>
-      <b>Al tiro</b>: canestri su tiri tentati. <b>Tiro effettivo</b>: come la
-      percentuale, ma una tripla segnata vale una volta e mezza, perché porta un
-      punto in più. <b>Punti per tiro</b>: quanti punti porti in media ogni
-      volta che tiri. <b>Su assist</b>: quanti dei tuoi canestri arrivano da un
-      passaggio di un compagno (dalle partite raccontate azione per azione)
-    </>
-  ),
-  gioco: (
-    <>
-      <b>Punti per possesso</b>: quanti punti porti ogni volta che la palla è
-      tua, contando tiri e palle perse. <b>Assist per persa</b>: per ogni
-      pallone perso, quanti passaggi decisivi fai. <b>Passa di più a</b> e{" "}
-      <b>Riceve di più da</b>: le coppie che si cercano in campo
-    </>
-  ),
-  impatto: (
-    <>
-      <b>+/−</b>: di quanti punti vince o perde in media la tua squadra quando
-      giochi. <b>Voto</b>: punti, rimbalzi, assist, rubate e stoppate, meno tiri
-      sbagliati e palle perse. <b>ELO</b>: il punteggio di forza, parte da 1000
-    </>
-  ),
-  record: <>Il meglio che hai fatto in una sola partita, in questo periodo</>,
-};
-
 /**
  * Le statistiche avanzate di un giocatore: la mappa di tiro da toccare (da sotto, dalla
  * media, da tre) e, sotto, i numeri divisi in quattro gruppi. Tutto in una schermata.
@@ -150,7 +120,6 @@ export function AdvancedPage() {
   const { data, me, engine } = useData();
   const id = params.get("id") ?? me?.id ?? "";
   const player = data.players.find((p) => p.id === id);
-  const self = id === me?.id;
   const [kind, setKind] = useState<PeriodKind>("all");
   const [zone, setZone] = useState<ZoneKey>("sotto");
   const [tab, setTab] = useState<Tab>("tiro");
@@ -282,11 +251,7 @@ export function AdvancedPage() {
 
   return (
     <>
-      <ScreenHeader
-        title="Statistiche"
-        subtitle={self ? "Mappa di tiro e numeri avanzati" : name(id)}
-        back={() => router.back()}
-      />
+      <ScreenHeader title="Statistiche" back={() => router.back()} />
       <main className="scroll-area flex min-h-0 flex-1 flex-col gap-5 px-5 pb-6 pt-1">
         <div className="shrink-0">
           <Chips value={kind} onChange={setKind} options={PERIODS} scroll />
@@ -300,25 +265,16 @@ export function AdvancedPage() {
         ) : (
           <>
             <section className="shrink-0" data-tour="stats-court">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className={LABEL}>
-                  Mappa di tiro
-                  <InfoTip label="Come si legge la mappa" size={14}>
-                    Tocca una zona del campo: si illumina e sotto vedi come tiri
-                    da lì. Il numero è la percentuale: verde dal 50%, giallo dal
-                    20%, rosso sotto. Il colore della zona illuminata è il
-                    livello, come per i badge: bronzo, argento dal 40%, oro dal
-                    60%, Hall of Fame dal 90%. Servono almeno {ZONE_MIN_ATT}{" "}
-                    tiri
-                  </InfoTip>
-                </h2>
-                <span className="px-1 text-[11.5px] font-semibold text-faint">
-                  Tocca una zona
-                </span>
-              </div>
+              <h2 className={clsx(LABEL, "mb-2")}>Mappa di tiro</h2>
               <div className={clsx(CARD, "overflow-hidden")}>
-                <div className="mx-auto w-full px-3 pt-3 short:max-w-[250px]">
-                  <ShotChart zones={zones} selected={zone} onSelect={setZone} />
+                <div className="bg-[#15110d]">
+                  <div className="mx-auto w-full short:max-w-[250px]">
+                    <ShotChart
+                      zones={zones}
+                      selected={zone}
+                      onSelect={setZone}
+                    />
+                  </div>
                 </div>
                 <div
                   className="flex items-center gap-3.5 border-t border-line px-4 py-3.5"
@@ -342,9 +298,16 @@ export function AdvancedPage() {
                     </span>
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-semibold leading-tight">
-                      {ZONE_NAME[zone]} ·{" "}
-                      <span className="text-muted">{TIER_LABEL[tier]}</span>
+                    <p className="flex items-center gap-1.5 text-[15px] font-semibold leading-tight">
+                      {ZONE_NAME[zone]} ·
+                      <span
+                        className="rounded-full bg-raised px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted"
+                        style={{
+                          background: tier ? `${TIER_TINT[tier]}33` : undefined,
+                        }}
+                      >
+                        {TIER_LABEL[tier]}
+                      </span>
                     </p>
                     <p className="mt-0.5 truncate text-[12.5px] text-muted">
                       {z.att ? `${z.made} su ${z.att}` : "Nessun tiro da qui"}
@@ -365,14 +328,7 @@ export function AdvancedPage() {
             </section>
 
             <section className="flex shrink-0 flex-col gap-2.5">
-              <div className="flex items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <Chips value={tab} onChange={setTab} options={TABS} scroll />
-                </div>
-                <InfoTip label="Cosa vogliono dire questi numeri" size={16}>
-                  {GLOSSARY[tab]}
-                </InfoTip>
-              </div>
+              <Chips value={tab} onChange={setTab} options={TABS} scroll />
               <div
                 key={tab}
                 className={clsx(
