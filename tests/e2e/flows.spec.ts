@@ -1221,7 +1221,7 @@ test("come ti vedono gli altri: il proprio profilo nella versione pubblica", asy
   await expect(
     page.getByRole("heading", { name: "Come ti vedono" }),
   ).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Numeri" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Numeri" })).toBeVisible();
   await expect(page.getByText("Testa a testa")).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: /Il tuo personaggio/ }),
