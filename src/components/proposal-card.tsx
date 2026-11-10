@@ -349,7 +349,7 @@ export function ProposalCard({
   const head = (
     <div className="flex items-stretch gap-3.5">
       <div className="flex w-[58px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-raised">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ball">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] opacity-70">
           {at.toLocaleDateString("it-IT", { weekday: "short" })}
         </span>
         <span className="num text-[22px] leading-none">{at.getDate()}</span>
