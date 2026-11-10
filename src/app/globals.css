@@ -1948,10 +1948,23 @@ html[data-shot="3"] .intro-ball-x {
     transform: scaleX(0);
   }
 }
+.badge-float {
+  animation: badge-float 3.2s ease-in-out infinite;
+}
+.ball-spin {
+  animation: spin 50s linear infinite;
+}
+@keyframes badge-float {
+  50% {
+    transform: translateY(-4px) rotate(3deg);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .hero-drift,
   .hero-char,
-  .hero-bar {
+  .hero-bar,
+  .badge-float,
+  .ball-spin {
     animation: none;
   }
 }

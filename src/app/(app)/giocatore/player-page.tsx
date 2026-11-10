@@ -56,6 +56,8 @@ const PILL = clsx(
 
 const SPRING = { type: "spring", stiffness: 240, damping: 22 } as const;
 
+const TILT = ["-rotate-6", "rotate-3", "-rotate-2"];
+
 const rise = (delay: number) => ({
   initial: { opacity: 0, y: 14 },
   animate: { opacity: 1, y: 0 },
@@ -191,6 +193,29 @@ export function PlayerPage() {
             aria-hidden
             className="absolute inset-0 -z-10 bg-[repeating-linear-gradient(115deg,rgb(255_255_255/0.08)_0_2px,transparent_2px_14px)] [mask-image:linear-gradient(to_left,#000,transparent_75%)]"
           />
+          <span
+            aria-hidden
+            className="blob hero-drift -left-20 -top-24 -z-10 h-64 w-64 bg-[radial-gradient(circle,rgb(255_255_255/0.28),transparent_68%)]"
+          />
+          <span
+            aria-hidden
+            className="blob hero-drift -bottom-28 right-10 -z-10 h-72 w-72 bg-[radial-gradient(circle,rgb(255_197_49/0.3),transparent_70%)] [animation-delay:-7s]"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-16 top-10 -z-10 h-[300px] w-[300px]"
+          >
+            <svg
+              viewBox="0 0 200 200"
+              className="court-lines draw ball-spin h-full w-full opacity-70"
+            >
+              <circle cx="100" cy="100" r="96" />
+              <path d="M100 4v192" />
+              <path d="M4 100h192" />
+              <path d="M32 32c30 30 30 106 0 136" />
+              <path d="M168 32c-30 30-30 106 0 136" />
+            </svg>
+          </span>
           {player.jerseyNumber !== null && (
             <motion.span
               aria-hidden
@@ -317,28 +342,47 @@ export function PlayerPage() {
               <Link
                 href={`/giocatore/badge?id=${encodeURIComponent(player.id)}`}
                 aria-label="Vedi tutti i badge"
-                className={clsx(
-                  GLASS,
-                  "press inline-flex items-center gap-1 rounded-full py-1 pl-1 pr-2",
-                )}
+                className="press inline-flex items-center gap-1"
               >
                 {showcase.length ? (
-                  showcase.map((s, i) => (
-                    <motion.span
-                      key={s.def.key}
-                      initial={{ scale: 0, rotate: -20 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ ...SPRING, delay: 0.45 + i * 0.08 }}
-                    >
-                      <BadgeMedal icon={s.def.icon} tier={s.tier} size={30} />
-                    </motion.span>
-                  ))
+                  <span className="flex -space-x-1.5">
+                    {showcase.map((s, i) => (
+                      <motion.span
+                        key={s.def.key}
+                        initial={{ scale: 0, rotate: -40, y: 10 }}
+                        animate={{ scale: 1, rotate: 0, y: 0 }}
+                        transition={{ ...SPRING, delay: 0.45 + i * 0.1 }}
+                      >
+                        <span
+                          className="badge-float block"
+                          style={{ animationDelay: `${i * -1.1}s` }}
+                        >
+                          <span
+                            className={clsx(
+                              "block drop-shadow-[0_6px_10px_rgb(0_0_0/0.35)]",
+                              TILT[i],
+                            )}
+                          >
+                            <BadgeMedal
+                              icon={s.def.icon}
+                              tier={s.tier}
+                              size={40}
+                            />
+                          </span>
+                        </span>
+                      </motion.span>
+                    ))}
+                  </span>
                 ) : (
-                  <span className="pl-1.5 text-[12px] font-semibold">
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]">
                     Badge
                   </span>
                 )}
-                <IconChevronRight size={16} aria-hidden />
+                <IconChevronRight
+                  size={18}
+                  className="text-[var(--soft)]"
+                  aria-hidden
+                />
               </Link>
             </motion.div>
           </div>
