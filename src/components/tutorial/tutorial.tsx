@@ -2,7 +2,11 @@
 
 import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
-import { IconArrowNarrowDown, IconArrowsHorizontal, IconX } from "@tabler/icons-react";
+import {
+  IconArrowNarrowDown,
+  IconArrowsHorizontal,
+  IconX,
+} from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -377,7 +381,7 @@ function Coach({
         <rect
           width="100%"
           height="100%"
-          fill="rgba(29,26,22,0.62)"
+          fill="rgba(29,26,22,0.55)"
           mask="url(#tour-hole)"
         />
         {hole && (
@@ -386,9 +390,8 @@ function Coach({
             style={{ x: hole.x, y: hole.y, width: hole.w, height: hole.h }}
             rx="22"
             fill="none"
-            stroke="#FFC531"
-            strokeWidth="3.5"
-            strokeDasharray="8 6"
+            stroke="#F26A1B"
+            strokeWidth="2.5"
           />
         )}
       </svg>
@@ -398,12 +401,11 @@ function Coach({
         aria-modal="true"
         aria-labelledby="tour-title"
         aria-describedby="tour-text"
-        className="tour-card absolute rounded-[26px] border-[2.5px] border-edge bg-surface px-5 pb-4 pt-4 text-center text-text"
+        className="tour-card absolute rounded-[28px] bg-surface px-5 pb-4 pt-4 text-center text-text shadow-[var(--shadow-pop)]"
         style={{
           left: geo?.card.left ?? 12,
           top: geo?.card.top ?? -999,
           width: geo?.card.width ?? 320,
-          boxShadow: "5px 5px 0 #1d1a16",
           visibility: geo ? "visible" : "hidden",
         }}
       >
@@ -411,9 +413,9 @@ function Coach({
           type="button"
           onClick={onClose}
           aria-label={active.mode === "welcome" ? "Ora no" : "Chiudi la guida"}
-          className="absolute right-2.5 top-2.5 grid h-9 w-9 place-items-center rounded-full text-muted"
+          className="press absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-raised text-muted"
         >
-          <IconX size={19} />
+          <IconX size={17} strokeWidth={2.4} />
         </button>
         <div
           key={`${active.mode}-${active.section}-${active.step}`}
@@ -434,23 +436,26 @@ function Coach({
           </div>
           {active.mode === "steps" && (
             <p
-              className="mt-1 text-[12px] font-bold uppercase tracking-wide text-muted"
+              className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted"
               aria-live="polite"
             >
-              {sec.title} · {active.step + 1} di {sec.steps.length}
+              {sec.title}
+              <span className="tnum rounded-full bg-raised px-2 py-0.5 normal-case tracking-normal">
+                {active.step + 1} di {sec.steps.length}
+              </span>
             </p>
           )}
           <h2
             id="tour-title"
             ref={title}
             tabIndex={-1}
-            className="display mt-1 text-[22px] leading-tight outline-none"
+            className="title mt-1.5 text-[20px] leading-tight outline-none"
           >
             {active.mode === "welcome" ? "Iniziamo?" : item?.title}
           </h2>
           <p
             id="tour-text"
-            className="mx-auto mt-1.5 max-w-[30ch] text-[14.5px] text-muted"
+            className="mx-auto mt-1.5 max-w-[30ch] text-[14px] leading-snug text-muted"
           >
             {active.mode === "welcome"
               ? "Ti mostro il Campetto in un minuto"
@@ -458,11 +463,11 @@ function Coach({
           </p>
           {active.mode === "welcome" ? (
             <>
-              <p className="mt-2 text-[12.5px] font-semibold text-faint">
+              <p className="mx-auto mt-3 w-fit rounded-full bg-raised px-3 py-1 text-[12px] font-semibold text-muted">
                 {total} schede · circa un minuto
               </p>
               <div className="mt-4 flex flex-col gap-2">
-                <Button variant="court" block onClick={onStart}>
+                <Button variant="primary" block onClick={onStart}>
                   Inizia
                 </Button>
                 <Button variant="ghost" block onClick={onClose}>
@@ -476,7 +481,7 @@ function Coach({
                 {sec.steps.map((s, i) => (
                   <i
                     key={s.target}
-                    className={`h-2 rounded-full border-[1.5px] border-edge transition-all duration-200 ${i <= active.step ? "w-5 bg-ball" : "w-2 bg-surface"}`}
+                    className={`h-1.5 rounded-full transition-all duration-200 ${i <= active.step ? "w-5 bg-ball" : "w-1.5 bg-line-strong"}`}
                   />
                 ))}
               </div>
@@ -484,7 +489,7 @@ function Coach({
                 <Button size="md" disabled={first} onClick={onPrev}>
                   Indietro
                 </Button>
-                <Button size="md" variant="court" onClick={() => onNext()}>
+                <Button size="md" variant="primary" onClick={() => onNext()}>
                   {lastStep && lastSection ? "Fine" : "Avanti"}
                 </Button>
               </div>
@@ -492,7 +497,7 @@ function Coach({
                 <button
                   type="button"
                   onClick={() => onNext(true)}
-                  className="mt-2.5 text-[13.5px] font-bold text-court underline decoration-2 underline-offset-4"
+                  className="press mt-3 text-[13px] font-semibold text-muted"
                 >
                   {total > 1 ? `Salta ${sec.title}` : "Salta la guida"}
                 </button>
@@ -525,18 +530,24 @@ function GestureHint({ kind }: { kind: "swipe" | "pull" }) {
         className="pointer-events-none absolute inset-x-0 bottom-[112px] flex justify-center px-4"
         role="status"
       >
-        <p
-          className="swipe-pill flex items-center gap-2 rounded-full border-[2.5px] border-edge bg-volt py-2 pl-3 pr-4 text-[14.5px] font-bold text-volt-ink"
-          style={{ boxShadow: "3px 3px 0 #1d1a16" }}
-        >
+        <p className="swipe-pill flex items-center gap-2 rounded-full bg-surface py-2.5 pl-3.5 pr-4 text-[14px] font-semibold text-text shadow-[var(--shadow-pop)]">
           {kind === "swipe" ? (
             <>
-              <IconArrowsHorizontal size={18} aria-hidden /> Scorri di lato per
-              cambiare scheda
+              <IconArrowsHorizontal
+                size={18}
+                className="text-ball"
+                aria-hidden
+              />{" "}
+              Scorri di lato per cambiare scheda
             </>
           ) : (
             <>
-              <IconArrowNarrowDown size={18} aria-hidden /> Tira giù per aggiornare
+              <IconArrowNarrowDown
+                size={18}
+                className="text-ball"
+                aria-hidden
+              />{" "}
+              Tira giù per aggiornare
             </>
           )}
         </p>
@@ -565,15 +576,15 @@ function Completion({
       role="status"
     >
       <div
-        className="ptr-done pointer-events-auto flex max-w-sm items-center gap-3 rounded-[22px] border-[2.5px] border-edge bg-volt py-2 pl-2 pr-3 text-volt-ink"
-        style={{ boxShadow: "4px 4px 0 #1d1a16", animationDuration: "4.2s" }}
+        className="ptr-done pointer-events-auto flex max-w-sm items-center gap-3 rounded-[22px] bg-surface py-2 pl-2 pr-3 text-text shadow-[var(--shadow-pop)]"
+        style={{ animationDuration: "4.2s" }}
       >
         <Mascot pose="esulta" size={46} />
         <div className="min-w-0 text-left">
-          <p className="display text-[18px] leading-none">
+          <p className="title text-[17px] leading-none">
             {whole ? "Tutto pronto" : "Scheda fatta"}
           </p>
-          <p className="mt-1 truncate text-[13px] font-semibold">
+          <p className="mt-1 truncate text-[13px] text-muted">
             {whole
               ? `Buone partite, ${name}`
               : "La guida resta nelle impostazioni"}
@@ -583,7 +594,7 @@ function Completion({
           type="button"
           onClick={onClose}
           aria-label="Chiudi"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          className="press grid h-8 w-8 shrink-0 place-items-center rounded-full bg-raised text-muted"
         >
           <IconX size={17} />
         </button>
