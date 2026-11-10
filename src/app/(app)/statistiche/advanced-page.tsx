@@ -339,15 +339,7 @@ export function AdvancedPage() {
           <>
             <section className="shrink-0" data-tour="stats-court">
               <div className={clsx(CARD, "overflow-hidden")}>
-                <div className="bg-[#15110d]">
-                  <div className="mx-auto w-full short:max-w-[250px]">
-                    <ShotChart
-                      zones={zones}
-                      selected={zone}
-                      onSelect={setZone}
-                    />
-                  </div>
-                </div>
+                <ShotChart zones={zones} selected={zone} onSelect={setZone} />
                 <div className="px-4 pb-4 pt-3.5" aria-live="polite">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-[15px] font-semibold">
