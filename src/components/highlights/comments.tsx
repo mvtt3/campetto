@@ -304,12 +304,10 @@ export function CommentsPanel({
             className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-3 py-2"
             data-testid="hl-reply-bar"
           >
-            <IconCornerUpLeft
-              size={16}
-              className="shrink-0 text-ball"
-              aria-hidden
-            />
-            <div className="min-w-0 flex-1 border-l-[3px] border-ball pl-2">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ball-soft text-ball">
+              <IconCornerUpLeft size={15} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
               <p className="truncate text-[12.5px] font-bold">
                 Rispondi a{" "}
                 {shortName(
@@ -364,7 +362,7 @@ export function CommentsPanel({
               }
               aria-label={replyTo ? "Scrivi la risposta" : "Scrivi un commento"}
               enterKeyHint="send"
-              className="block max-h-[104px] min-h-[40px] w-full resize-none rounded-[20px] bg-raised px-3.5 py-[9px] text-[15px] leading-snug outline-none focus:ring-2 focus:ring-ball"
+              className="block max-h-[104px] min-h-[40px] w-full resize-none rounded-[20px] bg-raised px-3.5 py-[9px] text-[15px] leading-snug outline-none focus:ring-1 focus:ring-ball/50"
               data-testid="hl-comment-input"
             />
             {left <= 40 && (
@@ -529,18 +527,23 @@ function CommentRow({
                 type="button"
                 onClick={() => quoted && onQuote(quoted.id)}
                 disabled={!quoted}
-                className="press mt-1 block w-full max-w-full rounded-[10px] border-l-[3px] border-ball bg-black/5 px-2 py-1 text-left"
+                className="press mt-1.5 flex w-full max-w-full items-start gap-1.5 rounded-[12px] bg-raised px-2.5 py-1.5 text-left"
                 data-testid="hl-quote"
               >
+                <IconCornerUpLeft
+                  size={13}
+                  className="mt-[3px] shrink-0 text-muted"
+                  aria-hidden
+                />
                 {quoted ? (
-                  <>
-                    <span className="block truncate text-[12px] font-bold text-ball">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-bold">
                       {quotedName}
                     </span>
                     <span className="block truncate text-[12.5px] text-muted">
                       {quoted.body}
                     </span>
-                  </>
+                  </span>
                 ) : (
                   <span className="block text-[12.5px] italic text-faint">
                     Commento eliminato

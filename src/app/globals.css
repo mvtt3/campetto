@@ -2189,29 +2189,11 @@ html[data-shot="3"] .intro-ball-x {
 .hl-ticker {
   bottom: 0;
   padding-bottom: env(safe-area-inset-bottom);
-  background: linear-gradient(
-    to top,
-    rgba(23, 19, 15, 0.9),
-    rgba(23, 19, 15, 0.55) 70%,
-    rgba(23, 19, 15, 0)
-  );
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent,
-    #000 16px,
-    #000 calc(100% - 16px),
-    transparent
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    #000 16px,
-    #000 calc(100% - 16px),
-    transparent
-  );
+  background: #0d0b09;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 .hl-ticker-track {
-  height: 34px;
+  height: 40px;
   align-items: center;
   padding-left: 12px;
   animation: hl-marquee linear infinite;

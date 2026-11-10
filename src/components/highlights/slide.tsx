@@ -2,12 +2,20 @@
 
 import clsx from "clsx";
 import {
+  IconArrowBounce,
+  IconArrowsRightLeft,
+  IconBallBasketball,
   IconChevronsLeft,
   IconChevronsRight,
+  IconCrown,
+  IconHandGrab,
+  IconHandStop,
   IconHeart,
   IconMessageCircle,
   IconPlayerPlayFilled,
   IconRotate,
+  IconTarget,
+  IconTrophy,
 } from "@tabler/icons-react";
 import {
   memo,
@@ -575,17 +583,19 @@ export const Slide = memo(function Slide(p: SlideProps) {
           className="press flex flex-col items-center gap-1"
           data-testid="hl-like"
         >
-          <span
-            key={p.liked ? "on" : "off"}
-            className={clsx(RAIL_BTN, p.liked && "hl-pop")}
-          >
-            <IconHeart
-              size={23}
-              strokeWidth={2.2}
-              className={p.liked ? "text-[#ff5a4a]" : "text-white"}
-              fill={p.liked ? "currentColor" : "none"}
-              aria-hidden
-            />
+          <span className={RAIL_BTN}>
+            <span
+              key={p.liked ? "on" : "off"}
+              className={clsx("grid", p.liked && "hl-pop")}
+            >
+              <IconHeart
+                size={23}
+                strokeWidth={2.2}
+                className={p.liked ? "text-[#ff5a4a]" : "text-white"}
+                fill={p.liked ? "currentColor" : "none"}
+                aria-hidden
+              />
+            </span>
           </span>
           <span className="hl-count text-[11.5px] font-semibold text-white tnum">
             {compactCount(p.likes)}
@@ -612,63 +622,66 @@ export const Slide = memo(function Slide(p: SlideProps) {
       </div>
 
       <div className="hl-meta pointer-events-none absolute left-0 right-[64px] z-10 pl-3 text-white">
-        <h2 className="hl-title truncate px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">
-          {p.title}
-        </h2>
-        {p.score && (
-          <div
-            className="mt-1.5 rounded-[18px] bg-black/40 px-3 py-2 backdrop-blur-md"
-            data-testid="hl-score"
-          >
-            <span className="sr-only">{p.score.score}</span>
-            {(
-              [
-                ["A", p.score.a, scores[0]],
-                ["B", p.score.b, scores[1]],
-              ] as const
-            ).map(([t, names, pts]) => {
-              const won = pts === Math.max(...scores);
-              return (
-                <div key={t} className="flex items-center gap-2" aria-hidden>
-                  <span
-                    className={clsx(
-                      "h-2 w-2 shrink-0 rounded-full",
-                      t === "A" ? "bg-court" : "bg-ball",
-                    )}
-                  />
-                  <span
-                    className={clsx(
-                      "min-w-0 flex-1 truncate text-[13.5px]",
-                      won ? "font-bold" : "text-white/65",
-                    )}
+        <div className="overflow-hidden rounded-[20px] bg-black/45 backdrop-blur-md">
+          <h2 className="hl-title truncate px-3 pt-2.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/60">
+            {p.title}
+          </h2>
+          {p.score && (
+            <div className="px-3 pb-2.5 pt-1" data-testid="hl-score">
+              <span className="sr-only">{p.score.score}</span>
+              {(
+                [
+                  ["A", p.score.a, scores[0]],
+                  ["B", p.score.b, scores[1]],
+                ] as const
+              ).map(([t, names, pts]) => {
+                const won = pts === Math.max(...scores);
+                return (
+                  <div
+                    key={t}
+                    className="flex h-7 items-center gap-2"
+                    aria-hidden
                   >
-                    {names}
-                  </span>
-                  <span
-                    className={clsx(
-                      "score text-[22px] leading-tight tnum",
-                      won ? "text-ball" : "text-white/45",
-                    )}
-                  >
-                    {pts}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {description && (
-          <button
-            className="pointer-events-auto mt-2 block w-full px-1 text-left text-[13.5px] leading-snug text-white/85"
-            onClick={() => setExpanded((x) => !x)}
-            aria-expanded={expanded}
-            data-testid="hl-desc"
-          >
-            <span className={clsx(!expanded && "line-clamp-2")}>
-              {description}
-            </span>
-          </button>
-        )}
+                    <span
+                      className={clsx(
+                        "h-2 w-2 shrink-0 rounded-full",
+                        t === "A" ? "bg-court" : "bg-ball",
+                      )}
+                    />
+                    <span
+                      className={clsx(
+                        "min-w-0 flex-1 truncate text-[14px]",
+                        won ? "font-bold" : "text-white/60",
+                      )}
+                    >
+                      {names}
+                    </span>
+                    <span
+                      className={clsx(
+                        "score text-[22px] leading-none tnum",
+                        won ? "text-ball" : "text-white/40",
+                      )}
+                    >
+                      {pts}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {description && (
+            <button
+              className="pointer-events-auto block w-full border-t border-white/10 px-3 py-2 text-left text-[13px] leading-snug text-white/80"
+              onClick={() => setExpanded((x) => !x)}
+              aria-expanded={expanded}
+              data-testid="hl-desc"
+            >
+              <span className={clsx(!expanded && "line-clamp-2")}>
+                {description}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       {p.ticker.length > 0 && (
@@ -690,17 +703,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
             {[0, 1].map((k) => (
               <span key={k} className="flex shrink-0 gap-1.5 pr-1.5">
                 {p.ticker.map((t, i) => (
-                  <span
-                    key={i}
-                    className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white/12 px-2.5 py-1"
-                  >
-                    <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-ball">
-                      {t.k}
-                    </span>
-                    <span className="text-[12.5px] font-semibold text-white">
-                      {t.v}
-                    </span>
-                  </span>
+                  <TickerChip key={i} item={t} />
                 ))}
               </span>
             ))}
@@ -722,4 +725,30 @@ export const Slide = memo(function Slide(p: SlideProps) {
 function clock(t: number): string {
   const s = Math.max(0, Math.floor(t));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+const TICKER_ICONS: Record<string, typeof IconTrophy> = {
+  Finale: IconTrophy,
+  MVP: IconCrown,
+  Punti: IconBallBasketball,
+  Rimbalzi: IconArrowBounce,
+  Assist: IconArrowsRightLeft,
+  Rubate: IconHandGrab,
+  Stoppate: IconHandStop,
+  Triple: IconTarget,
+};
+
+function TickerChip({ item }: { item: TickerItem }) {
+  const Icon = TICKER_ICONS[item.k] ?? IconTrophy;
+  return (
+    <span className="flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/15 pl-2 pr-3">
+      <Icon size={14} className="shrink-0 text-ball" aria-hidden />
+      <span className="text-[10px] font-bold uppercase leading-none tracking-[0.12em] text-white/60">
+        {item.k}
+      </span>
+      <span className="text-[12.5px] font-semibold leading-none text-white">
+        {item.v}
+      </span>
+    </span>
+  );
 }

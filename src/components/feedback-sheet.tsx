@@ -122,7 +122,7 @@ export function FeedbackSheet({
           onChange={(e) => setText(e.target.value.slice(0, 2000))}
           placeholder={current.placeholder}
           rows={6}
-          className="block w-full resize-none rounded-[22px] bg-surface px-4 py-3.5 text-[15px] leading-snug shadow-[var(--shadow)] outline-none placeholder:text-faint focus:ring-2 focus:ring-ball"
+          className="block w-full resize-none rounded-[22px] bg-surface px-4 py-3.5 text-[15px] leading-snug shadow-[var(--shadow)] outline-none placeholder:text-faint focus:ring-1 focus:ring-ball/50"
         />
         <p className="px-1 text-[12px] text-faint">
           Con il messaggio mando anche il modello del telefono e la schermata in
