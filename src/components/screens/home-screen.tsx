@@ -410,25 +410,21 @@ export function HomeScreen() {
 
   return (
     <>
-      <header className="safe-top shrink-0 px-5">
-        <div className="flex items-center justify-end gap-3 pt-5">
-          <h1 className="sr-only">Home</h1>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <GameHomeButton />
-            <HighlightsHomeButton />
-            <NewsButton unseen={news.unseen} onOpen={openNews} />
-            <Avatar player={me} size={40} />
-          </div>
-        </div>
-        <NewsPanel
-          open={newsOpen}
-          onClose={() => setNewsOpen(false)}
-          stories={news.stories}
-          freshSince={freshSince}
-        />
-      </header>
+      <NewsPanel
+        open={newsOpen}
+        onClose={() => setNewsOpen(false)}
+        stories={news.stories}
+        freshSince={freshSince}
+      />
 
       <PullToRefresh className="px-5">
+        <header className="safe-top flex items-center justify-end gap-1.5 pt-5">
+          <h1 className="sr-only">Home</h1>
+          <GameHomeButton />
+          <HighlightsHomeButton />
+          <NewsButton unseen={news.unseen} onOpen={openNews} />
+          <Avatar player={me} size={40} />
+        </header>
         <div className="flex flex-col gap-7 pb-8 pt-3">
           {hasNext && nextSection}
           <section

@@ -247,7 +247,7 @@ export function Chips<T extends string>({
       ref={row}
       className={clsx(
         scroll
-          ? "scroll-x -mx-5 flex snap-x gap-2 px-5 pb-1.5 pt-0.5 [-webkit-mask-image:linear-gradient(to_right,transparent_0,#000_14px,#000_calc(100%-28px),transparent)] [mask-image:linear-gradient(to_right,transparent_0,#000_14px,#000_calc(100%-28px),transparent)]"
+          ? "scroll-x relative -mx-5 flex snap-x scroll-px-5 gap-2 px-5 pb-1.5 pt-0.5 [-webkit-mask-image:linear-gradient(to_right,transparent_0,#000_14px,#000_calc(100%-28px),transparent)] [mask-image:linear-gradient(to_right,transparent_0,#000_14px,#000_calc(100%-28px),transparent)]"
           : "flex flex-wrap justify-center gap-2 pb-0.5 pr-0.5",
         className,
       )}

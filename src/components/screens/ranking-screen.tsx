@@ -15,7 +15,6 @@ import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Chips, EmptyState } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
-import { MvpMonthInfo } from "@/components/mvp-info";
 import { GroupStrip } from "@/components/group-strip";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
@@ -63,25 +62,9 @@ interface Pending {
   missing: number;
 }
 
-function boardInfo(board: Board, minGames: number | null): string {
-  if (board === "mvp")
-    return `Conta come giochi e conta vincere: 45% statistiche (punti, poi rimbalzi, assist, rubate e stoppate), 30% vittorie, 15% presenza, 10% impatto sulla squadra. Servono almeno ${minGames ?? 3} partite`;
-  if (board === "vittorie")
-    return "Le vittorie nel periodo: più giochi, più ne puoi mettere insieme";
-  if (board === "elo")
-    return "Il punteggio di forza: sale quando vinci, scende quando perdi, di più contro chi è forte. Nel mese e nella stagione vedi di quanto è salito o sceso";
-  if (board === "difesa")
-    return `Chi difende meglio: rubata o stoppata vale 1 punto difesa, un rimbalzo in difesa mezzo punto. È la media a partita: servono almeno ${minGames ?? 2} partite con il tabellino`;
-  if (board === "tre")
-    return `La percentuale da tre: canestri da tre diviso tiri da tre. Per entrare in classifica servono almeno 5 tiri da tre e ${minGames ?? 2} partite con il tabellino: 1 su 1 fa 100%, ma vale meno di 4 su 10. Chi ha tirato meno sta sotto, in "Ancora pochi tiri"`;
-  return `La media a partita. Per entrare in classifica servono almeno ${minGames ?? 2} partite con il tabellino: così chi gioca una volta sola non scavalca chi c'è sempre`;
-}
-
 function missingLabel(missing: number): string {
   return missing === 1 ? "manca 1 partita" : `mancano ${missing} partite`;
 }
-
-const BOARD_LABEL = new Map(BOARDS.map((b) => [b.value, b.label]));
 
 const LABEL =
   "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
@@ -89,21 +72,24 @@ const LABEL =
 const STEPS = [
   {
     place: 2,
-    height: 86,
-    numeral: "text-[64px]",
-    tone: "bg-linear-to-b from-[#f6f8fc] to-[#aeb8cf] text-[#2b3245]",
+    height: 150,
+    numeral: "text-[38px]",
+    top: "bg-[#ffffff]",
+    tone: "bg-linear-to-b from-[#e6ebf5] to-[#9aa5bd] text-[#2b3245]",
   },
   {
     place: 1,
-    height: 122,
-    numeral: "text-[88px]",
-    tone: "bg-linear-to-b from-[#ffe58a] via-[#ffb73a] to-[#f0841c] text-[#1d1a16]",
+    height: 186,
+    numeral: "text-[50px]",
+    top: "bg-[#fff3c2]",
+    tone: "bg-linear-to-b from-[#ffd65c] via-[#ffad33] to-[#e9781a] text-[#1d1a16]",
   },
   {
     place: 3,
-    height: 64,
-    numeral: "text-[52px]",
-    tone: "bg-linear-to-b from-[#ffd9bc] to-[#d97f4a] text-[#4a2410]",
+    height: 128,
+    numeral: "text-[32px]",
+    top: "bg-[#ffe9d8]",
+    tone: "bg-linear-to-b from-[#ffcaa3] to-[#c86d3a] text-[#4a2410]",
   },
 ];
 
@@ -112,17 +98,13 @@ const SPRING = { type: "spring", stiffness: 260, damping: 22 } as const;
 function Podium({ rows }: { rows: Row[] }) {
   const { data, me } = useData();
   return (
-    <div className="relative isolate overflow-hidden rounded-[28px] bg-surface px-3 pt-5 shadow-[var(--shadow-pop)]">
+    <div className="relative isolate -mx-5 overflow-hidden px-4 pt-2">
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[-70%] -z-10 aspect-square w-[150%] -translate-x-1/2 animate-[spin_40s_linear_infinite] rounded-full bg-[repeating-conic-gradient(rgb(255_197_49/0.22)_0deg_7deg,transparent_7deg_22deg)] [mask-image:radial-gradient(closest-side,#000_20%,transparent)] motion-reduce:animate-none"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_38%_44%_at_50%_48%,rgb(255_197_49/0.5),transparent),radial-gradient(ellipse_50%_14%_at_50%_86%,rgb(255_197_49/0.3),transparent)]"
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-56 w-56 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(255_197_49/0.5),transparent)]"
-      />
-      <div className="grid grid-cols-3 items-end gap-1.5">
-        {STEPS.map(({ place, height, numeral, tone }, i) => {
+      <div className="grid grid-cols-3 items-end [mask-image:linear-gradient(to_bottom,#000_calc(100%-44px),transparent)]">
+        {STEPS.map(({ place, height, numeral, top, tone }, i) => {
           const row = rows[place - 1];
           if (!row) return <div key={place} />;
           const p = data.players.find((x) => x.id === row.playerId);
@@ -133,10 +115,13 @@ function Podium({ rows }: { rows: Row[] }) {
             <Link
               key={place}
               href={mine ? "/profilo" : playerHref(row.playerId)}
-              className="press flex min-w-0 flex-col items-center"
+              className={clsx(
+                "press relative flex min-w-0 flex-col items-center",
+                first && "z-10",
+              )}
             >
               <motion.div
-                className="flex flex-col items-center"
+                className="relative z-10 -mb-2 flex flex-col items-center"
                 initial={{ opacity: 0, y: -28 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ ...SPRING, delay: 0.3 + i * 0.08 }}
@@ -156,65 +141,79 @@ function Podium({ rows }: { rows: Row[] }) {
                     id={characterOf(p)}
                     outfit={p.outfit}
                     number={p.jerseyNumber}
-                    height={first ? 96 : 74}
+                    height={first ? 104 : 80}
                     title={name}
                   />
                 )}
+                <span className="absolute -bottom-0.5 left-1/2 -z-10 h-3 w-16 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(29_26_22/0.4),transparent)]" />
               </motion.div>
-              <p
-                className={clsx(
-                  "mt-1.5 w-full truncate text-center font-semibold leading-tight",
-                  first ? "text-[15px]" : "text-[13px]",
-                )}
-              >
-                {mine ? "Tu" : name}
-              </p>
-              <span
-                className={clsx(
-                  "num mt-1 rounded-full px-2.5 py-0.5 leading-tight",
-                  first
-                    ? "bg-[#1d1a16] text-[18px] text-volt"
-                    : "bg-text/90 text-[15px] text-bg",
-                )}
-              >
-                {row.value}
-              </span>
               <motion.div
                 className={clsx(
-                  "relative mt-2 w-full overflow-hidden rounded-t-[18px]",
-                  tone,
+                  "flex w-full flex-col",
+                  first && "drop-shadow-[0_0_18px_rgb(29_26_22/0.22)]",
                 )}
                 style={{ height, transformOrigin: "bottom" }}
                 initial={{ scaleY: 0 }}
                 animate={{ scaleY: 1 }}
                 transition={{ ...SPRING, delay: i * 0.06 }}
               >
-                <span className="absolute inset-x-0 top-0 h-2.5 bg-white/45" />
                 <span
                   className={clsx(
-                    "display absolute inset-x-0 -bottom-[0.18em] text-center leading-none text-white/55",
-                    numeral,
+                    "h-3 shrink-0 [clip-path:polygon(7%_0,93%_0,100%_100%,0_100%)]",
+                    top,
+                  )}
+                />
+                <div
+                  className={clsx(
+                    "relative flex flex-1 flex-col items-center overflow-hidden px-1 pt-1.5",
+                    tone,
                   )}
                 >
-                  {place}
-                </span>
-                {row.value === "—" && row.sub && (
-                  <span className="absolute inset-x-1 top-4 text-center text-[10.5px] font-semibold leading-tight opacity-75">
-                    {row.sub}
+                  <span
+                    className={clsx(
+                      "display leading-none opacity-80 [text-shadow:0_1px_0_rgb(255_255_255/0.6)]",
+                      numeral,
+                    )}
+                  >
+                    {place}
                   </span>
-                )}
-                {first && (
-                  <motion.span
-                    className="absolute inset-y-0 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/60 to-transparent"
-                    initial={{ x: "-120%" }}
-                    animate={{ x: "320%" }}
-                    transition={{
-                      delay: 0.7,
-                      duration: 1.1,
-                      ease: "easeInOut",
-                    }}
-                  />
-                )}
+                  <p
+                    className={clsx(
+                      "mt-1 w-full truncate text-center font-semibold leading-tight",
+                      first ? "text-[14.5px]" : "text-[12.5px]",
+                    )}
+                  >
+                    {mine ? "Tu" : name}
+                  </p>
+                  {row.value === "—" && row.sub ? (
+                    <span className="mt-1 text-center text-[10.5px] font-semibold leading-tight opacity-75">
+                      {row.sub}
+                    </span>
+                  ) : (
+                    <span
+                      className={clsx(
+                        "num mt-1 rounded-full bg-[#1d1a16]/85 px-2.5 py-0.5 leading-tight",
+                        first
+                          ? "text-[18px] text-volt"
+                          : "text-[14.5px] text-white",
+                      )}
+                    >
+                      {row.value}
+                    </span>
+                  )}
+                  {first && (
+                    <motion.span
+                      className="absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/50 to-transparent"
+                      initial={{ x: "-120%" }}
+                      animate={{ x: "320%" }}
+                      transition={{
+                        delay: 0.7,
+                        duration: 1.1,
+                        ease: "easeInOut",
+                      }}
+                    />
+                  )}
+                </div>
               </motion.div>
             </Link>
           );
@@ -337,15 +336,13 @@ export function RankingScreen() {
     [data.matches, period],
   );
 
-  const { rows, pending, loose, minGames } = useMemo<{
+  const { rows, pending, loose } = useMemo<{
     rows: Row[];
     pending: Pending[];
     /** Chi ha tirato troppo poco per una percentuale (es. 1 su 1 = 100%): a parte, senza posizione. */
     loose: Row[];
-    minGames: number | null;
   }>(() => {
-    if (board === "squadre")
-      return { rows: [], pending: [], loose: [], minGames: null };
+    if (board === "squadre") return { rows: [], pending: [], loose: [] };
     if (board === "mvp") {
       const ranked = mvpRanking(ids, data.matches, period, format, {
         elo: engine.elo,
@@ -370,7 +367,6 @@ export function RankingScreen() {
           .sort((a, b) => b.n - a.n)
           .map((g) => ({ playerId: g.id, value: "", missing: need - g.n })),
         loose: [],
-        minGames: need,
       };
     }
     const stat = STAT_BY_KEY.get(board)!;
@@ -409,7 +405,6 @@ export function RankingScreen() {
         value: fmt(r.value),
         missing: r.missing,
       })),
-      minGames: lb.minGames,
     };
   }, [
     board,
@@ -423,7 +418,6 @@ export function RankingScreen() {
     range?.end,
   ]);
 
-  const info = boardInfo(board, minGames);
   // Il podio non resta mai mezzo vuoto: se in classifica sono meno di tre, salgono anche
   // quelli fuori classifica (senza valore, con quante partite mancano).
   const fill = pending.slice(0, Math.max(0, 3 - rows.length));
@@ -499,9 +493,6 @@ export function RankingScreen() {
     <>
       <h1 className="sr-only">Classifica</h1>
       <div className="safe-top flex shrink-0 flex-col gap-3 px-5 pb-3 pt-5">
-        <div data-tour="rank-boards">
-          <Chips value={board} onChange={setBoard} options={BOARDS} scroll />
-        </div>
         <div data-tour="rank-period">
           <PeriodPicker
             value={period}
@@ -509,6 +500,9 @@ export function RankingScreen() {
             format={format}
             onFormat={board === "squadre" ? undefined : setFormat}
           />
+        </div>
+        <div data-tour="rank-boards">
+          <Chips value={board} onChange={setBoard} options={BOARDS} scroll />
         </div>
       </div>
 
@@ -531,18 +525,8 @@ export function RankingScreen() {
               )}
             </div>
 
-            <div className="mb-2 mt-5 flex items-center justify-between px-1">
-              <h2 className={LABEL}>{BOARD_LABEL.get(board)}</h2>
-              <InfoTip label="Come funziona questa classifica" size={15}>
-                {board === "mvp" ? (
-                  <MvpMonthInfo minGames={minGames ?? 3} />
-                ) : (
-                  info
-                )}
-              </InfoTip>
-            </div>
             {rest.length > 0 && (
-              <ol className="overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]">
+              <ol className="mt-5 overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]">
                 {rest.map((r, i) => {
                   const p = data.players.find((x) => x.id === r.playerId);
                   const mine = r.playerId === me?.id;
