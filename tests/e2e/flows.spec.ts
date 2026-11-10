@@ -1244,7 +1244,7 @@ test("statistiche avanzate: mappa di tiro da toccare", async ({ page }) => {
     "aria-pressed",
     "true",
   );
-  await page.getByRole("tab", { name: "Record" }).click();
+  await page.getByRole("button", { name: "Record", exact: true }).click();
   await expect(
     page.locator(".tab-enter-right").getByText("Stoppate", { exact: true }),
   ).toBeVisible();

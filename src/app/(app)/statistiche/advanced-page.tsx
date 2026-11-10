@@ -6,11 +6,11 @@ import { useMemo, useState, type ReactNode } from "react";
 import { defaultPeriod } from "@/components/period-picker";
 import { ShotChart, TIER_TINT, ZONE_NAME } from "@/components/stats/shot-chart";
 import {
+  Chips,
   EmptyState,
   fmt,
   pct,
   ScreenHeader,
-  Segmented,
   signed,
 } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
@@ -73,29 +73,44 @@ function Tile({
   sub?: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center rounded-[16px] bg-raised px-1 py-2 text-center">
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate text-[12px] font-semibold text-muted">
+        {label}
+      </span>
       <span
-        // I nomi (chi ti passa la palla) sono più lunghi dei numeri: più piccoli, e mai tagliati in altezza.
         className={clsx(
-          "num block max-w-full whitespace-nowrap",
+          "num mt-1 block max-w-full truncate whitespace-nowrap",
           typeof value === "string" && value.length > 6
-            ? "truncate text-[14px] leading-[1.6]"
-            : "text-[19px] leading-none",
+            ? "text-[16px] leading-[1.5]"
+            : "text-[24px] leading-none",
         )}
       >
         {value}
       </span>
-      <span className="mt-1 text-[11.5px] font-bold leading-tight">
-        {label}
-      </span>
       {sub && (
-        <span className="mt-0.5 truncate text-[10.5px] leading-tight text-muted">
-          {sub}
-        </span>
+        <span className="mt-1 truncate text-[11px] text-faint">{sub}</span>
       )}
     </div>
   );
 }
+
+const LABEL =
+  "flex items-center gap-1.5 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
+const CARD = "rounded-[22px] bg-surface shadow-[var(--shadow)]";
+
+const PERIODS: { value: PeriodKind; label: string }[] = [
+  { value: "month", label: "Questo mese" },
+  { value: "season", label: "Stagione" },
+  { value: "all", label: "Sempre" },
+];
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "tiro", label: "Tiro" },
+  { value: "gioco", label: "Gioco" },
+  { value: "impatto", label: "Impatto" },
+  { value: "record", label: "Record" },
+];
 
 const GLOSSARY: Record<Tab, ReactNode> = {
   tiro: (
@@ -272,18 +287,10 @@ export function AdvancedPage() {
         subtitle={self ? "Mappa di tiro e numeri avanzati" : name(id)}
         back={() => router.back()}
       />
-      <main className="scroll-area flex min-h-0 flex-1 flex-col gap-2.5 px-5 pb-4">
-        <Segmented<PeriodKind>
-          className="shrink-0"
-          size="sm"
-          value={kind}
-          onChange={setKind}
-          options={[
-            { value: "month", label: "Questo mese" },
-            { value: "season", label: "Stagione" },
-            { value: "all", label: "Sempre" },
-          ]}
-        />
+      <main className="scroll-area flex min-h-0 flex-1 flex-col gap-5 px-5 pb-6 pt-1">
+        <div className="shrink-0">
+          <Chips value={kind} onChange={setKind} options={PERIODS} scroll />
+        </div>
 
         {!has ? (
           <EmptyState
@@ -292,14 +299,11 @@ export function AdvancedPage() {
           />
         ) : (
           <>
-            <section
-              className="card shrink-0 overflow-hidden p-0"
-              data-tour="stats-court"
-            >
-              <div className="flex items-center justify-between px-3.5 pt-2.5">
-                <h2 className="title flex items-center gap-1.5 text-[15px]">
+            <section className="shrink-0" data-tour="stats-court">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className={LABEL}>
                   Mappa di tiro
-                  <InfoTip label="Come si legge la mappa" size={15}>
+                  <InfoTip label="Come si legge la mappa" size={14}>
                     Tocca una zona del campo: si illumina e sotto vedi come tiri
                     da lì. Il numero è la percentuale: verde dal 50%, giallo dal
                     20%, rosso sotto. Il colore della zona illuminata è il
@@ -308,77 +312,77 @@ export function AdvancedPage() {
                     tiri
                   </InfoTip>
                 </h2>
-                <span className="text-[11.5px] font-semibold text-muted">
+                <span className="px-1 text-[11.5px] font-semibold text-faint">
                   Tocca una zona
                 </span>
               </div>
-              {/* Sui telefoni bassi il campo è un po' più piccolo, così resta tutto in vista. */}
-              <div className="mx-auto w-full px-2 pt-1 short:max-w-[250px]">
-                <ShotChart zones={zones} selected={zone} onSelect={setZone} />
-              </div>
-              {/* La zona scelta, in una riga: livello, quanti tiri e il confronto col gruppo. */}
-              <div
-                className="flex items-center gap-3 border-t border-line px-3.5 py-2.5"
-                aria-live="polite"
-              >
-                <span
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-line-strong text-[11px] font-bold"
-                  style={{
-                    background: tier ? `${TIER_TINT[tier]}40` : undefined,
-                  }}
-                  aria-hidden
+              <div className={clsx(CARD, "overflow-hidden")}>
+                <div className="mx-auto w-full px-3 pt-3 short:max-w-[250px]">
+                  <ShotChart zones={zones} selected={zone} onSelect={setZone} />
+                </div>
+                <div
+                  className="flex items-center gap-3.5 border-t border-line px-4 py-3.5"
+                  aria-live="polite"
                 >
                   <span
-                    className={clsx("num text-[15px]", TONE_TEXT[pctTone(zp)])}
+                    className="grid h-14 w-14 shrink-0 place-items-center rounded-[18px] bg-raised"
+                    style={{
+                      background: tier ? `${TIER_TINT[tier]}40` : undefined,
+                    }}
+                    aria-hidden
                   >
-                    {zp === null ? "—" : Math.round(zp * 100)}
+                    <span
+                      className={clsx(
+                        "num text-[22px] leading-none",
+                        TONE_TEXT[pctTone(zp)],
+                      )}
+                    >
+                      {zp === null ? "—" : Math.round(zp * 100)}
+                      {zp !== null && <span className="text-[12px]">%</span>}
+                    </span>
                   </span>
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14.5px] font-bold leading-tight">
-                    {ZONE_NAME[zone]} ·{" "}
-                    <span className="text-muted">{TIER_LABEL[tier]}</span>
-                  </p>
-                  <p className="truncate text-[12.5px] text-muted">
-                    {z.att ? `${z.made} su ${z.att}` : "Nessun tiro da qui"}
-                    {share !== null && z.att
-                      ? ` · ${Math.round(share * 100)}% dei tuoi tiri`
-                      : ""}
-                    {gp !== null ? ` · gruppo ${Math.round(gp * 100)}%` : ""}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-semibold leading-tight">
+                      {ZONE_NAME[zone]} ·{" "}
+                      <span className="text-muted">{TIER_LABEL[tier]}</span>
+                    </p>
+                    <p className="mt-0.5 truncate text-[12.5px] text-muted">
+                      {z.att ? `${z.made} su ${z.att}` : "Nessun tiro da qui"}
+                      {share !== null && z.att
+                        ? ` · ${Math.round(share * 100)}% dei tuoi tiri`
+                        : ""}
+                      {gp !== null ? ` · gruppo ${Math.round(gp * 100)}%` : ""}
+                    </p>
+                  </div>
                 </div>
+                {zones.unknown2 > 0 && (
+                  <p className="border-t border-line px-4 py-2 text-[11.5px] text-faint">
+                    {zones.unknown2} tiri da 2 senza la zona (partite importate
+                    o dal video): contano nei totali, non nella mappa
+                  </p>
+                )}
               </div>
-              {zones.unknown2 > 0 && (
-                <p className="border-t border-line px-3.5 py-1.5 text-[11.5px] text-muted">
-                  {zones.unknown2} tiri da 2 senza la zona (partite importate o
-                  dal video): contano nei totali, non nella mappa
-                </p>
-              )}
             </section>
 
-            <div className="flex shrink-0 items-center gap-2">
-              <Segmented<Tab>
-                className="flex-1"
-                size="sm"
-                value={tab}
-                onChange={setTab}
-                options={[
-                  { value: "tiro", label: "Tiro" },
-                  { value: "gioco", label: "Gioco" },
-                  { value: "impatto", label: "Impatto" },
-                  { value: "record", label: "Record" },
-                ]}
-              />
-              <InfoTip label="Cosa vogliono dire questi numeri" size={16}>
-                {GLOSSARY[tab]}
-              </InfoTip>
-            </div>
-            <div
-              key={tab}
-              className="tab-enter-right grid shrink-0 grid-cols-3 gap-2"
-            >
-              {tiles[tab]}
-            </div>
+            <section className="flex shrink-0 flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <Chips value={tab} onChange={setTab} options={TABS} scroll />
+                </div>
+                <InfoTip label="Cosa vogliono dire questi numeri" size={16}>
+                  {GLOSSARY[tab]}
+                </InfoTip>
+              </div>
+              <div
+                key={tab}
+                className={clsx(
+                  CARD,
+                  "tab-enter-right grid grid-cols-3 gap-x-4 gap-y-4 px-4 py-4",
+                )}
+              >
+                {tiles[tab]}
+              </div>
+            </section>
           </>
         )}
       </main>
