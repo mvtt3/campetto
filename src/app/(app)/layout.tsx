@@ -297,70 +297,70 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <NavProvider>
       <OutfitsVisible.Provider value={gameAllowed(me)}>
-      <HighlightsProvider>
-        <TutorialProvider me={me}>
-          <div className="mx-auto flex h-dvh max-w-lg flex-col">
-            {playerView.on && (
-              <div
-                className="safe-top flex items-center justify-center gap-2 bg-court px-3 py-1.5 text-[12.5px] font-semibold text-court-ink"
-                role="status"
-              >
-                <IconEye size={14} aria-hidden /> Stai vedendo l&apos;app come gli
-                altri
-                <button
-                  onClick={() => playerView.set(false)}
-                  className="press rounded-full bg-white/20 px-2.5 py-0.5 text-[12.5px] font-bold"
+        <HighlightsProvider>
+          <TutorialProvider me={me}>
+            <div className="mx-auto flex h-dvh max-w-lg flex-col">
+              {playerView.on && (
+                <div
+                  className="safe-top flex items-center justify-center gap-2 bg-court px-3 py-1.5 text-[12.5px] font-semibold text-court-ink"
+                  role="status"
                 >
-                  Esci
-                </button>
-              </div>
-            )}
-            {!online && (
-              <div className="safe-top flex items-center justify-center gap-2 bg-ball px-4 py-1.5 text-[12.5px] font-semibold text-ball-ink">
-                <IconWifiOff size={14} /> Sei offline: ti mostro gli ultimi dati che
-                ho salvato
-              </div>
-            )}
-            <div
-              ref={pager}
-              className={
-                activeTab
-                  ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
-                  : "hidden"
-              }
-            >
-              {TABS.filter((t) => kept.includes(t.path)).map(
-                ({ path: p, Screen }) => (
-                  <div
-                    key={p}
-                    data-tab={p}
-                    // Le schede nascoste restano impaginate (content-visibility): tornarci non ricalcola niente.
-                    className={clsx("tab-page", activeTab !== p && "tab-off")}
+                  <IconEye size={14} aria-hidden /> Stai vedendo l&apos;app come
+                  gli altri
+                  <button
+                    onClick={() => playerView.set(false)}
+                    className="press rounded-full bg-white/20 px-2.5 py-0.5 text-[12.5px] font-bold"
                   >
-                    <Screen />
-                  </div>
-                ),
+                    Esci
+                  </button>
+                </div>
               )}
-            </div>
-            {!activeTab && (
+              {!online && (
+                <div className="safe-top flex items-center justify-center gap-2 bg-ball px-4 py-1.5 text-[12.5px] font-semibold text-ball-ink">
+                  <IconWifiOff size={14} /> Sei offline: ti mostro gli ultimi
+                  dati che ho salvato
+                </div>
+              )}
               <div
-                key={path}
-                className="page-enter flex min-h-0 flex-1 flex-col"
+                ref={pager}
+                className={
+                  activeTab
+                    ? "nav-fade relative flex min-h-0 flex-1 flex-col overflow-hidden"
+                    : "hidden"
+                }
               >
-                {children}
+                {TABS.filter((t) => kept.includes(t.path)).map(
+                  ({ path: p, Screen }) => (
+                    <div
+                      key={p}
+                      data-tab={p}
+                      // Le schede nascoste restano impaginate (content-visibility): tornarci non ricalcola niente.
+                      className={clsx("tab-page", activeTab !== p && "tab-off")}
+                    >
+                      <Screen />
+                    </div>
+                  ),
+                )}
               </div>
-            )}
-            {/* Il proprio profilo visto dagli altri resta sotto "Profilo". */}
-            <BottomNav
-              current={
-                navHint ?? activeTab ?? (selfPreview ? "/profilo" : path)
-              }
-              onTab={tapTab}
-            />
-            <BadgeCelebration />
-          </div>
-        </TutorialProvider>
-      </HighlightsProvider>
+              {!activeTab && (
+                <div
+                  key={path}
+                  className="nav-fade page-enter flex min-h-0 flex-1 flex-col"
+                >
+                  {children}
+                </div>
+              )}
+              {/* Il proprio profilo visto dagli altri resta sotto "Profilo". */}
+              <BottomNav
+                current={
+                  navHint ?? activeTab ?? (selfPreview ? "/profilo" : path)
+                }
+                onTab={tapTab}
+              />
+              <BadgeCelebration />
+            </div>
+          </TutorialProvider>
+        </HighlightsProvider>
       </OutfitsVisible.Provider>
     </NavProvider>
   );
