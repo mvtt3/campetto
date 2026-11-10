@@ -1025,12 +1025,6 @@ test("classifica delle squadre: record per formato, solo vinte e perse", async (
       "true",
     );
   }
-  await page
-    .getByRole("button", { name: "Come funziona la classifica delle squadre" })
-    .click();
-  await expect(page.getByRole("tooltip")).toContainText(
-    "Conta il bilancio tra vinte e perse",
-  );
 });
 
 test("suoni: si spengono e restano spenti", async ({ page }) => {

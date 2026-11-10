@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import { Character, characterOf } from "@/components/character";
 import { AvatarStack } from "@/components/ui/avatar";
 import { CourtLines, EmptyState, Segmented } from "@/components/ui/basics";
-import { InfoTip } from "@/components/ui/info";
 import { useData } from "@/lib/data/provider";
 import {
   TEAM_MIN_GAMES,
@@ -27,8 +26,6 @@ const EMPTY: Record<Format, string> = {
   "3v3": `Nel 3 contro 3 nessun trio ha ancora giocato ${TEAM_MIN_GAMES} partite insieme in questo periodo`,
   "4v4": `Nel 4 contro 4 nessuna squadra ha ancora giocato ${TEAM_MIN_GAMES} partite insieme in questo periodo`,
 };
-
-export const TEAMS_INFO = `Una squadra sono gli stessi giocatori nello stesso formato: con un cambio diventa un'altra. Conta il bilancio tra vinte e perse. In cima chi ha giocato insieme almeno ${TEAM_MIN_GAMES} volte, sotto tutte le altre`;
 
 /** Il formato con più partite nel periodo: è quello che si apre. */
 function busiestFormat(matches: Match[]): Format {
@@ -75,18 +72,13 @@ export function TeamBoard({ matches }: { matches: Match[] }) {
 
   return (
     <div className="relative" data-tour="rank-teams">
-      <div className="mb-3 flex items-center gap-2">
-        <Segmented<Format>
-          className="flex-1"
-          size="sm"
-          value={format}
-          onChange={setFormat}
-          options={FORMATS.map((f) => ({ value: f, label: f }))}
-        />
-        <InfoTip label="Come funziona la classifica delle squadre">
-          {TEAMS_INFO}
-        </InfoTip>
-      </div>
+      <Segmented<Format>
+        className="mb-3"
+        size="sm"
+        value={format}
+        onChange={setFormat}
+        options={FORMATS.map((f) => ({ value: f, label: f }))}
+      />
 
       {!best ? (
         <EmptyState

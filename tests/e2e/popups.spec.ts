@@ -86,17 +86,6 @@ for (const vp of VIEWPORTS) {
       await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
 
-      // Classifica delle squadre e la sua "i"
-      await page.goto("/classifiche");
-      await page.getByRole("button", { name: "Squadre" }).click();
-      await page
-        .getByRole("button", {
-          name: "Come funziona la classifica delle squadre",
-        })
-        .click();
-      await check(page, '[role="tooltip"]', "fumetto squadre");
-      await page.mouse.click(5, vp.height / 2);
-
       // Le feste dopo la partita: risultato e personaggio nuovo.
       await page.evaluate(() => {
         const ms = JSON.parse(localStorage.getItem("campetto:mock:v1")!)
