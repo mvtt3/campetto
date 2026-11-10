@@ -11,7 +11,7 @@ import {
   type Period,
 } from "@/lib/periods";
 import { FORMATS } from "@/lib/types";
-import { haptic, Segmented } from "./ui/basics";
+import { haptic } from "./ui/basics";
 import { Menu } from "./ui/pickers";
 
 export function defaultPeriod(kind: Period["kind"], now = new Date()): Period {
@@ -44,7 +44,6 @@ function isFuture(p: Period, now = new Date()): boolean {
   return false;
 }
 
-/** Mese / stagione / sempre, frecce o swipe per spostarsi, formato come menu compatto. */
 export function PeriodPicker({
   value,
   onChange,
@@ -64,8 +63,10 @@ export function PeriodPicker({
     onChange(n);
   };
   return (
-    <div className="flex flex-col gap-2">
-      <Segmented
+    <div className="flex items-center gap-2">
+      <Menu<Period["kind"]>
+        label="Periodo"
+        align="start"
         value={value.kind}
         onChange={(k) => onChange(defaultPeriod(k))}
         options={[
@@ -76,7 +77,7 @@ export function PeriodPicker({
       />
       <div
         data-no-swipe
-        className="flex h-10 items-center gap-1"
+        className="flex h-9 min-w-0 flex-1 items-center rounded-full bg-surface sticker-sm"
         onTouchStart={(e) => (startX.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
           if (startX.current === null) return;
@@ -91,12 +92,12 @@ export function PeriodPicker({
               aria-label="Periodo precedente"
               onClick={() => go(-1)}
               disabled={isBeforeStart(shift(value, -1))}
-              className="press grid h-10 w-10 place-items-center rounded-full disabled:opacity-25"
+              className="press grid h-9 w-9 shrink-0 place-items-center rounded-full disabled:opacity-25"
             >
-              <IconChevronLeft size={20} />
+              <IconChevronLeft size={17} />
             </button>
             <p
-              className="title min-w-0 flex-1 truncate text-center text-[16px]"
+              className="min-w-0 flex-1 truncate text-center text-[13.5px] font-semibold"
               aria-live="polite"
             >
               {periodLabel(value).replace("Stagione ", "")}
@@ -105,34 +106,33 @@ export function PeriodPicker({
               aria-label="Periodo successivo"
               onClick={() => go(1)}
               disabled={isFuture(shift(value, 1))}
-              className="press grid h-10 w-10 place-items-center rounded-full disabled:opacity-25"
+              className="press grid h-9 w-9 shrink-0 place-items-center rounded-full disabled:opacity-25"
             >
-              <IconChevronRight size={20} />
+              <IconChevronRight size={17} />
             </button>
           </>
         ) : (
-          <p className="title flex-1 pl-2 text-[16px]">Da ottobre 2026</p>
-        )}
-        {onFormat && (
-          <Menu<FormatFilter>
-            label="Formato"
-            className="ml-1"
-            value={format ?? "all"}
-            onChange={onFormat}
-            trigger={
-              <span>{format === "all" || !format ? "Tutti" : format}</span>
-            }
-            options={[
-              { value: "all", label: "Tutti i formati" },
-              ...FORMATS.map((f) => ({
-                value: f as FormatFilter,
-                label: f,
-                hint: `${f[0]} contro ${f[0]}`,
-              })),
-            ]}
-          />
+          <p className="flex-1 text-center text-[13.5px] font-semibold">
+            Da ottobre 2026
+          </p>
         )}
       </div>
+      {onFormat && (
+        <Menu<FormatFilter>
+          label="Formato"
+          value={format ?? "all"}
+          onChange={onFormat}
+          trigger={<span>{format === "all" || !format ? "Tutti" : format}</span>}
+          options={[
+            { value: "all", label: "Tutti i formati" },
+            ...FORMATS.map((f) => ({
+              value: f as FormatFilter,
+              label: f,
+              hint: `${f[0]} contro ${f[0]}`,
+            })),
+          ]}
+        />
+      )}
     </div>
   );
 }

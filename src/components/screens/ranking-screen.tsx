@@ -6,13 +6,14 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconBook,
+  IconChevronRight,
   IconCrown,
 } from "@tabler/icons-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
 import { Avatar } from "@/components/ui/avatar";
-import { Chips, EmptyState, ScreenHeader } from "@/components/ui/basics";
+import { Chips, EmptyState } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
 import { MvpMonthInfo } from "@/components/mvp-info";
 import { GroupStrip } from "@/components/group-strip";
@@ -80,147 +81,78 @@ function missingLabel(missing: number): string {
   return missing === 1 ? "manca 1 partita" : `mancano ${missing} partite`;
 }
 
-const PODIUM = [
-  { place: 2, h: 64, color: "bg-court text-court-ink" },
-  { place: 1, h: 92, color: "bg-volt text-volt-ink" },
-  { place: 3, h: 46, color: "bg-ball text-ball-ink" },
-];
+const BOARD_LABEL = new Map(BOARDS.map((b) => [b.value, b.label]));
 
-function Podium({ rows }: { rows: Row[] }) {
-  const { data } = useData();
+const LABEL =
+  "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
+function Leader({ row, board }: { row: Row; board: Board }) {
+  const { data, me } = useData();
+  const p = data.players.find((x) => x.id === row.playerId);
   return (
-    <div
-      className="mb-2 grid grid-cols-3 items-end gap-2 px-1 pt-2"
-      aria-label="Podio"
+    <Link
+      href={row.playerId === me?.id ? "/profilo" : playerHref(row.playerId)}
+      className="press relative flex min-h-[148px] items-stretch overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#ffd451_0%,#ffb238_55%,#ff8f2b_100%)] p-4 text-[#1d1a16] shadow-[var(--shadow)]"
     >
-      {PODIUM.map(({ place, h, color }, i) => {
-        const r = rows[place - 1];
-        if (!r) return <div key={place} />;
-        const p = data.players.find((x) => x.id === r.playerId);
-        return (
-          <Link
-            key={place}
-            href={playerHref(r.playerId)}
-            className="flex min-w-0 flex-col items-center"
-          >
-            <div className="flex w-full min-w-0 flex-col items-center">
-              {place === 1 && (
-                <IconCrown size={22} className="mb-1 text-gold" aria-hidden />
-              )}
-              {/* Sul podio salgono i personaggi. */}
-              {p && (
-                <Character
-                  id={characterOf(p)}
-                  outfit={p.outfit}
-                  number={p.jerseyNumber}
-                  height={place === 1 ? 82 : 68}
-                  title={shortName(p, data.players)}
-                />
-              )}
-              <p
-                className={clsx(
-                  "title mt-1.5 w-full text-center leading-tight",
-                  shortName(p, data.players).length > 11
-                    ? "line-clamp-3 text-[12.5px] [overflow-wrap:anywhere]"
-                    : "line-clamp-2 break-words text-[14px]",
-                )}
-              >
-                {shortName(p, data.players)}
-              </p>
-              <p className="num text-[20px]">{r.value}</p>
-              {r.value === "—" && r.sub && (
-                <p className="text-[11.5px] font-semibold text-muted">
-                  {r.sub}
-                </p>
-              )}
-            </div>
-            <motion.div
-              className={clsx(
-                "halftone mt-2 grid w-full place-items-start justify-center rounded-t-2xl border-[2.5px] border-b-0 border-edge pt-1.5",
-                color,
-              )}
-              style={{ height: h, transformOrigin: "bottom" }}
-              initial={{ scaleY: 0 }}
-              animate={{ scaleY: 1 }}
-              transition={{
-                type: "spring",
-                stiffness: 220,
-                damping: 22,
-                delay: i * 0.05,
-              }}
-            >
-              <span className="score text-[30px]">{place}</span>
-            </motion.div>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-const MINI = [
-  { place: 1, color: "bg-volt text-volt-ink" },
-  { place: 2, color: "bg-court text-court-ink" },
-  { place: 3, color: "bg-ball text-ball-ink" },
-];
-
-/**
- * Il podio in piccolo: quando scorri l'elenco il podio grande esce di scena e in cima resta
- * questa striscia con i primi tre. Così l'elenco
- * ha quasi tutto lo schermo ma i primi tre restano sempre in vista.
- */
-function MiniPodium({ rows, show }: { rows: Row[]; show: boolean }) {
-  const { data } = useData();
-  return (
-    <div
-      className="pointer-events-none absolute inset-x-5 top-1 z-10"
-      aria-hidden={!show}
-    >
-      <div
-        className={clsx(
-          "grid grid-cols-3 gap-1 rounded-[18px] bg-surface p-1.5 transition-[opacity,transform] duration-200 sticker-sm",
-          show
-            ? "pointer-events-auto translate-y-0 opacity-100"
-            : "-translate-y-2 opacity-0",
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <span className="flex items-center gap-1 self-start rounded-full bg-[#1d1a16] px-2.5 py-1 text-[11.5px] font-bold text-volt">
+          <IconCrown size={13} aria-hidden />
+          1°
+        </span>
+        <p className="display mt-2 truncate text-[26px] leading-tight">
+          {shortName(p, data.players)}
+        </p>
+        <p className="mt-auto flex items-baseline gap-1.5">
+          <span className="num text-[38px] leading-none">{row.value}</span>
+          <span className="text-[12px] font-semibold uppercase tracking-[0.06em] opacity-70">
+            {BOARD_LABEL.get(board)}
+          </span>
+        </p>
+        {row.sub && (
+          <p className="mt-1 truncate text-[12.5px] font-medium opacity-75">
+            {row.sub}
+          </p>
         )}
-      >
-        {MINI.map(({ place, color }) => {
-          const r = rows[place - 1];
-          if (!r) return <span key={place} />;
-          const p = data.players.find((x) => x.id === r.playerId);
-          return (
-            <Link
-              key={place}
-              href={playerHref(r.playerId)}
-              tabIndex={show ? 0 : -1}
-              className="press flex min-w-0 items-center gap-1.5 rounded-[12px] px-1 py-0.5"
-            >
-              <span
-                className={clsx(
-                  "score grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-edge text-[13px]",
-                  color,
-                )}
-              >
-                {place}
-              </span>
-              <span className="min-w-0 leading-none">
-                <span className="block truncate text-[12.5px] font-bold">
-                  {shortName(p, data.players)}
-                </span>
-                <span className="num mt-0.5 block text-[13px]">{r.value}</span>
-              </span>
-            </Link>
-          );
-        })}
       </div>
-    </div>
+      {p && (
+        <div className="pointer-events-none absolute -bottom-2 right-3">
+          <Character
+            id={characterOf(p)}
+            outfit={p.outfit}
+            number={p.jerseyNumber}
+            height={128}
+            title={shortName(p, data.players)}
+          />
+        </div>
+      )}
+    </Link>
   );
 }
 
-/**
- * "Tu": se la tua riga è fuori dallo schermo resta agganciata in fondo all'elenco, con la tua
- * posizione. Un tocco e l'elenco ti porta lì.
- */
+function RunnerUp({ row }: { row: Row }) {
+  const { data, me } = useData();
+  const p = data.players.find((x) => x.id === row.playerId);
+  return (
+    <Link
+      href={row.playerId === me?.id ? "/profilo" : playerHref(row.playerId)}
+      className="card press flex min-w-0 items-center gap-2.5 p-3"
+    >
+      <span className="relative shrink-0">
+        <Avatar player={p} size={40} href={false} ring="none" />
+        <span className="num absolute -bottom-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-text px-1 text-[11px] text-bg">
+          {row.rank}
+        </span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-semibold">
+          {shortName(p, data.players)}
+        </span>
+        <span className="num block text-[20px] leading-tight">{row.value}</span>
+      </span>
+    </Link>
+  );
+}
+
 function MeDock({
   rank,
   value,
@@ -247,27 +179,73 @@ function MeDock({
         aria-hidden={!show}
         aria-label={`La tua posizione${rank ? `: ${rank}°` : ""}, vai alla tua riga`}
         className={clsx(
-          "press absolute inset-x-0 bottom-2 flex items-center gap-3 rounded-[20px] border-[2.5px] border-edge bg-court-soft px-3 py-2 text-left transition-[opacity,transform] duration-200",
+          "press absolute inset-x-0 bottom-2 flex items-center gap-3 rounded-[20px] bg-surface px-3 py-2 text-left shadow-[0_12px_30px_-12px_rgb(29_26_22/0.45)] transition-[opacity,transform] duration-200",
           show
             ? "translate-y-0 opacity-100"
             : "pointer-events-none translate-y-3 opacity-0",
         )}
-        style={{ boxShadow: "3px 3px 0 var(--edge)" }}
       >
-        <span className="num w-7 text-center text-[18px] text-muted">
+        <span className="num w-7 text-center text-[17px] text-muted">
           {rank ?? "–"}
         </span>
-        <Avatar player={me ?? undefined} size={34} href={false} ring="none" />
+        <Avatar player={me ?? undefined} size={32} href={false} ring="none" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold">
+          <span className="block truncate text-[14.5px] font-semibold">
             Tu · {shortName(me ?? undefined, data.players)}
           </span>
           <span className="block truncate text-[12px] text-muted">{sub}</span>
         </span>
-        <span className="num text-[20px]">{value}</span>
-        <Arrow size={18} className="shrink-0 text-court" aria-hidden />
+        <span className="num text-[19px]">{value}</span>
+        <Arrow size={17} className="shrink-0 text-ball" aria-hidden />
       </button>
     </div>
+  );
+}
+
+function SideList({
+  title,
+  tip,
+  rows,
+  myRef,
+}: {
+  title: string;
+  tip: ReactNode;
+  rows: { playerId: string; value: string; note: string }[];
+  myRef?: React.Ref<HTMLLIElement>;
+}) {
+  const { data, me } = useData();
+  return (
+    <section className="mt-5" aria-label={title}>
+      <h3 className={clsx(LABEL, "mb-2 flex items-center gap-1.5 px-1")}>
+        {title}
+        <InfoTip label={`Perché: ${title.toLowerCase()}`} size={14}>
+          {tip}
+        </InfoTip>
+      </h3>
+      <ul className="overflow-hidden rounded-[20px] bg-surface/60">
+        {rows.map((r) => {
+          const p = data.players.find((x) => x.id === r.playerId);
+          return (
+            <li
+              key={r.playerId}
+              ref={r.playerId === me?.id ? myRef : undefined}
+              className="flex items-center gap-3 border-b border-line px-3 py-2 last:border-b-0"
+            >
+              <Avatar player={p} size={28} href={false} ring="none" />
+              <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-muted">
+                {shortName(p, data.players)}
+              </span>
+              {r.value && (
+                <span className="num text-[14px] text-faint">{r.value}</span>
+              )}
+              <span className="shrink-0 text-[12px] font-semibold text-muted">
+                {r.note}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -402,7 +380,6 @@ export function RankingScreen() {
     podiumRef.current?.closest<HTMLElement>(
       "[data-testid='scroll-container']",
     ) ?? null;
-  // Il podio grande esce di scena: compare quello piccolo in cima.
   useEffect(() => {
     const el = podiumRef.current;
     const root = scrollBox();
@@ -445,23 +422,17 @@ export function RankingScreen() {
     el.classList.add("row-flash");
   };
 
+  const runners = podium.slice(1, 3);
+  const listKey = `${board}-${period.kind}-${format}`;
+
   return (
     <>
-      <ScreenHeader
-        title="Classifica"
-        action={
-          <Link
-            href="/classifiche/albo"
-            aria-label="Record e albo d'oro"
-            className="press flex h-11 items-center gap-2 rounded-full bg-surface px-4 text-[14px] font-semibold sticker-sm"
-          >
-            <IconBook size={17} className="text-court" /> Albo
-          </Link>
-        }
-      />
-      <div className="flex shrink-0 flex-col gap-2.5 px-5 pb-2">
+      <h1 className="sr-only">Classifica</h1>
+      <div className="safe-top flex shrink-0 flex-col gap-3 px-5 pb-3 pt-5">
+        <div data-tour="rank-boards">
+          <Chips value={board} onChange={setBoard} options={BOARDS} scroll />
+        </div>
         <div data-tour="rank-period">
-          {/* Per le squadre il formato si sceglie sotto: qui non serve. */}
           <PeriodPicker
             value={period}
             onChange={setPeriod}
@@ -469,186 +440,149 @@ export function RankingScreen() {
             onFormat={board === "squadre" ? undefined : setFormat}
           />
         </div>
-        <div data-tour="rank-boards">
-          <Chips value={board} onChange={setBoard} options={BOARDS} scroll />
-        </div>
       </div>
 
       {board !== "squadre" &&
       (rows.length > 0 || pending.length > 0 || loose.length > 0) ? (
-        <>
-          {/* Il podio grande in cima; scorrendo resta in vista quello piccolo e l'elenco
-              prende quasi tutto lo schermo. */}
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            <MiniPodium
-              rows={podium}
-              show={collapsed && rest.length + restPending.length > 0}
-            />
-            <PullToRefresh
-              className={clsx(
-                "px-5 pb-4 pt-1",
-                // Sotto il podio piccolo le righe sfumano, senza bordi che spuntano.
-                collapsed &&
-                  "[-webkit-mask-image:linear-gradient(to_bottom,transparent_0,transparent_56px,#000_74px)] [mask-image:linear-gradient(to_bottom,transparent_0,transparent_56px,#000_74px)]",
+        <PullToRefresh className="px-5 pb-6 pt-1">
+          <motion.div
+            key={listKey}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            <div ref={podiumRef} data-tour="rank-podium" aria-label="Podio">
+              {podium[0] ? (
+                <Leader row={podium[0]} board={board} />
+              ) : (
+                <p className="px-10 py-6 text-center text-[14px] font-semibold text-muted">
+                  Nessuno ha ancora tirato abbastanza per entrare in classifica
+                </p>
               )}
-            >
-              <div
-                key={`${board}-${period.kind}-${format}`}
-                ref={podiumRef}
-                className="relative"
-                data-tour="rank-podium"
-              >
-                <div className="absolute right-5 top-1 z-10">
-                  <InfoTip label="Come funziona questa classifica">
-                    {board === "mvp" ? (
-                      <MvpMonthInfo minGames={minGames ?? 3} />
-                    ) : (
-                      info
-                    )}
-                  </InfoTip>
+              {runners.length > 0 && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {runners.map((r) => (
+                    <RunnerUp key={r.playerId} row={r} />
+                  ))}
                 </div>
-                {podium.length > 0 ? (
-                  <Podium rows={podium} />
+              )}
+            </div>
+
+            <div className="mb-2 mt-5 flex items-center justify-between px-1">
+              <h2 className={LABEL}>{BOARD_LABEL.get(board)}</h2>
+              <InfoTip label="Come funziona questa classifica" size={15}>
+                {board === "mvp" ? (
+                  <MvpMonthInfo minGames={minGames ?? 3} />
                 ) : (
-                  <p className="px-10 pb-1 pt-3 text-center text-[14.5px] font-semibold text-muted">
-                    Nessuno ha ancora tirato abbastanza per entrare in classifica
-                  </p>
+                  info
                 )}
-              </div>
-              <ol className="flex flex-col gap-2">
-                {rest.map((r) => {
+              </InfoTip>
+            </div>
+            {rest.length > 0 && (
+              <ol className="overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]">
+                {rest.map((r, i) => {
                   const p = data.players.find((x) => x.id === r.playerId);
                   const mine = r.playerId === me?.id;
                   return (
-                    <li
+                    <motion.li
                       key={r.playerId}
                       ref={mine ? myRowRef : undefined}
-                      className="rounded-[20px]"
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: Math.min(i, 10) * 0.025, duration: 0.2 }}
+                      className="border-b border-line last:border-b-0"
                     >
                       <Link
                         href={mine ? "/profilo" : playerHref(r.playerId)}
                         className={clsx(
-                          "press card flex items-center gap-3 px-3 py-2",
-                          mine && "!bg-court-soft",
+                          "press flex items-center gap-3 px-3 py-2.5",
+                          mine && "bg-ball-soft",
                         )}
                       >
-                        <span className="num w-6 text-center text-[18px] text-muted">
+                        <span className="num w-6 text-center text-[15px] text-muted">
                           {r.rank}
                         </span>
-                        <Avatar player={p} size={36} href={false} />
+                        <Avatar player={p} size={34} href={false} ring="none" />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[15px] font-semibold">
-                            {shortName(p, data.players)}
+                          <p className="truncate text-[14.5px] font-semibold">
+                            {mine ? "Tu" : shortName(p, data.players)}
                           </p>
                           {r.sub && (
-                            <p className="truncate text-[12.5px] text-muted">
+                            <p className="truncate text-[12px] text-muted">
                               {r.sub}
                             </p>
                           )}
                         </div>
-                        <span className="num text-[22px]">{r.value}</span>
+                        <span className="num text-[19px]">{r.value}</span>
                       </Link>
-                    </li>
+                    </motion.li>
                   );
                 })}
               </ol>
-              {loose.length > 0 && (
-                <section className="mt-5" aria-label="Ancora pochi tiri" data-testid="few-shots">
-                  <h3 className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-bold text-muted">
-                    Ancora pochi tiri
-                    <InfoTip label="Perché non sono in classifica" size={16}>
-                      {(board !== "mvp" && STAT_BY_KEY.get(board)?.note) || "Servono più tiri"}: con 1
-                      tiro su 1 si è al 100%, ma è ancora presto per dirlo. Entrano
-                      in classifica appena ci arrivano
-                    </InfoTip>
-                  </h3>
-                  <ul className="flex flex-col gap-1.5">
-                    {loose.map((r) => {
-                      const p = data.players.find((x) => x.id === r.playerId);
-                      return (
-                        <li
-                          key={r.playerId}
-                          className="flex items-center gap-3 rounded-[18px] border-2 border-dashed border-line-strong px-3 py-2 opacity-80"
-                        >
-                          <Avatar player={p} size={30} href={false} ring="none" />
-                          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
-                            {shortName(p, data.players)}
-                          </span>
-                          <span className="shrink-0 text-[12.5px] font-semibold text-muted">
-                            <span className="num mr-2 text-[15px] text-faint">
-                              {r.value}
-                            </span>
-                            {r.sub}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              )}
-              {restPending.length > 0 && (
-                <section className="mt-5" aria-label="Fuori classifica">
-                  <h3 className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-bold text-muted">
-                    Fuori classifica
-                    <InfoTip label="Perché sono fuori classifica" size={16}>
-                      Hanno giocato meno partite del minimo: entrano in
-                      classifica appena lo raggiungono
-                    </InfoTip>
-                  </h3>
-                  <ul className="flex flex-col gap-1.5">
-                    {restPending.map((r) => {
-                      const p = data.players.find((x) => x.id === r.playerId);
-                      return (
-                        <li
-                          key={r.playerId}
-                          ref={r.playerId === me?.id ? myRowRef : undefined}
-                          className="flex items-center gap-3 rounded-[18px] border-2 border-dashed border-line-strong px-3 py-2 opacity-80"
-                        >
-                          <Avatar
-                            player={p}
-                            size={30}
-                            href={false}
-                            ring="none"
-                          />
-                          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
-                            {shortName(p, data.players)}
-                          </span>
-                          <span className="shrink-0 text-[12.5px] font-semibold text-muted">
-                            {r.value && (
-                              <span className="num mr-2 text-[15px] text-faint">
-                                {r.value}
-                              </span>
-                            )}
-                            {missingLabel(r.missing)}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              )}
-              {(myRest || myPending) && (
-                <>
-                  <div className="h-16" aria-hidden />
-                  <MeDock
-                    rank={myRest?.rank ?? null}
-                    value={myRest?.value ?? (myPending?.value || "—")}
-                    sub={
-                      myRest
-                        ? (myRest.sub ?? "La tua posizione")
-                        : `Fuori classifica · ${missingLabel(myPending!.missing)}`
-                    }
-                    show={!mineInView && collapsed}
-                    above={mineAbove}
-                    onGo={goToMe}
-                  />
-                </>
-              )}
-            </PullToRefresh>
-          </div>
-        </>
+            )}
+            {loose.length > 0 && (
+              <div data-testid="few-shots">
+                <SideList
+                  title="Ancora pochi tiri"
+                  tip={`${(board !== "mvp" && STAT_BY_KEY.get(board)?.note) || "Servono più tiri"}: con 1 tiro su 1 si è al 100%, ma è ancora presto per dirlo. Entrano in classifica appena ci arrivano`}
+                  rows={loose.map((r) => ({
+                    playerId: r.playerId,
+                    value: r.value,
+                    note: r.sub ?? "",
+                  }))}
+                />
+              </div>
+            )}
+            {restPending.length > 0 && (
+              <SideList
+                title="Fuori classifica"
+                tip="Hanno giocato meno partite del minimo: entrano in classifica appena lo raggiungono"
+                rows={restPending.map((r) => ({
+                  playerId: r.playerId,
+                  value: r.value,
+                  note: missingLabel(r.missing),
+                }))}
+                myRef={myRowRef}
+              />
+            )}
+            <Link
+              href="/classifiche/albo"
+              className="card press mt-5 flex items-center gap-3 p-3"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-volt/30 text-volt-ink">
+                <IconBook size={19} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14.5px] font-semibold">
+                  Record e albo d&apos;oro
+                </span>
+                <span className="block text-[12.5px] text-muted">
+                  I migliori di sempre, mese per mese
+                </span>
+              </span>
+              <IconChevronRight size={19} className="shrink-0 text-faint" aria-hidden />
+            </Link>
+          </motion.div>
+          {(myRest || myPending) && (
+            <>
+              <div className="h-16" aria-hidden />
+              <MeDock
+                rank={myRest?.rank ?? null}
+                value={myRest?.value ?? (myPending?.value || "—")}
+                sub={
+                  myRest
+                    ? (myRest.sub ?? "La tua posizione")
+                    : `Fuori classifica · ${missingLabel(myPending!.missing)}`
+                }
+                show={!mineInView && collapsed}
+                above={mineAbove}
+                onGo={goToMe}
+              />
+            </>
+          )}
+        </PullToRefresh>
       ) : (
-        <PullToRefresh className="px-5 pb-4 pt-2">
+        <PullToRefresh className="px-5 pb-4 pt-1">
           {board === "squadre" ? (
             <TeamBoard matches={teamScope} />
           ) : (

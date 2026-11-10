@@ -264,11 +264,11 @@ export function Chips<T extends string>({
             });
           }}
           className={clsx(
-            "press h-9 shrink-0 rounded-full text-[13.5px] font-bold transition-colors duration-300",
+            "press h-9 shrink-0 rounded-full text-[13.5px] font-semibold transition-colors duration-200",
             scroll ? "snap-start px-4" : "basis-[calc((100%-1.5rem)/4)] px-1",
             o.value === shown
-              ? "sticker-sm bg-volt text-volt-ink"
-              : "sticker-sm bg-surface text-muted",
+              ? "bg-text text-bg"
+              : "bg-surface text-muted sticker-sm",
           )}
         >
           {o.label}

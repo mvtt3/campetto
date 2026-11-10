@@ -150,14 +150,14 @@ export function Menu<T extends string>({
               ref={list}
               role="listbox"
               aria-label={label}
-              className="menu-pop fixed min-w-[176px] max-w-[min(92vw,320px)] overflow-hidden rounded-[20px] border-[2.5px] border-edge bg-surface p-1.5"
+              className="menu-pop fixed min-w-[176px] max-w-[min(92vw,320px)] overflow-hidden rounded-[20px] bg-surface p-1.5"
               style={{
                 top: pos.top,
                 bottom: pos.bottom,
                 left: pos.left,
                 right: pos.right,
                 transformOrigin: pos.origin,
-                boxShadow: "4px 4px 0 var(--edge)",
+                boxShadow: "0 16px 40px -14px rgb(29 26 22 / 0.4)",
               }}
             >
               <div className="max-h-[min(60vh,360px)] overflow-y-auto overscroll-contain">
