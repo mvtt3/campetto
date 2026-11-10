@@ -27,10 +27,10 @@ export function Sheet({
       repositionInputs={false}
     >
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-40 bg-[#1d1a16]/50" />
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-[#1d1a16]/45" />
         <Drawer.Content
           // Un livello solo che si sposta col dito: niente ridisegni del contenuto durante il trascinamento.
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-lg flex-col rounded-t-[28px] bg-surface shadow-[0_-12px_40px_-12px_rgb(29_26_22/0.35)] outline-none will-change-transform [backface-visibility:hidden] [contain:layout_paint]"
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-lg flex-col rounded-t-[28px] bg-bg shadow-[0_-12px_40px_-12px_rgb(29_26_22/0.35)] outline-none will-change-transform [backface-visibility:hidden] [contain:layout_paint]"
           aria-describedby={undefined}
           // Le schede aperte sopra al pannello (es. il personaggio) non lo chiudono.
           onInteractOutside={(e) => {
@@ -44,12 +44,12 @@ export function Sheet({
           <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line-strong" />
           <Drawer.Close
             aria-label="Chiudi"
-            className="press absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-raised text-muted"
+            className="press absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-surface text-muted shadow-[var(--shadow)]"
           >
             <IconX size={17} strokeWidth={2.4} />
           </Drawer.Close>
           <div className="shrink-0 px-14 pb-3 pt-3 text-center">
-            <Drawer.Title className="display text-[21px]">{title}</Drawer.Title>
+            <Drawer.Title className="title text-[19px]">{title}</Drawer.Title>
             {description && (
               <Drawer.Description className="mx-auto mt-0.5 max-w-[34ch] text-[13px] text-muted">
                 {description}

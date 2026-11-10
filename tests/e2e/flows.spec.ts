@@ -1193,7 +1193,7 @@ test("dal profilo, il personaggio apre la collezione", async ({ page }) => {
   await expect(page).toHaveURL(/\/profilo\/impostazioni$/);
   const sheet = page.getByRole("dialog", { name: "Il tuo personaggio" });
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByText(/Collezione \d+ di \d+/)).toBeVisible();
+  await expect(sheet.getByText("Collezione", { exact: true })).toBeVisible();
   // Chiusa la collezione si resta nelle impostazioni.
   await page.keyboard.press("Escape");
   await expect(

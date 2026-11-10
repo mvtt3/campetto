@@ -604,16 +604,6 @@ export default function SettingsPage() {
           <IconLogout size={18} aria-hidden />
           Esci
         </button>
-
-        <p className="mt-4 text-center text-[12.5px] text-faint">
-          <Link href="/privacy" className="underline">
-            Privacy
-          </Link>{" "}
-          e{" "}
-          <Link href="/termini" className="underline">
-            termini
-          </Link>
-        </p>
       </main>
       <Sheet
         open={guide}

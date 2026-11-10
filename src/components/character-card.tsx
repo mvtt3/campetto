@@ -334,7 +334,7 @@ function StepBar({ step }: { step: GoalStep }) {
           {step.have}/{step.need}
         </p>
       </div>
-      <div className="mt-1 h-2.5 overflow-hidden rounded-full border-2 border-edge bg-surface">
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-surface">
         <div
           className={clsx(
             "h-full rounded-full transition-[width] duration-700",
@@ -407,45 +407,30 @@ export function CharacterCard({
       />
       <div
         className={clsx(
-          "relative w-full max-w-[340px] select-none overflow-hidden rounded-[30px] border-[2.5px] border-edge bg-surface text-center",
+          "relative w-full max-w-[340px] select-none overflow-hidden rounded-[28px] bg-surface text-center",
           leaving ? "char-card-out" : "char-card-in",
         )}
         style={{
           boxShadow:
             rarity === "base"
-              ? "6px 6px 0 var(--edge)"
-              : `0 0 0 3px ${RARITY[rarity].ring}, 7px 7px 0 var(--edge)`,
+              ? "var(--shadow-pop)"
+              : `0 0 0 3px ${RARITY[rarity].ring}, var(--shadow-pop)`,
         }}
       >
         <div
-          className={clsx(
-            "halftone relative px-4 pb-2 pt-4",
-            shiny && "rarity-shine",
-          )}
+          className={clsx("relative px-4 pb-3 pt-4", shiny && "rarity-shine")}
           style={{ background: p.bg }}
         >
           <button
             onClick={onClose}
             aria-label="Chiudi"
-            className="press absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border-2 border-edge bg-surface text-text"
+            className="press absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/25 text-white"
           >
             <IconX size={18} />
           </button>
-          <span
-            className="absolute left-3 top-3 z-10 rounded-full border-2 border-[#1d1a16] px-2.5 py-0.5 text-[11.5px] font-bold text-[#1d1a16]"
-            style={{
-              background:
-                rarity === "base"
-                  ? "#fffaf0"
-                  : rarity === "epica" ||
-                      rarity === "mitica" ||
-                      rarity === "rara"
-                    ? "#fffaf0"
-                    : RARITY[rarity].ring,
-            }}
-          >
+          <span className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1d1a16]">
             <span
-              className="mr-1 inline-block h-2 w-2 rounded-full border border-[#1d1a16] align-[1px]"
+              className="h-2 w-2 rounded-full"
               style={{ background: RARITY[rarity].ring }}
               aria-hidden
             />
@@ -462,16 +447,20 @@ export function CharacterCard({
             />
           </div>
           {!prog.unlocked && (
-            <span className="pointer-events-none absolute left-1/2 top-[46%] grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[2.5px] border-edge bg-surface text-text">
+            <span className="pointer-events-none absolute left-1/2 top-[46%] grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-surface text-text shadow-[var(--shadow-pop)]">
               <IconLock size={24} />
             </span>
           )}
           <p className="mt-1 flex items-center justify-center gap-1 text-[11.5px] font-semibold text-[#fffaf0]/90 [text-shadow:0_1px_0_rgb(0_0_0/0.35)]">
-            <IconRotateClockwise size={12} aria-hidden /> Trascina o tocca per girarlo
+            <IconRotateClockwise size={12} aria-hidden /> Trascina o tocca per
+            girarlo
           </p>
         </div>
         <div className="px-5 pb-5 pt-4">
-          <h2 id="char-title" className="display text-[28px] leading-[1.1]">
+          <h2
+            id="char-title"
+            className="display text-[28px] uppercase leading-[1.1]"
+          >
             {p.name}
           </h2>
           <p className="mt-1 text-[14px] text-muted">
@@ -480,7 +469,7 @@ export function CharacterCard({
 
           {rarity !== "base" && (
             <div className="mt-4 rounded-[18px] bg-raised px-4 py-3">
-              <p className="text-[12px] font-semibold text-muted">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
                 {prog.unlocked
                   ? "Sbloccato con"
                   : prog.steps.length > 1
@@ -505,11 +494,11 @@ export function CharacterCard({
           <div className="mt-4">
             {prog.unlocked ? (
               current ? (
-                <p className="flex h-12 items-center justify-center gap-2 text-[15px] font-bold text-ok">
+                <p className="flex h-12 items-center justify-center gap-2 rounded-full bg-ball-soft text-[15px] font-bold text-ball">
                   <IconCheck size={18} strokeWidth={3} /> È il tuo personaggio
                 </p>
               ) : (
-                <Button variant="court" block onClick={() => onUse?.(shown)}>
+                <Button variant="primary" block onClick={() => onUse?.(shown)}>
                   Usa {p.name}
                 </Button>
               )
@@ -525,6 +514,10 @@ export function CharacterCard({
     document.body,
   );
 }
+
+const CARD = "rounded-[22px] bg-surface p-4 shadow-[var(--shadow)]";
+
+const LABEL = "text-[11px] font-bold uppercase tracking-[0.12em] text-muted";
 
 /** Tutti i personaggi, divisi per rarità, con il prossimo da sbloccare in cima. */
 export function CharacterGrid({
@@ -575,14 +568,47 @@ export function CharacterGrid({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <div className="text-center">
-          <p className="text-[13px] font-bold text-muted">
-            Collezione <span className="tnum text-text">{open}</span> di{" "}
-            <span className="tnum">{total}</span>
-          </p>
-          <div className="mx-auto mt-1.5 h-2.5 max-w-[240px] overflow-hidden rounded-full border-2 border-edge bg-surface">
+        <div className={CARD}>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className={LABEL}>Collezione</p>
+              <p className="num mt-1 leading-none">
+                <span className="text-[40px] text-ball">{open}</span>
+                <span className="text-[18px] text-faint"> / {total}</span>
+              </p>
+            </div>
+            <div className="flex gap-2.5">
+              {RARITIES.map((g) => {
+                const items = AVATAR_PRESETS.filter((p) => p.rarity === g);
+                const got = items.filter(
+                  (p) => progress.get(p.id)!.unlocked,
+                ).length;
+                return (
+                  <span
+                    key={g}
+                    className={clsx(
+                      "flex flex-col items-center gap-1",
+                      !got && "opacity-35",
+                    )}
+                    title={RARITY[g].label}
+                  >
+                    <span
+                      className="h-4 w-4 rounded-full"
+                      style={{ background: RARITY[g].ring }}
+                      aria-hidden
+                    />
+                    <span className="tnum text-[12px] font-bold">
+                      <span className="sr-only">{RARITY[g].label} </span>
+                      {got}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-raised">
             <div
-              className="h-full rounded-full bg-volt"
+              className="h-full rounded-full bg-ball"
               style={{ width: `${Math.round((open / total) * 100)}%` }}
             />
           </div>
@@ -594,21 +620,22 @@ export function CharacterGrid({
               play("select");
               onOpen(next.id);
             }}
-            className="press sticker-sm flex items-center gap-3 rounded-[20px] bg-surface px-3 py-2 text-left"
+            className={clsx(CARD, "press flex items-center gap-3 text-left")}
             aria-label={`Il prossimo da sbloccare: ${nextP.name}`}
           >
-            <span className="grid h-[60px] w-11 shrink-0 place-items-end justify-center opacity-60 grayscale">
-              <Character id={next.id} height={60} />
+            <span className="grid h-[64px] w-14 shrink-0 place-items-end justify-center rounded-[16px] bg-raised opacity-70 grayscale">
+              <Character id={next.id} height={58} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1 text-[12px] font-bold text-court">
-                <IconSparkles size={13} aria-hidden /> Il prossimo: {nextP.name}
+              <span className={clsx(LABEL, "flex items-center gap-1")}>
+                <IconSparkles size={12} className="text-ball" aria-hidden />
+                Il prossimo · {nextP.name}
               </span>
-              <span className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-tight">
+              <span className="mt-1 line-clamp-2 text-[13.5px] font-semibold leading-tight">
                 {nextStep.label}
               </span>
-              <span className="mt-1 flex items-center gap-2">
-                <span className="h-2 flex-1 overflow-hidden rounded-full border-[1.5px] border-edge bg-raised">
+              <span className="mt-2 flex items-center gap-2">
+                <span className="h-2 flex-1 overflow-hidden rounded-full bg-raised">
                   <span
                     className="block h-full rounded-full bg-ball"
                     style={{ width: `${Math.round(next.progress.pct * 100)}%` }}
@@ -639,18 +666,18 @@ export function CharacterGrid({
             key={g}
             className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]"
           >
-            <h3 className="mb-1 flex items-center justify-center gap-2 text-[13.5px] font-bold">
+            <h3 className={clsx(LABEL, "flex items-center gap-2")}>
               <span
-                className="h-3 w-3 rounded-full border-2 border-edge"
+                className="h-2.5 w-2.5 rounded-full"
                 style={{ background: RARITY[g].ring }}
                 aria-hidden
               />
               {RARITY[g].label}
-              <span className="tnum font-semibold text-muted">
+              <span className="tnum ml-auto normal-case tracking-normal">
                 {got}/{items.length}
               </span>
             </h3>
-            <p className="mb-2.5 text-center text-[12px] text-muted">
+            <p className="mb-2.5 mt-0.5 text-[12px] text-muted">
               {RARITY[g].rule}
             </p>
             <div className="grid grid-cols-4 gap-2">
@@ -671,9 +698,9 @@ export function CharacterGrid({
                     }}
                     aria-label={`${p.name}${prog.unlocked ? "" : ", bloccato"}${on ? ", il tuo" : ""}${fresh ? ", nuovo" : ""}`}
                     className={clsx(
-                      "press relative flex flex-col items-center overflow-hidden rounded-[18px] border-2 border-edge px-0.5 pb-1.5 pt-1.5",
-                      on ? "sticker bg-volt" : "bg-surface",
-                      fresh && "!border-danger ring-2 ring-danger/40",
+                      "press relative flex flex-col items-center overflow-hidden rounded-[18px] px-0.5 pb-1.5 pt-1.5 shadow-[var(--shadow)]",
+                      on ? "bg-ball-soft ring-2 ring-ball" : "bg-surface",
+                      fresh && "ring-2 ring-danger",
                     )}
                     style={
                       g !== "base" && !on
@@ -695,13 +722,13 @@ export function CharacterGrid({
                       />
                     </span>
                     {!prog.unlocked && (
-                      <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-edge bg-surface">
+                      <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-raised text-muted">
                         <IconLock size={10} />
                       </span>
                     )}
                     {!prog.unlocked && prog.pct > 0 && (
                       <span
-                        className="absolute inset-x-2.5 bottom-[23px] h-1.5 overflow-hidden rounded-full border border-edge bg-surface"
+                        className="absolute inset-x-2.5 bottom-[23px] h-1.5 overflow-hidden rounded-full bg-raised"
                         aria-hidden
                       >
                         <span
@@ -712,14 +739,14 @@ export function CharacterGrid({
                     )}
                     {fresh && <NewTag className="left-0.5 top-0.5" />}
                     {on && (
-                      <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-edge bg-ok text-white">
+                      <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-ball text-ball-ink">
                         <IconCheck size={11} strokeWidth={3} />
                       </span>
                     )}
                     <span
                       className={clsx(
                         "mt-1 w-full truncate px-0.5 text-[11.5px] font-bold",
-                        on && "text-volt-ink",
+                        on && "text-ball",
                       )}
                     >
                       {p.name}

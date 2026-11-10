@@ -15,7 +15,7 @@ export function NewDot({
     <span
       aria-hidden
       className={clsx(
-        "new-dot pointer-events-none grid place-items-center rounded-full border-2 border-[#1d1a16] bg-danger font-bold leading-none text-white",
+        "new-dot pointer-events-none grid place-items-center rounded-full border-2 border-surface bg-danger font-bold leading-none text-white",
         count === undefined
           ? "h-3.5 w-3.5"
           : "h-[19px] min-w-[19px] px-1 text-[11px] tnum",
@@ -32,7 +32,7 @@ export function NewTag({ className }: { className?: string }) {
   return (
     <span
       className={clsx(
-        "new-tag pointer-events-none absolute z-10 rounded-full border-2 border-[#1d1a16] bg-danger px-1.5 py-[1px] text-[10px] font-extrabold uppercase tracking-wide text-white",
+        "new-tag pointer-events-none absolute z-10 rounded-full border-2 border-surface bg-danger px-1.5 py-[1px] text-[10px] font-extrabold uppercase tracking-wide text-white",
         className,
       )}
     >
