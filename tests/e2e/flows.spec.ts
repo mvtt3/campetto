@@ -608,9 +608,9 @@ test("vetrina dei badge", async ({ page }) => {
 test("tema chiaro dalle impostazioni", async ({ page }) => {
   await openApp(page);
   await page.goto("/profilo/impostazioni");
-  await page.getByRole("tab", { name: "Chiaro" }).click();
+  await page.getByRole("radio", { name: "Chiaro" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("tab", { name: "Scuro" }).click();
+  await page.getByRole("radio", { name: "Scuro" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 

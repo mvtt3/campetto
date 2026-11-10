@@ -15,7 +15,7 @@ import {
   IconLogout,
   IconMessageReport,
   IconMovie,
-  IconPalette,
+  IconShirt,
   IconRepeat,
   IconShield,
   IconUsers,
@@ -71,42 +71,70 @@ import { say } from "@/lib/voice";
 
 type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void> };
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
+const LABEL =
+  "mb-2 mt-6 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
+const TILE =
+  "flex min-h-[112px] flex-col gap-3 rounded-[22px] bg-surface p-3.5 shadow-[var(--shadow)]";
+
+const THEMES: { value: ThemePref; label: string; preview: string }[] = [
+  { value: "light", label: "Chiaro", preview: "#f6ecdc" },
+  { value: "dark", label: "Scuro", preview: "#1d1a16" },
+  {
+    value: "system",
+    label: "Auto",
+    preview: "linear-gradient(135deg, #f6ecdc 50%, #1d1a16 50%)",
+  },
+];
+
+function Group({ children }: { children: ReactNode }) {
   return (
-    <section className="mb-5">
-      <h2 className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
-        {title}
-      </h2>
-      <div className="divide-y divide-line overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]">
-        {children}
-      </div>
-    </section>
+    <div className="divide-y divide-line overflow-hidden rounded-[22px] bg-surface shadow-[var(--shadow)]">
+      {children}
+    </div>
   );
 }
 
-function Row({
-  icon,
-  danger,
-  children,
-}: {
-  icon?: ReactNode;
-  danger?: boolean;
-  children: ReactNode;
-}) {
+function Icon({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-[60px] items-center gap-3 px-4 py-2.5">
-      {icon && (
-        <span
-          className={clsx(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-[12px]",
-            danger ? "bg-danger/12 text-danger" : "bg-ball-soft text-ball",
-          )}
-        >
-          {icon}
-        </span>
-      )}
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-ball-soft text-ball">
+      {children}
+    </span>
+  );
+}
+
+function Row({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex min-h-[64px] items-center gap-3 px-4 py-3">
+      <Icon>{icon}</Icon>
       {children}
     </div>
+  );
+}
+
+function LinkRow({
+  href,
+  icon,
+  title,
+  text,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="press flex min-h-[64px] items-center gap-3 px-4 py-3"
+    >
+      <Icon>{icon}</Icon>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold">{title}</span>
+        <span className="block text-[12.5px] text-muted">{text}</span>
+      </span>
+      <IconChevronRight size={18} className="shrink-0 text-faint" />
+    </Link>
   );
 }
 
@@ -167,6 +195,8 @@ export default function SettingsPage() {
   }, [me]);
 
   if (!me) return null;
+  const tint = playerColor(me);
+  const ink = isLightColor(tint) ? "text-[#1d1a16]" : "text-white";
 
   const patchMe = async (
     patch: Parameters<typeof backend.updateMe>[0],
@@ -188,144 +218,168 @@ export default function SettingsPage() {
     <>
       <ScreenHeader title="Impostazioni" back="/profilo" />
       <main className="scroll-area min-h-0 flex-1 px-5 pb-6 pt-1">
-        <button
-          className="press relative isolate mb-5 flex w-full items-end gap-3 overflow-hidden rounded-[26px] px-4 pb-4 pt-5 text-left shadow-[var(--shadow)]"
-          style={{ backgroundColor: playerColor(me) }}
-          onClick={() => setCharacters(true)}
-          data-tour="settings-character"
+        <section
+          className="relative isolate mt-3 overflow-hidden rounded-[26px] shadow-[var(--shadow)]"
+          style={{ backgroundColor: tint }}
         >
           <span
             aria-hidden
-            className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_10%_0%,rgb(255_255_255/0.3),transparent_60%),linear-gradient(170deg,transparent_35%,rgb(0_0_0/0.45))]"
+            className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_8%_0%,rgb(255_255_255/0.32),transparent_60%),linear-gradient(165deg,transparent_40%,rgb(0_0_0/0.5))]"
           />
           <span
-            className={clsx(
-              "min-w-0 flex-1",
-              isLightColor(playerColor(me)) ? "text-[#1d1a16]" : "text-white",
-            )}
+            aria-hidden
+            className="display pointer-events-none absolute -right-2 -top-6 -z-10 text-[150px] leading-none text-white/15"
           >
-            <span className="block text-[11px] font-bold uppercase tracking-[0.12em] opacity-70">
-              Il tuo personaggio
-            </span>
-            <span className="display mt-1 flex items-center gap-2 text-[28px] uppercase leading-none">
-              {AVATAR_PRESETS.find((p) => p.id === characterOf(me))?.name}
-              <NewDot count={newChars || -1} />
-            </span>
-            <span className="mt-2 block text-[13px] opacity-80">
-              {newChars
-                ? newChars === 1
-                  ? "Ne hai sbloccato uno nuovo: aprilo"
-                  : `Ne hai sbloccati ${newChars} nuovi: aprili`
-                : "Con i badge ne sblocchi di speciali"}
-            </span>
+            {me.jerseyNumber ?? ""}
           </span>
-          <span className="-mb-4 shrink-0">
-            <Character
-              id={characterOf(me)}
-              outfit={me.outfit}
-              number={me.jerseyNumber}
-              height={128}
-            />
-          </span>
-        </button>
+          <div className={clsx("flex items-end gap-2 px-4 pt-4", ink)}>
+            <div className="min-w-0 flex-1 pb-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] opacity-70">
+                {me.jerseyNumber !== null && `#${me.jerseyNumber} · `}
+                {me.roles[0] ?? "Giocatore"}
+              </p>
+              <p className="display mt-1 truncate text-[30px] uppercase leading-none">
+                {me.nickname}
+              </p>
+              <Link
+                href={playerHref(me.id, true)}
+                className="press mt-3 inline-flex items-center gap-1.5 rounded-full bg-black/20 px-3 py-1.5 text-[12.5px] font-semibold text-white backdrop-blur-sm"
+              >
+                <IconEye size={15} aria-hidden />
+                Come ti vedono gli altri
+              </Link>
+            </div>
+            <button
+              onClick={() => setCharacters(true)}
+              data-tour="settings-character"
+              className="press relative -mb-1 shrink-0"
+            >
+              <span className="sr-only">
+                Il tuo personaggio,{" "}
+                {AVATAR_PRESETS.find((p) => p.id === characterOf(me))?.name}
+              </span>
+              <NewDot
+                count={newChars || -1}
+                className="absolute right-2 top-1 z-10"
+              />
+              <Character
+                id={characterOf(me)}
+                outfit={me.outfit}
+                number={me.jerseyNumber}
+                height={140}
+              />
+            </button>
+          </div>
+          <div
+            className="grid grid-cols-8 gap-1.5 bg-black/20 px-4 py-3 backdrop-blur-sm"
+            role="radiogroup"
+            aria-label="Sfondo della figurina"
+          >
+            {CARD_COLORS.map((c) => {
+              const on = tint.toLowerCase() === c.value.toLowerCase();
+              return (
+                <button
+                  key={c.value}
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={c.name}
+                  onClick={() =>
+                    void patchMe(
+                      { cardColor: c.value },
+                      `Sfondo ${c.name.toLowerCase()}, ottima scelta`,
+                    )
+                  }
+                  className={clsx(
+                    "press grid aspect-square w-full max-w-[30px] place-items-center justify-self-center rounded-full ring-2 transition-transform",
+                    on ? "scale-110 ring-white" : "ring-white/30",
+                  )}
+                  style={{ background: c.value }}
+                >
+                  {on && (
+                    <IconCheck
+                      size={14}
+                      strokeWidth={3.2}
+                      className={
+                        isLightColor(c.value)
+                          ? "text-[#1d1a16]"
+                          : "text-[#fffaf0]"
+                      }
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-        <Group title="Profilo">
+        <h2 className={LABEL}>Il tuo giocatore</h2>
+        <div className="grid grid-cols-2 gap-3">
           <button
-            className="press flex w-full items-center gap-3 px-4 py-3 text-left"
             onClick={() => setPicking(true)}
+            className={clsx(TILE, "press text-left")}
           >
-            <span className="relative">
-              <Avatar player={me} size={44} href={false} />
-              <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full border-2 border-surface bg-ball text-ball-ink">
-                {uploading ? <Spinner size={10} /> : <IconCamera size={12} />}
+            <span className="relative self-start">
+              <Avatar player={me} size={40} href={false} />
+              <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border-2 border-surface bg-ball text-ball-ink">
+                {uploading ? <Spinner size={9} /> : <IconCamera size={11} />}
               </span>
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold">
+            <span className="mt-auto">
+              <span className="block text-[14.5px] font-semibold">
                 Foto profilo
               </span>
-              <span className="block text-[12.5px] text-muted">
-                Una figurina o una tua foto
+              <span className="block text-[12px] text-muted">
+                Figurina o foto
               </span>
             </span>
-            <IconChevronRight size={18} className="text-faint" />
           </button>
-          <div className="px-4 py-3.5">
-            <p className="mb-3 text-[15px] font-semibold">
-              Sfondo della figurina
-            </p>
-            <div
-              className="grid grid-cols-8 gap-1.5"
-              role="radiogroup"
-              aria-label="Sfondo della figurina"
-            >
-              {CARD_COLORS.map((c) => {
-                const on =
-                  playerColor(me).toLowerCase() === c.value.toLowerCase();
-                return (
-                  <button
-                    key={c.value}
-                    role="radio"
-                    aria-checked={on}
-                    aria-label={c.name}
-                    onClick={() =>
-                      void patchMe(
-                        { cardColor: c.value },
-                        `Sfondo ${c.name.toLowerCase()}, ottima scelta`,
-                      )
-                    }
-                    className={clsx(
-                      "press grid aspect-square w-full max-w-[36px] place-items-center justify-self-center rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition-transform",
-                      on &&
-                        "scale-110 ring-2 ring-text ring-offset-2 ring-offset-surface",
-                    )}
-                    style={{ background: c.value }}
-                  >
-                    {on && (
-                      <IconCheck
-                        size={16}
-                        strokeWidth={3.2}
-                        className={
-                          isLightColor(c.value)
-                            ? "text-[#1d1a16]"
-                            : "text-[#fffaf0]"
-                        }
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <Row>
-            <button
-              className="press flex min-h-10 min-w-0 flex-1 items-center gap-2 text-left"
-              onClick={() => setNaming(true)}
-            >
-              <span className="shrink-0 text-[15px] font-semibold">
+          <button
+            onClick={() => setCharacters(true)}
+            className={clsx(TILE, "press text-left")}
+          >
+            <span className="flex items-start justify-between">
+              <span className="grid h-10 w-10 place-items-center rounded-[12px] bg-ball-soft text-ball">
+                <IconShirt size={20} aria-hidden />
+              </span>
+              <NewDot count={newChars || -1} />
+            </span>
+            <span className="mt-auto">
+              <span className="block text-[14.5px] font-semibold">
+                Il tuo personaggio
+              </span>
+              <span className="block truncate text-[12px] text-muted">
+                {newChars
+                  ? newChars === 1
+                    ? "Uno nuovo da aprire"
+                    : `${newChars} nuovi da aprire`
+                  : AVATAR_PRESETS.find((p) => p.id === characterOf(me))?.name}
+              </span>
+            </span>
+          </button>
+          <button
+            onClick={() => setNaming(true)}
+            className={clsx(TILE, "press text-left")}
+          >
+            <span className="flex items-start justify-between">
+              <span className="text-[12px] font-semibold text-muted">
                 Nome nell&apos;app
               </span>
-              <span className="min-w-0 flex-1 truncate text-right text-[15px] text-muted">
-                {me.nickname}
-              </span>
-              {nameUnlockDate(me) ? (
+              {nameUnlockDate(me) && (
                 <IconLock
-                  size={16}
-                  className="shrink-0 text-faint"
+                  size={15}
+                  className="text-faint"
                   aria-label="bloccato per ora"
                 />
-              ) : (
-                <IconChevronRight size={18} className="shrink-0 text-faint" />
               )}
-            </button>
-          </Row>
-          <Row>
-            <label
-              htmlFor="jersey"
-              className="shrink-0 text-[15px] font-semibold"
-            >
+            </span>
+            <span className="title mt-auto truncate text-[22px] leading-tight">
+              {me.nickname}
+            </span>
+          </button>
+          <label htmlFor="jersey" className={clsx(TILE, "cursor-text")}>
+            <span className="text-[12px] font-semibold text-muted">
               Numero di maglia
-            </label>
+            </span>
             <input
               id="jersey"
               inputMode="numeric"
@@ -339,43 +393,47 @@ export default function SettingsPage() {
                 if (v !== me.jerseyNumber)
                   void patchMe({ jerseyNumber: v }, "Ho salvato il numero");
               }}
-              className="num ml-auto h-10 w-16 rounded-[12px] bg-raised text-center text-[18px] outline-none placeholder:text-faint focus:ring-2 focus:ring-ball"
+              className="score mt-auto w-full bg-transparent text-[34px] leading-none text-ball outline-none placeholder:text-faint"
             />
-          </Row>
-          <Row icon={<IconEye size={18} />}>
-            <Link
-              href={playerHref(me.id, true)}
-              className="flex min-w-0 flex-1 items-center gap-2"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold">
-                  Come ti vedono gli altri
-                </span>
-                <span className="block text-[12.5px] text-muted">
-                  Il tuo profilo, nella versione per il gruppo
-                </span>
-              </span>
-              <IconChevronRight size={18} className="shrink-0 text-faint" />
-            </Link>
-          </Row>
-        </Group>
+          </label>
+        </div>
 
-        <Group title="App">
-          <Row icon={<IconPalette size={18} />}>
-            <Segmented
-              className="flex-1"
-              value={theme}
-              onChange={(t) => {
-                setTheme(t);
-                setThemePref(t);
+        <h2 className={LABEL}>Aspetto</h2>
+        <div
+          className="grid grid-cols-3 gap-3"
+          role="radiogroup"
+          aria-label="Tema"
+        >
+          {THEMES.map((t) => (
+            <button
+              key={t.value}
+              role="radio"
+              aria-checked={theme === t.value}
+              onClick={() => {
+                setTheme(t.value);
+                setThemePref(t.value);
               }}
-              options={[
-                { value: "light", label: "Chiaro" },
-                { value: "dark", label: "Scuro" },
-                { value: "system", label: "Auto" },
-              ]}
-            />
-          </Row>
+              className={clsx(
+                "press flex flex-col items-center gap-2 rounded-[22px] bg-surface p-2.5 shadow-[var(--shadow)] ring-2 transition-shadow",
+                theme === t.value ? "ring-ball" : "ring-transparent",
+              )}
+            >
+              <span
+                aria-hidden
+                className="flex h-16 w-full flex-col gap-1.5 overflow-hidden rounded-[14px] p-2"
+                style={{ background: t.preview }}
+              >
+                <span className="h-2 w-2/3 rounded-full bg-[#f26a1b]" />
+                <span className="h-2 w-full rounded-full bg-[#8a7a66]/40" />
+                <span className="h-2 w-4/5 rounded-full bg-[#8a7a66]/40" />
+              </span>
+              <span className="text-[13px] font-semibold">{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <h2 className={LABEL}>Preferenze</h2>
+        <Group>
           <Row
             icon={
               sounds ? <IconVolume size={18} /> : <IconVolumeOff size={18} />
@@ -398,57 +456,50 @@ export default function SettingsPage() {
               }}
             />
           </Row>
-          <Row
-            icon={
-              hlEnd === "loop" ? (
-                <IconRepeat size={18} />
-              ) : (
-                <IconMovie size={18} />
-              )
-            }
-          >
-            <span className="min-w-0 flex-1" data-testid="hl-end">
-              <span className="block text-[15px] font-semibold">
-                Fine di un highlight
-              </span>
-              <span className="block text-[12.5px] text-muted">
-                {hlEnd === "loop"
-                  ? "Ricomincia quello che stai guardando"
-                  : "Parte subito il prossimo, come nei Reels"}
-              </span>
-              <Segmented
-                className="mt-2"
-                size="sm"
-                value={hlEnd}
-                onChange={(v) => {
-                  setHlEnd(v);
-                  setHighlightEnd(v);
-                }}
-                options={[
-                  { value: "next", label: "Il prossimo" },
-                  { value: "loop", label: "Ricomincia" },
-                ]}
-              />
-            </span>
-          </Row>
-          <Row icon={<IconBell size={18} />}>
-            <Link
-              href="/profilo/notifiche"
-              className="flex min-w-0 flex-1 items-center gap-2"
-            >
+          <div className="px-4 py-3.5" data-testid="hl-end">
+            <div className="flex items-center gap-3">
+              <Icon>
+                {hlEnd === "loop" ? (
+                  <IconRepeat size={18} />
+                ) : (
+                  <IconMovie size={18} />
+                )}
+              </Icon>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">
-                  Notifiche
+                  Fine di un highlight
                 </span>
                 <span className="block text-[12.5px] text-muted">
-                  {push.on
-                    ? "Attive, scegli cosa ricevere"
-                    : "Spente, tocca per sceglierle"}
+                  {hlEnd === "loop"
+                    ? "Ricomincia quello che stai guardando"
+                    : "Parte subito il prossimo, come nei Reels"}
                 </span>
               </span>
-              <IconChevronRight size={18} className="shrink-0 text-faint" />
-            </Link>
-          </Row>
+            </div>
+            <Segmented
+              className="mt-3"
+              size="sm"
+              value={hlEnd}
+              onChange={(v) => {
+                setHlEnd(v);
+                setHighlightEnd(v);
+              }}
+              options={[
+                { value: "next", label: "Il prossimo" },
+                { value: "loop", label: "Ricomincia" },
+              ]}
+            />
+          </div>
+          <LinkRow
+            href="/profilo/notifiche"
+            icon={<IconBell size={18} />}
+            title="Notifiche"
+            text={
+              push.on
+                ? "Attive, scegli cosa ricevere"
+                : "Spente, tocca per sceglierle"
+            }
+          />
           {!standalone && (
             <Row icon={<IconDownload size={18} />}>
               <p className="min-w-0 flex-1 text-[13.5px] text-muted">
@@ -469,85 +520,95 @@ export default function SettingsPage() {
           )}
         </Group>
 
-        <Group title="Aiuto">
-          <Row icon={<IconCompass size={18} />}>
-            <button
-              onClick={() => setGuide(true)}
-              className="flex flex-1 items-center text-left text-[15px] font-semibold"
-            >
-              Guida all&apos;app
-              <IconChevronRight size={18} className="ml-auto text-faint" />
-            </button>
-          </Row>
-          <Row icon={<IconMessageReport size={18} />}>
-            <button
-              onClick={() => setFeedback(true)}
-              className="flex min-w-0 flex-1 items-center gap-2 text-left"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold">
-                  Segnala un problema
-                </span>
-                <span className="block text-[12.5px] text-muted">
-                  O suggerisci un&apos;idea
-                </span>
+        <h2 className={LABEL}>Aiuto</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setGuide(true)}
+            className={clsx(TILE, "press text-left")}
+          >
+            <Icon>
+              <IconCompass size={20} />
+            </Icon>
+            <span className="mt-auto">
+              <span className="block text-[14.5px] font-semibold">
+                Guida all&apos;app
               </span>
-              <IconChevronRight size={18} className="shrink-0 text-faint" />
-            </button>
-          </Row>
-        </Group>
-
-        <Group title="Account">
-          {playerView.available && (
-            <Row icon={<IconUsers size={18} />}>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold">
-                  Usa l&apos;app come un giocatore
-                </span>
-                <span className="block text-[12.5px] text-muted">
-                  Vedi quello che vedono gli altri, senza i tuoi strumenti
-                </span>
+              <span className="block text-[12px] text-muted">
+                Spicchio ti rimostra tutto
               </span>
-              <Toggle
-                label="Usa l'app come un giocatore"
-                checked={playerView.on}
-                onChange={(on) => {
-                  playerView.set(on);
-                  toast(
-                    on
-                      ? "Ora vedi l'app come gli altri: per tornare tocca Esci in alto"
-                      : "Bentornato, hai di nuovo i tuoi strumenti",
-                  );
-                }}
-              />
-            </Row>
-          )}
-          {me.isAdmin && (
-            <Row icon={<IconShield size={18} />}>
-              <Link
-                href="/admin"
-                className="flex flex-1 items-center text-[15px] font-semibold"
-              >
-                Gestione del gruppo
-                <IconChevronRight size={18} className="ml-auto text-faint" />
-              </Link>
-            </Row>
-          )}
-          <Row icon={<IconLogout size={18} />} danger>
-            <button
-              onClick={async () => {
-                await backend.signOut();
-                router.replace("/login");
-                await reinit();
-              }}
-              className="flex-1 text-left text-[15px] font-semibold text-danger"
-            >
-              Esci
-            </button>
-          </Row>
-        </Group>
+            </span>
+          </button>
+          <button
+            onClick={() => setFeedback(true)}
+            className={clsx(TILE, "press text-left")}
+          >
+            <Icon>
+              <IconMessageReport size={20} />
+            </Icon>
+            <span className="mt-auto">
+              <span className="block text-[14.5px] font-semibold">
+                Segnala un problema
+              </span>
+              <span className="block text-[12px] text-muted">
+                O suggerisci un&apos;idea
+              </span>
+            </span>
+          </button>
+        </div>
 
-        <p className="px-1 text-center text-[12.5px] text-faint">
+        {(playerView.available || me.isAdmin) && (
+          <>
+            <h2 className={LABEL}>Gruppo</h2>
+            <Group>
+              {me.isAdmin && (
+                <LinkRow
+                  href="/admin"
+                  icon={<IconShield size={18} />}
+                  title="Gestione del gruppo"
+                  text="Giocatori, richieste e partite"
+                />
+              )}
+              {playerView.available && (
+                <Row icon={<IconUsers size={18} />}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold">
+                      Usa l&apos;app come un giocatore
+                    </span>
+                    <span className="block text-[12.5px] text-muted">
+                      Vedi quello che vedono gli altri, senza i tuoi strumenti
+                    </span>
+                  </span>
+                  <Toggle
+                    label="Usa l'app come un giocatore"
+                    checked={playerView.on}
+                    onChange={(on) => {
+                      playerView.set(on);
+                      toast(
+                        on
+                          ? "Ora vedi l'app come gli altri: per tornare tocca Esci in alto"
+                          : "Bentornato, hai di nuovo i tuoi strumenti",
+                      );
+                    }}
+                  />
+                </Row>
+              )}
+            </Group>
+          </>
+        )}
+
+        <button
+          onClick={async () => {
+            await backend.signOut();
+            router.replace("/login");
+            await reinit();
+          }}
+          className="press mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-danger/10 text-[15px] font-semibold text-danger"
+        >
+          <IconLogout size={18} aria-hidden />
+          Esci
+        </button>
+
+        <p className="mt-4 text-center text-[12.5px] text-faint">
           <Link href="/privacy" className="underline">
             Privacy
           </Link>{" "}
