@@ -55,6 +55,9 @@ function deviceInfo(): string {
 }
 
 /** Segnala un problema o suggerisci un'idea: arriva a chi aggiusta l'app. */
+const LABEL =
+  "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+
 export function FeedbackSheet({
   open,
   onClose,
@@ -111,14 +114,15 @@ export function FeedbackSheet({
       title="Segnala un problema"
       description="Oppure suggerisci un'idea: leggo tutto"
       footer={
-        <Button variant="court" block onClick={send} disabled={!ok || busy}>
+        <Button variant="primary" block onClick={send} disabled={!ok || busy}>
           {busy ? "Invio…" : "Invia"}
         </Button>
       }
     >
       <div className="flex flex-col gap-4 pb-2">
+        <h3 className={LABEL}>Di cosa si tratta</h3>
         <div
-          className="grid grid-cols-3 gap-2"
+          className="-mt-2 grid grid-cols-3 gap-2"
           role="radiogroup"
           aria-label="Di cosa si tratta"
         >
@@ -132,28 +136,35 @@ export function FeedbackSheet({
                 setKind(value);
               }}
               className={clsx(
-                "press flex flex-col items-center justify-center gap-1 rounded-[18px] border-2 border-edge px-1 py-2.5 text-center text-[12.5px] font-bold transition-colors duration-300",
-                kind === value
-                  ? "sticker-sm bg-volt text-volt-ink"
-                  : "bg-surface text-muted",
+                "press flex flex-col items-center justify-center gap-2 rounded-[22px] bg-surface px-1 py-3.5 text-center text-[13px] font-semibold shadow-[var(--shadow)] ring-2 transition-shadow duration-200",
+                kind === value ? "ring-ball" : "ring-transparent",
               )}
             >
-              <Icon size={19} aria-hidden />
+              <span
+                className={clsx(
+                  "grid h-10 w-10 place-items-center rounded-[12px] transition-colors duration-200",
+                  kind === value
+                    ? "bg-ball text-ball-ink"
+                    : "bg-ball-soft text-ball",
+                )}
+              >
+                <Icon size={20} aria-hidden />
+              </span>
               {label}
             </button>
           ))}
         </div>
         <label className="block">
-          <span className="sr-only">Messaggio</span>
+          <span className={clsx(LABEL, "mb-2 block")}>Messaggio</span>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, 2000))}
             placeholder={current.placeholder}
             rows={5}
-            className="block w-full resize-none rounded-[18px] border-2 border-edge bg-surface px-4 py-3 text-[15px] leading-snug outline-none placeholder:text-faint focus:ring-4 focus:ring-court/25"
+            className="block w-full resize-none rounded-[22px] bg-surface px-4 py-3.5 text-[15px] leading-snug shadow-[var(--shadow)] outline-none placeholder:text-faint focus:ring-2 focus:ring-ball"
           />
         </label>
-        <p className="text-center text-[12.5px] text-muted">
+        <p className="px-1 text-[12.5px] text-muted">
           Insieme al messaggio mando il modello del telefono e la schermata in
           cui eri
         </p>
