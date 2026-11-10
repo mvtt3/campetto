@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   IconChevronLeft,
@@ -15,7 +16,12 @@ import { Character, characterOf } from "@/components/character";
 import { StatsDashboard } from "@/components/profile/stats-dashboard";
 import { Form } from "@/components/profile/key-stats";
 import { Avatar, isLightColor, playerColor } from "@/components/ui/avatar";
-import { Chips, EmptyState, ScreenHeader } from "@/components/ui/basics";
+import {
+  Chips,
+  CountUp,
+  EmptyState,
+  ScreenHeader,
+} from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { showcaseBadges } from "@/lib/badges";
@@ -40,7 +46,13 @@ const LABEL =
 const PILL =
   "flex items-center gap-1.5 rounded-full bg-[var(--chip)] px-2.5 py-1 text-[12px] font-semibold backdrop-blur-sm";
 
-const avg = (v: number) => v.toFixed(1).replace(".", ",");
+const SPRING = { type: "spring", stiffness: 240, damping: 22 } as const;
+
+const rise = (delay: number) => ({
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0 },
+  transition: { ...SPRING, delay },
+});
 
 export function PlayerPage() {
   const params = useSearchParams();
@@ -92,12 +104,13 @@ export function PlayerPage() {
   const light = isLightColor(tint);
   const boxed = stats.statGames > 0;
   const line = [
-    { label: "Punti", value: boxed ? avg(stats.avg.pts) : "—" },
-    { label: "Rimbalzi", value: boxed ? avg(stats.rebAvg) : "—" },
-    { label: "Assist", value: boxed ? avg(stats.avg.ast) : "—" },
+    { label: "Punti", value: boxed ? stats.avg.pts : null, decimals: 1 },
+    { label: "Rimbalzi", value: boxed ? stats.rebAvg : null, decimals: 1 },
+    { label: "Assist", value: boxed ? stats.avg.ast : null, decimals: 1 },
     {
       label: "Vittorie",
-      value: stats.games ? `${Math.round(stats.winPct * 100)}%` : "—",
+      value: stats.games ? Math.round(stats.winPct * 100) : null,
+      suffix: "%",
     },
   ];
 
@@ -110,25 +123,36 @@ export function PlayerPage() {
             "relative isolate -mx-5 overflow-hidden",
             light
               ? "text-[#1d1a16] [--chip:rgb(29_26_22/0.12)] [--soft:rgb(29_26_22/0.7)]"
-              : "text-white [--chip:rgb(255_255_255/0.18)] [--soft:rgb(255_255_255/0.75)]",
+              : "text-white [--chip:rgb(255_255_255/0.18)] [--soft:rgb(255_255_255/0.78)]",
           )}
           style={{ backgroundColor: tint }}
         >
           <div
             aria-hidden
-            className={clsx(
-              "absolute inset-0 -z-10 bg-linear-to-br from-transparent",
-              light ? "to-black/20" : "to-black/50",
-            )}
+            className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_15%_10%,rgb(255_255_255/0.32),transparent_60%),radial-gradient(ellipse_55%_65%_at_78%_62%,rgb(255_255_255/0.28),transparent_65%),linear-gradient(160deg,transparent_35%,rgb(0_0_0/0.55))]"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10 bg-[repeating-linear-gradient(115deg,rgb(255_255_255/0.07)_0_2px,transparent_2px_14px)] [mask-image:linear-gradient(to_left,#000,transparent_70%)]"
           />
           {player.jerseyNumber !== null && (
-            <span
+            <motion.span
               aria-hidden
-              className="display pointer-events-none absolute -right-4 top-6 -z-10 text-[220px] leading-none opacity-[0.14]"
+              className="display pointer-events-none absolute -right-4 top-4 -z-10 bg-linear-to-b from-white/45 to-white/0 bg-clip-text text-[230px] leading-none text-transparent"
+              initial={{ opacity: 0, x: 60 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
             >
               {player.jerseyNumber}
-            </span>
+            </motion.span>
           )}
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 -z-10 w-1/3 -skew-x-12 bg-linear-to-r from-transparent via-white/30 to-transparent"
+            initial={{ x: "-150%" }}
+            animate={{ x: "400%" }}
+            transition={{ delay: 0.5, duration: 1.2, ease: "easeInOut" }}
+          />
           <div className="safe-top px-5 pt-5">
             <button
               onClick={() => router.back()}
@@ -138,7 +162,13 @@ export function PlayerPage() {
               <IconChevronLeft size={22} />
             </button>
           </div>
-          <span className="pointer-events-none absolute -bottom-3 right-1">
+          <motion.span
+            className="pointer-events-none absolute -bottom-3 right-1"
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...SPRING, delay: 0.1 }}
+          >
+            <span className="absolute bottom-6 left-1/2 -z-10 h-10 w-40 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(0_0_0/0.35),transparent)]" />
             <Character
               id={characterOf(player)}
               outfit={player.outfit}
@@ -147,26 +177,33 @@ export function PlayerPage() {
               title={name}
               className="short:h-[160px] short:w-auto"
             />
-          </span>
+          </motion.span>
           <div className="relative w-[58%] px-5 pb-12 pt-10 short:pt-6">
             {self && (
-              <h2 className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]">
+              <motion.h2
+                {...rise(0.05)}
+                className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]"
+              >
                 Come ti vedono gli altri
-              </h2>
+              </motion.h2>
             )}
-            <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]">
+            <motion.p
+              {...rise(0.1)}
+              className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--soft)]"
+            >
               {player.jerseyNumber !== null && `#${player.jerseyNumber} · `}
               {player.roles[0] ?? "Giocatore"}
-            </p>
-            <h1
+            </motion.p>
+            <motion.h1
+              {...rise(0.16)}
               className={clsx(
-                "display mt-1 break-words uppercase leading-[0.95] [overflow-wrap:anywhere]",
+                "display mt-1 break-words uppercase leading-[0.95] [overflow-wrap:anywhere] [text-shadow:0_2px_18px_rgb(0_0_0/0.18)]",
                 name.length > 9 ? "text-[30px]" : "text-[40px]",
               )}
             >
               {name}
-            </h1>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            </motion.h1>
+            <motion.div {...rise(0.24)} className="mt-3 flex flex-wrap gap-1.5">
               <span className={clsx(PILL, "pr-1.5")}>
                 ELO <span className="num text-[13.5px]">{elo}</span>
                 <InfoTip label="Cos'è l'ELO" size={14}>
@@ -175,7 +212,12 @@ export function PlayerPage() {
                 </InfoTip>
               </span>
               {monthMvp && (
-                <span className={clsx(PILL, "bg-volt text-volt-ink")}>
+                <span
+                  className={clsx(
+                    PILL,
+                    "bg-linear-to-r from-[#ffe58a] to-[#ffb73a] text-[#1d1a16] shadow-[0_4px_14px_-4px_rgb(255_183_58/0.8)]",
+                  )}
+                >
                   <IconCrown size={13} aria-hidden /> MVP di {monthMvp}
                 </span>
               )}
@@ -185,11 +227,21 @@ export function PlayerPage() {
                   {trophies}
                 </span>
               )}
-            </div>
+            </motion.div>
           </div>
         </section>
 
-        <dl className="relative z-10 -mt-7 grid grid-cols-4 divide-x divide-line rounded-[22px] bg-surface py-3.5 shadow-[var(--shadow-pop)]">
+        <motion.dl
+          {...rise(0.3)}
+          className="relative z-10 -mt-7 grid grid-cols-4 divide-x divide-line overflow-hidden rounded-[22px] bg-surface py-3.5 shadow-[var(--shadow-pop)]"
+        >
+          <span
+            aria-hidden
+            className="absolute inset-x-0 top-0 h-1"
+            style={{
+              background: `linear-gradient(90deg, ${tint}, #ffc531)`,
+            }}
+          />
           {line.map((it) => (
             <div
               key={it.label}
@@ -198,10 +250,20 @@ export function PlayerPage() {
               <dt className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted">
                 {it.label}
               </dt>
-              <dd className="num text-[24px] leading-none">{it.value}</dd>
+              <dd className="num text-[24px] leading-none">
+                {it.value === null ? (
+                  "—"
+                ) : (
+                  <CountUp
+                    value={it.value}
+                    decimals={it.decimals}
+                    suffix={it.suffix}
+                  />
+                )}
+              </dd>
             </div>
           ))}
-        </dl>
+        </motion.dl>
         <p className="mt-2 text-center text-[12px] text-muted">
           {stats.games === 1 ? "1 partita" : `${stats.games} partite`}
           {boxed && ` · medie su ${stats.statGames} con il tabellino`}
