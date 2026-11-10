@@ -12,9 +12,7 @@ test("dal login con Google si entra nell'app", async ({ page }) => {
 
 test("app vuota: stati vuoti curati", async ({ page }) => {
   await openApp(page);
-  await expect(
-    page.getByText("Nessuna partita in vista"),
-  ).toBeVisible();
+  await expect(page.getByText("Nessuna partita in vista")).toBeVisible();
   await expect(page.getByText("Ancora nessuno")).toBeVisible();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
   await expect(page.getByText("Ancora nessuna partita")).toBeVisible();
@@ -70,7 +68,7 @@ async function pickTeams(page: import("@playwright/test").Page, ids: string[]) {
 test("nuova partita solo risultato", async ({ page }) => {
   await openApp(page);
   await page.goto("/nuova");
-  await page.getByRole("button", { name: "2v2" }).click();
+  await page.getByRole("tab", { name: "2v2" }).click();
   await page.getByRole("button", { name: "Avanti" }).click();
   await pickTeams(page, ["p1", "p2", "p3", "p4"]);
   await expect(page.getByText("Previsione")).toBeVisible();
@@ -88,7 +86,7 @@ test("nuova partita solo risultato", async ({ page }) => {
 test("2 contro 2 in cinque: il quinto fa il cambio", async ({ page }) => {
   await openApp(page);
   await page.goto("/nuova");
-  await page.getByRole("button", { name: "2v2" }).click();
+  await page.getByRole("tab", { name: "2v2" }).click();
   await page.getByRole("button", { name: "Avanti" }).click();
   await pickTeams(page, ["p1", "p2", "p3", "p4", "p5"]);
   // Il quinto va nella squadra più corta, come cambio.
@@ -122,7 +120,7 @@ test("un ospite in squadra: gioca nella partita, fuori dalle classifiche", async
 }) => {
   await openApp(page);
   await page.goto("/nuova");
-  await page.getByRole("button", { name: "2v2" }).click();
+  await page.getByRole("tab", { name: "2v2" }).click();
   await page.getByRole("button", { name: "Avanti" }).click();
   await pickTeams(page, ["p1", "p2", "p3"]);
   // In tre più uno trovato al campetto: entra nella squadra a cui manca qualcuno.
@@ -153,7 +151,7 @@ test("un ospite in squadra: gioca nella partita, fuori dalle classifiche", async
 test("pareggio non ammesso e squadre incomplete bloccate", async ({ page }) => {
   await openApp(page);
   await page.goto("/nuova");
-  await page.getByRole("button", { name: "1v1" }).click();
+  await page.getByRole("tab", { name: "1v1" }).click();
   await page.getByRole("button", { name: "Avanti" }).click();
   await expect(page.getByRole("button", { name: "Avanti" })).toBeDisabled();
   await pickTeams(page, ["p1", "p2"]);
@@ -169,7 +167,7 @@ test("pareggio non ammesso e squadre incomplete bloccate", async ({ page }) => {
 test("nuova partita con tabellino", async ({ page }) => {
   await openApp(page);
   await page.goto("/nuova");
-  await page.getByRole("button", { name: "1v1" }).click();
+  await page.getByRole("tab", { name: "1v1" }).click();
   await page.getByRole("button", { name: "Avanti" }).click();
   await pickTeams(page, ["p5", "p7"]);
   await page.getByRole("button", { name: "Avanti" }).click();
@@ -204,7 +202,7 @@ test("nuova partita con tabellino", async ({ page }) => {
 test("il tabellino deve tornare col risultato", async ({ page }) => {
   await openApp(page);
   await page.goto("/nuova");
-  await page.getByRole("button", { name: "1v1" }).click();
+  await page.getByRole("tab", { name: "1v1" }).click();
   await page.getByRole("button", { name: "Avanti" }).click();
   await pickTeams(page, ["p5", "p7"]);
   await page.getByRole("button", { name: "Avanti" }).click();
@@ -273,25 +271,35 @@ test("proposta Indoor: la via della palestra, che si apre nelle mappe", async ({
   await expect(card).toContainText("Indoor");
   const via = card.getByTestId("indoor-address");
   await expect(via).toContainText("Via Torino 12, Nichelino");
-  await expect(via).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=Via%20Torino%2012/);
+  await expect(via).toHaveAttribute(
+    "href",
+    /google\.com\/maps\/dir\/\?api=1&destination=Via%20Torino%2012/,
+  );
   // Nella Home la via sta accanto all'ora.
   await page.getByRole("link", { name: "Home" }).click();
   await expect(
-    page.locator('[data-testid="proposal-card"]:visible').getByTestId("indoor-address"),
+    page
+      .locator('[data-testid="proposal-card"]:visible')
+      .getByTestId("indoor-address"),
   ).toContainText("Via Torino 12");
   // La prossima volta la via è già pronta.
   await page.goto("/organizza?nuova=1");
   await page.getByRole("tab", { name: "Indoor" }).click();
-  await expect(page.getByLabel("Via della palestra")).toHaveValue("Via Torino 12, Nichelino");
+  await expect(page.getByLabel("Via della palestra")).toHaveValue(
+    "Via Torino 12, Nichelino",
+  );
 });
 
-test("la nota lunga di chi propone si apre con la freccetta", async ({ page }) => {
+test("la nota lunga di chi propone si apre con la freccetta", async ({
+  page,
+}) => {
   await openApp(page);
   await page.goto("/organizza?nuova=1");
   await page.getByRole("button", { name: "Domani" }).click();
   await page.getByRole("button", { name: "18:00" }).click();
   await page.getByRole("tab", { name: "Indoor" }).click();
-  const nota = "50 euro il campo, si divide tra chi viene. Portate le scarpe pulite per la palestra";
+  const nota =
+    "50 euro il campo, si divide tra chi viene. Portate le scarpe pulite per la palestra";
   await page.getByLabel("Nota").fill(nota);
   await page.getByRole("button", { name: "Proponi", exact: true }).click();
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
@@ -301,7 +309,10 @@ test("la nota lunga di chi propone si apre con la freccetta", async ({ page }) =
   await expect(line).toHaveAttribute("aria-expanded", "true");
   await expect(line).toContainText(nota);
   // Aperta, la nota si legge tutta: niente puntini.
-  const cut = await line.locator("span").first().evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  const cut = await line
+    .locator("span")
+    .first()
+    .evaluate((el) => el.scrollWidth > el.clientWidth + 1);
   expect(cut).toBe(false);
 });
 
@@ -475,7 +486,10 @@ test("segna dal video con i tiri trovati e i rimbalzi", async ({ page }) => {
     page.getByRole("button", { name: "Sbagliato da 2" }),
   ).toHaveAttribute("aria-describedby", "shots-hint");
 
-  await page.getByRole("button", { name: /Valerio/ }).first().click();
+  await page
+    .getByRole("button", { name: /Valerio/ })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Sbagliato da 2" }).click();
   // Dopo l'errore: chi prende il rimbalzo.
   await page
@@ -483,14 +497,19 @@ test("segna dal video con i tiri trovati e i rimbalzi", async ({ page }) => {
     .locator("..")
     .getByRole("button", { name: /Lorenzo/ })
     .click();
-  await expect(page.getByText(/Ultima: rimbalzo difensivo di Lorenzo/)).toBeVisible();
+  await expect(
+    page.getByText(/Ultima: rimbalzo difensivo di Lorenzo/),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Tiro successivo" }).click();
   await expect(bar).toContainText("Tiro 2 di 2");
   await expect(
     page.getByRole("button", { name: "+2", exact: true }),
   ).toHaveAttribute("aria-describedby", "shots-hint");
-  await page.getByRole("button", { name: /Lorenzo/ }).first().click();
+  await page
+    .getByRole("button", { name: /Lorenzo/ })
+    .first()
+    .click();
   await page.getByRole("button", { name: "+2", exact: true }).click();
 
   await page.getByRole("button", { name: "Fine" }).click();
@@ -500,7 +519,10 @@ test("segna dal video con i tiri trovati e i rimbalzi", async ({ page }) => {
 
 test("in locale con i dati veri esportati (?mock=dati)", async ({ page }) => {
   await page.route("**/dati-locali.json", (route) =>
-    route.fulfill({ path: "tests/fixtures/dati-locali.json", contentType: "application/json" }),
+    route.fulfill({
+      path: "tests/fixtures/dati-locali.json",
+      contentType: "application/json",
+    }),
   );
   await skipTour(page);
   await page.goto("/?mock=dati");
@@ -691,7 +713,9 @@ test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({
   await page.getByRole("radio", { name: "Figurina Kofi" }).click();
   await expect(page.getByText("Ho cambiato la figurina")).toBeVisible();
   await page.goto("/profilo");
-  await expect(page.getByRole("heading", { name: "Razzo Jr", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Razzo Jr", exact: true }),
+  ).toBeVisible();
 });
 
 test("niente selettori del telefono: menu e orologio dell'app", async ({
@@ -1250,12 +1274,16 @@ test("statistiche avanzate: mappa di tiro da toccare", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("annuncio all'apertura: scheda come i badge, porta alla proposta nel calendario", async ({ page }) => {
+test("annuncio all'apertura: scheda come i badge, porta alla proposta nel calendario", async ({
+  page,
+}) => {
   await skipTour(page);
   await page.goto("/?mock=demo&annuncio=1");
   const go = page.getByTestId("annuncio-vai");
   await expect(go).toBeVisible({ timeout: 20000 });
-  await expect(page.getByRole("dialog")).toContainText("rispondi entro giovedì alle 21");
+  await expect(page.getByRole("dialog")).toContainText(
+    "rispondi entro giovedì alle 21",
+  );
   await go.click();
   await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=/);
   await expect(page.locator("[data-focus]")).toBeVisible();
@@ -1263,11 +1291,16 @@ test("annuncio all'apertura: scheda come i badge, porta alla proposta nel calend
   await page.goto("/?mock=demo&annuncio=1");
   await expect(page.getByTestId("annuncio-vai")).toHaveCount(0);
   await page.getByRole("button", { name: /^Notizie/ }).click();
-  await page.getByTestId("news-story").filter({ hasText: "Indoor di sabato" }).click();
+  await page
+    .getByTestId("news-story")
+    .filter({ hasText: "Indoor di sabato" })
+    .click();
   await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=/);
 });
 
-test("partita annullata per pioggia: in Home e nel calendario al posto della partita in corso", async ({ page }) => {
+test("partita annullata per pioggia: in Home e nel calendario al posto della partita in corso", async ({
+  page,
+}) => {
   await skipTour(page);
   await page.goto("/?mock=demo&partita=annullata");
   const home = page.getByTestId("rained-out");
@@ -1282,26 +1315,49 @@ test("partita annullata per pioggia: in Home e nel calendario al posto della par
   await expect(page.getByTestId("rained-out")).toBeVisible();
 });
 
-test("annullare per pioggia: la proposta resta visibile come annullata", async ({ page }) => {
+test("annullare per pioggia: la proposta resta visibile come annullata", async ({
+  page,
+}) => {
   await skipTour(page);
   // Una partita di stasera: la si annulla per il meteo.
   await page.goto("/?mock=demo&partita=stasera");
   await page.goto("/organizza");
-  await page.getByRole("button", { name: "Annulla la proposta" }).first().click();
+  await page
+    .getByRole("button", { name: "Annulla la proposta" })
+    .first()
+    .click();
   await page.getByRole("button", { name: /È per la pioggia/ }).click();
-  await expect(page.getByRole("button", { name: /È per la pioggia/ })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Annulla la proposta" }).last().click();
-  await expect(page.getByText("Annullata per pioggia: ho avvisato chi aveva risposto")).toBeVisible();
-  await expect(page.locator("[data-testid=\"rained-out\"]:visible")).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: /È per la pioggia/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("button", { name: "Annulla la proposta" })
+    .last()
+    .click();
+  await expect(
+    page.getByText("Annullata per pioggia: ho avvisato chi aveva risposto"),
+  ).toBeVisible();
+  await expect(page.locator('[data-testid="rained-out"]:visible')).toHaveCount(
+    1,
+  );
 });
 
-test("classifica da tre: chi ha tirato poco sta a parte, senza posizione", async ({ page }) => {
+test("classifica da tre: chi ha tirato poco sta a parte, senza posizione", async ({
+  page,
+}) => {
   await openApp(page, "pieno");
   await page.goto("/classifiche");
-  await page.getByRole("button", { name: /^Da tre/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Da tre/ })
+    .first()
+    .click();
   const few = page.getByTestId("few-shots");
   if (await few.count()) {
-    await expect(few.getByRole("heading", { name: /Ancora pochi tiri/ })).toBeVisible();
-    await expect(few.getByText(/solo \d+ tir|nessun tiro/).first()).toBeVisible();
+    await expect(
+      few.getByRole("heading", { name: /Ancora pochi tiri/ }),
+    ).toBeVisible();
+    await expect(
+      few.getByText(/solo \d+ tir|nessun tiro/).first(),
+    ).toBeVisible();
   }
 });

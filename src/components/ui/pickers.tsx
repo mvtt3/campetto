@@ -697,9 +697,9 @@ export function DateTimeField({
           setDTime(time?.slice(0, 5) ?? "18:00");
           setOpen(true);
         }}
-        className="press flex h-14 w-full items-center gap-3 rounded-[18px] border-[2.5px] border-edge bg-surface px-4 text-left sticker-sm"
+        className="press flex h-14 w-full items-center gap-3 rounded-[18px] bg-surface px-4 text-left shadow-[var(--shadow)]"
       >
-        <IconCalendar size={20} className="shrink-0 text-court" aria-hidden />
+        <IconCalendar size={20} className="shrink-0 text-ball" aria-hidden />
         <span className="sr-only">{label}: </span>
         <span className="min-w-0 flex-1 truncate text-[15.5px] font-bold">
           {dayLabel(day)}

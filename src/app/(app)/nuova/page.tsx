@@ -3,7 +3,12 @@
 import { play } from "@/lib/sound";
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
-import { IconChevronLeft, IconRefresh, IconX } from "@tabler/icons-react";
+import {
+  IconChevronLeft,
+  IconClipboardList,
+  IconRefresh,
+  IconX,
+} from "@tabler/icons-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BoxEditor } from "@/components/box-editor";
 import {
@@ -15,7 +20,7 @@ import {
   type Assignment,
 } from "@/components/team-picker";
 import { Avatar } from "@/components/ui/avatar";
-import { Button, haptic, Stepper } from "@/components/ui/basics";
+import { Button, haptic, Segmented, Stepper } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
 import type { SaveMatchInput } from "@/lib/data/backend";
 import { useData } from "@/lib/data/provider";
@@ -40,7 +45,7 @@ import { say } from "@/lib/voice";
 const STEPS = ["Formato", "Squadre", "Risultato", "Tabellino"] as const;
 
 const LABEL =
-  "mb-2 px-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
+  "mb-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
 
 function toLocalInput(d: Date): string {
   const off = d.getTimezoneOffset();
@@ -108,7 +113,7 @@ function ScoreSide({
       </div>
       <button
         onClick={() => onChange(target)}
-        className="press mt-2 h-9 w-full rounded-full text-[13px] font-semibold text-muted ring-1 ring-line-strong ring-inset"
+        className="press mt-2 h-9 w-full rounded-full bg-ball-soft text-[13px] font-semibold text-ball"
       >
         Metti {target}
       </button>
@@ -426,7 +431,7 @@ function NewMatchInner() {
               step > 0 && !editing ? setStep(step - 1) : router.back()
             }
             aria-label={step > 0 && !editing ? "Passo precedente" : "Chiudi"}
-            className="sticker-sm press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface"
+            className="press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface shadow-[var(--shadow)]"
           >
             {step > 0 && !editing ? (
               <IconChevronLeft size={22} />
@@ -438,7 +443,10 @@ function NewMatchInner() {
             {editing ? "Modifica partita" : "Nuova partita"}
           </h1>
         </div>
-        <nav aria-label="Passi" className="grid grid-cols-4 gap-1.5 pb-4 pt-3">
+        <nav
+          aria-label="Passi"
+          className="mb-4 mt-3 flex rounded-full bg-raised p-1"
+        >
           {STEPS.map((s, i) => {
             const reachable = i <= step || (!!editing && !blocked(i));
             return (
@@ -447,26 +455,16 @@ function NewMatchInner() {
                 disabled={!reachable}
                 onClick={() => goTo(i)}
                 aria-current={i === step ? "step" : undefined}
-                className="flex flex-col gap-1.5 text-left disabled:cursor-default"
+                className={clsx(
+                  "min-w-0 flex-1 truncate rounded-full px-1 text-[12.5px] font-semibold transition-colors disabled:cursor-default",
+                  i === step
+                    ? "h-9 bg-text text-bg"
+                    : reachable
+                      ? "h-9 text-text"
+                      : "h-9 text-faint",
+                )}
               >
-                <span
-                  className={clsx(
-                    "h-1 w-full rounded-full transition-colors",
-                    i <= step ? "bg-ball" : "bg-line",
-                  )}
-                />
-                <span
-                  className={clsx(
-                    "text-[11.5px] font-semibold",
-                    i === step
-                      ? "text-text"
-                      : reachable
-                        ? "text-muted"
-                        : "text-faint",
-                  )}
-                >
-                  {s}
-                </span>
+                {s}
               </button>
             );
           })}
@@ -478,26 +476,11 @@ function NewMatchInner() {
           <div className="flex flex-col gap-6">
             <section>
               <h2 className={LABEL}>Formato</h2>
-              <div className="grid grid-cols-4 gap-2">
-                {FORMATS.map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => {
-                      haptic(6);
-                      changeFormat(f);
-                    }}
-                    aria-pressed={format === f}
-                    className={clsx(
-                      "num press h-16 rounded-[18px] text-[24px] transition-colors",
-                      format === f
-                        ? "bg-text text-bg"
-                        : "sticker-sm bg-surface text-muted",
-                    )}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
+              <Segmented
+                value={format}
+                onChange={changeFormat}
+                options={FORMATS.map((f) => ({ value: f, label: f }))}
+              />
             </section>
             <section>
               <h2 className={LABEL}>Quando</h2>
@@ -567,17 +550,19 @@ function NewMatchInner() {
         )}
 
         {step === 3 && !withBox && (
-          <div className="flex flex-1 flex-col justify-center gap-4 text-center">
-            <p className="title text-[22px]">Vuoi aggiungere il tabellino?</p>
-            <p className="mx-auto max-w-[30ch] text-balance text-[14.5px] text-muted">
-              Punti, rimbalzi e assist di ognuno, anche più tardi o dal video
-            </p>
-            <Button
-              className="mx-auto mt-2 w-full max-w-xs"
-              onClick={() => setWithBox(true)}
-            >
-              Aggiungi il tabellino
-            </Button>
+          <div className="flex flex-1 flex-col justify-center">
+            <div className="flex flex-col items-center gap-3 rounded-[22px] bg-surface px-5 pb-5 pt-6 text-center shadow-[var(--shadow)]">
+              <span className="grid h-14 w-14 place-items-center rounded-[18px] bg-ball-soft text-ball">
+                <IconClipboardList size={28} aria-hidden />
+              </span>
+              <p className="title text-[20px]">Vuoi aggiungere il tabellino?</p>
+              <p className="max-w-[30ch] text-balance text-[14px] text-muted">
+                Punti, rimbalzi e assist di ognuno, anche più tardi o dal video
+              </p>
+              <Button className="mt-1 w-full" onClick={() => setWithBox(true)}>
+                Aggiungi il tabellino
+              </Button>
+            </div>
           </div>
         )}
 
@@ -595,7 +580,7 @@ function NewMatchInner() {
                       ? assign[id] === "A"
                         ? "bg-court text-court-ink"
                         : "bg-ball text-ball-ink"
-                      : "sticker-sm bg-surface",
+                      : "bg-surface shadow-[var(--shadow)]",
                   )}
                 >
                   <Avatar
@@ -677,7 +662,7 @@ function NewMatchInner() {
                         setScoreA(pointsCheck.pa);
                         setScoreB(pointsCheck.pb);
                       }}
-                      className="sticker-sm press rounded-full bg-surface px-3.5 py-1.5 text-[12.5px] font-semibold"
+                      className="press rounded-full bg-surface px-3.5 py-1.5 text-[12.5px] font-semibold shadow-[var(--shadow)]"
                     >
                       Usa {pointsCheck.pa}–{pointsCheck.pb} come risultato
                     </button>

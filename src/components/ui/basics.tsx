@@ -544,7 +544,7 @@ export function Stepper({
   return (
     <div
       className={clsx(
-        "sticker-sm flex items-center rounded-2xl bg-surface",
+        "flex items-center rounded-2xl bg-surface shadow-[var(--shadow)]",
         compact ? "h-12" : "h-14",
       )}
     >

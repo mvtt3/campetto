@@ -176,13 +176,13 @@ export function TeamPicker({
                 "press flex h-14 items-center gap-2.5 rounded-[18px] px-2.5 text-left transition-colors",
                 t === "A" && "bg-court text-court-ink",
                 t === "B" && "bg-ball text-ball-ink",
-                !t && "sticker-sm bg-surface",
+                !t && "bg-surface shadow-[var(--shadow)]",
               )}
             >
               <span className="relative shrink-0">
                 <Avatar player={p} size={34} href={false} ring="none" />
                 {subs.has(p.id) && (
-                  <span className="absolute -bottom-1 -right-1 grid h-[18px] w-[18px] place-items-center rounded-full border-2 border-edge bg-volt text-volt-ink">
+                  <span className="absolute -bottom-1 -right-1 grid h-[18px] w-[18px] place-items-center rounded-full border-2 border-surface bg-volt text-volt-ink">
                     <IconRefresh size={10} strokeWidth={3} aria-hidden />
                   </span>
                 )}
@@ -239,7 +239,7 @@ export function TeamPicker({
                     onChange(next);
                     onRemoveGuest(p.id);
                   }}
-                  className="press absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full border-2 border-edge bg-surface text-text"
+                  className="press absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full bg-surface text-text shadow-[var(--shadow)]"
                 >
                   <IconX size={13} strokeWidth={3} />
                 </button>
@@ -296,7 +296,7 @@ export function TeamPicker({
           <button
             disabled={!canBalance}
             onClick={() => balance(0)}
-            className="sticker-sm press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-surface text-[14px] font-semibold disabled:opacity-40"
+            className="press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-surface text-[14px] font-semibold shadow-[var(--shadow)] disabled:opacity-40"
           >
             <IconScale size={17} /> Equilibra
           </button>
@@ -306,7 +306,7 @@ export function TeamPicker({
               play("shuffle");
               balance(1);
             }}
-            className="sticker-sm press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-surface text-[14px] font-semibold disabled:opacity-40"
+            className="press flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-surface text-[14px] font-semibold shadow-[var(--shadow)] disabled:opacity-40"
           >
             <IconArrowsShuffle size={17} /> Rimescola
           </button>
