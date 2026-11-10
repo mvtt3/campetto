@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Campetto",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   formatDetection: { telephone: false },
   icons: {
@@ -46,8 +46,6 @@ export const viewport: Viewport = {
 // Applica il tema prima del primo disegno, così non c'è il lampo di colore sbagliato.
 const themeScript = `(function(){try{var t=localStorage.getItem('campetto:theme')||'light';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
-const iosGapScript = `(function(){if(!navigator.standalone)return;var r=document.documentElement;function f(){var g=window.innerWidth>window.innerHeight?0:Math.round(screen.height-window.innerHeight);r.style.setProperty('--ios-gap',(g>0&&g<80?g:0)+'px');}f();addEventListener('resize',f);})();`;
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -60,7 +58,6 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <script dangerouslySetInnerHTML={{ __html: iosGapScript }} />
         <script dangerouslySetInnerHTML={{ __html: introScript }} />
       </head>
       <body>
