@@ -16,6 +16,8 @@ import { shortName, type Match } from "@/lib/types";
 const LABEL =
   "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
 
+const CARD = "rounded-[22px] bg-surface shadow-[var(--shadow)]";
+
 const GRID = "grid auto-rows-fr grid-cols-2 gap-2.5";
 
 const GOLD =
@@ -172,69 +174,147 @@ export default function HallPage() {
           <div className="flex flex-col gap-6">
             <section>
               <h2 className={clsx(LABEL, "mb-2 px-1")}>Stagioni</h2>
-              <div className={GRID}>
+              <div className="grid grid-cols-2 gap-2.5">
                 {engine.seasons.map((s) => {
                   const top = s.ranking[0];
                   return (
-                    <Tile
+                    <div
                       key={`${s.year}-${s.quarter}`}
-                      label={seasonLabel(s.year, s.quarter).replace(
-                        "Stagione ",
-                        "",
+                      className={clsx(
+                        "flex min-w-0 flex-col rounded-[22px] p-3.5",
+                        s.closed
+                          ? "bg-linear-to-br from-[#ffd65c] via-[#ffad33] to-[#e9781a] text-[#1d1a16] shadow-[var(--shadow-pop)]"
+                          : CARD,
                       )}
-                      hero={top ? name(top.playerId) : "—"}
-                      playerIds={top ? [top.playerId] : []}
-                      caption={
-                        top
-                          ? s.closed
-                            ? "Campione"
-                            : "In testa"
-                          : "Servono 3 partite"
-                      }
-                      gold={s.closed && !!top}
-                      icon={<IconTrophy size={16} aria-hidden />}
-                    />
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p
+                          className={clsx(
+                            "text-[11.5px] font-semibold uppercase leading-tight tracking-[0.08em] [text-wrap:balance]",
+                            s.closed ? "text-[#1d1a16]/65" : "text-muted",
+                          )}
+                        >
+                          {seasonLabel(s.year, s.quarter).replace(
+                            "Stagione ",
+                            "",
+                          )}
+                        </p>
+                        <IconTrophy
+                          size={18}
+                          className={clsx(
+                            "shrink-0",
+                            s.closed ? "text-[#1d1a16]/80" : "text-faint",
+                          )}
+                          aria-hidden
+                        />
+                      </div>
+                      {top ? (
+                        <div className="mt-3 flex min-w-0 items-center gap-2">
+                          <span
+                            className={clsx(
+                              "shrink-0 rounded-full",
+                              s.closed && "ring-2 ring-white/70",
+                            )}
+                          >
+                            <Avatar
+                              player={data.players.find(
+                                (p) => p.id === top.playerId,
+                              )}
+                              size={34}
+                              ring="none"
+                            />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-[14.5px] font-semibold leading-tight">
+                              {name(top.playerId)}
+                            </span>
+                            <span
+                              className={clsx(
+                                "block text-[12px] font-semibold",
+                                s.closed ? "text-[#1d1a16]/65" : "text-muted",
+                              )}
+                            >
+                              {s.closed ? "Campione" : "In testa"}
+                            </span>
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-[12.5px] text-muted">
+                          Servono 3 partite
+                        </p>
+                      )}
+                    </div>
                   );
                 })}
               </div>
             </section>
-            {engine.months.map((mo) => (
-              <section key={`${mo.year}-${mo.month}`}>
-                <h2
-                  className={clsx(LABEL, "mb-2 flex items-center gap-2 px-1")}
-                >
-                  {monthLabel(mo.year, mo.month)}
-                  {!mo.closed && (
-                    <span className="rounded-full bg-ball-soft px-2 py-0.5 text-[10.5px] text-ball">
-                      in corso
-                    </span>
-                  )}
-                </h2>
-                <div className={GRID}>
-                  <Tile
-                    label="MVP del mese"
-                    hero={mo.mvp ? name(mo.mvp.playerId) : "—"}
-                    playerIds={mo.mvp ? [mo.mvp.playerId] : []}
-                    caption={
-                      mo.mvp
-                        ? `Punteggio ${Math.round(mo.mvp.score * 100)}`
-                        : "Servono 3 partite"
-                    }
-                    gold={mo.closed && !!mo.mvp}
-                    icon={<IconCrown size={16} aria-hidden />}
-                  />
-                  {mo.kings.map((k) => (
-                    <Tile
-                      key={k.category}
-                      label={KING_LABELS[k.category]}
-                      hero={name(k.playerId)}
-                      playerIds={[k.playerId]}
-                      caption={k.label}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
+            <section>
+              <h2 className={clsx(LABEL, "mb-2 px-1")}>Mese per mese</h2>
+              <div className="flex flex-col gap-2.5">
+                {engine.months.map((mo) => (
+                  <div
+                    key={`${mo.year}-${mo.month}`}
+                    className={clsx(CARD, "p-3.5")}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="title truncate text-[17px]">
+                        {monthLabel(mo.year, mo.month)}
+                      </p>
+                      {!mo.closed && (
+                        <span className="shrink-0 rounded-full bg-ball-soft px-2.5 py-0.5 text-[11.5px] font-semibold text-ball">
+                          in corso
+                        </span>
+                      )}
+                    </div>
+                    {mo.mvp ? (
+                      <div className="mt-3 flex items-center gap-2.5 rounded-[16px] bg-gold-soft px-3 py-2">
+                        <Avatar
+                          player={data.players.find(
+                            (p) => p.id === mo.mvp!.playerId,
+                          )}
+                          size={32}
+                          ring="none"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                            MVP
+                          </span>
+                          <span className="block truncate text-[14.5px] font-semibold leading-tight">
+                            {name(mo.mvp.playerId)}
+                          </span>
+                        </span>
+                        <IconCrown
+                          size={20}
+                          className="shrink-0 text-gold"
+                          aria-hidden
+                        />
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[13px] text-muted">
+                        Nessun MVP: servono 3 partite
+                      </p>
+                    )}
+                    {mo.kings.length > 0 && (
+                      <ul className="mt-2 grid grid-cols-2 gap-2">
+                        {mo.kings.map((k) => (
+                          <li
+                            key={k.category}
+                            className="min-w-0 rounded-[14px] bg-raised px-3 py-2"
+                          >
+                            <span className="block truncate text-[11.5px] text-muted">
+                              {KING_LABELS[k.category]}
+                            </span>
+                            <span className="block truncate text-[13.5px] font-semibold">
+                              {name(k.playerId)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         )}
       </PullToRefresh>
