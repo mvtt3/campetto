@@ -744,13 +744,6 @@ export function CharacterGrid({
                         on && "text-ball",
                       )}
                     >
-                      {g !== "base" && (
-                        <span
-                          className="h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ background: RARITY[g].ring }}
-                          aria-hidden
-                        />
-                      )}
                       <span className="truncate">{p.name}</span>
                     </span>
                   </button>
