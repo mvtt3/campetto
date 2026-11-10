@@ -78,7 +78,7 @@ function TeamSide({
       />
       <p
         className={clsx(
-          "score mt-2.5 text-[48px] leading-none short:text-[40px]",
+          "score mt-1.5 text-[40px] leading-none short:text-[36px]",
           !won && "text-faint",
         )}
       >
@@ -86,14 +86,14 @@ function TeamSide({
       </p>
       <span
         className={clsx(
-          "mt-2 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]",
+          "mt-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]",
           won ? "bg-volt text-volt-ink" : "text-muted",
           !winner && "invisible",
         )}
       >
         {won ? "Vince" : "Perde"}
       </span>
-      <div className="mt-3 flex h-[46px] items-end justify-center -space-x-2 short:hidden">
+      <div className="mt-2 flex h-[40px] items-end justify-center -space-x-2 short:hidden">
         {ids.map((l) => {
           const pl = players.find((p) => p.id === l.playerId);
           return pl ? (
@@ -102,13 +102,13 @@ function TeamSide({
                 id={characterOf(pl)}
                 outfit={pl.outfit}
                 number={pl.jerseyNumber}
-                height={(ids.length > 3 ? 38 : 44) * (l.sub ? 0.86 : 1)}
+                height={(ids.length > 3 ? 34 : 38) * (l.sub ? 0.86 : 1)}
               />
             </span>
           ) : null;
         })}
       </div>
-      <p className="mt-2 w-full text-[13px] font-semibold leading-tight [text-wrap:balance]">
+      <p className="mt-1.5 w-full text-[13px] font-semibold leading-tight [text-wrap:balance]">
         {starters.map((l) => nm(l.playerId)).join(", ")}
       </p>
       {subs.length > 0 && (
@@ -265,15 +265,15 @@ export function MatchSheet({
           {record && (
             <section
               aria-label="Record"
-              className="rounded-[22px] bg-linear-to-b from-[#ffd65c] via-[#ffad33] to-[#e9781a] px-4 py-4 text-center text-[#1d1a16] shadow-[var(--shadow-pop)]"
+              className="rounded-[22px] bg-linear-to-b from-[#ffd65c] via-[#ffad33] to-[#e9781a] px-4 py-3 text-center text-[#1d1a16] shadow-[var(--shadow-pop)]"
             >
               <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[#1d1a16]/65">
                 Record · {record.label}
               </p>
-              <p className="num mt-1.5 text-[34px] leading-none">
+              <p className="num mt-1 text-[28px] leading-none">
                 {record.display}
               </p>
-              <p className="mt-2 truncate text-[14px] font-semibold">
+              <p className="mt-1 truncate text-[13.5px] font-semibold">
                 {record.playerIds
                   .map((id) =>
                     shortName(
@@ -288,7 +288,7 @@ export function MatchSheet({
           <p className="sr-only">
             Risultato {m.scoreA}–{m.scoreB}
           </p>
-          <section className="flex items-stretch gap-3 rounded-[22px] bg-raised px-3 pb-4 pt-4">
+          <section className="flex items-stretch gap-3 rounded-[22px] bg-raised px-3 py-3">
             <TeamSide m={withGuestLines(m)} team="A" players={everyone} />
             <span className="w-px shrink-0 bg-line" aria-hidden />
             <TeamSide m={withGuestLines(m)} team="B" players={everyone} />
@@ -354,11 +354,13 @@ export function MatchSheet({
           {m.notes && <p className="text-[14px] text-muted">{m.notes}</p>}
 
           {withStats.length > 0 && (
-            <BoxTable
-              match={withGuestLines(m)}
-              players={everyone}
-              mvpId={mvp?.playerId ?? null}
-            />
+            <div className="mt-2 px-1">
+              <BoxTable
+                match={withGuestLines(m)}
+                players={everyone}
+                mvpId={mvp?.playerId ?? null}
+              />
+            </div>
           )}
         </div>
       )}

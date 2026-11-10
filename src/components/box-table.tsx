@@ -68,7 +68,7 @@ export function BoxTable({
 
   return (
     <div>
-      <div className="mb-1.5 flex items-center gap-2">
+      <div className="mb-2.5 flex items-center gap-2">
         <h3 className="title flex shrink-0 items-center gap-1.5 text-[15px]">
           Tabellino
           <InfoTip label="Come si legge il tabellino" size={15}>
@@ -99,9 +99,9 @@ export function BoxTable({
         </colgroup>
         <thead>
           <tr className="text-[11px] text-muted">
-            <th className="py-1 pr-1 text-left font-semibold">Giocatore</th>
+            <th className="py-1.5 pr-1 text-left font-semibold">Giocatore</th>
             {heads.map((h) => (
-              <th key={h} className="px-0.5 py-1 text-right font-semibold">
+              <th key={h} className="px-0.5 py-1.5 text-right font-semibold">
                 {h}
               </th>
             ))}
@@ -149,7 +149,7 @@ export function BoxTable({
                   ];
             return (
               <tr key={l.playerId} className="border-t border-line">
-                <td className="truncate py-1.5 pr-1 font-semibold">
+                <td className="truncate py-2.5 pr-1 font-semibold">
                   <span
                     className={clsx(
                       "mr-1.5 inline-block h-2.5 w-2.5 rounded-full",
