@@ -118,7 +118,7 @@ function Tile({
       </span>
       <span
         className={clsx(
-          "num mt-0.5 block max-w-full truncate whitespace-nowrap leading-[1.15]!",
+          "num mt-0.5 block max-w-full truncate whitespace-nowrap leading-[1.3]!",
           weight === "hero" && "text-[32px] text-ball",
           weight === "main" && (long ? "text-[17px]" : "text-[24px]"),
           weight === "minor" && (long ? "text-[15px]" : "text-[19px]"),

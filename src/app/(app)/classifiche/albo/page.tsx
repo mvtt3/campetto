@@ -102,7 +102,7 @@ function Tile({
       </span>
       <p
         className={clsx(
-          "mt-1.5 line-clamp-2 min-h-[2.5em] w-full text-[12.5px] font-semibold leading-tight [text-wrap:balance]",
+          "mt-1.5 w-full truncate text-[12.5px] font-semibold leading-snug",
           soft,
         )}
       >
