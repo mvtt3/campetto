@@ -4,6 +4,7 @@ import webpush from "web-push";
 import { z } from "zod";
 import { BADGE_BY_KEY, computeBadges } from "@/lib/badges";
 import {
+  GAME_ON,
   SUPABASE_PUBLISHABLE_KEY,
   SUPABASE_URL,
   VAPID_PUBLIC_KEY,
@@ -904,9 +905,10 @@ async function tick(req: Request) {
       }
     }
   }
-  // Campetto Star: chi era primo a mezzanotte in una sfida del gioco.
+  // Campetto Star: chi era primo a mezzanotte in una sfida del gioco. Con il gioco spento
+  // (GAME_ON) niente notifiche: non si manda a giocare a qualcosa che nell'app non c'è.
   let kings = 0;
-  {
+  if (GAME_ON) {
     const { data: due } = await sb.rpc("cron_due_game_awards", {
       p_secret: secret,
     });
