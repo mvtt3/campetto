@@ -11,7 +11,10 @@ const STEP_FROM = [0, 72, 94];
 
 export function updatePending(): boolean {
   try {
-    return !navigator.webdriver && localStorage.getItem(SEEN_KEY) !== UPDATE;
+    return (
+      location.search.includes("aggiornamento=1") ||
+      (!navigator.webdriver && localStorage.getItem(SEEN_KEY) !== UPDATE)
+    );
   } catch {
     return false;
   }
