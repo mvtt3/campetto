@@ -7,8 +7,8 @@ const m = { startsAt: "2026-11-04T17:00:00Z", place: "niche" as const };
 describe("notifiche di partita annullata", () => {
   it("per pioggia: dice quale partita e porta al calendario di quel giorno", () => {
     const p = cancelledPush(m, "meteo", "Springs", now);
-    expect(p.title).toBe("🌧️ Partita annullata per pioggia");
-    expect(p.body).toBe("La partita di oggi alle 18:00 al Niche salta per il meteo. Appena ne propongono un'altra ti avviso");
+    expect(p.title).toBe("🌧️ Stop per pioggia");
+    expect(p.body).toBe("Oggi alle 18:00 al Niche non si gioca: campo bagnato. Appena ne propongono un'altra ti avviso");
     expect(p.url).toBe("/organizza?giorno=2026-11-04");
   });
   it("annullata a mano: dice chi l'ha annullata", () => {

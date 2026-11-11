@@ -1307,10 +1307,10 @@ test("partita annullata per pioggia: in Home e nel calendario al posto della par
   // Le schede principali restano montate (nascoste): si guarda quella visibile.
   const home = page.locator('[data-testid="rained-out"]:visible');
   await expect(home).toBeVisible();
-  await expect(home.getByText("Annullata per pioggia")).toBeVisible();
+  await expect(home.getByText("Stop per pioggia")).toBeVisible();
   await expect(page.getByTestId("live-match")).toHaveCount(0);
   // Sotto, la prossima partita: porta al calendario su quel giorno.
-  await home.getByRole("link", { name: /^Prossima:/ }).click();
+  await home.getByRole("link", { name: /^Prossima partita/ }).click();
   await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=demo-prop-2/);
   // Nel calendario di oggi c'è la scheda della pioggia.
   await page.goto("/organizza");
@@ -1337,7 +1337,7 @@ test("annullare per pioggia: la proposta resta visibile come annullata", async (
     .last()
     .click();
   await expect(
-    page.getByText("Annullata per pioggia: ho avvisato chi aveva risposto"),
+    page.getByText("Stop per pioggia: ho avvisato chi aveva detto Ci sono"),
   ).toBeVisible();
   await expect(page.locator('[data-testid="rained-out"]:visible')).toHaveCount(
     1,

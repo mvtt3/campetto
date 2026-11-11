@@ -4,7 +4,6 @@ import clsx from "clsx";
 import Link from "next/link";
 import {
   IconChevronRight,
-  IconCloudRain,
   IconCrown,
   IconPlus,
   IconSparkles,
@@ -391,10 +390,7 @@ export function HomeScreen() {
       index={hasNext ? 0 : 1}
       title={
         rained ? (
-          <>
-            <IconCloudRain size={18} className="text-court" aria-hidden />
-            Oggi non si gioca
-          </>
+          "Partita di oggi"
         ) : nextPhase === "live" ? (
           "Si gioca adesso"
         ) : (
@@ -404,14 +400,14 @@ export function HomeScreen() {
     >
       <div
         data-tour="home-next"
-        className="card cursor-pointer p-4"
+        className={clsx("cursor-pointer", !rained && "card p-4")}
         onClick={(e) => {
           if ((e.target as Element).closest("button, a")) return;
           openDay();
         }}
       >
         {rained ? (
-          <RainedOut proposal={rained} next={next} compact />
+          <RainedOut proposal={rained} next={next ?? null} compact />
         ) : next ? (
           <ProposalCard proposal={next} compact />
         ) : (

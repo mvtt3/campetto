@@ -104,20 +104,31 @@ export function awaitingStats(
   return done[0] ?? null;
 }
 
+/** Fin quando si vede una partita saltata per pioggia: tutto quel giorno e la notte fino alle 2. */
+export const RAINED_OUT_UNTIL_HOUR = 2;
+
+/** Se una partita annullata per il meteo va ancora mostrata (Home e calendario). */
+export function rainedOutVisible(p: Proposal, now: Date): boolean {
+  if (p.status !== "annullata" || p.cancelReason !== "meteo") return false;
+  const d = new Date(p.startsAt);
+  const from = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const until = new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate() + 1,
+    RAINED_OUT_UNTIL_HOUR,
+  );
+  return now >= from && now < until;
+}
+
 /**
- * La partita di oggi annullata per il meteo: fino a mezzanotte resta in Home e nel
- * calendario come "annullata per pioggia", così chi apre l'app non la cerca in campo.
+ * La partita di oggi annullata per il meteo: resta in Home e nel calendario fino alle 2 di
+ * notte come "stop per pioggia", così chi apre l'app non la cerca in campo.
  */
 export function rainedOutToday(proposals: Proposal[], now: Date): Proposal | null {
-  const day = now.toDateString();
   return (
     proposals
-      .filter(
-        (p) =>
-          p.status === "annullata" &&
-          p.cancelReason === "meteo" &&
-          new Date(p.startsAt).toDateString() === day,
-      )
+      .filter((p) => rainedOutVisible(p, now))
       .sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0] ?? null
   );
 }
