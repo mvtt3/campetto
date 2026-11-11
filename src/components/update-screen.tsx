@@ -37,10 +37,10 @@ export function UpdateScreen({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     markUpdateSeen();
     const run = animate(0, 100, {
-      duration: 3.4,
+      duration: 6,
       ease: [0.3, 0, 0.2, 1],
       onUpdate: (v) => {
-        if (bar.current) bar.current.style.transform = `scaleX(${v / 100})`;
+        if (bar.current) bar.current.style.scale = `${v / 100} 1`;
         if (percent.current) percent.current.textContent = `${Math.round(v)}%`;
         setStep(STEP_FROM.findLastIndex((from) => v >= from));
       },
