@@ -74,7 +74,7 @@ function Tile({
               : "text-[26px]",
         )}
       >
-        <span className="truncate">{hero}</span>
+        <span className="truncate leading-[1.2]">{hero}</span>
       </p>
       <span
         className={clsx(

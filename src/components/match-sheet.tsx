@@ -77,6 +77,7 @@ function TeamSide({
           )}
         >
           {nm(l.playerId)}
+          {l.sub && <span className="font-normal"> · cambio</span>}
         </span>
       ))}
     </div>

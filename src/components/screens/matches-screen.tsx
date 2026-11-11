@@ -207,9 +207,10 @@ function NightCard({
           <div className="mt-1 flex items-center gap-1.5">
             {won + lost > 0 && (
               <span
+                aria-label={`Tu: ${won} ${won === 1 ? "vinta" : "vinte"}, ${lost} ${lost === 1 ? "persa" : "perse"}`}
                 className={clsx(
                   PILL,
-                  "tnum",
+                  "tnum shrink-0 whitespace-nowrap",
                   won > lost
                     ? "bg-ok/15 text-ok"
                     : won < lost

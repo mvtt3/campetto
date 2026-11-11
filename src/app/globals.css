@@ -1835,8 +1835,8 @@ html[data-shot="3"] .intro-ball-x {
 }
 
 .rise {
-  animation: rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 70ms);
+  animation: rise 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(min(var(--i, 0), 4) * 35ms);
 }
 @keyframes rise {
   from {
@@ -1940,12 +1940,12 @@ html[data-shot="3"] .intro-ball-x {
 }
 .hero-char {
   animation:
-    hero-char-in 700ms cubic-bezier(0.2, 0.9, 0.25, 1.15) 250ms both,
-    hero-char-idle 3.6s ease-in-out 1s infinite;
+    hero-char-in 450ms cubic-bezier(0.2, 0.9, 0.25, 1.15) 60ms both,
+    hero-char-idle 3.6s ease-in-out 0.6s infinite;
 }
 .hero-bar {
   transform-origin: left;
-  animation: hero-bar 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms both;
+  animation: hero-bar 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 100ms both;
 }
 @keyframes hero-drift {
   to {

@@ -366,7 +366,8 @@ export function ProposalCard({
           {proposal.place && (
             <IconMapPin size={13} className="shrink-0 text-ball" aria-hidden />
           )}
-          {indoorVia ? (
+          {/* Nella Home la via (un tocco e si apre nelle mappe); nella scheda intera c'è già sotto, qui basta il campo. */}
+          {indoorVia && compact ? (
             <a
               href={mapsUrl(indoorVia)}
               target="_blank"

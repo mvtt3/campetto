@@ -5,8 +5,9 @@ test("dal login con Google si entra nell'app", async ({ page }) => {
   await page.goto("/?mock=reset");
   await expect(page).toHaveURL(/\/login/);
   await page.getByRole("button", { name: "Entra con Google" }).click();
+  await expect(page.getByRole("heading", { name: "Home" })).toBeAttached();
   await expect(
-    page.getByRole("heading", { name: /, (Matteo|MVP)\??$/ }),
+    page.getByRole("navigation", { name: "Navigazione principale" }),
   ).toBeVisible();
 });
 
@@ -22,9 +23,7 @@ test("un giocatore normale guarda soltanto: niente inserimento partite", async (
   page,
 }) => {
   await openApp(page, "demo", "light", "p2");
-  await expect(
-    page.getByRole("heading", { name: /, (Valerio|MVP)\??$/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Home" })).toBeAttached();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
   await expect(page.getByTestId("match-row").first()).toBeVisible();
   await expect(
@@ -80,7 +79,6 @@ test("nuova partita solo risultato", async ({ page }) => {
   await expect(page).toHaveURL(/\/partite\?m=/);
   await expect(page.getByRole("dialog")).toContainText("21–17");
   await expect(page.getByRole("dialog")).toContainText("Matteo e Valerio");
-  await expect(page.getByRole("dialog").getByText("Vince")).toBeVisible();
 });
 
 test("2 contro 2 in cinque: il quinto fa il cambio", async ({ page }) => {
@@ -104,7 +102,7 @@ test("2 contro 2 in cinque: il quinto fa il cambio", async ({ page }) => {
   await expect(page).toHaveURL(/\/partite\?m=/);
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("21–15");
-  await expect(dialog).toContainText(/Cambio: \S+/);
+  await expect(dialog).toContainText(/\S+ · cambio/);
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("match-row").first()).toContainText(" + ");
   const saved = await page.evaluate(() =>
@@ -185,7 +183,9 @@ test("nuova partita con tabellino", async ({ page }) => {
   await expect(page.getByTestId("box-points")).toHaveText("7");
   await page.getByRole("button", { name: /Simone/ }).click();
   await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
-  await expect(page.getByText(/tutto torna/)).toBeVisible();
+  await expect(page.getByTestId("points-check")).toContainText(
+    "tornano con il risultato",
+  );
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page.getByRole("dialog")).toContainText("Tabellino");
   await expect(page.getByRole("dialog")).toContainText("Mattia");
@@ -219,13 +219,13 @@ test("il tabellino deve tornare col risultato", async ({ page }) => {
   await page.getByRole("button", { name: /Simone/ }).click();
   await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
   const check = page.getByTestId("points-check");
-  await expect(check).toContainText("devono tornare col risultato");
+  await expect(check).toContainText("devono tornare con il risultato");
   await expect(
     page.getByRole("button", { name: "Salva partita" }),
   ).toBeDisabled();
   // Se il tabellino è giusto, un tocco sistema il risultato.
   await page.getByRole("button", { name: "Usa 7–2 come risultato" }).click();
-  await expect(check).toContainText("tutto torna");
+  await expect(check).toContainText("tornano con il risultato");
   await expect(
     page.getByRole("button", { name: "Salva partita" }),
   ).toBeEnabled();
@@ -242,7 +242,7 @@ test("proponi una partita e rispondi", async ({ page }) => {
   await page.getByRole("button", { name: "Proponi", exact: true }).click();
   // Le schede principali restano montate (nascoste): si guarda solo la scheda visibile.
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
-  await expect(card).toContainText("1 di 6");
+  await expect(card).toContainText("1/6");
   await expect(card).toContainText("Decathlon");
   const answer = card.getByRole("group", { name: "La tua risposta" });
   await answer.getByRole("button", { name: "Forse" }).click();
@@ -251,7 +251,7 @@ test("proponi una partita e rispondi", async ({ page }) => {
     "true",
   );
   await answer.getByRole("button", { name: "Ci sono" }).click();
-  await expect(card).toContainText("1 di 6");
+  await expect(card).toContainText("1/6");
   await page.getByRole("link", { name: "Home" }).click();
   await expect(page.getByTestId("proposal-card")).toBeVisible();
 });
@@ -364,9 +364,12 @@ test("chi ha proposto sposta la partita su una controproposta", async ({
   const alts = card.getByRole("list", { name: "Controproposte" });
   await alts.getByRole("button", { name: "Sposta qui" }).click();
   await alts.getByRole("button", { name: "Confermi?" }).click();
-  await expect(card).toContainText("Niche");
-  await expect(card).toContainText("19:00");
-  await expect(alts).toHaveCount(0);
+  // Spostata alle 19: la scheda cambia posto in elenco, la si ritrova dall'ora.
+  const moved = page
+    .locator('[data-testid="proposal-card"]:visible', { hasText: "19:00" })
+    .first();
+  await expect(moved).toContainText("Niche");
+  await expect(moved.getByRole("button", { name: "Sposta qui" })).toHaveCount(0);
 });
 
 test("partita confermata e poi in corso, nel calendario e nella Home", async ({

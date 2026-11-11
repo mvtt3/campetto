@@ -124,14 +124,14 @@ function Podium({ rows }: { rows: Row[] }) {
                 className="relative z-10 -mb-2 flex flex-col items-center"
                 initial={{ opacity: 0, y: -28 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ ...SPRING, delay: 0.3 + i * 0.08 }}
+                transition={{ ...SPRING, delay: 0.04 + i * 0.05 }}
               >
                 {first && (
                   <motion.span
                     className="mb-0.5 text-gold drop-shadow-[0_2px_6px_rgb(232_161_0/0.5)]"
                     initial={{ scale: 0, rotate: -30 }}
                     animate={{ scale: 1, rotate: 0 }}
-                    transition={{ ...SPRING, delay: 0.6 }}
+                    transition={{ ...SPRING, delay: 0.2 }}
                   >
                     <IconCrown size={26} aria-hidden />
                   </motion.span>

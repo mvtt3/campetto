@@ -264,7 +264,7 @@ function MvpCard({
                 />
               </div>
             </div>
-            <div className="mt-auto grid grid-cols-3 gap-2 rounded-[18px] border border-white/50 bg-white/40 px-3 py-2.5 backdrop-blur-md">
+            <div className="mt-auto grid grid-cols-3 gap-2 rounded-[18px] border border-white/50 bg-white/50 px-3 py-2.5">
               <MvpStat value={mvp.entry.games} label="Partite" />
               <MvpStat
                 value={`${Math.round(mvp.entry.winPct * 100)}%`}
@@ -466,7 +466,7 @@ export function HomeScreen() {
               </span>
             </div>
             <div className="relative px-5 pb-5 pt-5">
-              <p className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold backdrop-blur-sm">
+              <p className="w-fit rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
                 Il tuo {MONTHS_IT[month].toLowerCase()}
               </p>
               <div
@@ -501,7 +501,7 @@ export function HomeScreen() {
                 )}
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2">
-                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                <div className="rounded-[18px] border border-white/15 bg-white/15 px-3 py-2.5 backdrop-blur-md">
                   <p className="num text-[20px]">
                     {mine.games ? `${winPct}%` : "—"}
                   </p>
@@ -509,7 +509,7 @@ export function HomeScreen() {
                     Vittorie
                   </p>
                 </div>
-                <div className="relative rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                <div className="relative rounded-[18px] border border-white/15 bg-white/15 px-3 py-2.5 backdrop-blur-md">
                   {delta !== 0 && (
                     <span
                       className={clsx(
@@ -539,7 +539,7 @@ export function HomeScreen() {
                     </InfoTip>
                   </p>
                 </div>
-                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                <div className="rounded-[18px] border border-white/15 bg-white/15 px-3 py-2.5 backdrop-blur-md">
                   <p className="num text-[20px]">{mine.losses}</p>
                   <p className="mt-0.5 text-[11.5px] font-medium text-white/70">
                     {mine.losses === 1 ? "Persa" : "Perse"}
