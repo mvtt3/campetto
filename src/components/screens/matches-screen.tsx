@@ -345,6 +345,7 @@ function MatchesInner() {
   return (
     <>
       <div className="safe-top shrink-0 px-5 pb-3 pt-5">
+        <h1 className="sr-only">Partite</h1>
         {data.matches.length > 0 && me && (
           <Segmented
             value={only}
@@ -360,7 +361,6 @@ function MatchesInner() {
         {me?.isAdmin && (
           <Link
             href="/nuova"
-            aria-label="Aggiungi partita"
             data-tour="matches-add"
             className="card press mb-4 flex w-full items-center gap-3.5 p-3"
           >

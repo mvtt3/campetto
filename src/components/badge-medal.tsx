@@ -206,7 +206,7 @@ export function BadgeTile({
       <BadgeMedal icon={def.icon} tier={tier} size={44} />
       <span
         className={clsx(
-          "mt-2 line-clamp-2 text-[12px] font-semibold leading-tight",
+          "mt-2 line-clamp-3 text-[12px] font-semibold leading-tight [hyphens:auto]",
           tier === 0 && "text-muted",
         )}
       >

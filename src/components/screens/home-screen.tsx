@@ -205,6 +205,7 @@ function MvpCard({
   players: Player[];
 }) {
   const score = mvp ? Math.round(mvp.entry.score * 100) : 0;
+  const mvpName = player ? shortName(player, players) : "";
   return (
     <Link
       href="/classifiche"
@@ -249,8 +250,18 @@ function MvpCard({
                 ? `MVP di ${MONTHS_IT[mvp.period.month].toLowerCase()}`
                 : "MVP in carica"}
             </p>
-            <p className="display mt-0.5 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
-              {shortName(player, players)}
+            {/* I nomi lunghi rimpiccioliscono invece di essere tagliati. */}
+            <p
+              className={clsx(
+                "display mt-0.5 line-clamp-2 leading-[1.08] [overflow-wrap:anywhere]",
+                mvpName.length > 12
+                  ? "text-[20px]"
+                  : mvpName.length > 8
+                    ? "text-[25px]"
+                    : "text-[30px]",
+              )}
+            >
+              {mvpName}
             </p>
             <div className="mt-3">
               <div className="flex items-baseline justify-between text-[11px] font-semibold">

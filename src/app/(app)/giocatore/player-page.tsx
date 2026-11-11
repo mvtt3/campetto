@@ -318,7 +318,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                     id={charId}
                     outfit={player.outfit}
                     number={player.jerseyNumber}
-                    height={190}
+                    height={176}
                     className="short:h-[150px] short:w-auto"
                   />
                 </Link>
@@ -327,7 +327,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                   id={charId}
                   outfit={player.outfit}
                   number={player.jerseyNumber}
-                  height={190}
+                  height={176}
                   title={name}
                   className="short:h-[150px] short:w-auto"
                 />
