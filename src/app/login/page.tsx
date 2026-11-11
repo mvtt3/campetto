@@ -29,7 +29,7 @@ export default function LoginPage() {
       text="Le nostre partite a Nichelino: risultati, statistiche, classifiche e chi viene a giocare"
     >
       <GoogleButton onClick={() => backend.signIn(next)} />
-      <p className="mt-4 text-center text-[12.5px] text-[#3d342a]">
+      <p className="mt-4 text-center text-[12.5px] text-muted">
         Entrando accetti i{" "}
         <Link href="/termini" className="underline">
           termini

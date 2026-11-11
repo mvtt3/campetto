@@ -38,7 +38,7 @@ export default function InvitePage() {
     >
       {auth.status === "error" ? (
         <div className="text-center">
-          <p className="mb-4 rounded-2xl border-2 border-[#1d1a16] bg-[#fffaf0] px-4 py-3 text-[14px]">
+          <p className="mb-4 rounded-2xl bg-surface px-4 py-3 text-[14px] shadow-[var(--shadow)]">
             {auth.message}
           </p>
           <Button block onClick={() => router.replace("/")}>

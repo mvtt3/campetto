@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Mascot } from "@/components/mascot";
+import { UpdateScreen, updatePending } from "@/components/update-screen";
 import { useData } from "@/lib/data/provider";
 import { play, type SoundName } from "@/lib/sound";
 
@@ -100,16 +101,18 @@ export function useIntroDone(): boolean {
 export const introScript = `(function(){try{var q=location.search;var m=q.match(/shot=(\\d)/);document.documentElement.dataset.shot=m?m[1]:String(Math.floor(Math.random()*4));var force=q.indexOf('intro=1')>-1;if(!force&&(navigator.webdriver||sessionStorage.getItem('campetto:intro')||q.indexOf('mock=')>-1)){document.documentElement.dataset.intro='off';}else{sessionStorage.setItem('campetto:intro','1');}}catch(e){}})();`;
 
 export function Intro() {
-  const { auth } = useData();
+  const { auth, me } = useData();
   const [caption, setCaption] = useState("");
-  const [phase, setPhase] = useState<"show" | "leaving" | "gone">("show");
+  const [phase, setPhase] = useState<
+    "show" | "leaving" | "after" | "update" | "gone"
+  >("show");
   const [minDone, setMinDone] = useState(false);
   const stopSounds = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (document.documentElement.dataset.intro === "off") {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPhase("gone");
+      setPhase("after");
       return;
     }
     setCaption(pickCaption());
@@ -153,6 +156,12 @@ export function Intro() {
   }, []);
 
   const ready = auth.status !== "loading";
+  if (phase === "after" && ready)
+    setPhase(
+      auth.status === "ready" && me?.nickname && updatePending()
+        ? "update"
+        : "gone",
+    );
   useEffect(() => {
     if (phase !== "show" || !minDone || !ready) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -161,7 +170,7 @@ export function Intro() {
 
   useEffect(() => {
     if (phase !== "leaving") return;
-    const t = window.setTimeout(() => setPhase("gone"), 420);
+    const t = window.setTimeout(() => setPhase("after"), 420);
     return () => window.clearTimeout(t);
   }, [phase]);
 
@@ -172,7 +181,9 @@ export function Intro() {
     window.dispatchEvent(new Event(DONE_EVENT));
   }, [phase]);
 
-  if (phase === "gone") return null;
+  if (phase === "gone" || phase === "after") return null;
+  if (phase === "update")
+    return <UpdateScreen onDone={() => setPhase("gone")} />;
   return (
     <div
       className={`intro ${phase === "leaving" ? "intro-leave" : ""}`}

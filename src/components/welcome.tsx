@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { Logo } from "./mascot";
 
-/** Schermata d'ingresso come un poster: giallo sole, il badge con Spicchio, un solo pulsante. */
 export function Welcome({
   kicker,
   title,
@@ -17,9 +16,9 @@ export function Welcome({
   children: ReactNode;
 }) {
   return (
-    <main className="halftone fixed inset-0 flex flex-col overflow-hidden bg-volt text-[#1d1a16]">
-      <div className="safe-top relative mx-auto flex w-full max-w-lg flex-1 flex-col px-6">
-        <div className="flex flex-1 items-center justify-center pt-4">
+    <main className="fixed inset-0 flex flex-col overflow-hidden text-text">
+      <div className="safe-top relative mx-auto flex w-full max-w-lg flex-1 flex-col px-5">
+        <div className="relative isolate mt-5 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[32px] bg-[radial-gradient(circle_at_50%_40%,#ffe27d_0%,#ffc531_45%,#ff9a2b_100%)] shadow-[var(--shadow-pop)]">
           <motion.div
             initial={{ opacity: 0, scale: 0.6, rotate: -14 }}
             animate={{ opacity: 1, scale: 1, rotate: -4 }}
@@ -29,30 +28,27 @@ export function Welcome({
               damping: 12,
               delay: 0.15,
             }}
-            className="drop-shadow-[6px_6px_0_#1d1a16]"
           >
-            <Logo size={250} className="short:h-[190px] short:w-[190px]" />
+            <Logo size={220} className="short:h-[160px] short:w-[160px]" />
           </motion.div>
         </div>
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45, duration: 0.5 }}
-          className="text-center"
+          className="pt-7 text-center short:pt-5"
         >
           {kicker && (
-            <p className="mx-auto mb-2 w-fit rounded-full border-2 border-[#1d1a16] bg-[#fffaf0] px-3 py-1 text-[14px] font-bold">
+            <p className="mx-auto mb-3 w-fit rounded-full bg-raised px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
               {kicker}
             </p>
           )}
-          <h1 className="display text-[50px] leading-[0.95] short:text-[40px]">
-            {title}
-          </h1>
-          <p className="mx-auto mt-3 max-w-[30ch] text-[16px] font-medium text-[#3d342a]">
+          <h1 className="display text-[40px] short:text-[32px]">{title}</h1>
+          <p className="mx-auto mt-2.5 max-w-[30ch] text-[15px] leading-snug text-muted">
             {text}
           </p>
         </motion.div>
-        <div className="safe-bottom pb-8 pt-7 short:pt-4">{children}</div>
+        <div className="safe-bottom pb-8 pt-7 short:pt-5">{children}</div>
       </div>
     </main>
   );

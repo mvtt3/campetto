@@ -19,7 +19,7 @@ export function GoogleButton({
         size="lg"
         variant="light"
         block
-        className="text-[#1d1a16]"
+        className="text-[#1d1a16] shadow-[var(--shadow-pop)]"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -59,7 +59,7 @@ export function GoogleButton({
       {error && (
         <p
           role="alert"
-          className="mt-3 rounded-2xl border-2 border-[#1d1a16] bg-[#fffaf0] px-4 py-2 text-center text-[13px] text-[#e5412d]"
+          className="mt-3 rounded-2xl bg-surface px-4 py-2.5 text-center text-[13px] font-semibold text-danger shadow-[var(--shadow)]"
         >
           {error}
         </p>

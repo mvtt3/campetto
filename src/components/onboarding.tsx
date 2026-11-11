@@ -5,6 +5,7 @@ import { IconArrowLeft, IconShieldExclamation } from "@tabler/icons-react";
 import { useState } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { Mascot } from "@/components/mascot";
+import { markUpdateSeen } from "@/components/update-screen";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/basics";
 import { useToast } from "@/components/ui/toast";
@@ -38,6 +39,7 @@ export function Onboarding({ me }: { me: Player }) {
     setBusy(true);
     try {
       await backend.updateMe({ nickname: clean, avatarUrl: avatar });
+      markUpdateSeen();
       mutate((d) => ({
         ...d,
         players: d.players.map((p) =>
