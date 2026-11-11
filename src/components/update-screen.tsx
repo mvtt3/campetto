@@ -62,7 +62,6 @@ export function UpdateScreen({ onDone }: { onDone: () => void }) {
       <p className="mt-5 rounded-full bg-raised px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
         Nuovo aggiornamento
       </p>
-      <h1 className="display mt-3 text-[32px]">{UPDATE}</h1>
       <div className="mt-7 w-full max-w-[280px]">
         <div className="h-2 overflow-hidden rounded-full bg-raised">
           <span
