@@ -296,10 +296,8 @@ export function ClockDial({
               aria-pressed={mode === k}
               aria-label={k === "h" ? "Scegli l'ora" : "Scegli i minuti"}
               className={clsx(
-                "score press grid h-14 w-[76px] place-items-center rounded-[18px] border-[2.5px] border-edge text-[34px] leading-none",
-                mode === k
-                  ? "bg-court text-court-ink sticker-sm"
-                  : "bg-surface",
+                "score press grid h-14 w-[76px] place-items-center rounded-[18px] text-[34px] leading-none transition-colors",
+                mode === k ? "bg-text text-bg" : "bg-raised",
               )}
             >
               {pad(k === "h" ? h : m)}
@@ -310,7 +308,7 @@ export function ClockDial({
       <svg
         ref={svg}
         viewBox="0 0 240 240"
-        className="aspect-square w-full max-w-[248px] short:max-w-[200px] touch-none select-none rounded-full outline-none focus-visible:ring-4 focus-visible:ring-court/40"
+        className="aspect-square w-full max-w-[248px] short:max-w-[200px] touch-none select-none rounded-full outline-none focus-visible:ring-4 focus-visible:ring-ball/40"
         role="slider"
         aria-label={mode === "h" ? "Ora" : "Minuti"}
         aria-valuetext={value}
@@ -346,134 +344,85 @@ export function ClockDial({
         }}
         onPointerCancel={() => (dragging.current = false)}
       >
-        <circle cx={C} cy={C} r="116" fill="var(--edge)" />
-        <circle
-          cx={C - 3}
-          cy={C - 3}
-          r="114"
-          fill="var(--surface)"
-          stroke="var(--edge)"
+        <circle cx={C} cy={C} r="116" fill="var(--raised)" />
+        <line
+          x1={C}
+          y1={C}
+          x2={hand.x}
+          y2={hand.y}
+          stroke="var(--ball)"
           strokeWidth="3"
+          strokeLinecap="round"
         />
-        {Array.from({ length: 60 }, (_, i) => {
-          const a = (i / 60) * Math.PI * 2;
-          const r1 = i % 5 ? 108 : 104;
-          return (
-            <line
-              key={i}
-              x1={C - 3 + r1 * Math.cos(a)}
-              y1={C - 3 + r1 * Math.sin(a)}
-              x2={C - 3 + 111 * Math.cos(a)}
-              y2={C - 3 + 111 * Math.sin(a)}
-              stroke="var(--edge)"
-              strokeWidth={i % 5 ? 1 : 2.4}
-              opacity={i % 5 ? 0.35 : 0.8}
-            />
-          );
-        })}
-        <g transform="translate(-3 -3)">
-          <line
-            x1={C}
-            y1={C}
-            x2={hand.x}
-            y2={hand.y}
-            stroke="var(--edge)"
-            strokeWidth="7"
-            strokeLinecap="round"
-          />
-          <line
-            x1={C}
-            y1={C}
-            x2={hand.x}
-            y2={hand.y}
-            stroke="var(--ball)"
-            strokeWidth="3.6"
-            strokeLinecap="round"
-          />
-          <circle
-            cx={hand.x}
-            cy={hand.y}
-            r="17"
-            fill="var(--ball)"
-            stroke="var(--edge)"
-            strokeWidth="2.8"
-          />
-          <circle
-            cx={C}
-            cy={C}
-            r="7"
-            fill="var(--volt)"
-            stroke="var(--edge)"
-            strokeWidth="2.6"
-          />
-          {mode === "h" ? (
-            <>
-              {Array.from({ length: 12 }, (_, i) => {
-                const hour = i === 0 ? 0 : i + 12;
-                const p = polar(i, R_OUT);
-                const on = hour === h;
-                return (
-                  <text
-                    key={`o${i}`}
-                    x={p.x}
-                    y={p.y}
-                    dy="0.36em"
-                    textAnchor="middle"
-                    className="num"
-                    fontSize="17"
-                    fill={on ? "var(--ball-ink)" : "var(--text)"}
-                  >
-                    {pad(hour)}
-                  </text>
-                );
-              })}
-              {Array.from({ length: 12 }, (_, i) => {
-                const hour = i === 0 ? 12 : i;
-                const p = polar(i, R_IN);
-                const on = hour === h;
-                return (
-                  <text
-                    key={`i${i}`}
-                    x={p.x}
-                    y={p.y}
-                    dy="0.36em"
-                    textAnchor="middle"
-                    fontSize="13"
-                    fontWeight="700"
-                    fill={on ? "var(--ball-ink)" : "var(--muted)"}
-                  >
-                    {hour}
-                  </text>
-                );
-              })}
-            </>
-          ) : (
-            Array.from({ length: 12 }, (_, i) => {
+        <circle cx={hand.x} cy={hand.y} r="17" fill="var(--ball)" />
+        <circle cx={C} cy={C} r="4.5" fill="var(--ball)" />
+        {mode === "h" ? (
+          <>
+            {Array.from({ length: 12 }, (_, i) => {
+              const hour = i === 0 ? 0 : i + 12;
               const p = polar(i, R_OUT);
-              const on = i * 5 === m;
+              const on = hour === h;
               return (
                 <text
-                  key={i}
+                  key={`o${i}`}
                   x={p.x}
                   y={p.y}
                   dy="0.36em"
                   textAnchor="middle"
                   className="num"
-                  fontSize={i % 3 ? 14 : 17}
-                  fill={
-                    on
-                      ? "var(--ball-ink)"
-                      : i % 3
-                        ? "var(--muted)"
-                        : "var(--text)"
-                  }
+                  fontSize="17"
+                  fill={on ? "var(--ball-ink)" : "var(--text)"}
                 >
-                  {pad(i * 5)}
+                  {pad(hour)}
                 </text>
               );
-            })
-          )}
-        </g>
+            })}
+            {Array.from({ length: 12 }, (_, i) => {
+              const hour = i === 0 ? 12 : i;
+              const p = polar(i, R_IN);
+              const on = hour === h;
+              return (
+                <text
+                  key={`i${i}`}
+                  x={p.x}
+                  y={p.y}
+                  dy="0.36em"
+                  textAnchor="middle"
+                  fontSize="13"
+                  fontWeight="700"
+                  fill={on ? "var(--ball-ink)" : "var(--muted)"}
+                >
+                  {hour}
+                </text>
+              );
+            })}
+          </>
+        ) : (
+          Array.from({ length: 12 }, (_, i) => {
+            const p = polar(i, R_OUT);
+            const on = i * 5 === m;
+            return (
+              <text
+                key={i}
+                x={p.x}
+                y={p.y}
+                dy="0.36em"
+                textAnchor="middle"
+                className="num"
+                fontSize={i % 3 ? 14 : 17}
+                fill={
+                  on
+                    ? "var(--ball-ink)"
+                    : i % 3
+                      ? "var(--muted)"
+                      : "var(--text)"
+                }
+              >
+                {pad(i * 5)}
+              </text>
+            );
+          })
+        )}
       </svg>
       <p className="mt-2 text-[12.5px] font-semibold text-muted">
         {mode === "h" ? "Tocca o trascina l'ora" : "Ora i minuti"}
