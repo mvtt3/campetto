@@ -60,7 +60,7 @@ const LOADER_DELAY = 280;
 const STALL_MS = 15_000;
 
 const RAIL_BTN =
-  "grid h-11 w-11 place-items-center rounded-full bg-black/35 backdrop-blur-md";
+  "grid h-11 w-11 place-items-center rounded-full bg-black/50";
 
 /**
  * Un video del feed. Solo quello attivo e i due vicini hanno il <video>: gli altri sono
@@ -483,7 +483,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
             role="status"
             data-testid="hl-loading"
           >
-            <div className="flex flex-col items-center gap-1.5 rounded-[22px] bg-[#17130f]/45 px-5 pb-3 pt-2 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-1.5 rounded-[22px] bg-[#17130f]/60 px-5 pb-3 pt-2">
               <div className="live-stage relative h-[76px] w-[66px]">
                 <span className="live-shadow absolute bottom-0 left-1/2 h-2 w-3/5 -translate-x-1/2 rounded-[50%] bg-[#17130f]/50" />
                 <span className="live-bounce absolute inset-x-0 bottom-1.5 flex justify-center">
@@ -622,7 +622,7 @@ export const Slide = memo(function Slide(p: SlideProps) {
       </div>
 
       <div className="hl-meta pointer-events-none absolute left-0 right-[64px] z-10 pl-3 text-white">
-        <div className="overflow-hidden rounded-[20px] bg-black/45 backdrop-blur-md">
+        <div className="overflow-hidden rounded-[20px] bg-black/60">
           <h2 className="hl-title truncate px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">
             {p.title}
           </h2>

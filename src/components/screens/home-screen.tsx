@@ -4,7 +4,6 @@ import clsx from "clsx";
 import Link from "next/link";
 import {
   IconChevronRight,
-  IconCloudRain,
   IconCrown,
   IconPlus,
   IconSparkles,
@@ -205,6 +204,7 @@ function MvpCard({
   players: Player[];
 }) {
   const score = mvp ? Math.round(mvp.entry.score * 100) : 0;
+  const mvpName = player ? shortName(player, players) : "";
   return (
     <Link
       href="/classifiche"
@@ -249,8 +249,18 @@ function MvpCard({
                 ? `MVP di ${MONTHS_IT[mvp.period.month].toLowerCase()}`
                 : "MVP in carica"}
             </p>
-            <p className="display mt-0.5 line-clamp-2 text-[30px] leading-[1.02] [overflow-wrap:anywhere]">
-              {shortName(player, players)}
+            {/* I nomi lunghi rimpiccioliscono invece di essere tagliati. */}
+            <p
+              className={clsx(
+                "display mt-0.5 line-clamp-2 leading-[1.08] [overflow-wrap:anywhere]",
+                mvpName.length > 12
+                  ? "text-[20px]"
+                  : mvpName.length > 8
+                    ? "text-[25px]"
+                    : "text-[30px]",
+              )}
+            >
+              {mvpName}
             </p>
             <div className="mt-3">
               <div className="flex items-baseline justify-between text-[11px] font-semibold">
@@ -264,7 +274,7 @@ function MvpCard({
                 />
               </div>
             </div>
-            <div className="mt-auto grid grid-cols-3 gap-2 rounded-[18px] border border-white/50 bg-white/40 px-3 py-2.5 backdrop-blur-md">
+            <div className="mt-auto grid grid-cols-3 gap-2 rounded-[18px] border border-white/50 bg-white/50 px-3 py-2.5">
               <MvpStat value={mvp.entry.games} label="Partite" />
               <MvpStat
                 value={`${Math.round(mvp.entry.winPct * 100)}%`}
@@ -380,10 +390,7 @@ export function HomeScreen() {
       index={hasNext ? 0 : 1}
       title={
         rained ? (
-          <>
-            <IconCloudRain size={18} className="text-court" aria-hidden />
-            Oggi non si gioca
-          </>
+          "Partita di oggi"
         ) : nextPhase === "live" ? (
           "Si gioca adesso"
         ) : (
@@ -393,14 +400,14 @@ export function HomeScreen() {
     >
       <div
         data-tour="home-next"
-        className="card cursor-pointer p-4"
+        className={clsx("cursor-pointer", !rained && "card p-4")}
         onClick={(e) => {
           if ((e.target as Element).closest("button, a")) return;
           openDay();
         }}
       >
         {rained ? (
-          <RainedOut proposal={rained} next={next} compact />
+          <RainedOut proposal={rained} next={next ?? null} compact />
         ) : next ? (
           <ProposalCard proposal={next} compact />
         ) : (
@@ -466,7 +473,7 @@ export function HomeScreen() {
               </span>
             </div>
             <div className="relative px-5 pb-5 pt-5">
-              <p className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold backdrop-blur-sm">
+              <p className="w-fit rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
                 Il tuo {MONTHS_IT[month].toLowerCase()}
               </p>
               <div
@@ -501,7 +508,7 @@ export function HomeScreen() {
                 )}
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2">
-                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                <div className="rounded-[18px] border border-white/15 bg-white/15 px-3 py-2.5 backdrop-blur-md">
                   <p className="num text-[20px]">
                     {mine.games ? `${winPct}%` : "—"}
                   </p>
@@ -509,7 +516,7 @@ export function HomeScreen() {
                     Vittorie
                   </p>
                 </div>
-                <div className="relative rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                <div className="relative rounded-[18px] border border-white/15 bg-white/15 px-3 py-2.5 backdrop-blur-md">
                   {delta !== 0 && (
                     <span
                       className={clsx(
@@ -539,7 +546,7 @@ export function HomeScreen() {
                     </InfoTip>
                   </p>
                 </div>
-                <div className="rounded-[18px] border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
+                <div className="rounded-[18px] border border-white/15 bg-white/15 px-3 py-2.5 backdrop-blur-md">
                   <p className="num text-[20px]">{mine.losses}</p>
                   <p className="mt-0.5 text-[11.5px] font-medium text-white/70">
                     {mine.losses === 1 ? "Persa" : "Perse"}

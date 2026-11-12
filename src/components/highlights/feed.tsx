@@ -551,12 +551,12 @@ export default function HighlightsFeed({
             data-hl-close
             onClick={onRequestClose}
             aria-label="Chiudi gli highlights"
-            className="press pointer-events-auto ml-1 grid h-10 w-10 place-items-center rounded-full bg-black/35 text-white backdrop-blur-md"
+            className="press pointer-events-auto ml-1 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
             data-testid="hl-close"
           >
             <IconChevronLeft size={22} strokeWidth={2.4} />
           </button>
-          <span className="hl-brand flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur-md">
+          <span className="hl-brand flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
             <span className="h-1.5 w-1.5 rounded-full bg-ball" aria-hidden />
             Highlights
           </span>
@@ -569,7 +569,7 @@ export default function HighlightsFeed({
             aria-pressed={music.state === "on"}
             data-music={music.state}
             className={clsx(
-              "press pointer-events-auto relative mr-1 grid h-10 w-10 place-items-center rounded-full bg-black/35 text-white backdrop-blur-md",
+              "press pointer-events-auto relative mr-1 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white",
               music.state === "blocked" && "hl-unmute",
             )}
             data-testid="hl-sound"

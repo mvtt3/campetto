@@ -15,6 +15,7 @@ import { defaultPeriod, PeriodPicker } from "@/components/period-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { Chips, EmptyState } from "@/components/ui/basics";
 import { InfoTip } from "@/components/ui/info";
+import { MvpMonthInfo } from "@/components/mvp-info";
 import { GroupStrip } from "@/components/group-strip";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useData } from "@/lib/data/provider";
@@ -36,6 +37,19 @@ import { Character, characterOf } from "@/components/character";
 import { TeamBoard } from "@/components/team-board";
 
 type Board = "mvp" | "squadre" | StatKey;
+
+/** La spiegazione di ogni classifica (la "i" sul podio). */
+function boardInfo(board: Board, minGames: number | null): string {
+  if (board === "vittorie")
+    return "Le vittorie nel periodo: più giochi, più ne puoi mettere insieme";
+  if (board === "elo")
+    return "Il punteggio di forza: sale quando vinci, scende quando perdi, di più contro chi è forte. Nel mese e nella stagione vedi di quanto è salito o sceso";
+  if (board === "difesa")
+    return `Chi difende meglio: rubata o stoppata vale 1 punto difesa, un rimbalzo in difesa mezzo punto. È la media a partita: servono almeno ${minGames ?? 2} partite con il tabellino`;
+  if (board === "tre")
+    return `La percentuale da tre: canestri da tre diviso tiri da tre. Per entrare in classifica servono almeno 5 tiri da tre e ${minGames ?? 2} partite con il tabellino: 1 su 1 fa 100%, ma vale meno di 4 su 10`;
+  return `La media a partita. Per entrare in classifica servono almeno ${minGames ?? 2} partite con il tabellino: così chi gioca una volta sola non scavalca chi c'è sempre`;
+}
 
 const BOARDS: { value: Board; label: string }[] = [
   { value: "mvp", label: "MVP" },
@@ -124,14 +138,14 @@ function Podium({ rows }: { rows: Row[] }) {
                 className="relative z-10 -mb-2 flex flex-col items-center"
                 initial={{ opacity: 0, y: -28 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ ...SPRING, delay: 0.3 + i * 0.08 }}
+                transition={{ ...SPRING, delay: 0.04 + i * 0.05 }}
               >
                 {first && (
                   <motion.span
                     className="mb-0.5 text-gold drop-shadow-[0_2px_6px_rgb(232_161_0/0.5)]"
                     initial={{ scale: 0, rotate: -30 }}
                     animate={{ scale: 1, rotate: 0 }}
-                    transition={{ ...SPRING, delay: 0.6 }}
+                    transition={{ ...SPRING, delay: 0.2 }}
                   >
                     <IconCrown size={26} aria-hidden />
                   </motion.span>
@@ -334,13 +348,16 @@ export function RankingScreen() {
     [data.matches, period],
   );
 
-  const { rows, pending, loose } = useMemo<{
+  const { rows, pending, loose, minGames } = useMemo<{
     rows: Row[];
     pending: Pending[];
+    /** Le partite che servono per entrare in classifica (per la spiegazione nella "i"). */
+    minGames: number | null;
     /** Chi ha tirato troppo poco per una percentuale (es. 1 su 1 = 100%): a parte, senza posizione. */
     loose: Row[];
   }>(() => {
-    if (board === "squadre") return { rows: [], pending: [], loose: [] };
+    if (board === "squadre")
+      return { rows: [], pending: [], loose: [], minGames: null };
     if (board === "mvp") {
       const ranked = mvpRanking(ids, data.matches, period, format, {
         elo: engine.elo,
@@ -365,6 +382,7 @@ export function RankingScreen() {
           .sort((a, b) => b.n - a.n)
           .map((g) => ({ playerId: g.id, value: "", missing: need - g.n })),
         loose: [],
+        minGames: need,
       };
     }
     const stat = STAT_BY_KEY.get(board)!;
@@ -403,6 +421,7 @@ export function RankingScreen() {
         value: fmt(r.value),
         missing: r.missing,
       })),
+      minGames: lb.minGames ?? null,
     };
   }, [
     board,
@@ -513,7 +532,22 @@ export function RankingScreen() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <div ref={podiumRef} data-tour="rank-podium" aria-label="Podio">
+            <div
+              ref={podiumRef}
+              data-tour="rank-podium"
+              aria-label="Podio"
+              className="relative"
+            >
+              {/* Come si calcola: la "i" in alto a destra, discreta ma sempre a portata. */}
+              <div className="absolute right-0 top-0 z-10">
+                <InfoTip label="Come funziona questa classifica">
+                  {board === "mvp" ? (
+                    <MvpMonthInfo minGames={minGames ?? 3} />
+                  ) : (
+                    boardInfo(board, minGames)
+                  )}
+                </InfoTip>
+              </div>
               {podium.length > 0 ? (
                 <Podium rows={podium} />
               ) : (

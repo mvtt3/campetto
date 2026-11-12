@@ -196,6 +196,34 @@ body {
   color: var(--court-ink);
   box-shadow: var(--shadow-pop);
 }
+/* La partita saltata per pioggia: il blu del campo spento in grigio temporale. */
+.storm {
+  background: linear-gradient(160deg, #6582a8 0%, #3a4f72 55%, #2b3c5a 100%);
+  box-shadow: var(--shadow-pop);
+}
+:root[data-theme="dark"] .storm {
+  background: linear-gradient(160deg, #4a6388 0%, #2c3d5c 55%, #1e2b43 100%);
+}
+/* Pioggia leggera: trattini in diagonale su una piastrella che si ripete; lo strato scende
+   di due piastrelle esatte e ricomincia, senza scatti (solo transform). */
+.rain-fall {
+  top: -128px;
+  height: calc(100% + 128px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='64'%3E%3Cg stroke='white' stroke-opacity='0.32' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M9 2l-3 13'/%3E%3Cpath d='M31 22l-3 13'/%3E%3Cpath d='M19 42l-3 13'/%3E%3Cpath d='M43 8l-3 13'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 48px 64px;
+  animation: rain-fall 0.9s linear infinite;
+  will-change: transform;
+}
+@keyframes rain-fall {
+  to {
+    transform: translateY(128px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rain-fall {
+    animation: none;
+  }
+}
 .court-lines path,
 .court-lines rect,
 .court-lines circle {
@@ -1835,8 +1863,8 @@ html[data-shot="3"] .intro-ball-x {
 }
 
 .rise {
-  animation: rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 70ms);
+  animation: rise 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(min(var(--i, 0), 4) * 35ms);
 }
 @keyframes rise {
   from {
@@ -1940,12 +1968,12 @@ html[data-shot="3"] .intro-ball-x {
 }
 .hero-char {
   animation:
-    hero-char-in 700ms cubic-bezier(0.2, 0.9, 0.25, 1.15) 250ms both,
-    hero-char-idle 3.6s ease-in-out 1s infinite;
+    hero-char-in 450ms cubic-bezier(0.2, 0.9, 0.25, 1.15) 60ms both,
+    hero-char-idle 3.6s ease-in-out 0.6s infinite;
 }
 .hero-bar {
   transform-origin: left;
-  animation: hero-bar 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms both;
+  animation: hero-bar 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 100ms both;
 }
 @keyframes hero-drift {
   to {

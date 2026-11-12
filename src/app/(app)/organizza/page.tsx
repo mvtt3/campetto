@@ -14,7 +14,7 @@ import { RainedOut } from "@/components/rained-out";
 import { ProposalCard, useRespond } from "@/components/proposal-card";
 import { StatsComing } from "@/components/stats-coming";
 import { neededPlayers } from "@/lib/notifications/grouping";
-import { proposalPhase } from "@/lib/proposals";
+import { proposalPhase, rainedOutVisible } from "@/lib/proposals";
 import {
   Button,
   Card,
@@ -303,14 +303,12 @@ function OrganizeInner() {
 
   const today = useNow();
   // Una partita finita (o mai confermata e ormai iniziata) esce dal calendario: si torna a proporre.
-  // Annullata oggi per pioggia: resta fino a mezzanotte, con Spicchio sotto la nuvola.
+  // Annullata per pioggia: resta quel giorno e la notte fino alle 2, con Spicchio sotto la nuvola.
   const open = data.proposals.filter(
     (p) =>
       (p.status === "aperta" &&
         proposalPhase(p, today, neededPlayers(p.format)) !== "over") ||
-      (p.status === "annullata" &&
-        p.cancelReason === "meteo" &&
-        sameDay(new Date(p.startsAt), today)),
+      rainedOutVisible(p, today),
   );
   const days = Array.from(
     { length: 7 },
@@ -446,21 +444,29 @@ function OrganizeInner() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {list.map((p) => (
-              <Card
-                key={p.id}
-                className={clsx("p-4", p.id === focus && "focus-pulse")}
-                // Arrivati da un avviso: la proposta giusta, al centro, pronta per "Ci sono".
-                ref={p.id === focus ? scrollOnce : undefined}
-                data-focus={p.id === focus || undefined}
-              >
-                {p.status === "annullata" ? (
+            {list.map((p) =>
+              p.status === "annullata" ? (
+                // Saltata per pioggia: la scheda ha già il suo fondo, niente riquadro attorno.
+                <div
+                  key={p.id}
+                  className={clsx(p.id === focus && "focus-pulse")}
+                  ref={p.id === focus ? scrollOnce : undefined}
+                  data-focus={p.id === focus || undefined}
+                >
                   <RainedOut proposal={p} />
-                ) : (
+                </div>
+              ) : (
+                <Card
+                  key={p.id}
+                  className={clsx("p-4", p.id === focus && "focus-pulse")}
+                  // Arrivati da un avviso: la proposta giusta, al centro, pronta per "Ci sono".
+                  ref={p.id === focus ? scrollOnce : undefined}
+                  data-focus={p.id === focus || undefined}
+                >
                   <ProposalCard proposal={p} />
-                )}
-              </Card>
-            ))}
+                </Card>
+              ),
+            )}
           </div>
         )}
         <button

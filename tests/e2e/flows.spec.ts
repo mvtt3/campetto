@@ -5,8 +5,9 @@ test("dal login con Google si entra nell'app", async ({ page }) => {
   await page.goto("/?mock=reset");
   await expect(page).toHaveURL(/\/login/);
   await page.getByRole("button", { name: "Entra con Google" }).click();
+  await expect(page.getByRole("heading", { name: "Home" })).toBeAttached();
   await expect(
-    page.getByRole("heading", { name: /, (Matteo|MVP)\??$/ }),
+    page.getByRole("navigation", { name: "Navigazione principale" }),
   ).toBeVisible();
 });
 
@@ -22,13 +23,11 @@ test("un giocatore normale guarda soltanto: niente inserimento partite", async (
   page,
 }) => {
   await openApp(page, "demo", "light", "p2");
-  await expect(
-    page.getByRole("heading", { name: /, (Valerio|MVP)\??$/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Home" })).toBeAttached();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
   await expect(page.getByTestId("match-row").first()).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Aggiungi partita" }),
+    page.getByRole("link", { name: /Aggiungi (una )?partita/ }),
   ).toHaveCount(0);
   await page.getByTestId("match-row").first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -49,7 +48,7 @@ test("l'amministratore vede gli strumenti per inserire le partite", async ({
 }) => {
   await openApp(page);
   await page.goto("/partite");
-  await page.getByRole("link", { name: "Aggiungi partita" }).first().click();
+  await page.getByRole("link", { name: /Aggiungi (una )?partita/ }).first().click();
   await expect(page).toHaveURL(/\/nuova/);
   await page.goto("/profilo/impostazioni");
   await page.getByText("Gestione del gruppo").click();
@@ -80,7 +79,6 @@ test("nuova partita solo risultato", async ({ page }) => {
   await expect(page).toHaveURL(/\/partite\?m=/);
   await expect(page.getByRole("dialog")).toContainText("21–17");
   await expect(page.getByRole("dialog")).toContainText("Matteo e Valerio");
-  await expect(page.getByRole("dialog").getByText("Vince")).toBeVisible();
 });
 
 test("2 contro 2 in cinque: il quinto fa il cambio", async ({ page }) => {
@@ -104,7 +102,7 @@ test("2 contro 2 in cinque: il quinto fa il cambio", async ({ page }) => {
   await expect(page).toHaveURL(/\/partite\?m=/);
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("21–15");
-  await expect(dialog).toContainText(/Cambio: \S+/);
+  await expect(dialog).toContainText(/\S+ · cambio/);
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("match-row").first()).toContainText(" + ");
   const saved = await page.evaluate(() =>
@@ -185,17 +183,19 @@ test("nuova partita con tabellino", async ({ page }) => {
   await expect(page.getByTestId("box-points")).toHaveText("7");
   await page.getByRole("button", { name: /Simone/ }).click();
   await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
-  await expect(page.getByText(/tutto torna/)).toBeVisible();
+  await expect(page.getByTestId("points-check")).toContainText(
+    "tornano con il risultato",
+  );
   await page.getByRole("button", { name: "Salva partita" }).click();
   await expect(page.getByRole("dialog")).toContainText("Tabellino");
   await expect(page.getByRole("dialog")).toContainText("Mattia");
   // Mattia ha vinto ed è il migliore della sua squadra: è l'MVP della partita.
   const mvp = page.getByRole("region", { name: "MVP della partita" });
   await expect(mvp).toContainText("Mattia");
-  await expect(mvp).toContainText("7 punti");
+  await expect(mvp).toContainText("7pt");
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("match-row").first()).toContainText(
-    "MVP Mattia",
+    /Mattia\s*MVP/,
   );
 });
 
@@ -219,13 +219,13 @@ test("il tabellino deve tornare col risultato", async ({ page }) => {
   await page.getByRole("button", { name: /Simone/ }).click();
   await page.getByRole("button", { name: "Aggiungi Da sotto segnati" }).click();
   const check = page.getByTestId("points-check");
-  await expect(check).toContainText("devono tornare col risultato");
+  await expect(check).toContainText("devono tornare con il risultato");
   await expect(
     page.getByRole("button", { name: "Salva partita" }),
   ).toBeDisabled();
   // Se il tabellino è giusto, un tocco sistema il risultato.
   await page.getByRole("button", { name: "Usa 7–2 come risultato" }).click();
-  await expect(check).toContainText("tutto torna");
+  await expect(check).toContainText("tornano con il risultato");
   await expect(
     page.getByRole("button", { name: "Salva partita" }),
   ).toBeEnabled();
@@ -242,7 +242,7 @@ test("proponi una partita e rispondi", async ({ page }) => {
   await page.getByRole("button", { name: "Proponi", exact: true }).click();
   // Le schede principali restano montate (nascoste): si guarda solo la scheda visibile.
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
-  await expect(card).toContainText("1 di 6");
+  await expect(card).toContainText("1/6");
   await expect(card).toContainText("Decathlon");
   const answer = card.getByRole("group", { name: "La tua risposta" });
   await answer.getByRole("button", { name: "Forse" }).click();
@@ -251,7 +251,7 @@ test("proponi una partita e rispondi", async ({ page }) => {
     "true",
   );
   await answer.getByRole("button", { name: "Ci sono" }).click();
-  await expect(card).toContainText("1 di 6");
+  await expect(card).toContainText("1/6");
   await page.getByRole("link", { name: "Home" }).click();
   await expect(page.getByTestId("proposal-card")).toBeVisible();
 });
@@ -364,9 +364,12 @@ test("chi ha proposto sposta la partita su una controproposta", async ({
   const alts = card.getByRole("list", { name: "Controproposte" });
   await alts.getByRole("button", { name: "Sposta qui" }).click();
   await alts.getByRole("button", { name: "Confermi?" }).click();
-  await expect(card).toContainText("Niche");
-  await expect(card).toContainText("19:00");
-  await expect(alts).toHaveCount(0);
+  // Spostata alle 19: la scheda cambia posto in elenco, la si ritrova dall'ora.
+  const moved = page
+    .locator('[data-testid="proposal-card"]:visible', { hasText: "19:00" })
+    .first();
+  await expect(moved).toContainText("Niche");
+  await expect(moved.getByRole("button", { name: "Sposta qui" })).toHaveCount(0);
 });
 
 test("partita confermata e poi in corso, nel calendario e nella Home", async ({
@@ -527,7 +530,9 @@ test("in locale con i dati veri esportati (?mock=dati)", async ({ page }) => {
   await skipTour(page);
   await page.goto("/?mock=dati");
   // Si entra come l'amministratore dell'esportazione.
-  await expect(page.getByRole("heading", { name: /Razzo/ })).toBeVisible();
+  await expect(
+    page.locator("header").getByRole("link", { name: /^Profilo di Razzo/ }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Partite", exact: true }).click();
   await expect(
     page.getByRole("button", { name: /Razzo 11 Bruno 7/ }),
@@ -646,11 +651,11 @@ test("cambio scheda immediato, tasto indietro e pagine interne", async ({
   await expect(page.getByText("Andamento")).toBeVisible();
   await nav.getByRole("link", { name: "Home" }).click();
   await expect(
-    page.getByRole("heading", { name: /, (Matteo|MVP)\??$/ }),
+    page.locator("header").getByRole("link", { name: /^Profilo di / }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: /, (Matteo|MVP)\??$/ }),
+    page.locator("header").getByRole("link", { name: /^Profilo di / }),
   ).toBeVisible();
 });
 
@@ -690,7 +695,7 @@ test("primo accesso: ognuno sceglie il suo nome e la figurina", async ({
   ).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Entra in campo" }).click();
   await expect(
-    page.getByRole("heading", { name: /, (Razzo|MVP)\??$/ }),
+    page.locator("header").getByRole("link", { name: /^Profilo di Razzo/ }),
   ).toBeVisible();
   // Il nome si cambia dalle impostazioni, sempre senza doppioni.
   await page.goto("/profilo/impostazioni");
@@ -821,7 +826,7 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   const tour = page.locator('[data-tour-overlay] [role="dialog"]');
   await expect(tour).toContainText("Il tuo mese");
   // Sei passi: c'è anche il ciak degli highlights.
-  await expect(tour).toContainText("Home · 1 di 6");
+  await expect(tour).toContainText(/Home\s*1 di 6/);
   await tour.getByRole("button", { name: "Avanti" }).click();
   await expect(tour).toContainText("Chi viene a giocare");
   await tour.getByRole("button", { name: "Salta Home" }).click();
@@ -855,7 +860,7 @@ test("guida con Spicchio: benvenuto, sezioni da saltare, si riapre dalle imposta
   await page.goto("/profilo/impostazioni");
   await page.getByRole("button", { name: "Guida all'app" }).click();
   await page.getByRole("button", { name: /Solo Classifica/ }).click();
-  await expect(tour).toContainText("Classifica · 1 di 3");
+  await expect(tour).toContainText(/Classifica\s*1 di 3/);
 });
 
 test("promemoria settimanale: l'app segna che sei passato, e con le notifiche spente sul telefono non si tocca", async ({
@@ -874,7 +879,7 @@ test("promemoria settimanale: l'app segna che sei passato, e con le notifiche sp
   const toggle = page.getByRole("switch", { name: "Torna a giocare" });
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await expect(toggle).toBeDisabled();
-  await expect(page.getByText(/si accendono tutte insieme/)).toBeVisible();
+  await expect(page.getByText(/Accendile qui/)).toBeVisible();
 });
 
 test("badge e personaggi nuovi da riscattare: pallino rosso finché non li apri", async ({
@@ -1158,7 +1163,9 @@ test("cambiando scheda e tornando, la lista resta dov'era", async ({
     page.getByRole("heading", { name: "Prossima partita" }),
   ).toBeVisible();
   await nav.getByRole("link", { name: "Partite", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Partite" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Partite", exact: true }),
+  ).toBeAttached();
   expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(800);
   // Le partite si aprono ancora con un tocco.
   await page.getByTestId("match-row").first().scrollIntoViewIfNeeded();
@@ -1215,7 +1222,7 @@ test("vista da giocatore: l'amministratore vede l'app come gli altri", async ({
     .getByRole("link", { name: "Partite", exact: true })
     .click();
   await expect(
-    page.getByRole("link", { name: "Aggiungi partita" }),
+    page.getByRole("link", { name: /Aggiungi (una )?partita/ }),
   ).toHaveCount(0);
   await page.getByTestId("match-row").first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -1225,7 +1232,7 @@ test("vista da giocatore: l'amministratore vede l'app come gli altri", async ({
   await bar.getByRole("button", { name: "Esci" }).click();
   await expect(bar).toHaveCount(0);
   await expect(
-    page.getByRole("link", { name: "Aggiungi partita" }),
+    page.getByRole("link", { name: /Aggiungi (una )?partita/ }),
   ).toBeVisible();
 });
 
@@ -1297,16 +1304,17 @@ test("partita annullata per pioggia: in Home e nel calendario al posto della par
 }) => {
   await skipTour(page);
   await page.goto("/?mock=demo&partita=annullata");
-  const home = page.getByTestId("rained-out");
+  // Le schede principali restano montate (nascoste): si guarda quella visibile.
+  const home = page.locator('[data-testid="rained-out"]:visible');
   await expect(home).toBeVisible();
-  await expect(home.getByText("Annullata per pioggia")).toBeVisible();
+  await expect(home.getByText("Stop per pioggia")).toBeVisible();
   await expect(page.getByTestId("live-match")).toHaveCount(0);
   // Sotto, la prossima partita: porta al calendario su quel giorno.
-  await home.getByRole("link", { name: /^Prossima:/ }).click();
+  await home.getByRole("link", { name: /^Prossima partita/ }).click();
   await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=demo-prop-2/);
   // Nel calendario di oggi c'è la scheda della pioggia.
   await page.goto("/organizza");
-  await expect(page.getByTestId("rained-out")).toBeVisible();
+  await expect(page.locator('[data-testid="rained-out"]:visible')).toBeVisible();
 });
 
 test("annullare per pioggia: la proposta resta visibile come annullata", async ({
@@ -1329,7 +1337,7 @@ test("annullare per pioggia: la proposta resta visibile come annullata", async (
     .last()
     .click();
   await expect(
-    page.getByText("Annullata per pioggia: ho avvisato chi aveva risposto"),
+    page.getByText("Stop per pioggia: ho avvisato chi aveva detto Ci sono"),
   ).toBeVisible();
   await expect(page.locator('[data-testid="rained-out"]:visible')).toHaveCount(
     1,

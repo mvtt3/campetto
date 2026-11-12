@@ -243,7 +243,7 @@ export default function SettingsPage() {
               </p>
               <Link
                 href={playerHref(me.id, true)}
-                className="press mt-3 inline-flex items-center gap-1.5 rounded-full bg-black/20 px-3 py-1.5 text-[12.5px] font-semibold text-white backdrop-blur-sm"
+                className="press mt-3 inline-flex items-center gap-1.5 rounded-full bg-black/30 px-3 py-1.5 text-[12.5px] font-semibold text-white"
               >
                 <IconEye size={15} aria-hidden />
                 Come ti vedono gli altri
@@ -268,7 +268,7 @@ export default function SettingsPage() {
             </button>
           </div>
           <div
-            className="grid grid-cols-8 gap-1.5 bg-black/20 px-4 py-3 backdrop-blur-sm"
+            className="grid grid-cols-8 gap-1.5 bg-black/30 px-4 py-3"
             role="radiogroup"
             aria-label="Sfondo della figurina"
           >

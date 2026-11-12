@@ -286,12 +286,12 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                   className="absolute right-[56%] top-3 -z-10 flex flex-col items-end"
                   initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ ...SPRING, delay: 0.35 }}
+                  transition={{ ...SPRING, delay: 0.08 }}
                 >
                   <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.22em] text-[var(--soft)]">
                     OVR
                   </span>
-                  <span className="display bg-linear-to-b from-white via-white/80 to-white/0 bg-clip-text pr-1 text-[132px] leading-[0.78] text-transparent">
+                  <span className="display bg-linear-to-b from-white/60 via-white/35 to-white/0 bg-clip-text pr-1 text-[132px] leading-[0.78] text-transparent">
                     <CountUp value={ovr} />
                   </span>
                 </motion.span>
@@ -318,7 +318,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                     id={charId}
                     outfit={player.outfit}
                     number={player.jerseyNumber}
-                    height={190}
+                    height={176}
                     className="short:h-[150px] short:w-auto"
                   />
                 </Link>
@@ -327,7 +327,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                   id={charId}
                   outfit={player.outfit}
                   number={player.jerseyNumber}
-                  height={190}
+                  height={176}
                   title={name}
                   className="short:h-[150px] short:w-auto"
                 />
@@ -354,7 +354,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
             <motion.h1
               {...rise(0.16)}
               className={clsx(
-                "display mt-1 break-words uppercase leading-[0.92] [overflow-wrap:anywhere] [text-shadow:0_2px_18px_rgb(0_0_0/0.2)]",
+                "display mt-1 break-words uppercase leading-[0.92] [overflow-wrap:anywhere] [text-shadow:0_2px_14px_rgb(0_0_0/0.35)]",
                 name.length > 9 ? "text-[30px]" : "text-[42px]",
               )}
             >
@@ -417,7 +417,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                         key={s.def.key}
                         initial={{ scale: 0, rotate: -40, y: 10 }}
                         animate={{ scale: 1, rotate: 0, y: 0 }}
-                        transition={{ ...SPRING, delay: 0.45 + i * 0.1 }}
+                        transition={{ ...SPRING, delay: 0.1 + i * 0.05 }}
                       >
                         <span
                           className="badge-float block"
@@ -522,8 +522,8 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                           initial={{ width: 0 }}
                           animate={{ width: `${a.value}%` }}
                           transition={{
-                            delay: 0.4 + i * 0.06,
-                            duration: 0.8,
+                            delay: 0.05 + i * 0.03,
+                            duration: 0.5,
                             ease: [0.2, 0.8, 0.2, 1],
                           }}
                         />

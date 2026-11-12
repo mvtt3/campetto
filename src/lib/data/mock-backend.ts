@@ -284,7 +284,7 @@ function demoProposals() {
   const phase =
     (typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("partita")
-      : null) ?? "oggi";
+      : null) ?? (DEMO ? "oggi" : null); // la demo pubblica parte con la partita di oggi
   if (phase === "incorso") d.setTime(Date.now() - 25 * 60_000);
   if (phase === "quasi") d.setTime(Date.now() + 5 * 3_600_000);
   // ?partita=stasera: più tardi ma sempre oggi (per le prove che dipendono dal giorno).

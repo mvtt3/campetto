@@ -366,7 +366,8 @@ export function ProposalCard({
           {proposal.place && (
             <IconMapPin size={13} className="shrink-0 text-ball" aria-hidden />
           )}
-          {indoorVia ? (
+          {/* Nella Home la via (un tocco e si apre nelle mappe); nella scheda intera c'è già sotto, qui basta il campo. */}
+          {indoorVia && compact ? (
             <a
               href={mapsUrl(indoorVia)}
               target="_blank"
@@ -719,7 +720,7 @@ export function ProposalCard({
           <span className="min-w-0">
             È per la pioggia
             <span className="block text-[12.5px] font-normal text-muted">
-              Fino a sera tutti vedono che oggi non si gioca
+              Tutti la vedono come saltata fino alle 2 di notte
             </span>
           </span>
         </button>
@@ -764,7 +765,7 @@ export function ProposalCard({
                     });
                     toast(
                       reason
-                        ? "Annullata per pioggia: ho avvisato chi aveva risposto"
+                        ? "Stop per pioggia: ho avvisato chi aveva detto Ci sono"
                         : "Ho annullato la proposta e avvisato chi aveva risposto",
                     );
                   } catch (e) {

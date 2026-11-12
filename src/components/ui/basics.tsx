@@ -459,7 +459,7 @@ export function Ring({
           strokeDasharray={c}
           initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: c * (1 - v) }}
-          transition={{ duration: 1.1, ease: [0.2, 0.8, 0.2, 1], delay: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1], delay: 0.05 }}
         />
       </svg>
       <span className="absolute inset-0 grid place-items-center">

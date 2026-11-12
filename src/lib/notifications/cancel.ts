@@ -20,6 +20,8 @@ interface Match {
 const when = (m: Match, now?: Date) =>
   `${dayLabel(m.startsAt, now)}${atPlace(m.place)}`;
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 const dayParam = (iso: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date(iso));
 
@@ -32,8 +34,8 @@ export function cancelledPush(
 ): CancelPush {
   if (reason === "meteo")
     return {
-      title: "🌧️ Partita annullata per pioggia",
-      body: `La partita di ${when(m, now)} salta per il meteo. Appena ne propongono un'altra ti avviso`,
+      title: "🌧️ Stop per pioggia",
+      body: `${cap(when(m, now))} non si gioca: campo bagnato. Appena ne propongono un'altra ti avviso`,
       url: `/organizza?giorno=${dayParam(m.startsAt)}`,
     };
   return {

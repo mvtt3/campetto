@@ -36,8 +36,9 @@ export function UpdateScreen({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     markUpdateSeen();
+    // Breve: un attimo per notare il nuovo stile, non un'attesa. Un tocco lo chiude subito.
     const run = animate(0, 100, {
-      duration: 6,
+      duration: 1.4,
       ease: [0.3, 0, 0.2, 1],
       onUpdate: (v) => {
         if (bar.current) bar.current.style.scale = `${v / 100} 1`;
@@ -54,8 +55,9 @@ export function UpdateScreen({ onDone }: { onDone: () => void }) {
       role="status"
       aria-label="Nuovo aggiornamento"
       animate={{ opacity: leaving ? 0 : 1 }}
-      transition={{ duration: 0.35, delay: leaving ? 0.35 : 0 }}
+      transition={{ duration: 0.25 }}
       onAnimationComplete={() => leaving && onDone()}
+      onClick={() => setLeaving(true)}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-bg px-8 text-center text-text"
     >
       <Mascot pose={step === 2 ? "esulta" : "ciao"} size={132} />

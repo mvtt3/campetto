@@ -110,10 +110,12 @@ describe("statistiche in arrivo", () => {
 
 describe("partita annullata per pioggia", () => {
   const rained = { ...proposal([]), status: "annullata" as const, cancelReason: "meteo" as const };
-  it("resta visibile per tutto il giorno, poi sparisce", () => {
+  it("resta visibile tutto il giorno e la notte fino alle 2, poi sparisce", () => {
     expect(rainedOutToday([rained], new Date(2026, 10, 3, 18, 40))?.id).toBe("x");
     expect(rainedOutToday([rained], new Date(2026, 10, 3, 23, 50))?.id).toBe("x");
-    expect(rainedOutToday([rained], new Date(2026, 10, 4, 0, 5))).toBeNull();
+    expect(rainedOutToday([rained], new Date(2026, 10, 4, 1, 55))?.id).toBe("x");
+    expect(rainedOutToday([rained], new Date(2026, 10, 4, 2, 0))).toBeNull();
+    expect(rainedOutToday([rained], new Date(2026, 10, 2, 23, 0))).toBeNull();
   });
   it("solo se è per il meteo", () => {
     const plain = { ...rained, cancelReason: null };

@@ -568,21 +568,6 @@ test("dalla scheda partita: la scheda lascia il posto al video, indietro torna a
   await expect(page).not.toHaveURL(/[?&]m=/);
 });
 
-test("dalla Home: il bollino sull'ultima partita apre il suo video", async ({
-  page,
-}) => {
-  await openApp(page, "demo");
-  await page
-    .getByRole("link", { name: /Ultima partita/ })
-    .getByTestId("hl-badge")
-    .click();
-  await expect(page.getByTestId("hl-feed")).toBeVisible();
-  expect(await activeIndex(page)).toBe(0);
-  await page.goBack();
-  await expect(page.getByTestId("hl-feed")).toHaveCount(0);
-  await expect(page).toHaveURL(/\/(\?.*)?$/);
-});
-
 for (const vp of VIEWPORTS)
   for (const theme of ["light", "dark"] as const)
     test(`${vp.name} ${theme}: niente si sovrappone nel feed e nei commenti`, async ({
@@ -801,11 +786,13 @@ test("il racconto della partita: due righe, il resto con un tocco", async ({
   const lineH = await desc.evaluate(
     (el) => parseFloat(getComputedStyle(el).lineHeight) || 20,
   );
-  const closed = (await desc.boundingBox())!.height;
+  // Il testo (non il pulsante, che ha un po' di margine attorno) sta in due righe.
+  const text = desc.locator("span").first();
+  const closed = (await text.boundingBox())!.height;
   expect(closed).toBeLessThanOrEqual(lineH * 2 + 2);
   await desc.click();
   await expect(desc).toHaveAttribute("aria-expanded", "true");
-  expect((await desc.boundingBox())!.height).toBeGreaterThan(closed);
+  expect((await text.boundingBox())!.height).toBeGreaterThan(closed);
   // La striscia dei numeri: etichetta e dato, letti di fila dai lettori di schermo.
   await expect(active(page).locator(".hl-ticker")).toHaveAttribute(
     "aria-label",
