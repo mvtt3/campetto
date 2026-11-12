@@ -2397,9 +2397,6 @@ html[data-shot="3"] .intro-ball-x {
 .hl-paused {
   animation: hl-chip 180ms ease-out;
 }
-.hl-loader > div {
-  animation: hl-chip 220ms ease-out;
-}
 /* Telefono girato in orizzontale: il video prende tutto lo schermo, il resto si stringe. */
 @media (orientation: landscape) and (max-height: 540px) {
   .hl-feed > div {

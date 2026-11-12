@@ -59,8 +59,7 @@ const LOADER_DELAY = 280;
 /** Senza nemmeno un fotogramma per così tanto, il video non sta arrivando. */
 const STALL_MS = 15_000;
 
-const RAIL_BTN =
-  "grid h-11 w-11 place-items-center rounded-full bg-black/50";
+const RAIL_BTN = "grid h-11 w-11 place-items-center rounded-full bg-black/50";
 
 /**
  * Un video del feed. Solo quello attivo e i due vicini hanno il <video>: gli altri sono
@@ -476,29 +475,14 @@ export const Slide = memo(function Slide(p: SlideProps) {
           </span>
         )}
 
-        {/* Spicchio palleggia mentre il video arriva. */}
         {showLoader && !failed && (
           <div
-            className="hl-loader pointer-events-none absolute inset-0 grid place-items-center"
+            className="pointer-events-none absolute inset-0 grid place-items-center"
             role="status"
+            aria-label="Arriva il video"
             data-testid="hl-loading"
           >
-            <div className="flex flex-col items-center gap-1.5 rounded-[22px] bg-[#17130f]/60 px-5 pb-3 pt-2">
-              <div className="live-stage relative h-[76px] w-[66px]">
-                <span className="live-shadow absolute bottom-0 left-1/2 h-2 w-3/5 -translate-x-1/2 rounded-[50%] bg-[#17130f]/50" />
-                <span className="live-bounce absolute inset-x-0 bottom-1.5 flex justify-center">
-                  <Mascot pose="esulta" size={62} animate={false} />
-                </span>
-              </div>
-              <span className="text-[13px] font-semibold text-[#f6eedc]/90">
-                Arriva il video
-                <span className="typing-dots ml-1 inline-flex gap-[3px] align-middle">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              </span>
-            </div>
+            <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#f6eedc]/25 border-t-[#f6eedc]" />
           </div>
         )}
 
