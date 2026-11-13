@@ -2833,6 +2833,51 @@ html[data-shot="3"] .intro-ball-x {
     -2px -2px 0 #1d1a16,
     0 6px 14px rgb(0 0 0 / 0.45);
 }
+/* I sottotitoli scivolano dove serve (studio, grafica, replay) invece di saltare. */
+.studio-caps {
+  transition: top 320ms cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+/* La targa di chi parla: vetro blu senza bordi, entra da sinistra ed esce sfumando. */
+.studio-plate {
+  background:
+    radial-gradient(140% 160% at 0% 0%, rgb(255 197 49 / 0.18), transparent 55%),
+    linear-gradient(120deg, rgb(12 23 54 / 0.78), rgb(31 69 184 / 0.58));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 18px 36px -18px rgb(5 10 30 / 0.7);
+  animation:
+    studio-plate-in 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) both,
+    studio-plate-out 0.35s ease-in var(--plate-out, 3.25s) forwards;
+}
+.studio-plate .display {
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.25);
+}
+@keyframes studio-plate-in {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+    clip-path: inset(0 100% 0 0 round 24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    clip-path: inset(0 0 0 0 round 24px);
+  }
+}
+@keyframes studio-plate-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-plate {
+    animation: none;
+  }
+  .studio-caps {
+    transition: none;
+  }
+}
 /* Le parole compaiono quando vengono dette: prima non ci sono (ma il loro posto sì, così la
    riga non si sposta), poi entrano con un piccolo salto; l'ultima detta è gialla. */
 .studio-word {

@@ -621,7 +621,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
 
       <LowerThird show={show} now={now} />
 
-      <Captions show={show} now={now} hidden={mode === "sigla"} replay={mode === "replay"} />
+      <Captions show={show} now={now} hidden={mode === "sigla"} zone={mode === "replay" ? "replay" : full && screen?.kind !== "replay" ? "grafica" : "studio"} />
 
       <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
@@ -736,7 +736,15 @@ function ReplayScore({ show, game }: { show: StudioShow; game: number }) {
  * l'ultima detta in giallo. Hanno il loro orologio: quando cambia una parola si ridisegnano
  * solo loro, non tutto lo studio (conduttori, ospite, grafiche).
  */
-function Captions({ show, now, hidden, replay }: { show: StudioShow; now: () => number; hidden: boolean; replay: boolean }) {
+/**
+ * Dove stanno i sottotitoli (centro della riga, in % dell'altezza dello schermo): vicino a dove
+ * si guarda, mai nell'ultimo quarto. In studio subito sotto le facce, sul bordo della scrivania
+ * (senza coprire le bocche); con la grafica a tutto schermo appena sotto la grafica; nei replay
+ * sotto l'azione, sopra il risultato.
+ */
+const CAP_ZONE = { studio: 63, grafica: 76, replay: 71 } as const;
+
+function Captions({ show, now, hidden, zone }: { show: StudioShow; now: () => number; hidden: boolean; zone: keyof typeof CAP_ZONE }) {
   const [cap, setCap] = useState<ReturnType<typeof captionAt>>(null);
   useEffect(() => {
     let raf = 0;
@@ -754,7 +762,7 @@ function Captions({ show, now, hidden, replay }: { show: StudioShow; now: () => 
     return () => cancelAnimationFrame(raf);
   }, [show, now]);
   return (
-    <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-5" style={{ bottom: replay ? "calc(118px + var(--sab))" : "calc(104px + var(--sab))" }} aria-live="polite">
+    <div className="studio-caps pointer-events-none absolute inset-x-0 z-10 flex -translate-y-1/2 justify-center px-5" style={{ top: `${CAP_ZONE[zone]}%` }} aria-live="polite">
       {cap && !hidden && (
         <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[92%] flex-wrap justify-center gap-x-[0.36em] gap-y-1 text-center text-[30px] font-extrabold leading-[1.2] tracking-[0.005em] text-white">
           {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => {
@@ -783,7 +791,7 @@ function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
-      const on = firsts.find((f) => t >= f.t && t < f.t + (f.w === "ospite" ? 3.4 : 2.8))?.w ?? null;
+      const on = firsts.find((f) => t >= f.t && t < f.t + (f.w === "ospite" ? 4.2 : 3.6))?.w ?? null;
       if (on !== last) {
         last = on;
         setWho(on);
@@ -793,28 +801,19 @@ function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
     return () => cancelAnimationFrame(raf);
   }, [show, now]);
   if (!who) return null;
-  if (who === "ospite" && show.guest)
-    return (
-      // Stretto e a sinistra: al centro della scrivania c'è il badge.
-      <div key="ospite" className="studio-in pointer-events-none absolute bottom-[190px] left-4 max-w-[150px] overflow-hidden rounded-[14px] bg-[#FFFAF0] px-3 py-1.5 text-[#1d1a16] shadow-[0_10px_24px_-8px_rgb(0_0_0/0.5)]" style={el(0)}>
-        <span className="block truncate text-[17px] font-extrabold leading-tight">{show.guest.name}</span>
-        <span className="block text-[11.5px] font-semibold text-[#1d1a16]/60">Ospite in studio</span>
-      </div>
-    );
-  const host = who as StudioHost;
+  const guest = who === "ospite" ? show.guest : null;
+  const name = guest ? guest.name : show.hosts[who as StudioHost];
+  const role = guest ? "Ospite in studio" : who === "lei" ? "Conduttrice" : "Conduttore";
   return (
-    // Dal lato opposto al badge della scrivania, che nel primo piano di lui finisce a sinistra e in quello di lei a destra.
-    <div
-      key={who}
-      className={clsx("studio-in pointer-events-none absolute bottom-[190px] flex items-stretch overflow-hidden rounded-[14px] shadow-[0_10px_24px_-8px_rgb(0_0_0/0.5)]", who === "lui" ? "right-4 flex-row-reverse text-right" : "left-4")}
-      style={el(0)}
-    >
-      <span className="grid w-10 place-items-center bg-volt">
-        <Logo size={30} text={false} />
+    // Grande e in alto, sopra la testa di chi è inquadrato: si legge con calma e lascia libere
+    // la faccia e la zona dei sottotitoli. Vetro blu, niente bordi, il badge dello Studio in giallo.
+    <div key={who} className="studio-plate pointer-events-none absolute left-5 z-10 flex max-w-[calc(100%-40px)] items-center gap-3 rounded-[24px] py-2.5 pl-2.5 pr-5 text-white" style={{ top: "18%", ["--plate-out" as string]: guest ? "3.85s" : "3.25s" }}>
+      <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[18px] bg-volt shadow-[0_6px_14px_-6px_rgb(0_0_0/0.5)]">
+        <Logo size={40} text={false} />
       </span>
-      <span className="bg-[#FFFAF0] px-3 py-1.5 text-[#1d1a16]">
-        <span className="block text-[17px] font-extrabold leading-tight">{show.hosts[host]}</span>
-        <span className="block text-[11.5px] font-semibold text-[#1d1a16]/60">{who === "lei" ? "Conduttrice" : "Conduttore"} · Studio Campetto</span>
+      <span className="min-w-0">
+        <span className="block text-[12.5px] font-semibold tracking-[0.01em] text-volt">{role}</span>
+        <span className="display block truncate text-[32px] leading-[1.02]">{name}</span>
       </span>
     </div>
   );
