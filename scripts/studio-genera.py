@@ -227,7 +227,7 @@ ITALIANO = {"assist": "àssist", "record": "rècord", "Elo": "elo", "MVP": "emvi
 def pronounce(text):
     """
     Come si dicono le parole: prima quelle prese dall'inglese (tutte in italiano), poi i nomi
-    della scaletta ("pronunce", es. Orcodio → Orcodìo, Puttens → Pùttens, un soprannome detto
+    della scaletta ("pronunce", es. Kenxo → Kenzo, CH4 → ci acca quattro, un soprannome detto
     come si legge). I sottotitoli restano scritti come nel testo.
     """
     for word, said in {**ITALIANO, **plan.get("pronunce", {})}.items():
