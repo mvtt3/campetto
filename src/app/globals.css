@@ -2650,3 +2650,130 @@ html[data-shot="3"] .intro-ball-x {
     animation: none;
   }
 }
+
+/* ───────── Studio Campetto: lo show dopo le partite ─────────
+   I presentatori si muovono con variabili CSS aggiornate dal player (niente ridisegni).
+   Le grafiche sul maxischermo usano animazioni CSS con un ritardo negativo (--el): così
+   si possono mettere in pausa e riprendere da qualsiasi punto, come un video. */
+.studio-breath {
+  transform: translateY(calc(var(--breath, 0) * 1.8px));
+}
+.studio-head {
+  transform-box: view-box;
+  transform-origin: 100px 140px;
+  transform: rotate(calc(var(--look, 0) * 4deg)) translateY(calc(var(--nod, 0) * 2.5px));
+}
+.studio-face {
+  transform: translateX(calc(var(--look, 0) * 7px));
+}
+.studio-pupil {
+  transform: translateX(calc(var(--look, 0) * 3px));
+}
+.studio-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleY(var(--blink, 1));
+}
+.studio-mouth-open {
+  transform-box: fill-box;
+  transform-origin: 50% 30%;
+  transform: scale(calc(0.7 + var(--mouth, 0) * 0.3), var(--mouth, 0));
+  opacity: calc(var(--mouth, 0) * 8);
+}
+.studio-mouth-shut {
+  opacity: calc(1 - var(--mouth, 0) * 8);
+}
+.studio-brows {
+  transform: translateY(calc(var(--mouth, 0) * -2.5px));
+}
+.studio-arm {
+  transform-box: view-box;
+  transform-origin: 170px 60px;
+  transform: rotate(calc(var(--arm, 0) * -24deg)) translateY(calc(var(--arm, 0) * -14px));
+}
+
+.studio-in {
+  animation: studio-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.studio-pop {
+  animation: studio-pop 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+.studio-grow {
+  transform-origin: left center;
+  animation: studio-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.studio-sweep {
+  animation: studio-sweep 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-sweep {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  60%,
+  100% {
+    transform: translateX(260%) skewX(-18deg);
+  }
+}
+.studio-pulse {
+  animation: studio-pulse 2.6s ease-in-out infinite;
+}
+@keyframes studio-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+/* Cambio di grafica sul maxischermo: una tendina di luce. */
+.studio-screen-in {
+  animation: studio-wipe 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--el, 0s);
+}
+@keyframes studio-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+    filter: brightness(1.8);
+  }
+}
+.studio-flash {
+  animation: studio-flash 0.7s ease-out both;
+}
+@keyframes studio-flash {
+  from {
+    opacity: 1;
+    scale: 0.8;
+  }
+  to {
+    opacity: 0;
+    scale: 1.15;
+  }
+}
+.studio-paused,
+.studio-paused * {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-sweep,
+  .studio-pulse {
+    animation: none;
+  }
+}

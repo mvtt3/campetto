@@ -16,6 +16,17 @@ import {
   type PregameTarget,
 } from "@/lib/stats/pregame";
 import { PregameBody } from "./pregame-preview";
+import { StudioShowLoader } from "./studio/studio-show";
+import {
+  setStudioSeen,
+  StudioHosts,
+  studioDay,
+  studioLength,
+  studioSeen,
+  useStudioEnabled,
+  useStudioLatest,
+  type StudioLatest,
+} from "./studio/studio-entry";
 import { useRouter } from "next/navigation";
 import { say } from "@/lib/voice";
 import {
@@ -53,7 +64,8 @@ type Item =
   | { kind: "badge"; id: string; unlock: BadgeUnlock }
   | { kind: "character"; id: AvatarPresetId }
   | { kind: "news"; id: string; post: NewsPost }
-  | { kind: "preview"; id: string; proposal: Proposal; targets: PregameTarget[] };
+  | { kind: "preview"; id: string; proposal: Proposal; targets: PregameTarget[] }
+  | { kind: "studio"; id: string; latest: StudioLatest };
 
 /** L'anteprima si vede una volta per partita: la sera prima o la mattina, la prima apertura. */
 const previewKey = (meId: string) => `campetto:anteprima:${meId}`;
@@ -120,6 +132,20 @@ export function BadgeCelebration() {
   );
   // Prima finisce l'apertura con Spicchio, poi la festa (e il suo suono).
   const introDone = useIntroDone();
+  // Lo Studio Campetto: per ora solo l'amministratore, per provarlo.
+  const studio = useStudioLatest(useStudioEnabled());
+  const [studioOpen, setStudioOpen] = useState<string | null>(null);
+  const [studioFrom, setStudioFrom] = useState(0);
+  useEffect(() => {
+    // ?studio=1 apre subito l'ultima puntata.
+    const q = new URLSearchParams(window.location.search);
+    if (!studio || q.get("studio") !== "1") return;
+    setStudioSeen(studio.id);
+    // ?t=45 parte da quel secondo (per riguardare o provare un momento preciso).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStudioFrom(Math.max(0, Number(q.get("t")) || 0));
+    setStudioOpen(studio.id);
+  }, [studio]);
 
   useEffect(() => {
     if (!me || loading || !badges || !introDone) return;
@@ -259,6 +285,10 @@ export function BadgeCelebration() {
         items.push({ kind: "preview", id: `a:${prop.id}`, proposal: prop, targets });
     }
 
+    // 5. La nuova puntata dello Studio Campetto, una volta.
+    if (studio && !studioSeen(studio.id))
+      items.push({ kind: "studio", id: `s:${studio.id}`, latest: studio });
+
     if (items.length) {
       // Le feste rispondono ai dati appena arrivati.
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -267,7 +297,7 @@ export function BadgeCelebration() {
         ...items.filter((i) => !q.some((x) => x.id === i.id)),
       ]);
     }
-  }, [me, badges, loading, data.matches, data.news, data.proposals, engine.elo, engine.playerIds, introDone]);
+  }, [me, badges, loading, data.matches, data.news, data.proposals, engine.elo, engine.playerIds, introDone, studio]);
 
   const current = queue[0];
 
@@ -277,21 +307,30 @@ export function BadgeCelebration() {
     const t = window.setTimeout(() => {
       if (current.kind === "result")
         play(current.won >= current.lost ? "win" : "loss");
-      else if (current.kind === "preview") play("whistle");
+      else if (current.kind === "preview" || current.kind === "studio") play("whistle");
       else play("unlock");
     }, 180);
     return () => window.clearTimeout(t);
   }, [current]);
 
-  if (!current || !me) return null;
+  const player = studioOpen && (
+    <StudioShowLoader id={studioOpen} startAt={studioFrom} onClose={() => {
+      setStudioOpen(null);
+      setStudioFrom(0);
+    }} />
+  );
+  if (!current || !me) return player || null;
   const next = () => {
     if (current.kind === "news") setLater(current.post.id);
+    if (current.kind === "studio") setStudioSeen(current.latest.id);
     if (current.kind === "preview") setPreviewSeen(me.id, current.proposal.id);
     setQueue((q) => q.slice(1));
   };
   const more = queue.length > 1;
 
   return (
+    <>
+    {player}
     <div
       role="dialog"
       aria-modal="true"
@@ -329,7 +368,26 @@ export function BadgeCelebration() {
         {current.kind === "preview" && (
           <PregameBody proposal={current.proposal} targets={current.targets} />
         )}
-        {current.kind === "preview" ? (
+        {current.kind === "studio" && <StudioBody latest={current.latest} />}
+        {current.kind === "studio" ? (
+          <div className="relative mt-5 flex w-full gap-2">
+            <Button variant="light" className="flex-1 text-court" onClick={next}>
+              Dopo
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-[1.6] whitespace-nowrap"
+              data-testid="studio-guarda"
+              onClick={() => {
+                const id = current.latest.id;
+                next();
+                setStudioOpen(id);
+              }}
+            >
+              Guarda · {studioLength(current.latest.duration)}
+            </Button>
+          </div>
+        ) : current.kind === "preview" ? (
           <div className="relative mt-5 flex w-full gap-2">
             <Button
               variant="light"
@@ -414,6 +472,25 @@ export function BadgeCelebration() {
         )}
       </motion.div>
     </div>
+    </>
+  );
+}
+
+/** La nuova puntata dello Studio Campetto: i due presentatori e cosa raccontano. */
+function StudioBody({ latest }: { latest: StudioLatest }) {
+  return (
+    <>
+      <div className="relative">
+        <StudioHosts size={96} />
+      </div>
+      <p className="relative mt-3 text-[14px] font-semibold text-volt">Nuova puntata</p>
+      <h2 id="party-title" className="display relative mt-1 text-[28px] leading-tight">
+        Studio Campetto
+      </h2>
+      <p className="relative mt-2 text-[14.5px] leading-snug text-white/90">
+        La serata di {studioDay(latest.day)} raccontata in studio: risultati, record e i canestri più belli.
+      </p>
+    </>
   );
 }
 

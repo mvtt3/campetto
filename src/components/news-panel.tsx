@@ -28,6 +28,11 @@ import {
 import { useNow } from "@/lib/use-now";
 import { useHighlights } from "@/components/highlights/provider";
 import { NewDot } from "@/components/new-dot";
+import {
+  StudioNewsCard,
+  useStudioEnabled,
+  useStudioLatest,
+} from "@/components/studio/studio-entry";
 
 const ICON: Record<NewsIcon, typeof IconFlame> = {
   record: IconTrophy,
@@ -296,6 +301,8 @@ export function NewsPanel({
 }) {
   const now = useNow();
   const before = now < SEASONS_START;
+  // Lo Studio Campetto in cima alle notizie: per ora solo l'amministratore.
+  const studio = useStudioLatest(useStudioEnabled());
   return (
     <Drawer.Root
       open={open}
@@ -323,6 +330,7 @@ export function NewsPanel({
             className="scroll-area safe-bottom flex min-h-0 flex-1 flex-col gap-2.5 px-4 pb-6"
             data-vaul-no-drag=""
           >
+            {studio && <StudioNewsCard latest={studio} />}
             <section
               className="card flex flex-col gap-3 p-3"
               aria-label="Arrivano le stagioni"
