@@ -98,7 +98,7 @@ export function DayFlip({ recap, onClose }: { recap: DayRecap; onClose: () => vo
       aria-label="Il giorno dopo"
       data-testid="day-flip"
     >
-      <div className="mx-auto flex h-full max-w-lg flex-col items-center gap-4 overflow-y-auto px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-[max(24px,env(safe-area-inset-top))]">
+      <div className="mx-auto flex h-full max-w-lg flex-col items-center gap-4 overflow-y-auto px-5 pb-[max(20px,var(--sab))] pt-[max(24px,env(safe-area-inset-top))]">
         {/* Il calendario: sotto il giorno nuovo, sopra la pagina di oggi che si strappa. */}
         <div className="relative h-[210px] w-[190px] shrink-0 [perspective:700px]">
           <Page day={after.day} match={match} />

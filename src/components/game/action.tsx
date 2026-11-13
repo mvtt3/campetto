@@ -471,7 +471,7 @@ export function AttackAction({
           {phase === "pass" ? "Tocca quando il cerchio si chiude sul compagno" : `${onFire ? "🔥 In fiamme · " : ""}${SHOTS[shot].label} · ${SHOTS[shot].pts} punti`}
         </Label>
       </Stage>
-      <div className="flex gap-2 bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="flex gap-2 bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-3">
         {phase === "pass" ? (
           <button
             type="button"
@@ -701,7 +701,7 @@ export function LayupAction({
           ))}
         </div>
       </Stage>
-      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-3">
         <button
           type="button"
           onPointerDown={(e) => {
@@ -897,7 +897,7 @@ export function DefenseAction({
         {phase === "ring" && ringPos && <RingAt at={ringPos} win={win} ring={ring} size={Math.max(48, Math.round(ringPos.s * 0.85))} tone="danger" />}
         <Label>{action === "rubata" ? "Tocca quando il cerchio si chiude sul pallone" : "Salta quando il cerchio si chiude: stoppata!"}</Label>
       </Stage>
-      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-3">
         <button
           type="button"
           onPointerDown={(e) => {
@@ -1131,7 +1131,7 @@ export function DriveDefense({
         {phase === "ring" && ringPos && <RingAt at={ringPos} win={win} ring={ring} size={Math.max(48, Math.round(ringPos.s * 0.85))} tone="danger" />}
         <Label>{note ?? "Va a canestro: fallo subito, o stoppalo quando salta?"}</Label>
       </Stage>
-      <div className="flex gap-2 bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="flex gap-2 bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-3">
         <button
           type="button"
           onClick={foul}
@@ -1286,7 +1286,7 @@ export function SaveAction({
         {phase === "ring" && ringPos && <RingAt at={ringPos} win={win} ring={ring} size={Math.max(52, Math.round(ringPos.s * 1.0))} />}
         <Label>Palla vagante! Tuffati quando il cerchio si chiude sulla linea</Label>
       </Stage>
-      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-3">
         <button
           type="button"
           onPointerDown={(e) => {
@@ -1448,7 +1448,7 @@ export function SoloShot({
         {label && <Label>{label}</Label>}
         {overlay}
       </Stage>
-      <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-3">
         <HoldButton handlers={meter.handlers} holding={meter.holding} disabled={disabled || busy} className="w-full">
           {meter.holding ? "Lascia!" : "Tira"}
         </HoldButton>
@@ -1512,7 +1512,7 @@ export function DunkScene({
         )}
         {children}
       </Stage>
-      {controls && <div className="bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">{controls}</div>}
+      {controls && <div className="bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-3">{controls}</div>}
     </div>
   );
 }

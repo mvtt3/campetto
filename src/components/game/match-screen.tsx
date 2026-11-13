@@ -186,7 +186,7 @@ function PreMatch({
       }
     >
       <ArenaBackdrop home={usKit.jersey} away={themKit.jersey} seed={us} />
-      <div className="absolute inset-0 flex flex-col gap-4 overflow-y-auto bg-gradient-to-b from-[#0d1124]/40 via-[#0d1124]/30 to-[#0d1124] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-6 [&>*]:shrink-0">
+      <div className="absolute inset-0 flex flex-col gap-4 overflow-y-auto bg-gradient-to-b from-[#0d1124]/40 via-[#0d1124]/30 to-[#0d1124] px-4 pb-[max(16px,var(--sab))] pt-6 [&>*]:shrink-0">
         <div className="flex flex-col items-center gap-1.5 text-center">
           <TeamLine {...homeT} />
           <p className="display text-[20px] text-volt" style={{ textShadow: "2px 2px 0 #1d1a16" }}>
@@ -690,7 +690,7 @@ function LiveMatch({
             <div className="h-[118px] shrink-0 overflow-hidden bg-[#141936] px-3 py-2 [mask-image:linear-gradient(#000_70%,transparent)]">
               <FeedList feed={st.feed} />
             </div>
-            <div className="flex shrink-0 gap-2 bg-[#0d1124] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2">
+            <div className="flex shrink-0 gap-2 bg-[#0d1124] px-3 pb-[max(12px,var(--sab))] pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -780,7 +780,7 @@ function SimMatch({
           <p className="display pb-2 text-[22px] text-[#FFF8EA]">Simulazione</p>
           <FeedList feed={st.feed} max={18} />
         </div>
-        <p className="shrink-0 pb-[max(14px,env(safe-area-inset-bottom))] text-center text-[13px] text-[#FFF8EA]/70">Tocca per arrivare al risultato</p>
+        <p className="shrink-0 pb-[max(14px,var(--sab))] text-center text-[13px] text-[#FFF8EA]/70">Tocca per arrivare al risultato</p>
       </div>
     </div>
   );
@@ -812,7 +812,7 @@ function Summary({
   const right = home ? { name: opponent, pts: result.them } : { name: team, pts: result.us };
   return (
     <GameScreen testId="match-summary" onClose={onExit} hud={<p className="display truncate text-[19px]">Fine partita</p>}>
-    <div className="absolute inset-0 flex flex-col gap-3 overflow-y-auto px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 text-text [&>*]:shrink-0">
+    <div className="absolute inset-0 flex flex-col gap-3 overflow-y-auto px-4 pb-[max(16px,var(--sab))] pt-3 text-text [&>*]:shrink-0">
       <div className={clsx("card relative overflow-hidden px-4 pb-4 pt-3", won ? "bg-ok text-white" : "bg-surface")}>
         <p className="display text-[34px] leading-none">{won ? "Vittoria!" : "Sconfitta"}</p>
         <div className="mt-3 flex items-end justify-between gap-3">

@@ -319,23 +319,27 @@ a,
   margin-top: env(safe-area-inset-top);
 }
 .safe-bottom {
-  margin-bottom: env(safe-area-inset-bottom);
+  margin-bottom: var(--sab);
 }
 /* Sotto la barra di navigazione. Su iPhone la striscia di casa lascia spazio libero e si può
    stare più in basso; su Android lo spazio sicuro è la barra dei tasti (indietro, home…), che
    copre davvero: lì si sta sopra per intero. */
 .nav-pad {
-  padding-bottom: max(12px, calc(env(safe-area-inset-bottom) + 4px));
+  padding-bottom: max(12px, calc(var(--sab) + 4px));
 }
+/* Lo spazio sicuro in basso, in un punto solo: di solito è quello che dice il telefono; se su
+   Android l'app installata finisce sotto i tasti di sistema e il telefono dice 0, lo script in
+   testa alla pagina (layout) lo porta all'altezza della barra dei tasti. */
 :root {
-  --hl-safe: env(safe-area-inset-bottom);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --hl-safe: var(--sab);
 }
 @supports (-webkit-touch-callout: none) {
   .nav-pad {
-    padding-bottom: max(12px, calc(env(safe-area-inset-bottom) - 10px));
+    padding-bottom: max(12px, calc(var(--sab) - 10px));
   }
   :root {
-    --hl-safe: calc(env(safe-area-inset-bottom) * 0.4);
+    --hl-safe: calc(var(--sab) * 0.4);
   }
 }
 
@@ -615,7 +619,7 @@ a,
     radial-gradient(rgb(0 0 0 / 0.1) 1.1px, transparent 1.4px) 0 0 / 7px 7px,
     radial-gradient(circle at 50% 40%, #ffe27d 0%, #ffc531 40%, #ff9a2b 100%);
   color: #1d1a16;
-  padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+  padding: env(safe-area-inset-top) 16px var(--sab);
   cursor: pointer;
   overflow: hidden;
   isolation: isolate;

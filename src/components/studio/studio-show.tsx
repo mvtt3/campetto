@@ -538,7 +538,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
             </div>
           </div>
           {replayClip >= 0 && (
-            <div className="absolute inset-x-3" style={{ bottom: "calc(26px + env(safe-area-inset-bottom))" }}>
+            <div className="absolute inset-x-3" style={{ bottom: "calc(26px + var(--sab))" }}>
               <ReplayScore show={show} game={replay.clips[replayClip].game} />
             </div>
           )}
@@ -567,7 +567,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
 
       {/* Sottotitoli come nei reel: poche parole alla volta, che compaiono mentre vengono dette;
           l'ultima detta in giallo. */}
-      <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-5" style={{ bottom: mode === "replay" ? "calc(118px + env(safe-area-inset-bottom))" : "calc(104px + env(safe-area-inset-bottom))" }} aria-live="polite">
+      <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-5" style={{ bottom: mode === "replay" ? "calc(118px + var(--sab))" : "calc(104px + var(--sab))" }} aria-live="polite">
         {cap && mode !== "sigla" && (
           <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[92%] flex-wrap justify-center gap-x-[0.36em] gap-y-1 text-center text-[30px] font-extrabold leading-[1.2] tracking-[0.005em] text-white">
             {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => {
@@ -582,7 +582,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         )}
       </div>
 
-      <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(env(safe-area-inset-bottom)+14px))] pt-10">
+      <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
         <div
           ref={bar}

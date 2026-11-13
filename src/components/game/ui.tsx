@@ -98,7 +98,7 @@ export function Sheet({
   return (
     <div className="fixed inset-0 z-[68] flex items-end justify-center bg-[#1d1a16]/55 fade-in" onClick={onClose}>
       <div
-        className="sheet-up card mx-auto max-h-[86dvh] w-full max-w-lg overflow-y-auto rounded-b-none px-4 pb-[max(20px,env(safe-area-inset-bottom))] pt-4"
+        className="sheet-up card mx-auto max-h-[86dvh] w-full max-w-lg overflow-y-auto rounded-b-none px-4 pb-[max(20px,var(--sab))] pt-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal

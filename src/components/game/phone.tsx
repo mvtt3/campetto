@@ -328,7 +328,7 @@ function Chat({ id, back }: { id: string; back: () => void }) {
           <div ref={end} />
         </div>
       </div>
-      <div className="shrink-0 border-t-2 border-line bg-surface px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="shrink-0 border-t-2 border-line bg-surface px-3 pb-[max(12px,var(--sab))] pt-3">
         {game.tutorial.step === 2 && c.role === "mamma" && ev && (
           <Coach className="mb-2">Scegli come rispondere: ogni tono cambia il rapporto</Coach>
         )}
