@@ -123,6 +123,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const bar = useRef<HTMLDivElement>(null);
   const timeLabel = useRef<HTMLSpanElement>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
+  // Le azioni sul maxischermo mentre si parla (replay "muro"): stessi video, piccoli e muti.
+  const wallVideos = useRef<(HTMLVideoElement | null)[]>([]);
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
@@ -389,6 +391,26 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       const r = replayAt(show, t);
       const scrR = show.screens[s.index];
       if (scrR?.kind === "replay") {
+        // Sul maxischermo (finché non si va a tutto schermo) passa l'azione in corso, a tempo con la puntata.
+        const wallOn = m !== "replay" && r && t >= scrR.clips[0].t ? r.clip : -1;
+        scrR.clips.forEach((clip, i) => {
+          const w = wallVideos.current[i];
+          if (!w) return;
+          const vis = i === wallOn;
+          const op = vis ? "1" : "0";
+          if (w.style.opacity !== op) w.style.opacity = op;
+          if (!vis) {
+            if (!w.paused) w.pause();
+            return;
+          }
+          const want = clip.from + (r?.local ?? 0);
+          if (w.readyState >= 1 && Math.abs(w.currentTime - want) > 0.3) w.currentTime = want;
+          const f = replayFrame(clip, r?.local ?? 0);
+          const pos = `${(f.cx * 100).toFixed(0)}% ${(f.cy * 100).toFixed(0)}%`;
+          if (w.style.objectPosition !== pos) w.style.objectPosition = pos;
+          if (c.running && w.paused) void w.play().catch(() => {});
+          if (!c.running && !w.paused) w.pause();
+        });
         const on = m === "replay" && r ? r.clip : -1;
         if (on !== lastClip) {
           lastClip = on;
@@ -516,6 +538,24 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
                 {screen && <StudioScreenView screen={screen} />}
               </div>
             </div>
+            {replay && (
+              <div className="absolute inset-0 bg-[#0c1736]">
+                {replay.clips.map((c, i) => (
+                  <video
+                    key={`${c.src}-${c.from}-${i}`}
+                    ref={(v) => {
+                      wallVideos.current[i] = v;
+                    }}
+                    src={c.src}
+                    muted
+                    playsInline
+                    preload="auto"
+                    className="absolute inset-0 h-full w-full object-cover opacity-0"
+                  />
+                ))}
+                <span className="absolute left-2.5 top-2.5 rounded-full bg-volt px-2 py-0.5 text-[10px] font-bold text-volt-ink">Highlights</span>
+              </div>
+            )}
           </div>
           {show.guest && <GuestInStudio playerId={show.guest.playerId} boxRef={guestBox} chairRef={guestChair} />}
           <div ref={lei} className="absolute will-change-transform" style={{ left: 27, top: 438, width: 170 }}>
@@ -833,12 +873,17 @@ function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
 function Plate({ name, role, style, out, small, right }: { name: string; role: string; style: CSSProperties; out: number; small?: boolean; right?: boolean }) {
   return (
     <div
-      className={clsx("studio-plate pointer-events-none absolute z-10 flex items-center text-white", small ? "gap-2 rounded-[20px] py-2 pl-2 pr-3.5" : "gap-3 rounded-[24px] py-2.5 pl-2.5 pr-5", right && "flex-row-reverse pl-3.5 pr-2 text-right")}
+      className={clsx("studio-plate pointer-events-none absolute z-10 flex items-center text-white", small ? "gap-2.5 rounded-[18px] py-2 pl-3 pr-4" : "gap-3 rounded-[24px] py-2.5 pl-2.5 pr-5", right && (small ? "flex-row-reverse pl-4 pr-3 text-right" : "flex-row-reverse pl-5 pr-2.5 text-right"))}
       style={{ ...style, ["--plate-out" as string]: `${out}s` }}
     >
-      <span className={clsx("grid shrink-0 place-items-center bg-volt shadow-[0_6px_14px_-6px_rgb(0_0_0/0.5)]", small ? "h-[34px] w-[34px] rounded-[12px]" : "h-[50px] w-[50px] rounded-[17px]")}>
-        <Logo size={small ? 27 : 38} text={false} />
-      </span>
+      {small ? (
+        // Le targhe piccole dell'apertura: solo una barretta gialla, così il nome entra intero.
+        <span className="h-[34px] w-[4px] shrink-0 rounded-full bg-volt" />
+      ) : (
+        <span className="grid h-[50px] w-[50px] shrink-0 place-items-center rounded-[17px] bg-volt shadow-[0_6px_14px_-6px_rgb(0_0_0/0.5)]">
+          <Logo size={38} text={false} />
+        </span>
+      )}
       <span className="min-w-0">
         <span className={clsx("block whitespace-nowrap font-semibold tracking-[0.01em] text-volt", small ? "text-[10.5px]" : "text-[12.5px]")}>{role}</span>
         <span className={clsx("display block truncate leading-[1.02]", small ? "text-[20px]" : "text-[30px]")}>{name}</span>

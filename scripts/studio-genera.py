@@ -509,20 +509,22 @@ async def main():
             else:
                 mp3, words = await tts(*voice_of(line["who"], line), say)
                 a = clean_voice(mp3)
-            # Via i silenzi in testa e in coda (le pause le decide la scaletta).
-            env = np.abs(a)
-            on = np.where(env > 0.012)[0]
-            s0 = max(0, on[0] - int(0.02 * SR)) if len(on) else 0
-            s1 = min(len(a), on[-1] + int(0.06 * SR)) if len(on) else len(a)
-            a = a[s0:s1]
             if TTS == "gemini":
                 # Ogni richiesta esce a un volume suo: ogni battuta allo stesso livello (parti dette).
+                # Prima del taglio dei silenzi, così le finali piano ("tut-ti") non vengono tagliate.
                 fr = a[: len(a) // 441 * 441].reshape(-1, 441)
                 r = np.sqrt((fr ** 2).mean(1))
                 act = r[r > 10 ** (-45 / 20)]
                 if len(act):
                     g = 10 ** (-20 / 20) / float(np.sqrt((act ** 2).mean()))
                     a = (a * min(max(g, 10 ** (-12 / 20)), 10 ** (12 / 20))).astype(np.float32)
+            # Via i silenzi in testa e in coda (le pause le decide la scaletta).
+            env = np.abs(a)
+            on = np.where(env > 0.012)[0]
+            tail = 0.14 if TTS == "gemini" else 0.06
+            s0 = max(0, on[0] - int(0.02 * SR)) if len(on) else 0
+            s1 = min(len(a), on[-1] + int(tail * SR)) if len(on) else len(a)
+            a = a[s0:s1]
             shift = s0 / SR
             d = len(a) / SR
             # Le parole: tempi relativi all'inizio della battuta, scritte come nel testo.
@@ -592,11 +594,21 @@ async def main():
             music_marks.append((guest["rise"], guest["exit"] - 0.6, 0.42))
             t = guest["rise"] + seg.get("afterExit", 1.3)
         if seg.get("replay"):
-            # I canestri, interi: ogni clip dall'inizio alla fine, uno dopo l'altro, a tutto schermo.
-            r0 = t - GAP + 0.25
+            # Due modi. Classico: i canestri, interi, uno dopo l'altro a tutto schermo dopo le battute.
+            # "muro": le azioni passano già sul maxischermo mentre si parla (dall'inizio del pezzo);
+            # finite le battute la telecamera entra nel maxischermo e le azioni vanno a tutto schermo,
+            # al massimo "pieno" secondi (15), poi si stacca. Nessuno le annuncia.
+            muro = seg.get("replay") == "muro"
+            if muro:
+                zoom_t = t - GAP + 0.2
+                shots.append({"t": round(zoom_t, 3), "cam": "schermo", "screen": si})
+                r0 = zoom_t + 1.0
+                ct = seg_start
+            else:
+                r0 = t - GAP + 0.25
+                ct = r0
             shots.append({"t": round(r0, 3), "cam": "replay", "screen": si})
             cues.append({"t": round(r0, 3), "kind": "whoosh"})
-            ct = r0
             for c in screen["clips"]:
                 c["t"] = round(ct, 3)
                 path = os.path.join(public_dir, c["src"].lstrip("/"))
@@ -610,8 +622,11 @@ async def main():
                 else:
                     print("replay: video non trovato, si vede il campo intero:", path)
                 ct += c["to"] - c["from"]
-            music_marks.append((r0, ct, 0.55))
-            t = ct + 0.35
+            end_r = min(ct, r0 + seg.get("pieno", 15)) if muro else ct
+            if muro and ct < r0 + 3:
+                print("replay muro: poche azioni dopo lo zoom (servono più clip o battute più corte)")
+            music_marks.append((r0, end_r, 0.55))
+            t = end_r + 0.35
             cur = "replay"  # dopo il replay si torna in studio con uno stacco su chi parla
     # MVP: "reveal": {"line": n} = la rivelazione arriva con la battuta n del suo pezzo, a zoom finito.
     for si, scr in enumerate(screens):

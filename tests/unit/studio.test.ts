@@ -180,3 +180,22 @@ describe("mouthAt nel coro", () => {
     expect(mouthAt({ ...line, with: undefined }, "lei", 10.5)).toBe(0);
   });
 });
+
+describe("cameraAt con un movimento morbido", () => {
+  it("allarga piano dall'inquadratura di prima a quella nuova (l'allargata finale)", () => {
+    const show = {
+      intro: 0,
+      guest: null,
+      shots: [
+        { t: 0, cam: "coppia" as const, screen: 0 },
+        { t: 10, cam: "ampio" as const, screen: 0, move: 2 },
+      ],
+    };
+    const a = cameraAt(show, 9.9);
+    const mid = cameraAt(show, 11);
+    const end = cameraAt(show, 12.5);
+    expect(mid.s).toBeLessThan(a.s);
+    expect(mid.s).toBeGreaterThan(end.s);
+    expect(cameraAt(show, 20)).toEqual(end);
+  });
+});
