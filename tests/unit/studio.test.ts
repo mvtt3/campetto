@@ -15,6 +15,7 @@ import {
   replayAt,
   screenAt,
   type StudioShow,
+  captionZoneAt,
 } from "@/lib/studio";
 
 const show: StudioShow = {
@@ -150,5 +151,22 @@ describe("Studio Campetto", () => {
     expect(replayFrame(clip, 0.5)).toEqual({ cx: 0.4, w: 0.6000000000000001, cy: 0.475 });
     expect(replayFrame(clip, 5).w).toBe(0.4);
     expect(replayFrame({}, 1)).toEqual({ cx: 0.5, w: 1, cy: 0.5 });
+  });
+});
+
+describe("captionZoneAt", () => {
+  const shots = [
+    { t: 0, cam: "lui" as const, screen: 0 },
+    { t: 5, cam: "schermo" as const, screen: 0 },
+    { t: 9, cam: "coppia" as const, screen: 0 },
+    { t: 12, cam: "replay" as const, screen: 0 },
+    { t: 20, cam: "fine" as const, screen: 0 },
+  ];
+  it("mette i sottotitoli sotto le facce, sotto la grafica (anche durante lo zoom) e sotto l'azione", () => {
+    expect(captionZoneAt({ shots }, 1)).toBe("studio");
+    expect(captionZoneAt({ shots }, 5.1)).toBe("grafica");
+    expect(captionZoneAt({ shots }, 9)).toBe("studio");
+    expect(captionZoneAt({ shots }, 15)).toBe("replay");
+    expect(captionZoneAt({ shots }, 21)).toBe("studio");
   });
 });

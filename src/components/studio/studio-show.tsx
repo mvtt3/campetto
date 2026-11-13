@@ -35,12 +35,14 @@ import {
   type StudioHost,
   type StudioShow,
   type StudioWho,
+  captionZoneAt,
 } from "@/lib/studio";
 import { KIT } from "@/components/avatar-presets";
 import { useData } from "@/lib/data/provider";
 import { Character, characterOf } from "../character";
 import { Logo } from "../mascot";
 import { CourtLines } from "../ui/basics";
+import { CoatRack, MilkCarton, SpicePlaque } from "./easter-eggs";
 import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
 
@@ -621,7 +623,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
 
       <LowerThird show={show} now={now} />
 
-      <Captions show={show} now={now} hidden={mode === "sigla"} zone={mode === "replay" ? "replay" : full && screen?.kind !== "replay" ? "grafica" : "studio"} />
+      <Captions show={show} now={now} hidden={mode === "sigla"} />
 
       <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
@@ -744,13 +746,20 @@ function ReplayScore({ show, game }: { show: StudioShow; game: number }) {
  */
 const CAP_ZONE = { studio: 63, grafica: 76, replay: 71 } as const;
 
-function Captions({ show, now, hidden, zone }: { show: StudioShow; now: () => number; hidden: boolean; zone: keyof typeof CAP_ZONE }) {
+function Captions({ show, now, hidden }: { show: StudioShow; now: () => number; hidden: boolean }) {
   const [cap, setCap] = useState<ReturnType<typeof captionAt>>(null);
+  const [zone, setZone] = useState<keyof typeof CAP_ZONE>("studio");
   useEffect(() => {
     let raf = 0;
     let last = "";
+    let lastZone = "";
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      const z = captionZoneAt(show, now());
+      if (z !== lastZone) {
+        lastZone = z;
+        setZone(z);
+      }
       const cp = captionAt(show, now());
       const key = cp ? `${cp.line.t}:${cp.page.from}:${cp.active}` : "";
       if (key !== last) {
@@ -972,6 +981,9 @@ const StudioSet = memo(function StudioSet({ day }: { day: string }) {
           Campetto
         </span>
       </div>
+      {/* Le sorprese per chi gioca, ai lati: l'attaccapanni a sinistra, il quadretto a destra. */}
+      <CoatRack />
+      <SpicePlaque />
       {/* Il pavimento color carta, con la linea da tre arancio. */}
       <div className="absolute -inset-x-40 -bottom-60 top-[584px] bg-[#F2E8D5]" style={{ backgroundImage: "url(/grain-light.png)", backgroundSize: "128px 128px" }} />
       <div className="absolute inset-x-0 top-[584px] h-[30px] bg-gradient-to-b from-[#1d1a16]/25 to-transparent" />
@@ -994,6 +1006,10 @@ const Desk = memo(function Desk() {
         <div className="absolute inset-x-0 top-[36px] flex justify-center">
           <Logo size={62} top="STUDIO" bottom="★ CAMPETTO ★" />
         </div>
+      </div>
+      {/* Il latte, in fondo a destra sul piano (coordinate della scrivania). */}
+      <div className="absolute" style={{ left: -10, top: -596 }}>
+        <MilkCarton />
       </div>
     </div>
   );

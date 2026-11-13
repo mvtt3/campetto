@@ -303,6 +303,17 @@ export function screenRect(): { x: number; y: number; w: number; h: number } {
 }
 
 /** La grafica copre lo studio: siamo sul maxischermo e lo zoom è finito (o non c'era). */
+/**
+ * Dove mettere i sottotitoli al tempo t, dall'inquadratura in corso: già sotto la grafica mentre
+ * la telecamera va sul maxischermo (così non ci finiscono sopra durante lo zoom), sotto l'azione
+ * nei replay, altrimenti subito sotto le facce.
+ */
+export function captionZoneAt(show: Pick<StudioShow, "shots">, t: number): "studio" | "grafica" | "replay" {
+  let cam: StudioCam | null = null;
+  for (const s of show.shots) if (s.t <= t) cam = s.cam;
+  return cam === "replay" ? "replay" : cam === "schermo" ? "grafica" : "studio";
+}
+
 export function fullScreenAt(show: Pick<StudioShow, "shots">, t: number): boolean {
   const { i, cam } = worldShot(show, t);
   if (cam !== "schermo") return false;
