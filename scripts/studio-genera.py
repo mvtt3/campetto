@@ -200,7 +200,7 @@ def voice_of(who, line):
     if isinstance(v, str):
         v = {"voice": v}
     rate, pitch = v.get("rate", DEFAULT_RATE), v.get("pitch", "+0Hz")
-    text = line.get("say", line["text"]).strip()
+    text = (line.get("say") or line["text"]).strip()
     if text.endswith("!"):
         rate, pitch = shift(rate, 4, "%"), shift(pitch, 4, "Hz")
     elif text.endswith("?"):
@@ -212,8 +212,34 @@ def voice_of(who, line):
     return v["voice"], line.get("rate", rate), line.get("pitch", pitch)
 
 
+def pronounce(text):
+    """
+    Come si dicono i nomi: "pronunce" nella scaletta (es. Orcodio → Orcodìo, Puttens → Pùttens,
+    Kenxo → Kenzo). I sottotitoli restano scritti come nel testo.
+    """
+    for word, said in plan.get("pronunce", {}).items():
+        text = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", said, text)
+    return text
+
+
+def sign_off():
+    """Ogni puntata finisce con la firma dei due conduttori, dopo i saluti."""
+    if plan.get("firma") is False:
+        return
+    last = plan["segments"][-1]["lines"]
+    if any("Un saluto da" in l["text"] for l in last):
+        return
+    lui, lei = plan["hosts"]["lui"], plan["hosts"]["lei"]
+    last[-1].setdefault("gap", 0.25)
+    last += [
+        {"who": "lui", "cam": last[-1].get("cam", "coppia"), "text": f"Un saluto da {lui}…", "gap": 0.04},
+        {"who": "lei", "text": f"…e {lei}!"},
+    ]
+
+
 async def main():
     balance_check()
+    sign_off()
     t = plan.get("intro", 4.5)
     lines, shots, props, cues = [], [], [], []
     voice_track = []
@@ -250,7 +276,7 @@ async def main():
             t = seg_start + 0.35
         for li, line in enumerate(lines_in):
             text = line["text"]
-            say = line.get("say", text)
+            say = line.get("say") or pronounce(text)
             if line["who"] == "ospite" and guest and t < guest["sit"] + 0.15:
                 t = guest["sit"] + 0.15  # parla da seduto
             mp3, words = await tts(*voice_of(line["who"], line), say)

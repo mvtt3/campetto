@@ -70,7 +70,7 @@ export function Phone({ app, go, back }: { app: string | null; go: (v: View) => 
   const time = `${DAY_NAMES[dow(game.day)].slice(0, 3)} ${String(8 + (game.day % 12)).padStart(2, "0")}:${String((game.day * 17) % 60).padStart(2, "0")}`;
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#14110e] text-[#f6eedc]" data-testid="phone">
-      <div className="flex shrink-0 items-center justify-between px-5 pb-1 pt-[max(8px,env(safe-area-inset-top))] text-[13px] font-bold">
+      <div className="flex shrink-0 items-center justify-between px-5 pb-1 pt-[max(8px,var(--sat))] text-[13px] font-bold">
         <span className="num">{time}</span>
         <span className="flex items-center gap-1.5">
           <span>Campetto Mobile</span>

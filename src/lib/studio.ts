@@ -110,6 +110,18 @@ export type StudioScreen =
       rows: { a: Id; b: Id; w: number; g: number; tag?: string; tone?: "top" | "flop" }[];
     }
   /**
+   * La forma: la valutazione a partita (punti + rimbalzi + assist + recuperi + stoppate, meno
+   * tiri sbagliati e palle perse, come nell'app) della serata contro la media di prima, per
+   * vedere chi sta migliorando e chi peggiorando. before null = prima volta (esordio).
+   */
+  | {
+      kind: "forma";
+      kicker: string;
+      title: string;
+      note?: string;
+      rows: { playerId: Id; before: number | null; now: number }[];
+    }
+  /**
    * L'intesa di un giocatore: quanto vince con ciascun compagno, contro la sua media (la linea).
    */
   | {

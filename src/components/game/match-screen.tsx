@@ -337,7 +337,7 @@ function Scoreboard({
     </div>
   );
   return (
-    <div className="shrink-0 bg-[#1d1a16] px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))] text-[#FFF8EA]">
+    <div className="shrink-0 bg-[#1d1a16] px-3 pb-2 pt-[max(8px,var(--sat))] text-[#FFF8EA]">
       <div className="flex items-center gap-2">
         {cell(l, false)}
         <span className="num shrink-0 rounded-full bg-volt px-2.5 py-1 text-[13px] text-volt-ink" data-testid="live-clock">

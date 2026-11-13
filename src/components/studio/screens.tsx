@@ -8,6 +8,7 @@ import {
   IconChartPie,
   IconFlame,
   IconTarget,
+  IconTrendingUp,
   IconTrophy,
   IconUsersGroup,
 } from "@tabler/icons-react";
@@ -617,6 +618,66 @@ function Body({ screen }: { screen: StudioScreen }) {
           </ul>
           {screen.note && (
             <p className="studio-in mt-1 text-[11.5px] font-medium text-[#1d1a16]/55" style={at(1.3)}>
+              {screen.note}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    case "forma": {
+      // Chi sale e chi scende: la differenza dalla propria media, barre a destra (meglio, in
+      // giallo) o a sinistra (peggio, in arancio) di una linea centrale.
+      const dec = (v: number) => v.toFixed(1).replace(".", ",");
+      const rows = [...screen.rows].sort((a, b) => (b.before === null ? -1e9 : b.now - b.before) - (a.before === null ? -1e9 : a.now - a.before));
+      const maxD = Math.max(1, ...rows.filter((r) => r.before !== null).map((r) => Math.abs(r.now - (r.before ?? 0))));
+      return (
+        <div className="absolute inset-0 flex flex-col bg-[#FFFAF0] px-4 pb-4 pt-4 text-[#1d1a16]">
+          <Chip tone="ink" icon={IconTrendingUp}>
+            {screen.kicker}
+          </Chip>
+          <p className="studio-in display mt-2 text-[21px] leading-[1.1]" style={at(0.1)}>
+            {screen.title}
+          </p>
+          <ul className="mt-3 flex flex-1 flex-col justify-around gap-1.5">
+            {rows.map((r, i) => {
+              const d = r.before === null ? null : r.now - r.before;
+              const up = d !== null && d >= 0;
+              const w = d === null ? 0 : (Math.abs(d) / maxD) * 50;
+              return (
+                <li key={r.playerId} className="studio-in" style={at(0.3 + i * 0.18)}>
+                  <div className="flex items-center gap-2">
+                    <Avatar player={player(r.playerId)} size={26} href={false} ring="none" />
+                    <span className="min-w-0 flex-1 truncate text-[14px] font-bold">{name(r.playerId)}</span>
+                    <span className="tnum shrink-0 text-[12.5px] font-semibold text-[#1d1a16]/55">
+                      {r.before === null ? `${dec(r.now)} a partita` : `${dec(r.before)} → ${dec(r.now)}`}
+                    </span>
+                    <span
+                      className={clsx(
+                        "studio-pop shrink-0 rounded-full px-2 py-0.5 text-[12px] font-bold",
+                        d === null ? "bg-court text-white" : up ? "bg-volt text-volt-ink" : "bg-ball text-white",
+                      )}
+                      style={at(0.6 + i * 0.18)}
+                    >
+                      {d === null ? "Esordio" : `${up ? "+" : "−"}${dec(Math.abs(d))}`}
+                    </span>
+                  </div>
+                  {/* Linea centrale = la sua media di prima. */}
+                  <div className="relative mt-1.5 h-2.5 rounded-full bg-[#F2E8D5]">
+                    <span className="absolute inset-y-[-3px] left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-[#1d1a16]/35" aria-hidden />
+                    {d !== null && (
+                      <span
+                        className={clsx("studio-grow absolute inset-y-0 rounded-full", up ? "left-1/2 bg-linear-to-r from-[#ffd75a] to-[#f5b400]" : "right-1/2 origin-right bg-ball")}
+                        style={{ ...at(0.45 + i * 0.18), width: `${Math.max(3, w)}%` }}
+                      />
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {screen.note && (
+            <p className="studio-in mt-2 text-[11.5px] font-medium text-[#1d1a16]/55" style={at(1.3)}>
               {screen.note}
             </p>
           )}

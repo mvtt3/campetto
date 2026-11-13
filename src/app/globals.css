@@ -316,7 +316,7 @@ a,
 
 /* Margine (non padding) così non annulla il padding delle utility sullo stesso elemento. */
 .safe-top {
-  margin-top: env(safe-area-inset-top);
+  margin-top: var(--sat);
 }
 .safe-bottom {
   margin-bottom: var(--sab);
@@ -327,10 +327,11 @@ a,
 .nav-pad {
   padding-bottom: max(12px, calc(var(--sab) + 4px));
 }
-/* Lo spazio sicuro in basso, in un punto solo: di solito è quello che dice il telefono; se su
-   Android l'app installata finisce sotto i tasti di sistema e il telefono dice 0, lo script in
-   testa alla pagina (layout) lo porta all'altezza della barra dei tasti. */
+/* Gli spazi sicuri in alto e in basso, in un punto solo: di solito sono quelli che dice il
+   telefono; se su Android l'app installata finisce sotto la barra di stato o i tasti di sistema
+   e il telefono dice 0, lo script in testa alla pagina (layout) li porta all'altezza giusta. */
 :root {
+  --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --hl-safe: var(--sab);
 }
@@ -619,7 +620,7 @@ a,
     radial-gradient(rgb(0 0 0 / 0.1) 1.1px, transparent 1.4px) 0 0 / 7px 7px,
     radial-gradient(circle at 50% 40%, #ffe27d 0%, #ffc531 40%, #ff9a2b 100%);
   color: #1d1a16;
-  padding: env(safe-area-inset-top) 16px var(--sab);
+  padding: var(--sat) 16px var(--sab);
   cursor: pointer;
   overflow: hidden;
   isolation: isolate;
@@ -2207,7 +2208,7 @@ html[data-shot="3"] .intro-ball-x {
 .hl-stage {
   left: 0;
   right: 0;
-  top: calc(env(safe-area-inset-top) + 52px);
+  top: calc(var(--sat) + 52px);
   bottom: calc(var(--hl-safe) + 188px);
   z-index: 1;
   -webkit-tap-highlight-color: transparent;
@@ -2221,8 +2222,8 @@ html[data-shot="3"] .intro-ball-x {
   background: transparent;
 }
 .hl-top {
-  padding-top: env(safe-area-inset-top);
-  height: calc(env(safe-area-inset-top) + 56px);
+  padding-top: var(--sat);
+  height: calc(var(--sat) + 56px);
   background: linear-gradient(
     to bottom,
     rgba(23, 19, 15, 0.7),

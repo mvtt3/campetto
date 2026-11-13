@@ -133,7 +133,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={show}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 top-[max(14px,env(safe-area-inset-top))] z-[69] flex flex-col items-center gap-2 px-4" aria-live="polite">
+      <div className="pointer-events-none fixed inset-x-0 top-[max(14px,var(--sat))] z-[69] flex flex-col items-center gap-2 px-4" aria-live="polite">
         {list.map((t) => (
           <p
             key={t.id}

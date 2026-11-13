@@ -548,7 +548,7 @@ export function GameScreen({
   return (
     <div className="fixed inset-0 z-[66] bg-[#0d1124]" data-testid={testId}>
       <div className="mx-auto flex h-full max-w-lg flex-col">
-        <div className="flex shrink-0 items-center gap-3 bg-[#1d1a16] px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))] text-[#FFF8EA]">
+        <div className="flex shrink-0 items-center gap-3 bg-[#1d1a16] px-3 pb-2 pt-[max(8px,var(--sat))] text-[#FFF8EA]">
           {onClose && (
             <button
               type="button"

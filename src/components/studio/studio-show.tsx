@@ -526,7 +526,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
               />
             </div>
           ))}
-          <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/40 to-transparent px-4 pb-8 pt-[max(18px,calc(env(safe-area-inset-top)+10px))]">
+          <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/40 to-transparent px-4 pb-8 pt-[max(18px,calc(var(--sat)+10px))]">
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-volt px-3 py-1 text-[13px] font-bold text-volt-ink">Replay</span>
               <span className="text-[15px] font-bold drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)]">{replayClip >= 0 ? `Partita ${replay.clips[replayClip].game}` : ""}</span>
@@ -550,7 +550,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
 
       {/* Sopra lo studio: barra, titolo, sottotitoli e comandi (non zoomano). */}
-      <div ref={top} data-on={chrome && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,env(safe-area-inset-top))]">
+      <div ref={top} data-on={chrome && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
         <div className="flex items-center gap-2">
           <Logo size={30} top="STUDIO" bottom="★ CAMPETTO ★" text={false} />
           <span className="min-w-0 flex-1">

@@ -55,7 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         aria-live="polite"
         className="pointer-events-none fixed inset-x-0 top-0 z-[100] grid justify-items-center px-4"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)" }}
+        style={{ paddingTop: "calc(var(--sat) + 10px)" }}
       >
         {items.map((t) => (
           <div

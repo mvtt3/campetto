@@ -146,7 +146,7 @@ function GameShell() {
     <>
       <OnOpen />
       {kind !== "telefono" && kind !== "partita" && (
-        <header className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-[max(10px,env(safe-area-inset-top))]">
+        <header className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-[max(10px,var(--sat))]">
           {kind === "hub" ? (
             <button onClick={exit} aria-label="Esci dal gioco" className="press sticker-sm grid h-11 w-11 place-items-center rounded-full bg-surface" data-testid="game-exit">
               <IconX size={22} />
@@ -259,7 +259,7 @@ function OnOpen() {
 function Intro({ onStart, onSkip, onExit }: { onStart: () => void; onSkip: () => void; onExit: () => void }) {
   const { me, charId, game } = useGame();
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(20px,var(--sab))] pt-[max(14px,env(safe-area-inset-top))]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(20px,var(--sab))] pt-[max(14px,var(--sat))]">
       <button onClick={onExit} aria-label="Esci" className="press sticker-sm grid h-11 w-11 place-items-center self-start rounded-full bg-surface">
         <IconX size={22} />
       </button>
