@@ -215,7 +215,7 @@ def voice_of(who, line):
 def pronounce(text):
     """
     Come si dicono i nomi: "pronunce" nella scaletta (es. Orcodio → Orcodìo, Puttens → Pùttens,
-    Kenxo → Kenzo). I sottotitoli restano scritti come nel testo.
+    un soprannome detto come si legge). I sottotitoli restano scritti come nel testo.
     """
     for word, said in plan.get("pronunce", {}).items():
         text = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", said, text)
