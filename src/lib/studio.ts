@@ -89,7 +89,36 @@ export type StudioScreen =
         cam?: [number, number, number, number][];
       }[];
     }
-  | { kind: "numeri"; kicker: string; tiles: StudioTile[] };
+  | { kind: "numeri"; kicker: string; tiles: StudioTile[] }
+  /** Grafico a torta: come si dividono i punti (o altro) tra i giocatori. */
+  | {
+      kind: "torta";
+      kicker: string;
+      title: string;
+      unit: string;
+      slices: { playerId: Id; value: number }[];
+    }
+  /**
+   * Le coppie: barre con la percentuale di vittorie insieme. "top" e "flop" mettono in risalto la
+   * migliore e la peggiore, con la loro etichetta.
+   */
+  | {
+      kind: "coppie";
+      kicker: string;
+      title: string;
+      note?: string;
+      rows: { a: Id; b: Id; w: number; g: number; tag?: string; tone?: "top" | "flop" }[];
+    }
+  /**
+   * L'intesa di un giocatore: quanto vince con ciascun compagno, contro la sua media (la linea).
+   */
+  | {
+      kind: "intesa";
+      kicker: string;
+      playerId: Id;
+      avg: number;
+      rows: { playerId: Id; w: number; g: number }[];
+    };
 
 export interface StudioLine {
   who: StudioWho;

@@ -5,9 +5,11 @@ import {
   IconArrowUpRight,
   IconBallBasketball,
   IconBolt,
+  IconChartPie,
   IconFlame,
   IconTarget,
   IconTrophy,
+  IconUsersGroup,
 } from "@tabler/icons-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useData } from "@/lib/data/provider";
@@ -481,6 +483,196 @@ function Body({ screen }: { screen: StudioScreen }) {
           </div>
         </>
       );
+
+    case "torta": {
+      // Una ciambella con i colori dei giocatori (come i loro avatar) e la legenda sotto.
+      const total = screen.slices.reduce((a, x) => a + x.value, 0) || 1;
+      const slices = [...screen.slices].sort((a, b) => b.value - a.value);
+      const r = 62;
+      const len = 2 * Math.PI * r;
+      // Dove comincia ogni fetta (somma di quelle prima).
+      const starts = slices.map((_, i) => slices.slice(0, i).reduce((a, x) => a + x.value, 0));
+      return (
+        <div className="absolute inset-0 flex flex-col bg-[#FFFAF0] px-4 pb-4 pt-4 text-[#1d1a16]">
+          <Chip tone="ink" icon={IconChartPie}>
+            {screen.kicker}
+          </Chip>
+          <p className="studio-in display mt-2 text-[21px] leading-[1.1]" style={at(0.1)}>
+            {screen.title}
+          </p>
+          <div className="mt-3 flex items-center gap-2.5">
+            <div className="relative h-[150px] w-[150px] shrink-0">
+              <svg viewBox="0 0 150 150" className="h-full w-full -rotate-90" aria-hidden>
+                <circle cx="75" cy="75" r={r} fill="none" stroke="#F2E8D5" strokeWidth="22" />
+                {slices.map((x, i) => {
+                  const f = x.value / total;
+                  const seg = Math.max(0, f * len - 3);
+                  const rot = (starts[i] / total) * 360;
+                  const p = player(x.playerId);
+                  return (
+                    <circle
+                      key={x.playerId}
+                      className="studio-ring"
+                      cx="75"
+                      cy="75"
+                      r={r}
+                      fill="none"
+                      stroke={p ? playerColor(p) : "#2D5BE3"}
+                      strokeWidth="22"
+                      strokeDasharray={`${seg} ${len}`}
+                      transform={`rotate(${rot} 75 75)`}
+                      style={{ ...at(0.3 + i * 0.22), ["--from" as string]: `${seg}`, ["--to" as string]: "0" }}
+                    />
+                  );
+                })}
+              </svg>
+              <div className="absolute inset-0 grid place-items-center text-center">
+                <div>
+                  <p className="score text-[34px] leading-none">
+                    <Count to={total} d={0.3} />
+                  </p>
+                  <p className="text-[11.5px] font-semibold text-[#1d1a16]/60">{screen.unit}</p>
+                </div>
+              </div>
+            </div>
+            <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
+              {slices.map((x, i) => {
+                const p = player(x.playerId);
+                return (
+                  <li key={x.playerId} className="studio-in flex items-center gap-2" style={at(0.45 + i * 0.22)}>
+                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: p ? playerColor(p) : "#2D5BE3" }} />
+                    <span className={clsx("min-w-0 flex-1 truncate text-[14px]", i === 0 ? "font-bold" : "font-semibold")}>{name(x.playerId)}</span>
+                    <span className="score text-[20px] leading-none">{x.value}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          {/* La fetta più grande in percentuale, in evidenza. */}
+          <div className="studio-in mt-auto flex items-center gap-3 rounded-[18px] bg-volt px-3 py-2.5 text-volt-ink" style={at(1.4)}>
+            <Avatar player={player(slices[0].playerId)} size={34} href={false} ring="none" />
+            <p className="min-w-0 flex-1 text-[13.5px] font-bold leading-tight">
+              {name(slices[0].playerId)}, da solo
+            </p>
+            <p className="score text-[30px] leading-none">
+              <Count to={Math.round((slices[0].value / total) * 100)} d={1.45} suffix="%" />
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    case "coppie": {
+      // Le coppie: chi vince di più insieme. In giallo la migliore, in arancio la peggiore.
+      // Con tante righe si stringe, così ci stanno tutte (e la nota sotto).
+      const dense = screen.rows.length > 5;
+      return (
+        <div className="absolute inset-0 flex flex-col bg-[#FFFAF0] px-4 pb-4 pt-4 text-[#1d1a16]">
+          <Chip tone="ink" icon={IconUsersGroup}>
+            {screen.kicker}
+          </Chip>
+          <p className="studio-in display mt-2 text-[21px] leading-[1.1]" style={at(0.1)}>
+            {screen.title}
+          </p>
+          <ul className={clsx("flex flex-1 flex-col justify-around", dense ? "mt-1.5 gap-0.5" : "mt-2.5 gap-1")}>
+            {screen.rows.map((r, i) => {
+              const pct = r.g ? r.w / r.g : 0;
+              const top = r.tone === "top";
+              const flop = r.tone === "flop";
+              return (
+                <li key={r.a + r.b} className={clsx("studio-in rounded-[16px] px-2.5", dense ? "py-1" : "py-1.5", top ? "bg-volt/35" : flop ? "bg-ball/12" : "")} style={at(0.25 + i * 0.16)}>
+                  <div className="flex items-center gap-2">
+                    <span className="flex shrink-0">
+                      <Avatar player={player(r.a)} size={24} href={false} ring="none" />
+                      <span className="-ml-2 rounded-full ring-2 ring-[#FFFAF0]">
+                        <Avatar player={player(r.b)} size={24} href={false} ring="none" />
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold">
+                      {name(r.a)} e {name(r.b)}
+                    </span>
+                    <span className="tnum shrink-0 text-[12px] font-semibold text-[#1d1a16]/60">
+                      {r.w} su {r.g}
+                    </span>
+                    <span className={clsx("score w-11 shrink-0 text-right text-[19px] leading-none", top ? "text-[#1d1a16]" : flop ? "text-ball" : "")}>
+                      <Count to={Math.round(pct * 100)} d={0.35 + i * 0.16} suffix="%" />
+                    </span>
+                  </div>
+                  <div className={clsx("flex items-center gap-2", dense ? "mt-0.5" : "mt-1")}>
+                    <div className={clsx("flex-1 overflow-hidden rounded-full bg-[#F2E8D5]", dense ? "h-2" : "h-2.5")}>
+                      <span
+                        className={clsx("studio-grow block h-full rounded-full", top ? "bg-linear-to-r from-[#ffd75a] to-[#f5b400]" : flop ? "bg-ball" : "bg-[#1d1a16]/30")}
+                        style={{ ...at(0.35 + i * 0.16), width: `${Math.max(3, Math.round(pct * 100))}%` }}
+                      />
+                    </div>
+                    {r.tag && (
+                      <span className={clsx("studio-pop shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold", top ? "bg-[#1d1a16] text-white" : "bg-ball text-white")} style={at(1.1 + i * 0.1)}>
+                        {r.tag}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {screen.note && (
+            <p className="studio-in mt-1 text-[11.5px] font-medium text-[#1d1a16]/55" style={at(1.3)}>
+              {screen.note}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    case "intesa": {
+      // Con chi vince di più: una barra per compagno e la linea della sua media.
+      const p = player(screen.playerId);
+      const avg = Math.round(screen.avg * 100);
+      return (
+        <>
+          <PlayerBg player={p} />
+          <div className="relative flex h-full flex-col px-4 pb-4 pt-4">
+            <Chip tone="volt" icon={IconUsersGroup}>
+              {screen.kicker}
+            </Chip>
+            <div className="mt-2 flex items-center gap-2">
+              <Avatar player={p} size={34} href={false} ring="none" />
+              <p className="studio-in display text-[24px] leading-none" style={at(0.15)}>
+                {name(screen.playerId)}
+              </p>
+            </div>
+            <p className="studio-in mt-1 text-[12.5px] font-medium text-white/75" style={at(0.25)}>
+              Vittorie con ogni compagno
+            </p>
+            <div className="relative mt-3 flex flex-1 flex-col justify-around">
+              {/* La media del giocatore: sopra la linea si vince più del solito. */}
+              <span className="pointer-events-none absolute bottom-0 top-0 border-l-2 border-dashed border-white/70" style={{ left: `calc(84px + (100% - 84px - 44px) * ${screen.avg})` }} aria-hidden />
+              {screen.rows.map((r, i) => {
+                const pct = r.g ? r.w / r.g : 0;
+                const up = pct > screen.avg;
+                return (
+                  <div key={r.playerId} className="studio-in flex items-center gap-2" style={at(0.35 + i * 0.16)}>
+                    <span className="flex w-[76px] shrink-0 items-center gap-1.5">
+                      <Avatar player={player(r.playerId)} size={22} href={false} ring="none" />
+                      <span className="truncate text-[12.5px] font-bold">{name(r.playerId)}</span>
+                    </span>
+                    <div className="h-4 flex-1 overflow-hidden rounded-full bg-white/15">
+                      <span className={clsx("studio-grow block h-full rounded-full", up ? "bg-volt" : "bg-white/55")} style={{ ...at(0.4 + i * 0.16), width: `${Math.max(4, Math.round(pct * 100))}%` }} />
+                    </div>
+                    <span className="score w-10 shrink-0 text-right text-[17px] leading-none">
+                      {r.w}/{r.g}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(1.2)}>
+              La linea: la sua media, {avg}% di vittorie
+            </p>
+          </div>
+        </>
+      );
+    }
 
     case "replay":
       // I canestri vanno a tutto schermo: li mostra il player.

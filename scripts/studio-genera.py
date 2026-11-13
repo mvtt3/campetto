@@ -61,14 +61,23 @@ async def tts(voice, rate, pitch, text):
     key = hashlib.sha1(f"{voice}|{rate}|{pitch}|{text}".encode()).hexdigest()[:16]
     mp3, meta = os.path.join(cache, key + ".mp3"), os.path.join(cache, key + ".json")
     if not (os.path.exists(mp3) and os.path.exists(meta)):
-        c = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch, boundary="WordBoundary")
-        words = []
-        with open(mp3, "wb") as f:
-            async for ch in c.stream():
-                if ch["type"] == "audio":
-                    f.write(ch["data"])
-                elif ch["type"] == "WordBoundary":
-                    words.append([ch["text"], ch["offset"] / 1e7, (ch["offset"] + ch["duration"]) / 1e7])
+        # Il servizio delle voci ogni tanto non risponde (soprattutto Giuseppe): si riprova.
+        for attempt in range(8):
+            try:
+                c = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch, boundary="WordBoundary")
+                words = []
+                with open(mp3, "wb") as f:
+                    async for ch in c.stream():
+                        if ch["type"] == "audio":
+                            f.write(ch["data"])
+                        elif ch["type"] == "WordBoundary":
+                            words.append([ch["text"], ch["offset"] / 1e7, (ch["offset"] + ch["duration"]) / 1e7])
+                break
+            except edge_tts.exceptions.NoAudioReceived:
+                if attempt == 7:
+                    os.remove(mp3)
+                    raise
+                await asyncio.sleep(1.5 + attempt * 1.5)
         json.dump(words, open(meta, "w"), ensure_ascii=False)
     return mp3, json.load(open(meta))
 
@@ -96,16 +105,27 @@ def mouth(a):
 
 
 def balance_check():
-    """Un po' di tutti, nessuno troppo: al massimo una grafica a testa, e nessuno dimenticato."""
+    """
+    Un po' di tutti, nessuno troppo: al massimo una grafica tutta per sé a testa, e chi ha giocato
+    deve comparire almeno da qualche parte (una sua grafica, oppure in un grafico condiviso:
+    torta, coppie, risultati, tiro, Elo).
+    """
     played = plan.get("played") or []
-    count = {}
+    focus, seen = {}, set()
     for seg in plan["segments"]:
-        pid = seg["screen"].get("playerId")
+        scr = seg["screen"]
+        pid = scr.get("playerId")
         if pid:
-            count[pid] = count.get(pid, 0) + 1
+            focus[pid] = focus.get(pid, 0) + 1
+            seen.add(pid)
+        for key in ("slices", "rows"):
+            for r in scr.get(key, []):
+                seen.update(x for x in (r.get("playerId"), r.get("a"), r.get("b")) if x)
+        for g in scr.get("games", []):
+            seen.update(g.get("a", []) + g.get("b", []))
     names = plan.get("names", {})
-    problems = [f"troppo spazio a {names.get(p, p[:8])}: {n} grafiche" for p, n in count.items() if n > 1]
-    problems += [f"nessuna grafica per {names.get(p, p[:8])}" for p in played if p not in count]
+    problems = [f"troppo spazio a {names.get(p, p[:8])}: {n} grafiche tutte sue" for p, n in focus.items() if n > 1]
+    problems += [f"{names.get(p, p[:8])} non compare in nessuna grafica" for p in played if p not in seen]
     for m in problems:
         print("scaletta:", m)
     if problems and os.environ.get("STUDIO_FORZA") != "1":
@@ -164,11 +184,32 @@ def frame_clip(path, t0, t1, hoop):
     return [[round(float(r[0]), 2), round(float(r[1]), 3), round(float(r[2]), 3), round(float(r[3]), 3)] for r in a[::2]]
 
 
+def shift(value, delta, unit):
+    """'+10%' + 4 → '+14%'; '-2Hz' + 3 → '+1Hz'."""
+    n = int(re.sub(r"[^\d-]", "", value) or 0) + delta
+    return f"{'+' if n >= 0 else ''}{n}{unit}"
+
+
 def voice_of(who, line):
+    """
+    Voce, velocità e tono di una battuta. Per suonare meno meccanici il tono segue la frase:
+    un'esclamazione è un po' più veloce e più alta, una domanda un filo più alta, una battuta
+    lunga e informativa un po' più calma. Si può sempre forzare con "rate"/"pitch".
+    """
     v = plan["voices"][who]
     if isinstance(v, str):
         v = {"voice": v}
-    return v["voice"], line.get("rate", v.get("rate", DEFAULT_RATE)), line.get("pitch", v.get("pitch", "+0Hz"))
+    rate, pitch = v.get("rate", DEFAULT_RATE), v.get("pitch", "+0Hz")
+    text = line.get("say", line["text"]).strip()
+    if text.endswith("!"):
+        rate, pitch = shift(rate, 4, "%"), shift(pitch, 4, "Hz")
+    elif text.endswith("?"):
+        rate, pitch = shift(rate, 1, "%"), shift(pitch, 3, "Hz")
+    elif len(text) > 90:
+        rate = shift(rate, -3, "%")
+    if len(text) < 22:  # le reazioni brevi vanno di getto
+        rate = shift(rate, 6, "%")
+    return v["voice"], line.get("rate", rate), line.get("pitch", pitch)
 
 
 async def main():
