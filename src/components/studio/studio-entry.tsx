@@ -1,6 +1,6 @@
 "use client";
 
-import { IconPlayerPlayFilled } from "@tabler/icons-react";
+import { IconDeviceTv, IconPlayerPlayFilled } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useData } from "@/lib/data/provider";
 import { STUDIO_LATEST } from "@/lib/studio";
@@ -104,6 +104,33 @@ export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[#0C1736]">
           <IconPlayerPlayFilled size={18} aria-hidden />
         </span>
+      </button>
+      {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+/**
+ * Il tasto dello Studio nella barra della Home, accanto a highlights e notizie: fa partire
+ * subito l'ultima puntata. Lo vede solo l'amministratore, per provare le puntate.
+ */
+export function StudioHomeButton() {
+  const latest = useStudioLatest(useStudioEnabled());
+  const [open, setOpen] = useState(false);
+  if (!latest) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setStudioSeen(latest.id);
+          setOpen(true);
+        }}
+        aria-label="Studio Campetto, guarda la puntata"
+        className="sticker-sm press relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#0C1736,#1C3576)] text-volt"
+        data-testid="studio-home"
+      >
+        <IconDeviceTv size={20} aria-hidden />
       </button>
       {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
     </>

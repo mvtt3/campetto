@@ -29,6 +29,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { CountUp, CourtLines } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { HighlightsHomeButton, PlayBadge } from "@/components/highlights/entry";
+import { StudioHomeButton } from "@/components/studio/studio-entry";
 import { GameHomeButton } from "@/components/game/entry";
 import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
@@ -444,6 +445,7 @@ export function HomeScreen() {
         <header className="safe-top flex items-center justify-end gap-1.5 pt-5">
           <h1 className="sr-only">Home</h1>
           <GameHomeButton />
+          <StudioHomeButton />
           <HighlightsHomeButton />
           <NewsButton unseen={news.unseen} onOpen={openNews} />
           <Avatar player={me} size={40} />
