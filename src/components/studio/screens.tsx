@@ -6,6 +6,7 @@ import {
   IconBallBasketball,
   IconBolt,
   IconChartPie,
+  IconCrown,
   IconFlame,
   IconTarget,
   IconTrendingUp,
@@ -29,11 +30,13 @@ const at = (d: number): CSSProperties => ({ ["--d" as string]: `${d}s` });
  * (data-at: secondi dall'inizio della grafica), così segue pause e salti.
  */
 export function Count({ to, d, prefix, suffix }: { to: number; d: number; prefix?: string; suffix?: string }) {
+  // Le medie hanno un decimale (14,6): il player conta anche quelle, con la virgola.
+  const dec = Number.isInteger(to) ? 0 : 1;
   return (
     <span className="tnum">
       {prefix}
-      <span data-to={to} data-at={d}>
-        {to}
+      <span data-to={to} data-at={d} data-dec={dec || undefined}>
+        {dec ? to.toFixed(dec).replace(".", ",") : to}
       </span>
       {suffix}
     </span>
@@ -682,6 +685,77 @@ function Body({ screen }: { screen: StudioScreen }) {
             </p>
           )}
         </div>
+      );
+    }
+
+    case "mvp": {
+      // Prima l'attesa (fari, "?", rullo, 3-2-1), poi a "reveal" secondi la rivelazione.
+      const p = player(screen.playerId);
+      const R = screen.reveal;
+      return (
+        <>
+          <div className="studio-mvp-wait absolute inset-0 overflow-hidden" style={at(R)} aria-hidden>
+            <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 45%, #2D5BE3 0%, #14286e 70%, #0c1736 100%)" }} />
+            <span className="studio-mvp-spot absolute -top-6 left-[18%] h-[420px] w-[120px] origin-top bg-[linear-gradient(to_bottom,rgb(255_197_49/0.55),transparent_85%)] [clip-path:polygon(40%_0,60%_0,100%_100%,0_100%)]" style={at(0)} />
+            <span className="studio-mvp-spot absolute -top-6 right-[18%] h-[420px] w-[120px] origin-top bg-[linear-gradient(to_bottom,rgb(255_255_255/0.4),transparent_85%)] [clip-path:polygon(40%_0,60%_0,100%_100%,0_100%)] [animation-direction:alternate-reverse]" style={at(0)} />
+            <div className="relative flex h-full flex-col items-center px-4 pb-4 pt-4">
+              <Chip tone="volt" icon={IconCrown}>
+                {screen.kicker}
+              </Chip>
+              <div className="relative mt-9 grid h-[150px] w-[150px] place-items-center">
+                <span className="studio-pulse absolute inset-0 rounded-full bg-[radial-gradient(circle,rgb(255_197_49/0.45),transparent_70%)]" />
+                <span className="grid h-[118px] w-[118px] place-items-center rounded-full bg-volt text-volt-ink shadow-[0_18px_40px_-12px_rgb(0_0_0/0.6)]">
+                  {/* Il punto di domanda lascia il posto al 3-2-1. */}
+                  <span className="studio-mvp-wait display text-[84px] leading-none" style={at(R - 3)}>
+                    ?
+                  </span>
+                </span>
+                {[3, 2, 1].map((n, i) => (
+                  <span key={n} className="studio-mvp-count score absolute inset-0 grid place-items-center text-[110px] leading-none text-white [text-shadow:0_6px_24px_rgb(0_0_0/0.5)]" style={at(R - 3 + i)}>
+                    {n}
+                  </span>
+                ))}
+              </div>
+              {/* Il rullo di tamburi. */}
+              <div className="mt-auto flex h-[46px] items-end gap-[6px]">
+                {[0.9, 0.5, 1, 0.65, 0.85, 0.45, 0.95, 0.6, 0.8].map((h, i) => (
+                  <span key={i} className="studio-mvp-bar w-[10px] origin-bottom rounded-full bg-white/80" style={{ height: `${h * 100}%`, animationDelay: `${-i * 0.11}s` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="studio-mvp-show absolute inset-0 overflow-hidden" style={at(R)}>
+            <PlayerBg player={p} />
+            <span aria-hidden className="studio-spin absolute left-[-120px] top-[-40px] h-[420px] w-[420px] rounded-full bg-[repeating-conic-gradient(rgb(255_197_49/0.32)_0deg_10deg,transparent_10deg_24deg)] [mask-image:radial-gradient(circle,#000_30%,transparent_68%)]" />
+            <div className="relative flex h-full flex-col px-4 pb-4 pt-4">
+              <Chip tone="volt" icon={IconCrown} d={R + 0.15}>
+                {screen.kicker}
+              </Chip>
+              <div className="mt-2 flex min-h-0 flex-1 gap-3">
+                <div className="flex w-[150px] shrink-0 flex-col items-center">
+                  <span className="mt-auto">
+                    <Figure player={p} height={212} d={R + 0.1} />
+                  </span>
+                  <p className="studio-in display mt-1 w-full truncate text-center text-[28px] leading-none" style={at(R + 0.45)}>
+                    {name(screen.playerId)}
+                  </p>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+                  {screen.tiles.slice(0, 4).map((t, i) => (
+                    <Tile key={t.label} tile={t} d={R + 0.55 + i * 0.22} solid />
+                  ))}
+                </div>
+              </div>
+              {screen.note && (
+                <p className="studio-in mt-2 text-center text-[12.5px] font-semibold text-white/85" style={at(R + 1.5)}>
+                  {screen.note}
+                </p>
+              )}
+            </div>
+            <span aria-hidden className="studio-mvp-flash pointer-events-none absolute inset-0 bg-white" style={at(R)} />
+          </div>
+        </>
       );
     }
 

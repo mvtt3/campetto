@@ -2833,6 +2833,91 @@ html[data-shot="3"] .intro-ball-x {
     -2px -2px 0 #1d1a16,
     0 6px 14px rgb(0 0 0 / 0.45);
 }
+/* MVP della serata: l'attesa sparisce al momento della rivelazione, che entra con un lampo. */
+.studio-mvp-wait {
+  animation: studio-mvp-hide 0.3s ease-in forwards;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-mvp-hide {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.studio-mvp-show {
+  animation: studio-mvp-reveal 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-mvp-reveal {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.studio-mvp-flash {
+  animation: studio-mvp-flash 0.8s ease-out both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-mvp-flash {
+  0% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.studio-mvp-count {
+  animation: studio-mvp-count 0.95s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-mvp-count {
+  0% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+.studio-mvp-spot {
+  animation: studio-mvp-spot 2.4s ease-in-out infinite alternate;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-mvp-spot {
+  from {
+    transform: rotate(-24deg);
+  }
+  to {
+    transform: rotate(24deg);
+  }
+}
+.studio-mvp-bar {
+  animation: studio-mvp-bar 0.26s ease-in-out infinite alternate;
+}
+@keyframes studio-mvp-bar {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
 /* I sottotitoli scivolano dove serve (studio, grafica, replay) invece di saltare. */
 .studio-caps {
   transition: top 320ms cubic-bezier(0.3, 0.9, 0.3, 1);

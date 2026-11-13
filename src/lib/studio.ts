@@ -124,6 +124,19 @@ export type StudioScreen =
       rows: { playerId: Id; before: number | null; now: number }[];
     }
   /**
+   * L'MVP della serata: prima l'attesa (fari, punto di domanda, rullo e conto alla rovescia, mentre
+   * i conduttori fanno il coro), poi a "reveal" secondi dall'inizio della grafica la rivelazione:
+   * il personaggio col nome a sinistra, le sue statistiche migliori a destra.
+   */
+  | {
+      kind: "mvp";
+      kicker: string;
+      playerId: Id;
+      reveal: number;
+      tiles: StudioTile[];
+      note?: string;
+    }
+  /**
    * L'intesa di un giocatore: quanto vince con ciascun compagno, contro la sua media (la linea).
    */
   | {
@@ -143,6 +156,8 @@ export interface StudioLine {
   mouth: string;
   /** Le parole con inizio e fine (secondi dall'inizio della battuta), per i sottotitoli. */
   words: [string, number, number][];
+  /** Chi la dice insieme (il coro): anche a loro si muove la bocca. */
+  with?: StudioWho[];
 }
 
 /**
@@ -427,7 +442,7 @@ export function captionAt(show: Pick<StudioShow, "lines">, t: number): { line: S
 
 /** Quanto è aperta la bocca di chi parla (0-1), dalla voce vera. */
 export function mouthAt(line: StudioLine | null, who: StudioWho, t: number): number {
-  if (!line || line.who !== who) return 0;
+  if (!line || (line.who !== who && !line.with?.includes(who))) return 0;
   const f = Math.floor((t - line.t) * 30);
   const c = line.mouth.charCodeAt(Math.max(0, Math.min(line.mouth.length - 1, f))) - 48;
   return Math.max(0, Math.min(1, c / 9));

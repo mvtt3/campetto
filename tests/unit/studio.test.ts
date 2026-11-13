@@ -170,3 +170,13 @@ describe("captionZoneAt", () => {
     expect(captionZoneAt({ shots }, 21)).toBe("studio");
   });
 });
+
+describe("mouthAt nel coro", () => {
+  it("muove la bocca a chi parla e a chi dice la battuta insieme", () => {
+    const line = { who: "lui" as const, with: ["lei" as const], t: 10, d: 2, text: "Ooooh", mouth: "9".repeat(60), words: [] };
+    expect(mouthAt(line, "lui", 10.5)).toBe(1);
+    expect(mouthAt(line, "lei", 10.5)).toBe(1);
+    expect(mouthAt(line, "ospite", 10.5)).toBe(0);
+    expect(mouthAt({ ...line, with: undefined }, "lei", 10.5)).toBe(0);
+  });
+});

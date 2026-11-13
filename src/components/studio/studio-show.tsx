@@ -381,7 +381,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       for (const n of counters) {
         const to = Number(n.dataset.to);
         const u = easeOut((t - s.since - Number(n.dataset.at)) / 1.0);
-        const v = String(Math.round(to * u));
+        const dec = Number(n.dataset.dec ?? 0);
+        const v = dec ? (to * u).toFixed(dec).replace(".", ",") : String(Math.round(to * u));
         if (n.textContent !== v) n.textContent = v;
       }
 
