@@ -8,49 +8,74 @@
  * avanti di 10 secondi come un reel.
  */
 
-export type StudioCam = "ampio" | "coppia" | "lui" | "lei" | "schermo";
+export type StudioCam = "ampio" | "coppia" | "lui" | "lei" | "schermo" | "replay" | "fine";
 export type StudioWho = "lui" | "lei";
 
+type Id = string;
+/** Un riquadro con un numero: valore, etichetta, eventuale nota sotto. */
+export interface StudioTile {
+  label: string;
+  value: number;
+  prefix?: string;
+  suffix?: string;
+  note?: string;
+}
+
 export type StudioScreen =
-  | { kind: "sigla"; title: string; subtitle: string }
+  | { kind: "sigla" }
   | {
       kind: "risultati";
-      title: string;
-      games: { a: string[]; b: string[]; sa: number; sb: number }[];
+      games: { a: Id[]; b: Id[]; sa: number; sb: number }[];
+      /** Dopo quale partita cambia la storia della serata (per il segno "la svolta"). */
+      turn?: number;
     }
   | {
-      kind: "giocatore";
-      playerId: string;
+      kind: "quota";
+      playerId: Id;
       kicker: string;
-      tiles: { label: string; value: number; suffix?: string }[];
-      tag?: string;
+      value: number;
+      total: number;
+      unit: string;
+      label: string;
+      tiles: StudioTile[];
     }
   | {
       kind: "record";
       kicker: string;
+      playerId: Id;
+      items: { label: string; value: number; before: string }[];
+    }
+  | {
+      kind: "serie";
+      kicker: string;
+      playerId: Id;
+      wins: number;
+      since: string;
       label: string;
-      value: number;
-      unit: string;
-      playerId: string;
-      before?: string;
+    }
+  | {
+      kind: "giocatore";
+      playerId: Id;
+      kicker: string;
+      big: { value: number; label: string; before?: string };
+      tiles: StudioTile[];
     }
   | {
       kind: "tiro";
       kicker: string;
-      title: string;
-      rows: { playerId: string; made: number; att: number }[];
-      note?: string;
+      rows: { playerId: Id; made: number; att: number }[];
+      three?: { playerId: Id; att: number; total: number; made: number };
     }
   | {
       kind: "elo";
       kicker: string;
-      rows: { playerId: string; delta: number; after: number }[];
+      rows: { playerId: Id; rank: number; before: number; after: number; delta: number }[];
     }
   | {
-      kind: "montaggio";
-      kicker: string;
-      clips: { src: string; from: number; dur: number; label: string; t: number }[];
-    };
+      kind: "replay";
+      clips: { src: string; from: number; to: number; game: number; t: number }[];
+    }
+  | { kind: "numeri"; kicker: string; tiles: StudioTile[] };
 
 export interface StudioLine {
   who: StudioWho;
@@ -59,15 +84,23 @@ export interface StudioLine {
   text: string;
   /** Apertura della bocca, 30 cifre (0-9) al secondo. */
   mouth: string;
+  /** Le parole con inizio e fine (secondi dall'inizio della battuta), per i sottotitoli. */
+  words: [string, number, number][];
 }
 
 export interface StudioShow {
+  v: 2;
   id: string;
   /** Il giorno delle partite raccontate (YYYY-MM-DD). */
   day: string;
   hosts: Record<StudioWho, string>;
   audio: string;
   duration: number;
+  /** Quanto dura la sigla iniziale. */
+  intro: number;
+  /** Da quando c'è la scheda finale, e la prossima partita annunciata. */
+  outro: { t: number; next?: { startsAt: string; place?: string } | null };
+  credits: string;
   screens: StudioScreen[];
   shots: { t: number; cam: StudioCam; screen: number }[];
   lines: StudioLine[];
@@ -90,46 +123,107 @@ interface Cam {
 }
 /** Dove punta la telecamera: un punto dello studio che va al centro, e quanto zoom. */
 // vy: dove cade il punto nello schermo del telefono. Tutto sta tra la barra in alto (~80)
-// e i sottotitoli in basso (~630), così niente finisce sotto le scritte.
-const CAMS: Record<StudioCam, { fx: number; fy: number; s: number; vy: number }> = {
-  ampio: { fx: 195, fy: 440, s: 0.92, vy: 372 },
-  coppia: { fx: 195, fy: 545, s: 1.12, vy: 410 },
-  lei: { fx: 112, fy: 520, s: 1.75, vy: 370 },
-  lui: { fx: 278, fy: 520, s: 1.75, vy: 370 },
+// e i sottotitoli in basso (~600), così niente finisce sotto le scritte.
+type WorldCam = Exclude<StudioCam, "replay" | "fine">;
+const CAMS: Record<WorldCam, { fx: number; fy: number; s: number; vy: number }> = {
+  ampio: { fx: 195, fy: 440, s: 0.92, vy: 360 },
+  coppia: { fx: 195, fy: 470, s: 1.0, vy: 410 },
+  lei: { fx: 112, fy: 505, s: 1.55, vy: 340 },
+  lui: { fx: 278, fy: 505, s: 1.55, vy: 340 },
   schermo: {
     fx: SCREEN.x + SCREEN.w / 2,
     fy: SCREEN.y + SCREEN.h / 2,
     s: 1.9,
-    vy: 360,
+    vy: 350,
   },
 };
-const camOf = (c: StudioCam): Cam => {
+const camOf = (c: WorldCam): Cam => {
   const k = CAMS[c];
   return { s: k.s, x: STAGE.w / 2 - k.fx * k.s, y: k.vy - k.fy * k.s };
 };
+const isWorld = (c: StudioCam): c is WorldCam => c !== "replay" && c !== "fine";
 
 const ease = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const clamp01 = (u: number) => Math.min(1, Math.max(0, u));
 
-/** L'inquadratura al tempo t: un movimento morbido tra la precedente e quella attuale. */
-export function cameraAt(show: Pick<StudioShow, "shots">, t: number): Cam {
-  const shots = show.shots;
+/** L'inquadratura dello studio in ogni momento (durante replay e chiusura resta l'ultima). */
+function worldShot(show: Pick<StudioShow, "shots">, t: number): { i: number; cam: WorldCam } {
   let i = 0;
-  for (let k = 0; k < shots.length; k++) if (shots[k].t <= t) i = k;
-  const cur = camOf(shots[i].cam);
-  const prev = i > 0 ? camOf(shots[i - 1].cam) : cur;
-  // Verso il maxischermo e indietro ci si muove un po' più piano, come una gru.
-  const toScreen = shots[i].cam === "schermo" || shots[i - 1]?.cam === "schermo";
-  const dur = toScreen ? 0.9 : 0.6;
-  const u = ease(Math.min(1, Math.max(0, (t - shots[i].t) / dur)));
-  // Una spinta lentissima in avanti mentre l'inquadratura resta ferma: niente fotogrammi immobili.
-  const push = 1 + 0.025 * Math.min(1, Math.max(0, (t - shots[i].t - dur) / 8));
-  const s = (prev.s + (cur.s - prev.s) * u) * push;
-  const x = prev.x + (cur.x - prev.x) * u;
-  const y = prev.y + (cur.y - prev.y) * u;
-  // Con la spinta il centro resta fermo.
-  const cx = STAGE.w / 2;
-  const cy = CAMS[shots[i].cam].vy;
-  return { s, x: cx - (cx - x) * push, y: cy - (cy - y) * push };
+  for (let k = 0; k < show.shots.length; k++) if (show.shots[k].t <= t && isWorld(show.shots[k].cam)) i = k;
+  return { i, cam: show.shots[i].cam as WorldCam };
+}
+
+/**
+ * La telecamera al tempo t. Regia da studio TV: stacchi netti tra un'inquadratura e l'altra;
+ * l'unico movimento è lo zoom che porta sul maxischermo, e lì resta finché non si stacca su
+ * chi parla. All'uscita dalla sigla la telecamera si allarga sullo studio.
+ */
+export function cameraAt(show: Pick<StudioShow, "shots" | "intro">, t: number): Cam {
+  const { i, cam } = worldShot(show, t);
+  let out = camOf(cam);
+  let prevCam: WorldCam | null = null;
+  for (let k = i - 1; k >= 0; k--)
+    if (isWorld(show.shots[k].cam)) {
+      prevCam = show.shots[k].cam as WorldCam;
+      break;
+    }
+  if (cam === "schermo" && prevCam && prevCam !== "schermo") {
+    const prev = camOf(prevCam);
+    const u = ease(clamp01((t - show.shots[i].t) / 0.85));
+    out = { s: prev.s + (out.s - prev.s) * u, x: prev.x + (out.x - prev.x) * u, y: prev.y + (out.y - prev.y) * u };
+  }
+  // Uscendo dalla sigla la telecamera si allarga sullo studio (da più vicino al posto giusto).
+  const r = clamp01((t - (show.intro - 0.5)) / 1.3);
+  if (r < 1) {
+    const k = 1.22 - 0.22 * ease(r);
+    const vy = CAMS[cam].vy;
+    out = { s: out.s * k, x: STAGE.w / 2 - (STAGE.w / 2 - out.x) * k, y: vy - (vy - out.y) * k };
+  }
+  return out;
+}
+
+/**
+ * Dove sta il maxischermo nello schermo del telefono a zoom finito: lì si appoggia la grafica
+ * "a tutto schermo" che lo sostituisce (niente presentatori dietro i sottotitoli).
+ */
+export function screenRect(): { x: number; y: number; w: number; h: number } {
+  const c = camOf("schermo");
+  return { x: c.x + SCREEN.x * c.s, y: c.y + SCREEN.y * c.s, w: SCREEN.w * c.s, h: SCREEN.h * c.s };
+}
+
+/** La grafica copre lo studio: siamo sul maxischermo e lo zoom è finito (o non c'era). */
+export function fullScreenAt(show: Pick<StudioShow, "shots">, t: number): boolean {
+  const { i, cam } = worldShot(show, t);
+  if (cam !== "schermo") return false;
+  let prevCam: StudioCam | null = null;
+  for (let k = i - 1; k >= 0; k--)
+    if (isWorld(show.shots[k].cam)) {
+      prevCam = show.shots[k].cam;
+      break;
+    }
+  return prevCam === "schermo" || t - show.shots[i].t >= 0.8;
+}
+
+/** In che modalità è il player: sigla, studio, replay a tutto schermo o scheda finale. */
+export function modeAt(show: Pick<StudioShow, "shots" | "intro" | "outro">, t: number): "sigla" | "studio" | "replay" | "fine" {
+  if (t < show.intro) return "sigla";
+  if (t >= show.outro.t) return "fine";
+  let cam: StudioCam = "ampio";
+  for (const s of show.shots) if (s.t <= t) cam = s.cam;
+  return cam === "replay" ? "replay" : "studio";
+}
+
+/** Il canestro in onda durante il replay: quale clip e a che punto. */
+export function replayAt(show: Pick<StudioShow, "screens" | "shots">, t: number): { screen: number; clip: number; local: number } | null {
+  const { index } = screenAt(show, t);
+  const scr = show.screens[index];
+  if (!scr || scr.kind !== "replay") return null;
+  let clip = 0;
+  scr.clips.forEach((c, k) => {
+    if (t >= c.t) clip = k;
+  });
+  const c = scr.clips[clip];
+  return { screen: index, clip, local: Math.min(c.to - c.from, Math.max(0, t - c.t)) };
 }
 
 /** Quale grafica c'è sul maxischermo al tempo t, e da quando c'è. */
@@ -146,11 +240,46 @@ export function lineAt(show: Pick<StudioShow, "lines">, t: number): StudioLine |
   return null;
 }
 
-/** L'ultima battuta iniziata, anche se è finita da poco (i sottotitoli restano un attimo). */
-export function captionAt(show: Pick<StudioShow, "lines">, t: number): StudioLine | null {
-  let last: StudioLine | null = null;
-  for (const l of show.lines) if (l.t <= t) last = l;
-  return last && t < last.t + last.d + 0.6 ? last : null;
+export interface CaptionPage {
+  /** Indici delle parole della battuta. */
+  from: number;
+  to: number;
+  s: number;
+  e: number;
+}
+
+/** Divide una battuta in pagine da 1-3 parole (massimo ~16 lettere), spezzando sulla punteggiatura. */
+export function captionPages(line: Pick<StudioLine, "words" | "d">): CaptionPage[] {
+  const pages: CaptionPage[] = [];
+  let start = 0;
+  let chars = 0;
+  line.words.forEach(([w], i) => {
+    chars += w.length + (i > start ? 1 : 0);
+    const next = line.words[i + 1];
+    const stop = /[.,:;!?]$/.test(w) || !next || i - start >= 2 || chars + (next?.[0].length ?? 0) + 1 > 16;
+    if (stop) {
+      pages.push({ from: start, to: i, s: line.words[start][1], e: line.words[i][2] });
+      start = i + 1;
+      chars = 0;
+    }
+  });
+  // Ogni pagina resta fino all'inizio della successiva (niente buchi), l'ultima fino a fine battuta.
+  pages.forEach((p, k) => (p.e = pages[k + 1]?.s ?? line.d + 0.25));
+  return pages;
+}
+
+/** Il sottotitolo del momento: la pagina e la parola in corso. */
+export function captionAt(show: Pick<StudioShow, "lines">, t: number): { line: StudioLine; page: CaptionPage; active: number } | null {
+  let line: StudioLine | null = null;
+  for (const l of show.lines) if (l.t <= t) line = l;
+  if (!line || t > line.t + line.d + 0.25 || !line.words?.length) return null;
+  const u = t - line.t;
+  const pages = captionPages(line);
+  const page = pages.find((p) => u >= p.s && u < p.e) ?? (u < pages[0].s ? null : pages[pages.length - 1]);
+  if (!page) return null;
+  let active = page.from;
+  for (let k = page.from; k <= page.to; k++) if (u >= line.words[k][1]) active = k;
+  return { line, page, active };
 }
 
 /** Quanto è aperta la bocca di chi parla (0-1), dalla voce vera. */
@@ -193,14 +322,15 @@ export function lookAt(line: StudioLine | null, who: StudioWho, t: number): numb
   return toOther;
 }
 
-/** Le parti della puntata per la barra in alto (una per grafica). */
+/** Le parti della puntata per la barra in alto: sigla, una per grafica, chiusura. */
 export function chapters(show: StudioShow): { t: number; end: number }[] {
-  const starts: number[] = [];
+  const starts: number[] = [0, show.intro];
   let last = -1;
   for (const s of show.shots)
-    if (s.screen !== last) {
+    if (s.screen !== last && s.t > show.intro + 0.5) {
       starts.push(s.t);
       last = s.screen;
-    }
+    } else if (s.screen !== last) last = s.screen;
+  if (show.outro.t > starts[starts.length - 1] + 0.5) starts.push(show.outro.t);
   return starts.map((t, i) => ({ t, end: starts[i + 1] ?? show.duration }));
 }

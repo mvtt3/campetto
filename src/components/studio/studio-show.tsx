@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import {
+  IconCalendarEvent,
   IconPlayerPauseFilled,
   IconPlayerPlayFilled,
   IconRewindBackward10,
@@ -11,30 +12,38 @@ import {
   IconVolumeOff,
   IconX,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   armAt,
   blinkAt,
   cameraAt,
   captionAt,
-  chapters,
   lineAt,
   lookAt,
+  modeAt,
   mouthAt,
+  fullScreenAt,
+  replayAt,
   SCREEN,
   screenAt,
+  screenRect,
   STAGE,
   studioUrl,
-  type StudioLine,
   type StudioShow,
   type StudioWho,
 } from "@/lib/studio";
+import { useData } from "@/lib/data/provider";
+import { Logo } from "../mascot";
+import { CourtLines } from "../ui/basics";
 import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
 
-const ease = (u: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, u)), 3);
+const easeOut = (u: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, u)), 3);
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const el = (s: number): CSSProperties => ({ ["--el" as string]: `${-s}s` });
+const at = (d: number): CSSProperties => ({ ["--d" as string]: `${d}s` });
+const longDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
 
 /** Carica la puntata e la apre a tutto schermo. */
 export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onClose: () => void; startAt?: number }) {
@@ -44,7 +53,7 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
     let alive = true;
     fetch(studioUrl(id), { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((s: StudioShow) => alive && setShow(s))
+      .then((s: StudioShow) => alive && (s.v === 2 ? setShow(s) : setError(true)))
       .catch(() => alive && setError(true));
     return () => {
       alive = false;
@@ -55,17 +64,17 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
     show ? (
       <StudioShowPlayer show={show} onClose={onClose} startAt={startAt} />
     ) : (
-      <div className="fixed inset-0 z-[90] grid place-items-center bg-[#060B1A] text-white" role="dialog" aria-modal="true" aria-label="Studio Campetto">
+      <div className="fixed inset-0 z-[90] grid place-items-center bg-[#FFC531] text-[#1d1a16]" role="dialog" aria-modal="true" aria-label="Studio Campetto">
         {error ? (
           <div className="px-8 text-center">
             <p className="title text-[18px]">La puntata non si apre</p>
-            <p className="mt-1 text-[14px] text-white/70">Controlla la connessione e riprova.</p>
-            <button type="button" className="press mt-5 rounded-full bg-white px-5 py-2.5 font-semibold text-[#0C1736]" onClick={onClose}>
+            <p className="mt-1 text-[14px] opacity-70">Controlla la connessione e riprova.</p>
+            <button type="button" className="press mt-5 rounded-full bg-[#1d1a16] px-5 py-2.5 font-semibold text-white" onClick={onClose}>
               Chiudi
             </button>
           </div>
         ) : (
-          <span className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white" aria-label="Caricamento" />
+          <Logo size={110} top="STUDIO" bottom="★ CAMPETTO ★" className="animate-pulse" />
         )}
       </div>
     ),
@@ -74,9 +83,9 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
 }
 
 /**
- * Il player dello Studio Campetto: come un reel. Tocco per fermare e riprendere, doppio tocco
- * a sinistra o a destra per 10 secondi indietro o avanti, barra in alto per saltare.
- * L'audio è l'orologio: tutto quello che si vede si calcola dal suo tempo.
+ * Il player dello Studio Campetto, come un reel: tocco per fermare, doppio tocco ai lati per
+ * 10 secondi indietro o avanti, barra in alto per saltare. L'audio è l'orologio: telecamera,
+ * presentatori, grafiche, sottotitoli e replay si calcolano tutti dal suo tempo.
  */
 export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioShow; onClose: () => void; startAt?: number }) {
   const audio = useRef<HTMLAudioElement>(null);
@@ -84,13 +93,12 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const root = useRef<HTMLDivElement>(null);
   const lui = useRef<HTMLDivElement>(null);
   const lei = useRef<HTMLDivElement>(null);
-  const screenBox = useRef<HTMLDivElement>(null);
-  const videos = useRef<(HTMLVideoElement | null)[]>([]);
-  const clipLabel = useRef<HTMLSpanElement>(null);
-  const leiNotes = useRef<HTMLDivElement>(null);
   const luiNotes = useRef<HTMLDivElement>(null);
+  const leiNotes = useRef<HTMLDivElement>(null);
+  const screenBox = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const timeLabel = useRef<HTMLSpanElement>(null);
+  const videos = useRef<(HTMLVideoElement | null)[]>([]);
   const clock = useRef({ t: startAt, at: 0, running: false, audioOk: true });
   const smooth = useRef({ lui: { mouth: 0, look: 0 }, lei: { mouth: 0, look: 0 } });
 
@@ -98,12 +106,15 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const [needsTap, setNeedsTap] = useState(false);
   const [ended, setEnded] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [scr, setScr] = useState(() => {
-    const s = screenAt(show, startAt);
-    return { index: s.index, since: s.since, nonce: 0, el: startAt - s.since };
-  });
-  const [caption, setCaption] = useState<StudioLine | null>(null);
-  const [close, setClose] = useState<StudioWho | null>(null);
+  // Ogni salto ricrea i pezzi animati con il loro punto di partenza (nonce), così le animazioni CSS
+  // ripartono dal momento giusto anche andando avanti e indietro.
+  const [nonce, setNonce] = useState(0);
+  const [scr, setScr] = useState(() => ({ ...screenAt(show, startAt), el: startAt - screenAt(show, startAt).since }));
+  const [mode, setMode] = useState(() => modeAt(show, startAt));
+  const [modeEl, setModeEl] = useState(0);
+  const [cap, setCap] = useState<ReturnType<typeof captionAt>>(null);
+  const [replayClip, setReplayClip] = useState(-1);
+  const [full, setFull] = useState(() => fullScreenAt(show, startAt));
   const [flash, setFlash] = useState<{ kind: "play" | "pause" | "back" | "fwd"; n: number } | null>(null);
 
   const [k, setK] = useState(1);
@@ -134,11 +145,11 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         if (Math.abs(a.currentTime - c.t) > 0.05) a.currentTime = c.t;
         await a.play();
       } catch (e) {
-        // Il browser vuole un tocco prima del suono: fermi e si aspetta il tocco.
         if ((e as Error).name === "NotAllowedError") {
           c.running = false;
           setPlaying(false);
           setNeedsTap(true);
+          root.current?.classList.add("studio-paused");
         } else c.audioOk = false;
       }
     }
@@ -162,13 +173,16 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       c.at = performance.now();
       if (audio.current) audio.current.currentTime = t;
       const s = screenAt(show, t);
-      setScr((p) => ({ index: s.index, since: s.since, nonce: p.nonce + 1, el: t - s.since }));
+      setScr({ ...s, el: t - s.since });
+      const m = modeAt(show, t);
+      setMode(m);
+      setModeEl(m === "sigla" ? t : m === "fine" ? t - show.outro.t : 0);
+      setNonce((n) => n + 1);
       setEnded(false);
     },
     [show],
   );
 
-  // Si parte da soli: la puntata si apre con un tocco, quindi il suono è permesso.
   useEffect(() => {
     const a = audio.current;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -176,92 +190,103 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     return () => a?.pause();
   }, [start]);
 
-  // Il motore: a ogni fotogramma telecamera, presentatori, grafica, sottotitoli e barra.
+  useEffect(() => {
+    const onHide = () => document.hidden && clock.current.running && pause();
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [pause]);
+
+  // Il motore: a ogni fotogramma telecamera, presentatori, grafica, replay, sottotitoli e barra.
   useEffect(() => {
     let raf = 0;
     let lastScreen = -1;
-    let lastCaption: StudioLine | null = null;
-    let lastClose: StudioWho | null = null;
+    let lastMode = "";
+    let lastCap = "";
+    let lastClip = -2;
+    let lastFull: boolean | null = null;
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
       const c = clock.current;
-      if (t >= show.duration) {
-        if (c.running) {
-          c.t = show.duration;
-          c.running = false;
-          setPlaying(false);
-          setEnded(true);
-        }
+      if (t >= show.duration - 0.02 && c.running) {
+        c.t = show.duration;
+        c.running = false;
+        setPlaying(false);
+        setEnded(true);
       }
       const cam = cameraAt(show, t);
       if (world.current) world.current.style.transform = `translate3d(${cam.x}px, ${cam.y}px, 0) scale(${cam.s})`;
 
       const line = lineAt(show, t);
       for (const who of ["lui", "lei"] as const) {
-        const el = who === "lui" ? lui.current : lei.current;
-        if (!el) continue;
+        const box = who === "lui" ? lui.current : lei.current;
+        if (!box) continue;
         const sm = smooth.current[who];
         sm.mouth += (mouthAt(line, who, t) - sm.mouth) * 0.55;
-        sm.look += (lookAt(line, who, t) - sm.look) * 0.12;
+        sm.look += (lookAt(line, who, t) - sm.look) * 0.14;
         const listening = line && line.who !== who;
-        el.style.setProperty("--mouth", sm.mouth.toFixed(3));
-        el.style.setProperty("--look", sm.look.toFixed(3));
-        el.style.setProperty("--blink", blinkAt(who, t).toFixed(2));
+        box.style.setProperty("--mouth", sm.mouth.toFixed(3));
+        box.style.setProperty("--look", sm.look.toFixed(3));
+        box.style.setProperty("--blink", blinkAt(who, t).toFixed(2));
+        box.style.setProperty("--breath", Math.sin(t * 1.5 + (who === "lui" ? 0 : 1.7)).toFixed(3));
+        box.style.setProperty("--nod", listening ? (Math.max(0, Math.sin(t * 2.4)) ** 3).toFixed(3) : (sm.mouth * 0.45).toFixed(3));
         const arm = armAt(show, who, t).toFixed(3);
-        el.style.setProperty("--arm", arm);
+        box.style.setProperty("--arm", arm);
         (who === "lui" ? luiNotes : leiNotes).current?.style.setProperty("--arm", arm);
-        el.style.setProperty("--breath", Math.sin(t * 1.5 + (who === "lui" ? 0 : 1.7)).toFixed(3));
-        el.style.setProperty("--nod", listening ? (Math.max(0, Math.sin(t * 2.4)) ** 3).toFixed(3) : (sm.mouth * 0.4).toFixed(3));
       }
 
       const s = screenAt(show, t);
       if (s.index !== lastScreen) {
         lastScreen = s.index;
-        setScr((p) => (p.index === s.index ? p : { index: s.index, since: s.since, nonce: p.nonce + 1, el: t - s.since }));
+        setScr((p) => (p.index === s.index ? p : { ...s, el: t - s.since }));
       }
-      // I numeri delle grafiche contano col tempo della puntata.
-      screenBox.current?.querySelectorAll<HTMLElement>("[data-to]").forEach((el) => {
-        const to = Number(el.dataset.to);
-        const u = ease((t - s.since - Number(el.dataset.at)) / 1.0);
-        el.textContent = String(Math.round(to * u));
+      const m = modeAt(show, t);
+      if (m !== lastMode) {
+        if (lastMode) setModeEl(m === "sigla" ? t : m === "fine" ? t - show.outro.t : 0);
+        lastMode = m;
+        setMode(m);
+      }
+      const f = fullScreenAt(show, t);
+      if (f !== lastFull) {
+        lastFull = f;
+        setFull(f);
+      }
+      // I numeri delle grafiche contano col tempo della puntata (nello studio e a tutto schermo).
+      root.current?.querySelectorAll<HTMLElement>("[data-to]").forEach((n) => {
+        const to = Number(n.dataset.to);
+        const u = easeOut((t - s.since - Number(n.dataset.at)) / 1.0);
+        n.textContent = String(Math.round(to * u));
       });
 
-      // I canestri: un video per clip, tutti già caricati; si vede quello del momento.
-      const scr0 = show.screens[s.index];
-      if (scr0?.kind === "montaggio") {
-        let on = scr0.clips.findIndex((x) => t >= x.t && t < x.t + x.dur);
-        if (on < 0) on = t < scr0.clips[0].t ? 0 : scr0.clips.length - 1;
-        scr0.clips.forEach((clip, i) => {
+      // Il replay: un video per canestro, già caricato; parte dall'inizio della clip e va fino in fondo.
+      const r = replayAt(show, t);
+      const scrR = show.screens[s.index];
+      if (scrR?.kind === "replay") {
+        const on = m === "replay" && r ? r.clip : -1;
+        if (on !== lastClip) {
+          lastClip = on;
+          setReplayClip(on);
+        }
+        scrR.clips.forEach((clip, i) => {
           const v = videos.current[i];
           if (!v) return;
-          const want = clip.from + Math.min(clip.dur, Math.max(0, t - clip.t));
           if (i !== on) {
             if (!v.paused) v.pause();
-            v.style.opacity = "0";
-            if (v.readyState >= 1 && Math.abs(v.currentTime - clip.from) > 0.3 && t < clip.t) v.currentTime = clip.from;
+            if (v.readyState >= 1 && Math.abs(v.currentTime - clip.from) > 0.05 && (on < 0 || i > on)) v.currentTime = clip.from;
             return;
           }
-          v.style.opacity = "1";
-          if (v.readyState >= 1 && Math.abs(v.currentTime - want) > 0.35) v.currentTime = want;
-          const live = c.running && t >= clip.t && t < clip.t + clip.dur;
-          if (live && v.paused) void v.play().catch(() => {});
-          if (!live && !v.paused) v.pause();
-          if (clipLabel.current && clipLabel.current.textContent !== clip.label) clipLabel.current.textContent = clip.label;
+          const want = clip.from + (r?.local ?? 0);
+          if (v.readyState >= 1 && Math.abs(v.currentTime - want) > 0.3) v.currentTime = want;
+          if (c.running && v.paused) void v.play().catch(() => {});
+          if (!c.running && !v.paused) v.pause();
         });
       }
 
-      const cap = captionAt(show, t);
-      if (cap !== lastCaption) {
-        lastCaption = cap;
-        setCaption(cap);
-      }
-      let shot = show.shots[0];
-      for (const x of show.shots) if (x.t <= t) shot = x;
-      const cl = shot.cam === "lui" || shot.cam === "lei" ? shot.cam : null;
-      if (cl !== lastClose) {
-        lastClose = cl;
-        setClose(cl);
+      const cp = captionAt(show, t);
+      const key = cp ? `${cp.line.t}:${cp.page.from}:${cp.active}` : "";
+      if (key !== lastCap) {
+        lastCap = key;
+        setCap(cp);
       }
       if (bar.current) {
         bar.current.style.setProperty("--p", String(Math.min(1, t / show.duration)));
@@ -276,7 +301,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   // Tocco: uno ferma o riprende, due a sinistra o a destra saltano di 10 secondi.
   const taps = useRef<{ at: number; x: number; timer: number }>({ at: 0, x: 0, timer: 0 });
   const onTap = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (ended) return;
+    if (ended || needsTap) return;
     if ((e.target as HTMLElement).closest("button, [role=slider]")) return;
     const x = e.clientX / window.innerWidth;
     const tp = taps.current;
@@ -303,13 +328,6 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     }, side === 0 ? 0 : 300);
   };
 
-  // Se si esce dall'app (telefono in tasca, altra app) la puntata si ferma.
-  useEffect(() => {
-    const onHide = () => document.hidden && clock.current.running && pause();
-    document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
-  }, [pause]);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -326,11 +344,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   }, [onClose, pause, start, seek, now]);
 
   const screen = show.screens[scr.index];
-  const parts = chapters(show);
-  const date = new Date(`${show.day}T12:00:00`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  const replay = screen?.kind === "replay" ? screen : null;
 
   return (
-    <div ref={root} className="fixed inset-0 z-[90] select-none overflow-hidden bg-[#060B1A] text-white" role="dialog" aria-modal="true" aria-label={`Studio Campetto, ${date}`} onPointerUp={onTap}>
+    <div ref={root} className="fixed inset-0 z-[90] select-none overflow-hidden bg-[#1f45b8] text-white" role="dialog" aria-modal="true" aria-label={`Studio Campetto, le partite di ${longDate(show.day)}`} onPointerUp={onTap}>
       <audio
         ref={audio}
         src={show.audio}
@@ -342,41 +359,20 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       />
 
       {/* Lo studio, disegnato a 390×844 e adattato allo schermo. */}
-      <div
-        className="absolute left-1/2 top-1/2 overflow-hidden"
-        style={{ width: STAGE.w, height: STAGE.h, transform: `translate(-50%, -50%) scale(${k})` }}
-      >
+      <div className="absolute left-1/2 top-1/2 overflow-hidden" style={{ width: STAGE.w, height: STAGE.h, transform: `translate(-50%, -50%) scale(${k})` }}>
         <div ref={world} className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ width: STAGE.w, height: STAGE.h }}>
           <StudioSet day={show.day} />
           {/* Il maxischermo. */}
-          <div className="absolute overflow-hidden rounded-[10px] ring-[5px] ring-[#1B2C5C]" style={{ left: SCREEN.x, top: SCREEN.y, width: SCREEN.w, height: SCREEN.h, boxShadow: "0 0 50px rgb(61 106 240 / 0.55)" }}>
+          <div
+            className="absolute overflow-hidden rounded-[16px] ring-[3px] ring-white/90"
+            style={{ left: SCREEN.x, top: SCREEN.y, width: SCREEN.w, height: SCREEN.h, boxShadow: "0 18px 40px -12px rgb(10 20 60 / 0.6)" }}
+          >
             <div ref={screenBox} className="origin-top-left" style={{ transform: `scale(${SCREEN.w / SCREEN.nativeW})` }}>
-              <div key={`${scr.index}-${scr.nonce}`} style={{ ["--el" as string]: `${-scr.el}s` }} className="studio-screen-in">
-                {screen && <StudioScreenView screen={screen} day={show.day} />}
+              <div key={`${scr.index}-${nonce}`} style={el(scr.el)} className="studio-screen-in">
+                {screen && <StudioScreenView screen={screen} />}
               </div>
             </div>
-            {screen?.kind === "montaggio" && (
-              <div className="absolute inset-0 bg-black">
-                {screen.clips.map((clip, i) => (
-                  <video
-                    key={clip.src + i}
-                    ref={(el) => {
-                      videos.current[i] = el;
-                    }}
-                    src={`${clip.src}#t=${clip.from}`}
-                    muted
-                    playsInline
-                    preload="auto"
-                    className="absolute inset-0 h-full w-full object-cover"
-                    style={{ opacity: i === 0 ? 1 : 0 }}
-                  />
-                ))}
-                <span className="absolute left-2 top-2 rounded-full bg-volt px-2 py-0.5 text-[8px] font-bold text-volt-ink">{screen.kicker}</span>
-                <span ref={clipLabel} className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[8px] font-bold" />
-              </div>
-            )}
           </div>
-          {/* I presentatori dietro la scrivania. */}
           <div ref={lei} className="absolute" style={{ left: 27, top: 438, width: 170 }}>
             <Presenter who="lei" />
           </div>
@@ -391,13 +387,92 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
           </div>
           <Desk />
         </div>
+        {/* A zoom finito la grafica prende il posto dello studio: stesso punto, stessa misura. */}
+        <div className={clsx("absolute inset-0 transition-opacity duration-200", full && screen?.kind !== "replay" ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={!full}>
+          <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, #3D6AF0 0%, var(--court) 45%, var(--court-deep) 100%)" }}>
+            <span className="blob -left-24 top-0 h-80 w-80 bg-[radial-gradient(circle,rgb(255_197_49/0.38),transparent_68%)]" />
+            <span className="blob -bottom-20 -right-24 h-80 w-80 bg-[radial-gradient(circle,rgb(242_106_27/0.3),transparent_70%)]" />
+          </div>
+          <FullCard screen={screen} keyId={`${scr.index}-${nonce}`} el={scr.el} />
+        </div>
       </div>
 
-      {/* Sopra lo studio: titolo, barra, sottotitoli e comandi (non zoomano). */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-[#03060f] via-[#03060f]/75 to-transparent px-4 pb-8 pt-[max(12px,env(safe-area-inset-top))]">
+      {/* Il replay a tutto schermo: il campo intero (canestro compreso), clip dall'inizio alla fine. */}
+      {replay && (
+        <div className={clsx("absolute inset-0 transition-opacity duration-150", mode === "replay" ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={mode !== "replay"}>
+          <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, var(--court) 0%, var(--court-deep) 100%)" }}>
+            <span className="blob -right-16 -top-10 h-72 w-72 bg-[radial-gradient(circle,rgb(255_197_49/0.4),transparent_68%)]" />
+            <span className="blob -bottom-24 -left-16 h-72 w-72 bg-[radial-gradient(circle,rgb(242_106_27/0.3),transparent_70%)]" />
+            <CourtLines className="absolute inset-x-0 bottom-0 h-1/2 w-full opacity-70" />
+          </div>
+          <div className="absolute inset-x-0 top-[24%] px-3">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-volt px-3 py-1 text-[13px] font-bold text-volt-ink">Replay</span>
+              <span className="text-[15px] font-bold">{replayClip >= 0 ? `Partita ${replay.clips[replayClip].game}` : ""}</span>
+              <span className="ml-auto flex gap-1.5" aria-hidden>
+                {replay.clips.map((_, i) => (
+                  <span key={i} className={clsx("h-2 w-2 rounded-full", i === replayClip ? "bg-volt" : "bg-white/35")} />
+                ))}
+              </span>
+            </div>
+            <div className="relative mt-3 aspect-video overflow-hidden rounded-[20px] bg-black ring-[3px] ring-white/90 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.55)]">
+              {replay.clips.map((clip, i) => (
+                <video
+                  key={clip.src + clip.from}
+                  ref={(v) => {
+                    videos.current[i] = v;
+                  }}
+                  src={`${clip.src}#t=${clip.from}`}
+                  muted
+                  playsInline
+                  preload="auto"
+                  className={clsx("absolute inset-0 h-full w-full object-cover", i === replayClip ? "opacity-100" : "opacity-0")}
+                />
+              ))}
+            </div>
+            {replayClip >= 0 && <ReplayScore show={show} game={replay.clips[replayClip].game} />}
+          </div>
+        </div>
+      )}
+
+      {/* La sigla: il badge dell'app con le scritte dello show, poi si apre sullo studio. */}
+      {mode === "sigla" && <Sigla key={`s${nonce}`} show={show} at={modeEl} />}
+      {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
+
+      {/* Sopra lo studio: barra, titolo, sottotitoli e comandi (non zoomano). */}
+      <div className={clsx("pointer-events-none absolute inset-x-0 top-0 px-4 pb-8 pt-[max(14px,env(safe-area-inset-top))] transition-opacity", mode === "sigla" ? "opacity-0" : "bg-gradient-to-b from-black/45 to-transparent")}>
+        <div className="flex items-center gap-2">
+          <Logo size={30} top="STUDIO" bottom="★ CAMPETTO ★" text={false} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-bold leading-tight">Studio Campetto</span>
+            <span className="block text-[12px] leading-tight text-white/75">Le partite di {longDate(show.day)}</span>
+          </span>
+          <button type="button" className="press pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-white/20" aria-label="Chiudi" onClick={onClose}>
+            <IconX size={22} />
+          </button>
+        </div>
+      </div>
+
+      <LowerThird show={show} now={now} />
+
+      {/* Sottotitoli come nei reel: poche parole alla volta, quella detta adesso in giallo. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[112px] flex justify-center px-6" aria-live="polite">
+        {cap && mode !== "sigla" && (
+          <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[88%] flex-wrap justify-center gap-x-[0.4em] text-center text-[28px] font-extrabold leading-[1.15] tracking-[-0.01em] text-white">
+            {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => (
+              <span key={i} className={clsx("studio-word", cap.page.from + i === cap.active && "is-on")}>
+                {w.replace(/[.,:;]+$/, "")}
+              </span>
+            ))}
+          </p>
+        )}
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-4 pb-[max(14px,env(safe-area-inset-bottom))] pt-10">
+        {/* Una sola linea continua, come nei reel: niente tacche. */}
         <div
           ref={bar}
-          className="pointer-events-auto relative flex h-5 cursor-pointer items-center gap-1"
+          className="pointer-events-auto relative mb-2 flex h-6 cursor-pointer items-center"
           onPointerDown={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             seek(((e.clientX - r.left) / r.width) * show.duration);
@@ -409,63 +484,25 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
           aria-valuenow={0}
           tabIndex={0}
         >
-          {parts.map((p) => (
-            <span key={p.t} className="relative h-[3px] overflow-hidden rounded-full bg-white/30" style={{ flex: p.end - p.t }}>
-              <span
-                className="absolute inset-y-0 left-0 bg-white"
-                style={{ width: `calc(clamp(0%, (var(--p) * ${show.duration} - ${p.t}) / ${p.end - p.t} * 100%, 100%))` }}
-              />
-            </span>
-          ))}
-        </div>
-        <div className="mt-1.5 flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-ball text-[11px] font-black">SC</span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-bold leading-tight">Studio Campetto</span>
-            <span className="block text-[12px] leading-tight text-white/70">Le partite di {date}</span>
+          <span className="relative h-[3px] w-full overflow-hidden rounded-full bg-white/30">
+            <span className="absolute inset-0 origin-left bg-white" style={{ transform: "scaleX(var(--p, 0))" }} />
           </span>
-          <button type="button" className="press pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-white/15" aria-label="Chiudi" onClick={onClose}>
-            <IconX size={22} />
-          </button>
         </div>
-      </div>
-
-      {close && (
-        <div key={close} className="studio-in pointer-events-none absolute bottom-[230px] left-4" style={{ ["--el" as string]: "0s" }}>
-          <p className="rounded-t-lg bg-ball px-3 py-1 text-[17px] font-extrabold leading-tight">{show.hosts[close]}</p>
-          <p className="rounded-b-lg bg-[#0C1736]/90 px-3 py-1 text-[12px] font-semibold text-white/80">Studio Campetto</p>
-        </div>
-      )}
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#03060f] via-[#03060f]/80 to-transparent px-4 pb-[max(14px,env(safe-area-inset-bottom))] pt-16">
-        <div className="min-h-[86px]">
-          {caption && (
-            <p key={caption.t} className="studio-in text-[16px] font-semibold leading-snug" style={{ ["--el" as string]: "0s" }} aria-live="polite">
-              <span className={clsx("mr-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-extrabold", caption.who === "lei" ? "bg-[#B4234A]" : "bg-[#3D6AF0]")}>{show.hosts[caption.who]}</span>
-              {caption.text}
-            </p>
-          )}
-        </div>
-        <div className="pointer-events-auto mt-2 flex items-center justify-between">
-          <span ref={timeLabel} className="tnum w-24 text-[12.5px] text-white/75" />
+        <div className="pointer-events-auto flex items-center justify-between">
+          <span ref={timeLabel} className="tnum w-24 text-[12.5px] text-white/80" />
           <div className="flex items-center gap-3">
-            <button type="button" className="press grid h-11 w-11 place-items-center rounded-full bg-white/12" aria-label="Indietro di 10 secondi" onClick={() => seek(now() - 10)}>
+            <button type="button" className="press grid h-11 w-11 place-items-center rounded-full bg-white/20" aria-label="Indietro di 10 secondi" onClick={() => seek(now() - 10)}>
               <IconRewindBackward10 size={24} />
             </button>
-            <button
-              type="button"
-              className="press grid h-14 w-14 place-items-center rounded-full bg-white text-[#0C1736]"
-              aria-label={playing ? "Pausa" : "Riprendi"}
-              onClick={() => (clock.current.running ? pause() : void start())}
-            >
+            <button type="button" className="press grid h-14 w-14 place-items-center rounded-full bg-white text-[#1f45b8]" aria-label={playing ? "Pausa" : "Riprendi"} onClick={() => (clock.current.running ? pause() : void start())}>
               {playing ? <IconPlayerPauseFilled size={26} /> : <IconPlayerPlayFilled size={26} />}
             </button>
-            <button type="button" className="press grid h-11 w-11 place-items-center rounded-full bg-white/12" aria-label="Avanti di 10 secondi" onClick={() => seek(now() + 10)}>
+            <button type="button" className="press grid h-11 w-11 place-items-center rounded-full bg-white/20" aria-label="Avanti di 10 secondi" onClick={() => seek(now() + 10)}>
               <IconRewindForward10 size={24} />
             </button>
           </div>
           <div className="flex w-24 justify-end">
-            <button type="button" className="press grid h-11 w-11 place-items-center rounded-full bg-white/12" aria-label={muted ? "Attiva l'audio" : "Togli l'audio"} onClick={() => setMuted((m) => !m)}>
+            <button type="button" className="press grid h-11 w-11 place-items-center rounded-full bg-white/20" aria-label={muted ? "Attiva l'audio" : "Togli l'audio"} onClick={() => setMuted((m) => !m)}>
               {muted ? <IconVolumeOff size={22} /> : <IconVolume size={22} />}
             </button>
           </div>
@@ -473,24 +510,25 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       </div>
 
       {flash && (
-        <span key={flash.n} className="studio-flash pointer-events-none absolute top-1/2 grid h-20 w-20 -translate-y-1/2 place-items-center rounded-full bg-black/45" style={{ left: flash.kind === "back" ? "12%" : flash.kind === "fwd" ? "calc(88% - 80px)" : "calc(50% - 40px)" }}>
+        <span key={flash.n} className="studio-flash pointer-events-none absolute top-[45%] grid h-20 w-20 place-items-center rounded-full bg-black/40" style={{ left: flash.kind === "back" ? "12%" : flash.kind === "fwd" ? "calc(88% - 80px)" : "calc(50% - 40px)" }}>
           {flash.kind === "pause" ? <IconPlayerPauseFilled size={34} /> : flash.kind === "play" ? <IconPlayerPlayFilled size={34} /> : flash.kind === "back" ? <IconRewindBackward10 size={34} /> : <IconRewindForward10 size={34} />}
         </span>
       )}
 
       {(needsTap || ended) && (
-        <div className="absolute inset-0 grid place-items-center bg-black/55">
+        <div className="absolute inset-0 grid place-items-center bg-[#1f45b8]/70">
           <div className="text-center">
-            <p className="display text-[30px]">{ended ? "Fine della puntata" : "Studio Campetto"}</p>
+            <Logo size={96} top="STUDIO" bottom="★ CAMPETTO ★" className="mx-auto" />
+            <p className="display mt-3 text-[28px]">{ended ? "Fine della puntata" : "Studio Campetto"}</p>
             <div className="mt-5 flex justify-center gap-3">
               {ended && (
-                <button type="button" className="press rounded-full bg-white/15 px-5 py-3 font-semibold" onClick={onClose}>
+                <button type="button" className="press rounded-full bg-white/20 px-5 py-3 font-semibold" onClick={onClose}>
                   Chiudi
                 </button>
               )}
               <button
                 type="button"
-                className="press inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 font-semibold text-[#0C1736]"
+                className="press inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 font-semibold text-[#1f45b8]"
                 onClick={() => {
                   if (ended) seek(0);
                   void start();
@@ -507,7 +545,158 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   );
 }
 
-/** Le pareti dello studio: led, luci, il giorno delle partite sui pannelli laterali. */
+/** La grafica del maxischermo a tutto schermo, nello stesso punto dove arriva lo zoom. */
+function FullCard({ screen, keyId, el: e }: { screen: StudioShow["screens"][number] | undefined; keyId: string; el: number }) {
+  if (!screen || screen.kind === "replay") return null;
+  const r = screenRect();
+  return (
+    <div className="absolute overflow-hidden rounded-[30px] ring-[3px] ring-white/90 shadow-[0_24px_50px_-16px_rgb(10_20_60/0.6)]" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
+      <div className="origin-top-left" style={{ transform: `scale(${r.w / SCREEN.nativeW})` }}>
+        <div key={keyId} style={el(e)} className="studio-screen-in">
+          <StudioScreenView screen={screen} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Sotto il replay: chi ha giocato quella partita e come è finita (dalla grafica dei risultati). */
+function ReplayScore({ show, game }: { show: StudioShow; game: number }) {
+  const { data } = useData();
+  const res = show.screens.find((x) => x.kind === "risultati");
+  const g = res?.kind === "risultati" ? res.games[game - 1] : null;
+  if (!g) return null;
+  const nm = (id: string) => {
+    const p = data.players.find((x) => x.id === id);
+    return p?.nickname?.trim() || p?.firstName || "—";
+  };
+  const aWon = g.sa > g.sb;
+  return (
+    <div key={game} className="studio-in mt-3 flex items-center gap-3 rounded-[20px] bg-[#FFFAF0] px-4 py-3 text-[#1d1a16] shadow-[0_14px_30px_-12px_rgb(0_0_0/0.45)]" style={el(0)}>
+      <span className={clsx("min-w-0 flex-1 text-[14px] leading-tight", aWon ? "font-bold" : "font-medium text-[#1d1a16]/55")}>{g.a.map(nm).join(" e ")}</span>
+      <span className="score shrink-0 text-[26px]">
+        <span className={aWon ? "" : "text-[#1d1a16]/35"}>{g.sa}</span>
+        <span className="text-[#1d1a16]/30">–</span>
+        <span className={!aWon ? "" : "text-[#1d1a16]/35"}>{g.sb}</span>
+      </span>
+      <span className={clsx("min-w-0 flex-1 text-right text-[14px] leading-tight", !aWon ? "font-bold" : "font-medium text-[#1d1a16]/55")}>{g.b.map(nm).join(" e ")}</span>
+    </div>
+  );
+}
+
+/** Il nome di chi parla, la prima volta che è inquadrato da vicino, come in TV. */
+function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
+  const [who, setWho] = useState<StudioWho | null>(null);
+  useEffect(() => {
+    const firsts = (["lui", "lei"] as const).map((w) => ({ w, t: show.shots.find((s) => s.cam === w)?.t ?? -99 }));
+    let raf = 0;
+    let last: StudioWho | null = null;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const t = now();
+      const on = firsts.find((f) => t >= f.t && t < f.t + 2.8)?.w ?? null;
+      if (on !== last) {
+        last = on;
+        setWho(on);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [show, now]);
+  if (!who) return null;
+  return (
+    // Dal lato opposto al badge della scrivania, che nel primo piano di lui finisce a sinistra e in quello di lei a destra.
+    <div
+      key={who}
+      className={clsx("studio-in pointer-events-none absolute bottom-[190px] flex items-stretch overflow-hidden rounded-[14px] shadow-[0_10px_24px_-8px_rgb(0_0_0/0.5)]", who === "lui" ? "right-4 flex-row-reverse text-right" : "left-4")}
+      style={el(0)}
+    >
+      <span className="grid w-10 place-items-center bg-volt">
+        <Logo size={30} text={false} />
+      </span>
+      <span className="bg-[#FFFAF0] px-3 py-1.5 text-[#1d1a16]">
+        <span className="block text-[17px] font-extrabold leading-tight">{show.hosts[who]}</span>
+        <span className="block text-[11.5px] font-semibold text-[#1d1a16]/60">{who === "lei" ? "Conduttrice" : "Conduttore"} · Studio Campetto</span>
+      </span>
+    </div>
+  );
+}
+
+/** La sigla: sfondo giallo dell'app, raggi, il badge che entra girando, il nome dello show. */
+function Sigla({ show, at: t0 }: { show: StudioShow; at: number }) {
+  return (
+    <div className="studio-sigla absolute inset-0 z-10 grid place-items-center bg-[#FFC531] text-[#1d1a16]" style={{ ...el(t0), ["--out" as string]: `${show.intro - 0.75}s` }}>
+      <span className="mvp-rays studio-spin absolute left-1/2 top-[42%] h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2" aria-hidden />
+      <div className="relative -mt-16 flex flex-col items-center text-center">
+        <span className="relative grid place-items-center">
+          {[0.55, 0.85].map((d) => (
+            <span key={d} className="studio-wave absolute h-[210px] w-[210px] rounded-full border-[6px] border-[#1d1a16]/80" style={at(d)} aria-hidden />
+          ))}
+          <span className="studio-logo-in drop-shadow-[0_18px_28px_rgb(29_26_22/0.35)]" style={at(0.1)}>
+            <span className="studio-float block">
+              <Logo size={210} top="STUDIO" bottom="★ CAMPETTO ★" />
+            </span>
+          </span>
+        </span>
+        <p className="studio-in display mt-6 text-[46px] leading-[0.95]" style={at(0.85)}>
+          Studio
+          <br />
+          Campetto
+        </p>
+        <p className="studio-in mt-4 rounded-full bg-[#1d1a16] px-4 py-1.5 text-[14px] font-semibold text-white" style={at(1.2)}>
+          Le partite di {longDate(show.day)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** La chiusura: grazie, la prossima partita, i crediti della musica. */
+function Fine({ show, at: t0 }: { show: StudioShow; at: number }) {
+  const { data } = useData();
+  // La prossima partita: quella annunciata nella puntata, o la prossima aperta nel calendario.
+  const nowIso = new Date().toISOString();
+  const live = data.proposals
+    .filter((p) => p.status === "aperta" && p.startsAt > nowIso)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+  const next = live ? { startsAt: live.startsAt, place: live.place === "indoor" ? "Indoor" : live.place === "niche" ? "Niche" : live.place === "decathlon" ? "Decathlon" : undefined } : show.outro.next;
+  const when = next
+    ? new Date(next.startsAt).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" }) +
+      " · " +
+      new Date(next.startsAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })
+    : null;
+  return (
+    <div className="studio-in absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center" style={{ ...el(t0), background: "linear-gradient(160deg, var(--court) 0%, var(--court-deep) 100%)" }}>
+      <span className="blob -right-16 -top-16 h-72 w-72 bg-[radial-gradient(circle,rgb(255_197_49/0.45),transparent_68%)]" aria-hidden />
+      <span className="blob -bottom-24 -left-16 h-72 w-72 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)]" aria-hidden />
+      <CourtLines className="absolute inset-x-0 bottom-0 h-1/2 w-full opacity-70" />
+      <span className="studio-logo-in relative drop-shadow-[0_14px_24px_rgb(0_0_0/0.35)]" style={at(0.05)}>
+        <Logo size={120} top="STUDIO" bottom="★ CAMPETTO ★" />
+      </span>
+      <p className="studio-in display relative mt-5 text-[40px] leading-none" style={at(0.35)}>
+        Alla prossima!
+      </p>
+      {when && (
+        <div className="studio-in relative mt-6 flex w-full max-w-[320px] items-center gap-3 rounded-[22px] bg-[#FFFAF0] px-4 py-3 text-left text-[#1d1a16] shadow-[0_14px_30px_-10px_rgb(0_0_0/0.45)]" style={at(0.6)}>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-volt">
+            <IconCalendarEvent size={22} aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[12px] font-semibold text-[#1d1a16]/60">Prossima partita</span>
+            <span className="block text-[15.5px] font-bold leading-tight first-letter:uppercase">{when}</span>
+            {next?.place && <span className="block text-[13px] font-medium text-[#1d1a16]/70">{next.place}</span>}
+          </span>
+        </div>
+      )}
+      <p className="studio-in relative mt-8 max-w-[300px] text-[11.5px] leading-snug text-white/65" style={at(0.9)}>
+        {show.credits}
+      </p>
+    </div>
+  );
+}
+
+/** Lo studio nello stile dell'app: parete blu campo con luci gialle e arancio, pannelli vetro,
+ *  pavimento color carta con la linea da tre, il giorno delle partite sul pannello di sinistra. */
 function StudioSet({ day }: { day: string }) {
   const d = new Date(`${day}T12:00:00`);
   const wd = d.toLocaleDateString("it-IT", { weekday: "short" }).replace(".", "");
@@ -515,54 +704,48 @@ function StudioSet({ day }: { day: string }) {
   const mon = d.toLocaleDateString("it-IT", { month: "short" }).replace(".", "");
   return (
     <div className="absolute inset-0" aria-hidden>
-      {/* Il fondo va oltre i bordi: quando la telecamera si allontana non si vede il vuoto. */}
-      <div className="absolute -inset-x-40 -bottom-60 -top-40 bg-[linear-gradient(180deg,#070E24_0%,#0E1D48_40%,#13275E_58%,#0A1430_75%,#050A1A_100%)]" />
-      {/* Luci dall'alto. */}
-      <div className="absolute -top-10 left-[8%] h-[420px] w-[120px] rotate-[14deg] bg-[linear-gradient(180deg,rgb(160_196_255/0.28),transparent)] blur-md" />
-      <div className="absolute -top-10 right-[8%] h-[420px] w-[120px] -rotate-[14deg] bg-[linear-gradient(180deg,rgb(160_196_255/0.28),transparent)] blur-md" />
-      {/* Pannelli led ai lati del maxischermo. */}
-      <div className="absolute left-[14px] top-[150px] flex h-[218px] w-[66px] flex-col items-center justify-center rounded-[10px] bg-[#0F2150] ring-2 ring-[#1B2C5C]">
-        <span className="text-[12px] font-bold uppercase tracking-wide text-white/60">{wd}</span>
+      {/* La parete: va oltre i bordi, così quando la telecamera si allarga non si vede il vuoto. */}
+      <div className="absolute -inset-x-40 -top-40 bottom-[260px]" style={{ background: "linear-gradient(160deg, #3D6AF0 0%, var(--court) 45%, var(--court-deep) 100%)" }} />
+      <span className="blob left-[-90px] top-[40px] h-[320px] w-[320px] bg-[radial-gradient(circle,rgb(255_197_49/0.42),transparent_68%)]" />
+      <span className="blob right-[-110px] top-[260px] h-[340px] w-[340px] bg-[radial-gradient(circle,rgb(242_106_27/0.32),transparent_70%)]" />
+      <CourtLines className="absolute inset-x-[-40px] top-[60px] h-[520px] w-[470px] opacity-60" />
+      {/* Pannelli vetro ai lati del maxischermo: il giorno a sinistra, il logo a destra. */}
+      <div className="absolute left-[14px] top-[128px] flex h-[148px] w-[66px] flex-col items-center justify-center rounded-[18px] border border-white/25 bg-white/15">
+        <span className="text-[12px] font-bold uppercase text-white/75">{wd}</span>
         <span className="score text-[40px] text-volt">{num}</span>
-        <span className="text-[12px] font-bold uppercase tracking-wide text-white/60">{mon}</span>
+        <span className="text-[12px] font-bold uppercase text-white/75">{mon}</span>
       </div>
-      <div className="absolute right-[14px] top-[150px] flex h-[218px] w-[66px] flex-col items-center justify-center gap-2 rounded-[10px] bg-[#0F2150] ring-2 ring-[#1B2C5C]">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <span key={i} className="studio-pulse h-6 w-6 rounded-full bg-ball" style={{ animationDelay: `${i * 0.35}s`, opacity: 0.9 }} />
-        ))}
+      <div className="absolute right-[14px] top-[128px] flex h-[148px] w-[66px] flex-col items-center justify-center gap-3 rounded-[18px] border border-white/25 bg-white/15">
+        <Logo size={52} text={false} />
+        <span className="text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-white/80">
+          Studio
+          <br />
+          Campetto
+        </span>
       </div>
-      {/* Striscia luminosa sotto il maxischermo. */}
-      <div className="absolute left-[30px] right-[30px] top-[404px] h-[6px] rounded-full bg-[linear-gradient(90deg,transparent,#F26A1B,#FFC531,#F26A1B,transparent)] opacity-80" />
-      {/* Pavimento lucido. */}
-      <div className="absolute -inset-x-40 -bottom-60 top-[584px] bg-[linear-gradient(180deg,#0B1636,#050A1A)]" />
-      <div className="absolute inset-x-[60px] bottom-[60px] h-[120px] rounded-full bg-[radial-gradient(ellipse,rgb(61_106_240/0.35),transparent_70%)]" />
+      {/* Il pavimento color carta, con la linea da tre arancio. */}
+      <div className="absolute -inset-x-40 -bottom-60 top-[584px] bg-[#F2E8D5]" style={{ backgroundImage: "url(/grain-light.png)", backgroundSize: "128px 128px" }} />
+      <div className="absolute inset-x-0 top-[584px] h-[30px] bg-gradient-to-b from-[#1d1a16]/25 to-transparent" />
+      <svg className="absolute left-[-30px] top-[640px] h-[220px] w-[450px]" viewBox="0 0 450 220" fill="none">
+        <path d="M10 210 Q225 -10 440 210" stroke="#F26A1B" strokeWidth="5" opacity="0.8" />
+      </svg>
     </div>
   );
 }
 
-/** La scrivania davanti ai presentatori, con il nome dello studio. */
+/** La scrivania: una scheda color carta come quelle dell'app, con il badge dello show. */
 function Desk() {
   return (
-    <div className="absolute" style={{ left: 8, top: 596, width: 374, height: 150 }} aria-hidden>
-      <svg viewBox="0 0 374 150" className="h-full w-full">
-        <defs>
-          <linearGradient id="desk-top" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#E9F0FF" />
-            <stop offset="1" stopColor="#9DB4E8" />
-          </linearGradient>
-          <linearGradient id="desk-front" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#1C3576" />
-            <stop offset="1" stopColor="#0C1736" />
-          </linearGradient>
-        </defs>
-        <path d="M6 16 Q187 2 368 16 L368 24 Q187 10 6 24 Z" fill="url(#desk-top)" stroke="#1D1A16" strokeWidth="3" />
-        <path d="M14 24 Q187 10 360 24 L344 142 Q187 132 30 142 Z" fill="url(#desk-front)" stroke="#1D1A16" strokeWidth="3" />
-        <path d="M24 46 Q187 34 350 46" stroke="#F26A1B" strokeWidth="4" fill="none" />
-        <text x="187" y="92" textAnchor="middle" fill="#FFF8EA" fontSize="22" fontWeight="800" style={{ letterSpacing: "0.04em" }}>
-          STUDIO CAMPETTO
-        </text>
-        <circle cx="187" cy="116" r="8" fill="#F26A1B" stroke="#1D1A16" strokeWidth="2" />
-      </svg>
+    <div className="absolute" style={{ left: 10, top: 596, width: 370, height: 150 }} aria-hidden>
+      <div className="absolute inset-x-0 top-0 h-[16px] rounded-[10px] bg-white shadow-[0_6px_14px_-6px_rgb(29_26_22/0.35)]" />
+      <div className="absolute inset-x-[10px] bottom-0 top-[14px] overflow-hidden rounded-b-[26px] bg-[#FFFAF0] shadow-[0_22px_40px_-18px_rgb(29_26_22/0.55)]">
+        <span className="absolute inset-x-0 top-[18px] h-[5px] bg-ball" />
+        <span className="absolute inset-x-0 top-[23px] h-[3px] bg-volt" />
+        {/* Al centro solo il badge, senza scritte: nei primi piani la scrivania si vede tagliata ai lati. */}
+        <div className="absolute inset-x-0 top-[36px] flex justify-center">
+          <Logo size={62} top="STUDIO" bottom="★ CAMPETTO ★" />
+        </div>
+      </div>
     </div>
   );
 }

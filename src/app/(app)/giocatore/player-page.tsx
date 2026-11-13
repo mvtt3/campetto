@@ -288,7 +288,8 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ ...SPRING, delay: 0.08 }}
                 >
-                  <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.22em] text-[var(--soft)]">
+                  {/* A sinistra sopra il numero: a destra finiva sotto la testa (e la corona) del personaggio. */}
+                  <span className="ml-1 self-start text-[10.5px] font-bold uppercase tracking-[0.22em] text-[var(--soft)]">
                     OVR
                   </span>
                   <span className="display bg-linear-to-b from-white/60 via-white/35 to-white/0 bg-clip-text pr-1 text-[132px] leading-[0.78] text-transparent">

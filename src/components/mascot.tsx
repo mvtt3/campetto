@@ -475,10 +475,15 @@ export function Logo({
   size = 56,
   text = true,
   className,
+  top = "CAMPETTO",
+  bottom = "★ NICHELINO ★",
 }: {
   size?: number;
   text?: boolean;
   className?: string;
+  /** Le scritte ad arco (lo Studio Campetto usa lo stesso badge con le sue). */
+  top?: string;
+  bottom?: string;
 }) {
   const uid = useId().replace(/:/g, "");
   return (
@@ -512,12 +517,12 @@ export function Logo({
         >
           <text fontSize="21" textAnchor="middle">
             <textPath href={`#top-${uid}`} startOffset="50%">
-              CAMPETTO
+              {top}
             </textPath>
           </text>
           <text fontSize="12" textAnchor="middle">
             <textPath href={`#bot-${uid}`} startOffset="50%">
-              ★ NICHELINO ★
+              {bottom}
             </textPath>
           </text>
         </g>

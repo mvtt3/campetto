@@ -281,7 +281,7 @@ function MvpCard({
                 label="Vittorie"
               />
               {mvp.entry.effAvg !== null ? (
-                <MvpStat value={mvp.entry.effAvg.toFixed(1)} label="Valut." />
+                <MvpStat value={mvp.entry.effAvg.toFixed(1).replace(".", ",")} label="Valut." />
               ) : (
                 <MvpStat
                   value={`${mvp.entry.eloDelta >= 0 ? "+" : "−"}${Math.abs(Math.round(mvp.entry.eloDelta))}`}

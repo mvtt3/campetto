@@ -2767,6 +2767,125 @@ html[data-shot="3"] .intro-ball-x {
     scale: 1.15;
   }
 }
+/* Studio v2: l'anello che si riempie, le righe della classifica che si scambiano,
+   i sottotitoli a parole come nei reel, la sigla e la scheda finale. */
+.studio-ring {
+  animation: studio-ring 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-ring {
+  from {
+    stroke-dashoffset: var(--from);
+  }
+  to {
+    stroke-dashoffset: var(--to);
+  }
+}
+.studio-swap {
+  animation: studio-swap 1.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-swap {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--shift, 0px)) scale(0.96);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(var(--shift, 0px)) scale(1);
+  }
+  55% {
+    transform: translateY(var(--shift, 0px));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.studio-cap {
+  animation: studio-cap 0.16s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  text-shadow:
+    0 2px 0 #1d1a16,
+    0 -2px 0 #1d1a16,
+    2px 0 0 #1d1a16,
+    -2px 0 0 #1d1a16,
+    2px 2px 0 #1d1a16,
+    -2px 2px 0 #1d1a16,
+    2px -2px 0 #1d1a16,
+    -2px -2px 0 #1d1a16,
+    0 6px 14px rgb(0 0 0 / 0.45);
+}
+@keyframes studio-cap {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.86);
+  }
+}
+.studio-word {
+  display: inline-block;
+  transition:
+    color 80ms linear,
+    transform 120ms cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.studio-word.is-on {
+  color: var(--volt);
+  transform: scale(1.1);
+}
+.studio-sigla {
+  animation: studio-sigla-out 0.75s cubic-bezier(0.6, 0, 0.3, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--out, 3.9s));
+}
+@keyframes studio-sigla-out {
+  to {
+    clip-path: circle(0% at 50% 42%);
+  }
+}
+.studio-sigla {
+  clip-path: circle(150% at 50% 42%);
+}
+.studio-spin {
+  animation: mvp-spin 18s linear infinite;
+}
+.studio-logo-in {
+  animation: studio-logo-in 0.9s cubic-bezier(0.3, 1.5, 0.45, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2) rotate(-35deg);
+  }
+}
+.studio-wave {
+  animation: studio-wave 1.4s ease-out both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-wave {
+  from {
+    opacity: 0.8;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+.studio-float {
+  animation: mvp-float 3.2s ease-in-out infinite;
+}
+.studio-zoom {
+  animation: studio-zoom linear both;
+  animation-duration: var(--dur, 4s);
+  animation-delay: var(--el, 0s);
+}
+@keyframes studio-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
 .studio-paused,
 .studio-paused * {
   animation-play-state: paused !important;
