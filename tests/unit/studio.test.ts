@@ -16,6 +16,7 @@ import {
   screenAt,
   type StudioShow,
   captionZoneAt,
+  shotMeterAt,
 } from "@/lib/studio";
 
 const show: StudioShow = {
@@ -197,5 +198,20 @@ describe("cameraAt con un movimento morbido", () => {
     expect(mid.s).toBeLessThan(a.s);
     expect(mid.s).toBeGreaterThan(end.s);
     expect(cameraAt(show, 20)).toEqual(end);
+  });
+});
+
+describe("shotMeterAt (misuratore di tiro)", () => {
+  const shot = { t: 2, x: 0.4, y: 0.5 };
+  it("si riempie prima del rilascio, diventa verde al rilascio e poi sparisce", () => {
+    expect(shotMeterAt(shot, 1).state).toBe("off");
+    const a = shotMeterAt(shot, 1.6);
+    const b = shotMeterAt(shot, 1.9);
+    expect(a.state).toBe("fill");
+    expect(b.fill).toBeGreaterThan(a.fill);
+    expect(shotMeterAt(shot, 2.05)).toEqual({ state: "green", fill: 1, fade: 1 });
+    expect(shotMeterAt(shot, 2.9).fade).toBeLessThan(1);
+    expect(shotMeterAt(shot, 3.2).state).toBe("off");
+    expect(shotMeterAt(undefined, 2).state).toBe("off");
   });
 });

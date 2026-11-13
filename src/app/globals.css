@@ -3053,6 +3053,80 @@ html[data-shot="3"] .intro-ball-x {
     transform: translateY(26px) scale(0.94);
   }
 }
+/* Il misuratore di tiro sugli highlights (stile NBA 2K, con la grafica dell'app): una capsula col
+   bordo inchiostro accanto a chi tira; si riempie dal basso (giallo → arancio) e al rilascio
+   diventa tutta verde, con un bagliore e una piccola esplosione. Lo muove il player (--fill, --fade). */
+.studio-meter {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 42px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.22);
+  border: 2px solid #1d1a16;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.45);
+  opacity: var(--fade, 0);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.studio-meter[data-s="off"] {
+  display: none;
+}
+.studio-meter-fill {
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  transform-origin: bottom;
+  transform: scaleY(var(--fill, 0));
+  background: linear-gradient(to top, var(--volt), var(--ball));
+}
+.studio-meter[data-s="green"] {
+  border-color: #0b3d22;
+  animation: studio-meter-pop 0.32s cubic-bezier(0.3, 1.6, 0.5, 1);
+  box-shadow:
+    0 0 0 2px rgb(46 232 138 / 0.35),
+    0 0 14px 3px rgb(46 232 138 / 0.75);
+}
+.studio-meter[data-s="green"] .studio-meter-fill {
+  background: linear-gradient(to top, #1fbf6e, #4dff9f);
+}
+.studio-meter-burst {
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  border-radius: 999px;
+  opacity: 0;
+  background: repeating-conic-gradient(#4dff9f 0deg 10deg, transparent 10deg 45deg);
+  mask-image: radial-gradient(circle, transparent 38%, #000 40%, #000 62%, transparent 64%);
+}
+.studio-meter[data-s="green"] .studio-meter-burst {
+  animation: studio-meter-burst 0.5s ease-out both;
+}
+@keyframes studio-meter-pop {
+  0% {
+    scale: 1;
+  }
+  45% {
+    scale: 1.22;
+  }
+  100% {
+    scale: 1;
+  }
+}
+@keyframes studio-meter-burst {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.4) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5) rotate(30deg);
+  }
+}
 /* La scheda dello Studio in una serata (Partite): blu campo un po' trasparente, come la Home. */
 .studio-night-card {
   background: linear-gradient(135deg, rgb(45 91 227 / 0.86), rgb(31 69 184 / 0.74));

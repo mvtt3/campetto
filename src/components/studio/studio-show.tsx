@@ -27,6 +27,7 @@ import {
   fullScreenAt,
   replayAt,
   replayFrame,
+  shotMeterAt,
   SCREEN,
   screenAt,
   screenRect,
@@ -125,6 +126,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
   // Le azioni sul maxischermo mentre si parla (replay "muro"): stessi video, piccoli e muti.
   const wallVideos = useRef<(HTMLVideoElement | null)[]>([]);
+  // Il misuratore di tiro stile NBA 2K sopra il video del maxischermo.
+  const meter = useRef<HTMLDivElement>(null);
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
@@ -408,6 +411,24 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
           const f = replayFrame(clip, r?.local ?? 0);
           const pos = `${(f.cx * 100).toFixed(0)}% ${(f.cy * 100).toFixed(0)}%`;
           if (w.style.objectPosition !== pos) w.style.objectPosition = pos;
+          // Il misuratore: in alto a destra di chi tira, dove sta nel video (che riempie il riquadro in altezza).
+          const mt = meter.current;
+          if (mt) {
+            const sm = shotMeterAt(clip.shot, r?.local ?? 0);
+            if (mt.dataset.s !== sm.state) mt.dataset.s = sm.state;
+            if (sm.state !== "off" && clip.shot) {
+              const bw = SCREEN.w, bh = SCREEN.h, vw = (bh * 16) / 9;
+              const px = Math.round(f.cx * 100) / 100;
+              const sx = (bw - vw) * px + clip.shot.x * vw;
+              const sy = clip.shot.y * bh;
+              const x = Math.min(bw - 16, Math.max(6, sx + 13));
+              const y = Math.min(bh - 50, Math.max(8, sy - 44));
+              const tr = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+              if (mt.style.transform !== tr) mt.style.transform = tr;
+              setVar(mt, "--fill", sm.fill.toFixed(3));
+              setVar(mt, "--fade", sm.fade.toFixed(3));
+            }
+          }
           if (c.running && w.paused) void w.play().catch(() => {});
           if (!c.running && !w.paused) w.pause();
         });
@@ -554,6 +575,11 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
                   />
                 ))}
                 <span className="absolute left-2.5 top-2.5 rounded-full bg-volt px-2 py-0.5 text-[10px] font-bold text-volt-ink">Highlights</span>
+                {/* Il misuratore di tiro: si riempie dal basso e al rilascio diventa verde. */}
+                <div ref={meter} className="studio-meter" data-s="off" aria-hidden>
+                  <span className="studio-meter-fill" />
+                  <span className="studio-meter-burst" />
+                </div>
               </div>
             )}
           </div>
