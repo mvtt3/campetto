@@ -320,9 +320,12 @@ export function Spinner({ size = 22 }: { size?: number }) {
 export function CourtLines({
   className,
   draw,
+  arcOnly,
 }: {
   className?: string;
   draw?: boolean;
+  /** Solo la linea da tre: per le schede piene di testo, così non passa sopra alle scritte. */
+  arcOnly?: boolean;
 }) {
   return (
     <svg
@@ -332,9 +335,13 @@ export function CourtLines({
       aria-hidden
     >
       <path d="M24 220 V150 A156 156 0 0 1 336 150 V220" />
-      <rect x="120" y="128" width="120" height="92" />
-      <path d="M140 128 A40 40 0 0 1 220 128" />
-      <circle cx="180" cy="196" r="9" />
+      {!arcOnly && (
+        <>
+          <rect x="120" y="128" width="120" height="92" />
+          <path d="M140 128 A40 40 0 0 1 220 128" />
+          <circle cx="180" cy="196" r="9" />
+        </>
+      )}
     </svg>
   );
 }

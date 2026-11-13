@@ -2635,3 +2635,18 @@ html[data-shot="3"] .intro-ball-x {
     animation: none;
   }
 }
+
+/* Anteprima della partita: il pezzo che manca al traguardo pulsa piano (solo opacità). */
+.goal-glow {
+  animation: goal-glow 1.6s ease-in-out 1.6s infinite;
+}
+@keyframes goal-glow {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-glow {
+    animation: none;
+  }
+}

@@ -609,8 +609,34 @@ export function createMockBackend(): Backend {
             "Manca public/dati-locali.json: crealo con scripts/esporta-dati.mjs",
           );
         const d = fromExport(await r.json());
+        // Prova dell'anteprima: ?as=<id> entra come un altro giocatore; ?anteprima=1 aggiunge una
+        // partita domani alle 18 (formato da ?formato=2v2|3v3) con il tuo sì e quello di altri quattro.
+        const asId = params.get("as");
+        const meId = asId && d.players.some((p) => p.id === asId) ? asId : d.meId;
+        if (params.get("anteprima") === "1") {
+          const at = new Date();
+          at.setDate(at.getDate() + 1);
+          at.setHours(18, 0, 0, 0);
+          const now = new Date().toISOString();
+          const others = d.players.filter((p) => p.id !== meId).slice(0, 4);
+          d.proposals.push({
+            id: "prova-anteprima",
+            startsAt: at.toISOString(),
+            format: (params.get("formato") as Format | null) ?? "3v3",
+            note: null,
+            place: "decathlon",
+            createdBy: meId,
+            status: "aperta",
+            createdAt: now,
+            responses: [meId, ...others.map((p) => p.id)].map((playerId) => ({
+              playerId,
+              response: "si" as const,
+              updatedAt: now,
+            })),
+          });
+        }
         state = {
-          meId: d.meId,
+          meId,
           signedIn: true,
           players: d.players,
           matches: d.matches,

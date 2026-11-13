@@ -9,7 +9,13 @@ import { play } from "@/lib/sound";
 import { matchMvp } from "@/lib/stats/match-mvp";
 import { normalizeBox, teamOf } from "@/lib/stats/player";
 import { sortChrono } from "@/lib/periods";
-import { winnerOf, type NewsPost } from "@/lib/types";
+import { winnerOf, type NewsPost, type Proposal } from "@/lib/types";
+import {
+  pregameTargets,
+  previewProposal,
+  type PregameTarget,
+} from "@/lib/stats/pregame";
+import { PregameBody } from "./pregame-preview";
 import { useRouter } from "next/navigation";
 import { say } from "@/lib/voice";
 import {
@@ -46,7 +52,28 @@ type Item =
   | ResultItem
   | { kind: "badge"; id: string; unlock: BadgeUnlock }
   | { kind: "character"; id: AvatarPresetId }
-  | { kind: "news"; id: string; post: NewsPost };
+  | { kind: "news"; id: string; post: NewsPost }
+  | { kind: "preview"; id: string; proposal: Proposal; targets: PregameTarget[] };
+
+/** L'anteprima si vede una volta per partita: la sera prima o la mattina, la prima apertura. */
+const previewKey = (meId: string) => `campetto:anteprima:${meId}`;
+function previewSeen(meId: string, proposalId: string): boolean {
+  try {
+    const list = JSON.parse(localStorage.getItem(previewKey(meId)) ?? "[]");
+    return Array.isArray(list) && list.includes(proposalId);
+  } catch {
+    return false;
+  }
+}
+function setPreviewSeen(meId: string, proposalId: string) {
+  try {
+    const list = JSON.parse(localStorage.getItem(previewKey(meId)) ?? "[]");
+    const next = [...(Array.isArray(list) ? list : []), proposalId].slice(-20);
+    localStorage.setItem(previewKey(meId), JSON.stringify(next));
+  } catch {
+    /* niente: al massimo ricompare */
+  }
+}
 
 /** L'annuncio "Dopo" vale per questa apertura dell'app: alla prossima torna, finché serve. */
 const laterKey = (id: string) => `campetto:annuncio-dopo:${id}`;
@@ -194,6 +221,44 @@ export function BadgeCelebration() {
         );
     }
 
+    // 4. L'anteprima della prossima partita: cosa è alla portata, per chi ha detto "Ci sono".
+    //    Per ora la vede solo l'amministratore, per provarla (non nella demo pubblica).
+    //    ?anteprima=1 la mostra subito, senza aspettare la sera prima.
+    const previewOn = me.isAdmin && process.env.NEXT_PUBLIC_DEMO !== "1";
+    const force =
+      previewOn &&
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("anteprima") === "1";
+    const prop = !previewOn
+      ? null
+      : force
+      ? (data.proposals
+          .filter(
+            (p) =>
+              p.status === "aperta" &&
+              p.startsAt > nowIso &&
+              p.responses.some((r) => r.playerId === me.id && r.response === "si"),
+          )
+          .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null)
+      : previewProposal(data.proposals, me.id, new Date());
+    if (prop && (force || !previewSeen(me.id, prop.id))) {
+      const targets = pregameTargets({
+        meId: me.id,
+        playerIds: engine.playerIds,
+        matches: data.matches,
+        proposal: prop,
+        elo: engine.elo,
+      });
+      // Prova: ?obiettivo=traguardo|record mette davanti il primo di quel tipo.
+      const lead = force
+        ? new URLSearchParams(window.location.search).get("obiettivo")
+        : null;
+      if (lead)
+        targets.sort((a, b) => Number(b.kind === lead) - Number(a.kind === lead));
+      if (targets.length)
+        items.push({ kind: "preview", id: `a:${prop.id}`, proposal: prop, targets });
+    }
+
     if (items.length) {
       // Le feste rispondono ai dati appena arrivati.
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -202,7 +267,7 @@ export function BadgeCelebration() {
         ...items.filter((i) => !q.some((x) => x.id === i.id)),
       ]);
     }
-  }, [me, badges, loading, data.matches, data.news, data.proposals, engine.elo, introDone]);
+  }, [me, badges, loading, data.matches, data.news, data.proposals, engine.elo, engine.playerIds, introDone]);
 
   const current = queue[0];
 
@@ -212,6 +277,7 @@ export function BadgeCelebration() {
     const t = window.setTimeout(() => {
       if (current.kind === "result")
         play(current.won >= current.lost ? "win" : "loss");
+      else if (current.kind === "preview") play("whistle");
       else play("unlock");
     }, 180);
     return () => window.clearTimeout(t);
@@ -220,6 +286,7 @@ export function BadgeCelebration() {
   if (!current || !me) return null;
   const next = () => {
     if (current.kind === "news") setLater(current.post.id);
+    if (current.kind === "preview") setPreviewSeen(me.id, current.proposal.id);
     setQueue((q) => q.slice(1));
   };
   const more = queue.length > 1;
@@ -237,16 +304,53 @@ export function BadgeCelebration() {
         initial={{ opacity: 0, scale: 0.88, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
-        className="court relative flex w-full max-w-xs flex-col items-center overflow-hidden rounded-[32px] px-6 pb-6 pt-7 text-center"
+        className={
+          current.kind === "preview"
+            ? // L'anteprima è la più alta: sui telefoni piccolissimi scorre invece di uscire dallo schermo.
+              "court relative flex max-h-[calc(100dvh-24px)] w-full max-w-xs flex-col items-center overflow-y-auto overscroll-contain rounded-[32px] px-6 pb-6 pt-7 text-center"
+            : "court relative flex w-full max-w-xs flex-col items-center overflow-hidden rounded-[32px] px-6 pb-6 pt-7 text-center"
+        }
         // Il tocco sulla scheda resta qui: avanzano solo i pulsanti o il tocco fuori (prima saltava una festa).
         onClick={(e) => e.stopPropagation()}
       >
-        <CourtLines className="absolute inset-0 h-full w-full" />
+        {/* Nell'anteprima, più alta, il campo resta in alto attorno al numero. */}
+        <CourtLines
+          arcOnly={current.kind === "preview"}
+          className={
+            current.kind === "preview"
+              ? "absolute inset-x-0 top-0 h-[250px] w-full"
+              : "absolute inset-0 h-full w-full"
+          }
+        />
         {current.kind === "result" && <ResultBody item={current} />}
         {current.kind === "badge" && <BadgeBody unlock={current.unlock} />}
         {current.kind === "character" && <CharacterBody id={current.id} />}
         {current.kind === "news" && <NewsBody post={current.post} />}
-        {current.kind === "news" ? (
+        {current.kind === "preview" && (
+          <PregameBody proposal={current.proposal} targets={current.targets} />
+        )}
+        {current.kind === "preview" ? (
+          <div className="relative mt-5 flex w-full gap-2">
+            <Button
+              variant="light"
+              className="flex-1 text-court"
+              onClick={() => {
+                next();
+                router.push("/classifiche");
+              }}
+            >
+              Classifiche
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              data-testid="anteprima-ok"
+              onClick={next}
+            >
+              Ci provo
+            </Button>
+          </div>
+        ) : current.kind === "news" ? (
           <div className="relative mt-5 flex w-full gap-2">
             <Button variant="light" className="flex-1 text-court" onClick={next}>
               Dopo
