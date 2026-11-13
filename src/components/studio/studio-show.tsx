@@ -12,7 +12,7 @@ import {
   IconVolumeOff,
   IconX,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   armAt,
@@ -46,6 +46,10 @@ import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
 
 const easeOut = (u: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, u)), 3);
+/** Scrive una variabile CSS solo se è cambiata. */
+const setVar = (el: HTMLElement, name: string, value: string) => {
+  if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
+};
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const el = (s: number): CSSProperties => ({ ["--el" as string]: `${-s}s` });
 const at = (d: number): CSSProperties => ({ ["--d" as string]: `${d}s` });
@@ -106,7 +110,6 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const timeLabel = useRef<HTMLSpanElement>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
-  const replayBg = useRef<HTMLCanvasElement>(null);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
   const top = useRef<HTMLDivElement>(null);
@@ -125,9 +128,20 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const [scr, setScr] = useState(() => ({ ...screenAt(show, startAt), el: startAt - screenAt(show, startAt).since }));
   const [mode, setMode] = useState(() => modeAt(show, startAt));
   const [modeEl, setModeEl] = useState(0);
-  const [cap, setCap] = useState<ReturnType<typeof captionAt>>(null);
   const [replayClip, setReplayClip] = useState(-1);
   const [full, setFull] = useState(() => fullScreenAt(show, startAt));
+  const [fullEl, setFullEl] = useState(() => startAt - screenAt(show, startAt).since);
+  // La grafica a tutto schermo entra in 200 ms: lo studio sotto si nasconde solo dopo.
+  const [fullSettled, setFullSettled] = useState(full);
+  useEffect(() => {
+    if (!full) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFullSettled(false);
+      return;
+    }
+    const id = window.setTimeout(() => setFullSettled(true), 260);
+    return () => window.clearTimeout(id);
+  }, [full]);
   const [flash, setFlash] = useState<{ kind: "play" | "pause" | "back" | "fwd"; n: number } | null>(null);
 
   const [k, setK] = useState(1);
@@ -223,6 +237,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       if (audio.current) audio.current.currentTime = t;
       const s = screenAt(show, t);
       setScr({ ...s, el: t - s.since });
+      setFullEl(t - s.since);
       const m = modeAt(show, t);
       setMode(m);
       setModeEl(m === "sigla" ? t : m === "fine" ? t - show.outro.t : 0);
@@ -250,9 +265,12 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     let raf = 0;
     let lastScreen = -1;
     let lastMode = "";
-    let lastCap = "";
     let lastClip = -2;
     let lastFull: boolean | null = null;
+    let lastCam = "";
+    let tickN = 0;
+    let frame = 0;
+    let counters: HTMLElement[] = [];
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
@@ -264,11 +282,18 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         setEnded(true);
       }
       const cam = cameraAt(show, t);
-      if (world.current) world.current.style.transform = `translate3d(${cam.x}px, ${cam.y}px, 0) scale(${cam.s})`;
+      const camT = `translate3d(${cam.x.toFixed(2)}px, ${cam.y.toFixed(2)}px, 0) scale(${cam.s.toFixed(4)})`;
+      if (world.current && camT !== lastCam) {
+        lastCam = camT;
+        world.current.style.transform = camT;
+      }
 
       const line = lineAt(show, t);
       const g = guestAt(show, t);
-      for (const who of ["lui", "lei"] as const) {
+      // Conduttori e ospite 30 volte al secondo (la bocca ha 30 valori al secondo): metà del
+      // lavoro degli stili, a occhio non cambia niente.
+      const odd = (tickN++ & 1) === 1;
+      if (odd) for (const who of ["lui", "lei"] as const) {
         const box = who === "lui" ? lui.current : lei.current;
         if (!box) continue;
         const sm = smooth.current[who];
@@ -278,13 +303,15 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         const dx = `translateX(${((who === "lui" ? 1 : -1) * GUEST_SPREAD * g.apart).toFixed(2)}px)`;
         box.style.transform = dx;
         const listening = line && line.who !== who;
-        box.style.setProperty("--mouth", sm.mouth.toFixed(3));
-        box.style.setProperty("--look", sm.look.toFixed(3));
-        box.style.setProperty("--blink", blinkAt(who, t).toFixed(2));
-        box.style.setProperty("--breath", Math.sin(t * 1.5 + (who === "lui" ? 0 : 1.7)).toFixed(3));
-        box.style.setProperty("--nod", listening ? (Math.max(0, Math.sin(t * 2.4)) ** 3).toFixed(3) : (sm.mouth * 0.45).toFixed(3));
-        const arm = armAt(show, who, t).toFixed(3);
-        box.style.setProperty("--arm", arm);
+        // Si scrive solo quello che cambia davvero (a passi piccoli ma visibili): meno ricalcoli
+        // degli stili a ogni fotogramma sui telefoni economici.
+        setVar(box, "--mouth", sm.mouth.toFixed(2));
+        setVar(box, "--look", sm.look.toFixed(2));
+        setVar(box, "--blink", blinkAt(who, t).toFixed(1));
+        setVar(box, "--breath", Math.sin(t * 1.5 + (who === "lui" ? 0 : 1.7)).toFixed(2));
+        setVar(box, "--nod", listening ? (Math.max(0, Math.sin(t * 2.4)) ** 3).toFixed(2) : (sm.mouth * 0.45).toFixed(2));
+        const arm = armAt(show, who, t).toFixed(2);
+        setVar(box, "--arm", arm);
         const notes = (who === "lui" ? luiNotes : leiNotes).current;
         if (notes) {
           notes.style.setProperty("--arm", arm);
@@ -293,7 +320,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       }
       // L'ospite: entra camminando con la sua sedia, si siede al centro, parla, saluta ed esce.
       const gb = guestBox.current;
-      if (gb) {
+      if (gb && odd) {
         const gs = smooth.current.ospite;
         gs.mouth += (mouthAt(line, "ospite", t) - gs.mouth) * 0.55;
         const bob = g.walk ? -Math.abs(Math.sin(g.walk * Math.PI)) * 7 : 0;
@@ -328,14 +355,20 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       const f = fullScreenAt(show, t);
       if (f !== lastFull) {
         lastFull = f;
+        // Il punto delle animazioni della grafica in quel momento: entra già al punto giusto.
+        setFullEl(t - s.since);
         setFull(f);
       }
       // I numeri delle grafiche contano col tempo della puntata (nello studio e a tutto schermo).
-      root.current?.querySelectorAll<HTMLElement>("[data-to]").forEach((n) => {
+      // L'elenco dei numeri si rilegge ogni tanto (non a ogni fotogramma) e si scrive solo quando
+      // il numero cambia: meno lavoro per i telefoni economici.
+      if (frame++ % 15 === 0 || counters.length === 0) counters = Array.from(root.current?.querySelectorAll<HTMLElement>("[data-to]") ?? []);
+      for (const n of counters) {
         const to = Number(n.dataset.to);
         const u = easeOut((t - s.since - Number(n.dataset.at)) / 1.0);
-        n.textContent = String(Math.round(to * u));
-      });
+        const v = String(Math.round(to * u));
+        if (n.textContent !== v) n.textContent = v;
+      }
 
       // Il replay: un video per canestro, già caricato; parte dall'inizio della clip e va fino in fondo.
       const r = replayAt(show, t);
@@ -368,32 +401,19 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
             const ty = hd >= vh ? Math.min(0, Math.max(vh - hd, vh / 2 - f.cy * hd)) : Math.min(vh - hd, Math.max(0, vh * 0.47 - f.cy * hd));
             box.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0) scale(${z.toFixed(4)})`;
           }
-          // Dietro, lo stesso video piccolissimo e ingrandito: sfocato e in movimento riempie
-          // lo schermo sopra e sotto, come i video orizzontali nei reel (costa pochissimo).
-          const bg = replayBg.current?.getContext("2d");
-          if (bg && v.readyState >= 2) {
-            try {
-              bg.drawImage(v, 0, 0, 32, 18);
-            } catch {
-              /* il fotogramma non è pronto: si riprova al prossimo */
-            }
-          }
           if (c.running && v.paused) void v.play().catch(() => {});
           if (!c.running && !v.paused) v.pause();
         });
       }
 
-      const cp = captionAt(show, t);
-      const key = cp ? `${cp.line.t}:${cp.page.from}:${cp.active}` : "";
-      if (key !== lastCap) {
-        lastCap = key;
-        setCap(cp);
+      // Barra e tempo solo quando si vedono (i comandi sono nascosti quasi sempre).
+      if (bar.current && bottom.current?.dataset.on === "1") {
+        setVar(bar.current, "--p", Math.min(1, t / show.duration).toFixed(4));
+        const sec = String(Math.round(t));
+        if (bar.current.getAttribute("aria-valuenow") !== sec) bar.current.setAttribute("aria-valuenow", sec);
+        const label = `${fmt(t)} / ${fmt(show.duration)}`;
+        if (timeLabel.current && timeLabel.current.textContent !== label) timeLabel.current.textContent = label;
       }
-      if (bar.current) {
-        bar.current.style.setProperty("--p", String(Math.min(1, t / show.duration)));
-        bar.current.setAttribute("aria-valuenow", String(Math.round(t)));
-      }
-      if (timeLabel.current) timeLabel.current.textContent = `${fmt(t)} / ${fmt(show.duration)}`;
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -459,11 +479,16 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
 
       {/* Lo studio, disegnato a 390×844 e adattato allo schermo. */}
       <div className="absolute left-1/2 top-1/2 overflow-hidden" style={{ width: STAGE.w, height: STAGE.h, transform: `translate(-50%, -50%) scale(${k})` }}>
-        <div ref={world} className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ width: STAGE.w, height: STAGE.h }}>
+        {/* Quando la grafica copre tutto, o c'è il replay, lo studio sotto non si disegna (meno lavoro). */}
+        <div
+          ref={world}
+          className="absolute left-0 top-0 origin-top-left will-change-transform"
+          style={{ width: STAGE.w, height: STAGE.h, visibility: (full && screen?.kind !== "replay" && fullSettled) || mode === "replay" || mode === "fine" ? "hidden" : "visible" }}
+        >
           <StudioSet day={show.day} />
           {/* Il maxischermo. */}
           <div
-            className="absolute overflow-hidden rounded-[16px] ring-[3px] ring-white/90"
+            className="absolute overflow-hidden rounded-[16px] ring-[3px] ring-white/90 will-change-transform"
             style={{ left: SCREEN.x, top: SCREEN.y, width: SCREEN.w, height: SCREEN.h, boxShadow: "0 18px 40px -12px rgb(10 20 60 / 0.6)" }}
           >
             <div ref={screenBox} className="origin-top-left" style={{ transform: `scale(${SCREEN.w / SCREEN.nativeW})` }}>
@@ -473,10 +498,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
             </div>
           </div>
           {show.guest && <GuestInStudio playerId={show.guest.playerId} boxRef={guestBox} chairRef={guestChair} />}
-          <div ref={lei} className="absolute" style={{ left: 27, top: 438, width: 170 }}>
+          <div ref={lei} className="absolute will-change-transform" style={{ left: 27, top: 438, width: 170 }}>
             <Presenter who="lei" />
           </div>
-          <div ref={lui} className="absolute" style={{ left: 193, top: 438, width: 170 }}>
+          <div ref={lui} className="absolute will-change-transform" style={{ left: 193, top: 438, width: 170 }}>
             <Presenter who="lui" />
           </div>
           <div ref={leiNotes} className="absolute" style={{ left: 27, top: 556, width: 170 }}>
@@ -493,7 +518,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
             <span className="blob -left-24 top-0 h-80 w-80 bg-[radial-gradient(circle,rgb(255_197_49/0.38),transparent_68%)]" />
             <span className="blob -bottom-20 -right-24 h-80 w-80 bg-[radial-gradient(circle,rgb(242_106_27/0.3),transparent_70%)]" />
           </div>
-          <FullCard screen={screen} keyId={`${scr.index}-${nonce}`} el={scr.el} />
+          {/* Si monta solo quando serve (a zoom quasi finito): così il cambio di grafica non fa
+              tutto il lavoro nello stesso istante. Le animazioni restano a tempo (--el). */}
+          {full && <FullCard screen={screen} keyId={`${scr.index}-${nonce}`} el={fullEl} />}
         </div>
       </div>
 
@@ -502,7 +529,18 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       {replay && (
         <div className={clsx("absolute inset-0 overflow-hidden transition-opacity duration-150", mode === "replay" ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={mode !== "replay"}>
           <div className="absolute inset-0 bg-[#0d1124]">
-            <canvas ref={replayBg} width={32} height={18} className="absolute left-1/2 top-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-60" style={{ aspectRatio: "16 / 9" }} aria-hidden />
+            {/* Dietro, un fotogramma della clip piccolissimo e ingrandito: sfocato riempie lo
+                schermo sopra e sotto, come i video orizzontali nei reel, senza lavoro a ogni fotogramma. */}
+            {replay.clips.map((clip, i) =>
+              clip.bg ? (
+                <span
+                  key={i}
+                  aria-hidden
+                  className={clsx("absolute inset-0 bg-cover bg-center transition-opacity duration-300", i === replayClip ? "opacity-60" : "opacity-0")}
+                  style={{ backgroundImage: `url(${clip.bg})`, transform: "scale(1.15)" }}
+                />
+              ) : null,
+            )}
             <span className="absolute inset-0 bg-gradient-to-b from-[#0d1124]/40 via-transparent to-[#0d1124]/50" />
           </div>
           {replay.clips.map((clip, i) => (
@@ -512,7 +550,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
                 videoBoxes.current[i] = d;
               }}
               className={clsx("absolute left-0 top-0 origin-top-left will-change-transform", i === replayClip ? "opacity-100" : "opacity-0")}
-              style={{ width: "100%", aspectRatio: "16 / 9", maskImage: "linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent)" }}
+              style={{ width: "100%", aspectRatio: "16 / 9" }}
             >
               <video
                 ref={(v) => {
@@ -565,22 +603,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
 
       <LowerThird show={show} now={now} />
 
-      {/* Sottotitoli come nei reel: poche parole alla volta, che compaiono mentre vengono dette;
-          l'ultima detta in giallo. */}
-      <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-5" style={{ bottom: mode === "replay" ? "calc(118px + var(--sab))" : "calc(104px + var(--sab))" }} aria-live="polite">
-        {cap && mode !== "sigla" && (
-          <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[92%] flex-wrap justify-center gap-x-[0.36em] gap-y-1 text-center text-[30px] font-extrabold leading-[1.2] tracking-[0.005em] text-white">
-            {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => {
-              const k = cap.page.from + i;
-              return (
-                <span key={i} className={clsx("studio-word", k <= cap.active && "is-said", k === cap.active && "is-on")}>
-                  {w.replace(/[.,:;]+$/, "")}
-                </span>
-              );
-            })}
-          </p>
-        )}
-      </div>
+      <Captions show={show} now={now} hidden={mode === "sigla"} replay={mode === "replay"} />
 
       <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
@@ -698,6 +721,46 @@ function ReplayScore({ show, game }: { show: StudioShow; game: number }) {
   );
 }
 
+/**
+ * Sottotitoli come nei reel: poche parole alla volta, che compaiono mentre vengono dette;
+ * l'ultima detta in giallo. Hanno il loro orologio: quando cambia una parola si ridisegnano
+ * solo loro, non tutto lo studio (conduttori, ospite, grafiche).
+ */
+function Captions({ show, now, hidden, replay }: { show: StudioShow; now: () => number; hidden: boolean; replay: boolean }) {
+  const [cap, setCap] = useState<ReturnType<typeof captionAt>>(null);
+  useEffect(() => {
+    let raf = 0;
+    let last = "";
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const cp = captionAt(show, now());
+      const key = cp ? `${cp.line.t}:${cp.page.from}:${cp.active}` : "";
+      if (key !== last) {
+        last = key;
+        setCap(cp);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [show, now]);
+  return (
+    <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-5" style={{ bottom: replay ? "calc(118px + var(--sab))" : "calc(104px + var(--sab))" }} aria-live="polite">
+      {cap && !hidden && (
+        <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[92%] flex-wrap justify-center gap-x-[0.36em] gap-y-1 text-center text-[30px] font-extrabold leading-[1.2] tracking-[0.005em] text-white">
+          {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => {
+            const k = cap.page.from + i;
+            return (
+              <span key={i} className={clsx("studio-word", k <= cap.active && "is-said", k === cap.active && "is-on")}>
+                {w.replace(/[.,:;]+$/, "")}
+              </span>
+            );
+          })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Il nome di chi parla, la prima volta che è inquadrato da vicino, come in TV; quello
  *  dell'ospite appena si siede. */
 function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
@@ -761,7 +824,7 @@ const GUEST_H = 288;
  * L'ospite: il personaggio del giocatore, come nell'app, con la sua sedia. Il player lo muove
  * con transform e variabili CSS (--mouth); entra e palleggia, seduto il pallone non c'è.
  */
-function GuestInStudio({ playerId, boxRef, chairRef }: { playerId: string; boxRef: React.RefObject<HTMLDivElement | null>; chairRef: React.RefObject<HTMLDivElement | null> }) {
+const GuestInStudio = memo(function GuestInStudio({ playerId, boxRef, chairRef }: { playerId: string; boxRef: React.RefObject<HTMLDivElement | null>; chairRef: React.RefObject<HTMLDivElement | null> }) {
   const { data } = useData();
   const player = data.players.find((p) => p.id === playerId);
   if (!player) return null;
@@ -794,7 +857,7 @@ function GuestInStudio({ playerId, boxRef, chairRef }: { playerId: string; boxRe
       </div>
     </>
   );
-}
+});
 
 /** La sigla: sfondo giallo dell'app, raggi, il badge che entra girando, il nome dello show. */
 function Sigla({ show, at: t0 }: { show: StudioShow; at: number }) {
@@ -874,7 +937,7 @@ function Fine({ show, at: t0 }: { show: StudioShow; at: number }) {
 
 /** Lo studio nello stile dell'app: parete blu campo con luci gialle e arancio, pannelli vetro,
  *  pavimento color carta con la linea da tre, il giorno delle partite sul pannello di sinistra. */
-function StudioSet({ day }: { day: string }) {
+const StudioSet = memo(function StudioSet({ day }: { day: string }) {
   const d = new Date(`${day}T12:00:00`);
   const wd = d.toLocaleDateString("it-IT", { weekday: "short" }).replace(".", "");
   const num = d.getDate();
@@ -908,10 +971,10 @@ function StudioSet({ day }: { day: string }) {
       </svg>
     </div>
   );
-}
+});
 
 /** La scrivania: una scheda color carta come quelle dell'app, con il badge dello show. */
-function Desk() {
+const Desk = memo(function Desk() {
   return (
     <div className="absolute" style={{ left: 10, top: 596, width: 370, height: 150 }} aria-hidden>
       <div className="absolute inset-x-0 top-0 h-[16px] rounded-[10px] bg-white shadow-[0_6px_14px_-6px_rgb(29_26_22/0.35)]" />
@@ -925,4 +988,4 @@ function Desk() {
       </div>
     </div>
   );
-}
+});

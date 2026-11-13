@@ -116,6 +116,29 @@ for (const vp of [VIEWPORTS[0], VIEWPORTS[2]]) {
           .waitFor();
         await page.waitForTimeout(300);
         const where = `${path} ${fase || "normale"}`;
+        // L'anteprima della partita (la vedono tutti): con i nomi lunghissimi niente deve uscire
+        // dalla scheda. Poi si chiude, come farebbe chiunque, e si controlla la pagina sotto.
+        const party = page.locator('[aria-labelledby="party-title"]');
+        if (await party.isVisible()) {
+          await page.waitForTimeout(2500);
+          const fuori = await party.evaluate((d) => {
+            const card = d.firstElementChild as HTMLElement;
+            const box = card.getBoundingClientRect();
+            return [...card.querySelectorAll<HTMLElement>("p, span, li, b, h2, button")]
+              // Solo i testi veri: le luci decorative dietro al vetro escono apposta (e sono tagliate).
+              .filter((e) => (e.textContent ?? "").trim() !== "" && !e.closest("[aria-hidden=true]"))
+              .filter((e) => {
+                const r = e.getBoundingClientRect();
+                return r.width > 0 && (r.left < box.left - 1 || r.right > box.right + 1);
+              })
+              .map((e) => (e.textContent ?? "").slice(0, 40));
+          });
+          expect(fuori, `${where}: testo che esce dall'anteprima`).toEqual([]);
+          while (await party.isVisible()) {
+            await page.mouse.click(4, 4);
+            await page.waitForTimeout(400);
+          }
+        }
         expect(await pageScrolls(page), `${where} fa scorrere la pagina`).toBe(
           false,
         );

@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import {
   IconArrowUpRight,
+  IconCalendarEvent,
   IconFlag,
   IconTrophy,
 } from "@tabler/icons-react";
@@ -164,15 +165,17 @@ function MiniBoard({ t }: { t: PregameTarget }) {
       <span className="mb-1.5 block text-[12px] font-semibold text-white/70">
         {b.label} · {b.scope.label}
       </span>
-      <ul className="space-y-1.5" aria-hidden>
+      <ul className="space-y-1.5 [perspective:600px]" aria-hidden>
         {ordered.map((r) => (
           <motion.li
             key={r.id}
             layout={!reduce}
             transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            initial={reduce ? false : { opacity: 0, rotateX: -35, y: 10 }}
+            animate={{ opacity: 1, rotateX: 0, y: 0, scale: r.mine && passed ? 1.03 : 1 }}
             className={clsx(
               "flex h-11 items-center gap-2.5 rounded-2xl px-3",
-              r.mine ? "bg-volt text-volt-ink" : "bg-white/14 text-white",
+              r.mine ? "preview-row-mine" : "preview-row text-white",
             )}
           >
             <span className="tnum w-7 shrink-0 text-[14px] font-bold">{r.rank}°</span>
@@ -217,7 +220,7 @@ function GoalBar({ t }: { t: PregameTarget }) {
   return (
     <div className="relative mt-4 w-full text-left">
       <span className="mb-1.5 block text-[12px] font-semibold text-white/70">{label}</span>
-      <div className="relative h-3.5 w-full overflow-hidden rounded-full bg-white/15">
+      <div className="preview-row relative h-3.5 w-full overflow-hidden rounded-full">
         <motion.span
           className="absolute inset-y-0 left-0 origin-left rounded-full bg-white"
           style={{ width: `${share * 100}%` }}
@@ -252,8 +255,9 @@ function GoalBar({ t }: { t: PregameTarget }) {
 }
 
 /** Le altre cose alla portata, in una riga ciascuna. */
-function Extra({ t }: { t: PregameTarget }) {
+function Extra({ t, i }: { t: PregameTarget; i: number }) {
   const { data } = useData();
+  const reduce = useReducedMotion();
   const rival = shortName(data.players.find((p) => p.id === t.board?.rivalId));
   const Icon = t.kind === "record" ? IconTrophy : t.kind === "traguardo" ? IconFlag : IconArrowUpRight;
   const what =
@@ -267,9 +271,15 @@ function Extra({ t }: { t: PregameTarget }) {
           ? `al tiro e passi ${rival}`
           : `e passi ${rival}`;
   return (
-    <li className="flex items-center gap-2.5 rounded-2xl bg-white/12 px-3 py-2 text-[13.5px] leading-snug">
+    <motion.li
+      initial={reduce ? false : { opacity: 0, rotateX: -40, y: 14 }}
+      animate={{ opacity: 1, rotateX: 0, y: 0 }}
+      transition={{ type: "spring", stiffness: 260, damping: 24, delay: 1.5 + i * 0.12 }}
+      className="preview-row flex items-center gap-2.5 rounded-2xl px-3 py-2 text-[13.5px] leading-snug"
+    >
       <Icon size={17} className="shrink-0 text-volt" aria-hidden />
-      <span className="min-w-0">
+      {/* I nomi lunghissimi (anche senza spazi) vanno a capo invece di uscire. */}
+      <span className="min-w-0 [overflow-wrap:anywhere]">
         <span className="block">
           <b className="font-bold">{what}</b> {rest}
         </span>
@@ -281,7 +291,7 @@ function Extra({ t }: { t: PregameTarget }) {
               : "Da quando giochi"}
         </span>
       </span>
-    </li>
+    </motion.li>
   );
 }
 
@@ -296,36 +306,46 @@ export function PregameBody({ proposal, targets }: { proposal: Proposal; targets
   const name = (id?: string) => shortName(data.players.find((p) => p.id === id));
   const rival = name(main.board?.rivalId);
   const holder = (main.bar?.holderIds ?? []).map((id) => name(id)).join(" e ");
-  const place = proposal.place ? placeLabel(proposal.place) : null;
+  // Il posto: per l'indoor il nome scritto nella proposta (es. "CH4"), come nella scheda della partita.
+  const place = proposal.place
+    ? proposal.place === "indoor" && proposal.address
+      ? proposal.address.split(",")[0].trim()
+      : placeLabel(proposal.place)
+    : null;
 
   return (
     <>
-      <p className="relative text-[14px] font-semibold text-volt">
-        {cap(when)} alle {hhmm(proposal.startsAt)}
-        {place && ` · ${place}`}
+      <p className="preview-row relative mx-auto inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[13.5px] font-semibold text-white">
+        <IconCalendarEvent size={15} className="shrink-0 text-volt" aria-hidden />
+        <span className="truncate">
+          {cap(when)} alle {hhmm(proposal.startsAt)}
+          {place && ` · ${place}`}
+        </span>
       </p>
       <h2 id="party-title" className="display relative mt-1 text-[26px] leading-tight">
         {title(main)}
       </h2>
       <p className="relative mt-3 flex items-baseline justify-center gap-2">
-        <CountUp value={main.need} className="score text-[56px] leading-none" />
+        <span className="preview-num">
+          <CountUp value={main.need} className="score text-[64px] leading-none" />
+        </span>
         <span className="text-[20px] font-bold">
           {main.stat === "campo" ? `su ${main.attempts}` : unitOf(main.stat, main.need)}
         </span>
       </p>
-      <p className="relative mt-1.5 text-[15px] font-semibold leading-snug text-white/90">
+      <p className="relative mt-1.5 text-[15px] font-semibold leading-snug text-white/90 [overflow-wrap:anywhere]">
         {line(main, rival)}
       </p>
       {main.kind === "sorpasso" ? <MiniBoard t={main} /> : <GoalBar t={main} />}
-      <p className="relative mt-2 text-[12.5px] leading-snug text-white/70">
+      <p className="relative mt-2 text-[12.5px] leading-snug text-white/70 [overflow-wrap:anywhere]">
         {note(main, rival, when, holder)}
       </p>
       {others.length > 0 && (
         <div className="relative mt-4 w-full text-left">
           <p className="mb-1.5 text-[12px] font-semibold text-white/70">Anche alla portata</p>
-          <ul className="space-y-1.5">
-            {others.map((t) => (
-              <Extra key={t.id} t={t} />
+          <ul className="space-y-1.5 [perspective:600px]">
+            {others.map((t, i) => (
+              <Extra key={t.id} t={t} i={i} />
             ))}
           </ul>
         </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import clsx from "clsx";
+
 import { IconCrown } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
@@ -248,11 +250,12 @@ export function BadgeCelebration() {
     }
 
     // 4. L'anteprima della prossima partita: cosa è alla portata, per chi ha detto "Ci sono".
-    //    Per ora la vede solo l'amministratore, per provarla (non nella demo pubblica).
-    //    ?anteprima=1 la mostra subito, senza aspettare la sera prima.
-    const previewOn = me.isAdmin && process.env.NEXT_PUBLIC_DEMO !== "1";
+    //    La vedono tutti (non nella demo pubblica). Per l'amministratore, ?anteprima=1 la
+    //    mostra subito, senza aspettare la sera prima.
+    const previewOn = process.env.NEXT_PUBLIC_DEMO !== "1";
     const force =
       previewOn &&
+      me.isAdmin &&
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("anteprima") === "1";
     const prop = !previewOn
@@ -335,18 +338,23 @@ export function BadgeCelebration() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="party-title"
-      className="fade-in fixed inset-0 z-[70] grid place-items-center bg-[#1d1a16]/75 px-8"
+      className={clsx(
+        "fade-in fixed inset-0 z-[70] grid place-items-center px-8",
+        // L'anteprima: la pagina dietro resta visibile, sfocata, sotto una scheda di vetro.
+        current.kind === "preview" ? "preview-backdrop" : "bg-[#1d1a16]/75",
+      )}
       onClick={next}
     >
       <motion.div
         key={current.id}
-        initial={{ opacity: 0, scale: 0.88, y: 24 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 22 }}
+        initial={current.kind === "preview" ? { opacity: 0, scale: 0.9, y: 70, rotateX: 30 } : { opacity: 0, scale: 0.88, y: 24 }}
+        animate={current.kind === "preview" ? { opacity: 1, scale: 1, y: 0, rotateX: 0 } : { opacity: 1, scale: 1, y: 0 }}
+        transition={current.kind === "preview" ? { type: "spring", stiffness: 140, damping: 18 } : { type: "spring", stiffness: 200, damping: 22 }}
+        style={current.kind === "preview" ? { transformPerspective: 900, perspective: 900 } : undefined}
         className={
           current.kind === "preview"
             ? // L'anteprima è la più alta: sui telefoni piccolissimi scorre invece di uscire dallo schermo.
-              "court relative flex max-h-[calc(100dvh-24px)] w-full max-w-xs flex-col items-center overflow-y-auto overscroll-contain rounded-[32px] px-6 pb-6 pt-7 text-center"
+              "preview-glass relative flex max-h-[calc(100dvh-24px)] w-full max-w-xs flex-col items-center overflow-y-auto overscroll-contain rounded-[32px] px-6 pb-6 pt-7 text-center"
             : "court relative flex w-full max-w-xs flex-col items-center overflow-hidden rounded-[32px] px-6 pb-6 pt-7 text-center"
         }
         // Il tocco sulla scheda resta qui: avanzano solo i pulsanti o il tocco fuori (prima saltava una festa).
@@ -366,7 +374,14 @@ export function BadgeCelebration() {
         {current.kind === "character" && <CharacterBody id={current.id} />}
         {current.kind === "news" && <NewsBody post={current.post} />}
         {current.kind === "preview" && (
-          <PregameBody proposal={current.proposal} targets={current.targets} />
+          <>
+            {/* Luci gialle e arancio che si spostano piano dietro al vetro. */}
+            <span className="preview-light -left-16 -top-14 h-48 w-48 bg-[radial-gradient(circle,rgb(255_197_49/0.42),transparent_68%)]" aria-hidden />
+            <span className="preview-light -bottom-20 -right-16 h-56 w-56 bg-[radial-gradient(circle,rgb(242_106_27/0.36),transparent_70%)] [animation-delay:-4s]" aria-hidden />
+            <div className="preview-float relative w-full">
+              <PregameBody proposal={current.proposal} targets={current.targets} />
+            </div>
+          </>
         )}
         {current.kind === "studio" && <StudioBody latest={current.latest} />}
         {current.kind === "studio" ? (

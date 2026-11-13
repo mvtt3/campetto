@@ -87,6 +87,8 @@ export type StudioScreen =
          * frazioni del video. Segue canestro e giocatori e allarga solo quanto serve.
          */
         cam?: [number, number, number, number][];
+        /** Un fotogramma minuscolo della clip (data URI), sfocato, per lo sfondo dietro il video. */
+        bg?: string;
       }[];
     }
   | { kind: "numeri"; kicker: string; tiles: StudioTile[] }

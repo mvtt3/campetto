@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { memo, useId } from "react";
 
 const INK = "#1D1A16";
 const BALL = "#F26A1B";
@@ -15,7 +15,7 @@ const CREAM = "#FFF8EA";
  * ridisegnare niente: --mouth (0-1, quanto è aperta la bocca), --look (-1 sinistra, 1 destra),
  * --blink (1 aperti, 0 chiusi), --arm (0-1, alza il foglio), --breath (respiro), --nod (cenno).
  */
-export function Presenter({ who, className }: { who: "lui" | "lei"; className?: string }) {
+export const Presenter = memo(function Presenter({ who, className }: { who: "lui" | "lei"; className?: string }) {
   const uid = useId().replace(/:/g, "");
   const lei = who === "lei";
   const jacket = lei ? "#B4234A" : "#1F2C4D";
@@ -145,10 +145,10 @@ export function Presenter({ who, className }: { who: "lui" | "lei"; className?: 
       </g>
     </svg>
   );
-}
+});
 
 /** Le mani sulla scrivania con i fogli degli appunti; una si alza per leggere (--arm). */
-export function Notes({ who }: { who: "lui" | "lei" }) {
+export const Notes = memo(function Notes({ who }: { who: "lui" | "lei" }) {
   const sleeve = who === "lei" ? "#B4234A" : "#1F2C4D";
   return (
     <svg viewBox="0 0 200 60" aria-hidden style={{ overflow: "visible" }}>
@@ -171,4 +171,4 @@ export function Notes({ who }: { who: "lui" | "lei" }) {
       </g>
     </svg>
   );
-}
+});

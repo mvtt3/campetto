@@ -12,7 +12,7 @@ import {
   IconTrophy,
   IconUsersGroup,
 } from "@tabler/icons-react";
-import type { CSSProperties, ReactNode } from "react";
+import { memo, type CSSProperties, type ReactNode } from "react";
 import { useData } from "@/lib/data/provider";
 import type { StudioScreen, StudioTile } from "@/lib/studio";
 import { shortName, type Player } from "@/lib/types";
@@ -118,13 +118,13 @@ function Figure({ player, height, d = 0.15 }: { player?: Player; height: number;
  * Le grafiche del maxischermo, disegnate a 330×400 con lo stile attuale dell'app:
  * schede morbide, blu campo, giallo MVP, colore del giocatore, numeri grandi e riquadri vetro.
  */
-export function StudioScreenView({ screen }: { screen: StudioScreen }) {
+export const StudioScreenView = memo(function StudioScreenView({ screen }: { screen: StudioScreen }) {
   return (
     <div className="relative h-[400px] w-[330px] overflow-hidden text-white">
       <Body screen={screen} />
     </div>
   );
-}
+});
 
 function Body({ screen }: { screen: StudioScreen }) {
   const { data } = useData();

@@ -18,7 +18,7 @@ Serve: pip install edge-tts soundfile numpy, e ffmpeg. La scaletta (con i dati d
 e l'uscita restano fuori dal repository: vanno in public/studio solo sul computer da cui si
 pubblica, come i video in public/h.
 """
-import asyncio, difflib, hashlib, json, os, re, subprocess, sys
+import asyncio, base64, difflib, hashlib, json, os, re, subprocess, sys
 import numpy as np
 import soundfile as sf
 
@@ -212,13 +212,19 @@ def voice_of(who, line):
     return v["voice"], line.get("rate", rate), line.get("pitch", pitch)
 
 
+# Parole che la voce di lui (multilingue) tende a dire in inglese: scritte all'italiana, con
+# l'accento, le legge come un telecronista italiano. Valgono per tutte le puntate.
+ITALIANO = {"assist": "àssist", "record": "rècord", "Elo": "elo", "MVP": "emme vu pi", "replay": "riplèi"}
+
+
 def pronounce(text):
     """
-    Come si dicono i nomi: "pronunce" nella scaletta (es. Orcodio → Orcodìo, Puttens → Pùttens,
-    un soprannome detto come si legge). I sottotitoli restano scritti come nel testo.
+    Come si dicono le parole: prima quelle prese dall'inglese (tutte in italiano), poi i nomi
+    della scaletta ("pronunce", es. Orcodio → Orcodìo, Puttens → Pùttens, un soprannome detto
+    come si legge). I sottotitoli restano scritti come nel testo.
     """
-    for word, said in plan.get("pronunce", {}).items():
-        text = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", said, text)
+    for word, said in {**ITALIANO, **plan.get("pronunce", {})}.items():
+        text = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", said, text, flags=re.IGNORECASE if word.islower() else 0)
     return text
 
 
@@ -231,9 +237,10 @@ def sign_off():
         return
     lui, lei = plan["hosts"]["lui"], plan["hosts"]["lei"]
     last[-1].setdefault("gap", 0.25)
+    # Tutti e due inquadrati insieme, per entrambe le metà della firma.
     last += [
-        {"who": "lui", "cam": last[-1].get("cam", "coppia"), "text": f"Un saluto da {lui}…", "gap": 0.04},
-        {"who": "lei", "text": f"…e {lei}!"},
+        {"who": "lui", "cam": "coppia", "text": f"Un saluto da {lui}…", "gap": 0.04},
+        {"who": "lei", "cam": "coppia", "text": f"…e {lei}!"},
     ]
 
 
@@ -276,7 +283,7 @@ async def main():
             t = seg_start + 0.35
         for li, line in enumerate(lines_in):
             text = line["text"]
-            say = line.get("say") or pronounce(text)
+            say = pronounce(line.get("say") or text)
             if line["who"] == "ospite" and guest and t < guest["sit"] + 0.15:
                 t = guest["sit"] + 0.15  # parla da seduto
             mp3, words = await tts(*voice_of(line["who"], line), say)
@@ -363,6 +370,10 @@ async def main():
                 hoop = tuple(c.pop("hoop", (0.2, 0.25)))
                 if os.path.exists(path):
                     c["cam"] = frame_clip(path, c["from"], c["to"], hoop)
+                    # Lo sfondo sfocato: un fotogramma a metà clip, 48×27, come immagine dentro il JSON.
+                    jpg = run(["ffmpeg", "-v", "error", "-ss", f"{(c['from'] + c['to']) / 2:.2f}", "-i", path, "-frames:v", "1",
+                               "-vf", "scale=48:27,gblur=sigma=1.2", "-q:v", "6", "-f", "image2", "-c:v", "mjpeg", "-"]).stdout
+                    c["bg"] = "data:image/jpeg;base64," + base64.b64encode(jpg).decode()
                 else:
                     print("replay: video non trovato, si vede il campo intero:", path)
                 ct += c["to"] - c["from"]
