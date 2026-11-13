@@ -6,6 +6,8 @@ import {
   captionAt,
   captionPages,
   chapters,
+  guestAt,
+  replayFrame,
   lineAt,
   lookAt,
   modeAt,
@@ -127,5 +129,26 @@ describe("Studio Campetto", () => {
     const c = chapters(show);
     expect(c[0]).toEqual({ t: 0, end: 3 });
     expect(c[c.length - 1]).toEqual({ t: 36, end: 40 });
+  });
+
+  it("l'ospite entra con la sedia, si siede al centro, poi si alza ed esce", () => {
+    const withGuest = { ...show, guest: { playerId: "p", name: "Ospite", enter: 10, sit: 13.4, rise: 30, exit: 32.6 } };
+    expect(guestAt(withGuest, 9).on).toBe(false);
+    const walking = guestAt(withGuest, 11);
+    expect(walking.on && walking.x > 0 && walking.seat === 0).toBe(true);
+    expect(guestAt(withGuest, 20)).toMatchObject({ on: true, x: 0, seat: 1, apart: 1 });
+    expect(guestAt(withGuest, 31.5).x).toBeGreaterThan(0);
+    expect(guestAt(withGuest, 33).on).toBe(false);
+    // Con l'ospite seduto, il primo piano di lui segue il suo posto più a destra.
+    const lui = cameraAt({ ...withGuest, shots: [{ t: 0, cam: "lui", screen: 0 }] }, 20);
+    const luiSolo = cameraAt({ ...show, shots: [{ t: 0, cam: "lui", screen: 0 }] }, 20);
+    expect(lui.x).toBeLessThan(luiSolo.x);
+  });
+
+  it("la regia del replay passa da un'inquadratura all'altra senza scatti", () => {
+    const clip = { cam: [[0, 0.5, 0.8, 0.5], [1, 0.3, 0.4, 0.45]] as [number, number, number, number][] };
+    expect(replayFrame(clip, 0.5)).toEqual({ cx: 0.4, w: 0.6000000000000001, cy: 0.475 });
+    expect(replayFrame(clip, 5).w).toBe(0.4);
+    expect(replayFrame({}, 1)).toEqual({ cx: 0.5, w: 1, cy: 0.5 });
   });
 });

@@ -19,21 +19,27 @@ import {
   blinkAt,
   cameraAt,
   captionAt,
+  GUEST_SPREAD,
+  guestAt,
   lineAt,
   lookAt,
   modeAt,
   mouthAt,
   fullScreenAt,
   replayAt,
+  replayFrame,
   SCREEN,
   screenAt,
   screenRect,
   STAGE,
   studioUrl,
+  type StudioHost,
   type StudioShow,
   type StudioWho,
 } from "@/lib/studio";
+import { KIT } from "@/components/avatar-presets";
 import { useData } from "@/lib/data/provider";
+import { Character, characterOf } from "../character";
 import { Logo } from "../mascot";
 import { CourtLines } from "../ui/basics";
 import { Notes, Presenter } from "./presenter";
@@ -99,8 +105,15 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const bar = useRef<HTMLDivElement>(null);
   const timeLabel = useRef<HTMLSpanElement>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
+  const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
+  const replayBg = useRef<HTMLCanvasElement>(null);
+  const guestBox = useRef<HTMLDivElement>(null);
+  const guestChair = useRef<HTMLDivElement>(null);
+  const top = useRef<HTMLDivElement>(null);
+  const bottom = useRef<HTMLDivElement>(null);
+  const chromeTimer = useRef(0);
   const clock = useRef({ t: startAt, at: 0, running: false, audioOk: true });
-  const smooth = useRef({ lui: { mouth: 0, look: 0 }, lei: { mouth: 0, look: 0 } });
+  const smooth = useRef({ lui: { mouth: 0, look: 0 }, lei: { mouth: 0, look: 0 }, ospite: { mouth: 0, look: 0 } });
 
   const [playing, setPlaying] = useState(false);
   const [needsTap, setNeedsTap] = useState(false);
@@ -118,11 +131,45 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const [flash, setFlash] = useState<{ kind: "play" | "pause" | "back" | "fwd"; n: number } | null>(null);
 
   const [k, setK] = useState(1);
+  const view = useRef({ w: 390, h: 844 });
   useEffect(() => {
-    const fit = () => setK(Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h) * 1.0001);
+    // Il player occupa la parte di schermo davvero visibile (visualViewport): così le barre del
+    // browser o dei tasti di sistema non coprono niente, nemmeno quando appaiono e spariscono.
+    const vv = window.visualViewport;
+    const fit = () => {
+      const w = vv?.width ?? window.innerWidth;
+      const h = vv?.height ?? window.innerHeight;
+      view.current = { w, h };
+      const r = root.current;
+      if (r && vv) {
+        r.style.top = `${vv.offsetTop}px`;
+        r.style.height = `${h}px`;
+        r.style.bottom = "auto";
+      }
+      setK(Math.min(w / STAGE.w, h / STAGE.h) * 1.0001);
+    };
     fit();
     window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
+    vv?.addEventListener("resize", fit);
+    vv?.addEventListener("scroll", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      vv?.removeEventListener("resize", fit);
+      vv?.removeEventListener("scroll", fit);
+    };
+  }, []);
+
+  // Fascia alta e comandi: nascosti di base; un tocco li mostra e dopo 3 secondi spariscono
+  // (restano finché la puntata è ferma).
+  const [chrome, setChrome] = useState(true);
+  const showChrome = useCallback((stay = false) => {
+    setChrome(true);
+    window.clearTimeout(chromeTimer.current);
+    if (!stay) chromeTimer.current = window.setTimeout(() => clock.current.running && setChrome(false), 3000);
+  }, []);
+  useEffect(() => {
+    chromeTimer.current = window.setTimeout(() => clock.current.running && setChrome(false), 2500);
+    return () => window.clearTimeout(chromeTimer.current);
   }, []);
 
   const now = useCallback(() => {
@@ -163,6 +210,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     videos.current.forEach((v) => v?.pause());
     setPlaying(false);
     root.current?.classList.add("studio-paused");
+    setChrome(true);
+    window.clearTimeout(chromeTimer.current);
   }, [now]);
 
   const seek = useCallback(
@@ -218,12 +267,16 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       if (world.current) world.current.style.transform = `translate3d(${cam.x}px, ${cam.y}px, 0) scale(${cam.s})`;
 
       const line = lineAt(show, t);
+      const g = guestAt(show, t);
       for (const who of ["lui", "lei"] as const) {
         const box = who === "lui" ? lui.current : lei.current;
         if (!box) continue;
         const sm = smooth.current[who];
         sm.mouth += (mouthAt(line, who, t) - sm.mouth) * 0.55;
-        sm.look += (lookAt(line, who, t) - sm.look) * 0.14;
+        sm.look += (lookAt(line, who, t, g.on && g.seat > 0.5) - sm.look) * 0.14;
+        // Con l'ospite i conduttori si spostano un po' ai lati per fargli posto.
+        const dx = `translateX(${((who === "lui" ? 1 : -1) * GUEST_SPREAD * g.apart).toFixed(2)}px)`;
+        box.style.transform = dx;
         const listening = line && line.who !== who;
         box.style.setProperty("--mouth", sm.mouth.toFixed(3));
         box.style.setProperty("--look", sm.look.toFixed(3));
@@ -232,7 +285,33 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         box.style.setProperty("--nod", listening ? (Math.max(0, Math.sin(t * 2.4)) ** 3).toFixed(3) : (sm.mouth * 0.45).toFixed(3));
         const arm = armAt(show, who, t).toFixed(3);
         box.style.setProperty("--arm", arm);
-        (who === "lui" ? luiNotes : leiNotes).current?.style.setProperty("--arm", arm);
+        const notes = (who === "lui" ? luiNotes : leiNotes).current;
+        if (notes) {
+          notes.style.setProperty("--arm", arm);
+          notes.style.transform = who === "lui" ? `${dx} scaleX(-1)` : dx;
+        }
+      }
+      // L'ospite: entra camminando con la sua sedia, si siede al centro, parla, saluta ed esce.
+      const gb = guestBox.current;
+      if (gb) {
+        const gs = smooth.current.ospite;
+        gs.mouth += (mouthAt(line, "ospite", t) - gs.mouth) * 0.55;
+        const bob = g.walk ? -Math.abs(Math.sin(g.walk * Math.PI)) * 7 : 0;
+        const tilt = g.walk ? Math.sin(g.walk * Math.PI) * 2.5 : 0;
+        const talk = line?.who === "ospite" ? Math.sin(t * 9) * 0.6 : 0;
+        gb.style.visibility = g.on ? "visible" : "hidden";
+        gb.style.transform = `translate3d(${g.x.toFixed(1)}px, ${((1 - g.seat) * -30 + bob + talk).toFixed(1)}px, 0) rotate(${tilt.toFixed(2)}deg)`;
+        gb.style.setProperty("--mouth", gs.mouth.toFixed(3));
+        gb.dataset.walk = g.walk ? "1" : "0";
+        gb.dataset.seat = g.seat > 0.5 ? "1" : "0";
+        // La sedia: la tira dietro di sé entrando e la riporta via uscendo.
+        const ch = guestChair.current;
+        if (ch) {
+          const trail = g.dir === -1 ? 70 : g.dir === 1 ? -70 : 0;
+          const settle = g.dir === 0 && g.seat < 1 && t < (show.guest?.sit ?? 0) ? 70 * (1 - g.seat) : 0;
+          ch.style.visibility = g.on ? "visible" : "hidden";
+          ch.style.transform = `translate3d(${(g.x + trail + settle).toFixed(1)}px, 0, 0)`;
+        }
       }
 
       const s = screenAt(show, t);
@@ -277,6 +356,28 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
           }
           const want = clip.from + (r?.local ?? 0);
           if (v.readyState >= 1 && Math.abs(v.currentTime - want) > 0.3) v.currentTime = want;
+          // La regia: il riquadro del video segue canestro e giocatori, a tutto schermo.
+          const box = videoBoxes.current[i];
+          if (box) {
+            const { w: vw, h: vh } = view.current;
+            const f = replayFrame(clip, r?.local ?? 0);
+            const wf = Math.max(0.2, Math.min(1, f.w));
+            const z = 1 / wf;
+            const hd = ((vw * 9) / 16) * z;
+            const tx = Math.min(0, Math.max(vw - vw * z, vw / 2 - f.cx * vw * z));
+            const ty = hd >= vh ? Math.min(0, Math.max(vh - hd, vh / 2 - f.cy * hd)) : Math.min(vh - hd, Math.max(0, vh * 0.47 - f.cy * hd));
+            box.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0) scale(${z.toFixed(4)})`;
+          }
+          // Dietro, lo stesso video piccolissimo e ingrandito: sfocato e in movimento riempie
+          // lo schermo sopra e sotto, come i video orizzontali nei reel (costa pochissimo).
+          const bg = replayBg.current?.getContext("2d");
+          if (bg && v.readyState >= 2) {
+            try {
+              bg.drawImage(v, 0, 0, 32, 18);
+            } catch {
+              /* il fotogramma non è pronto: si riprova al prossimo */
+            }
+          }
           if (c.running && v.paused) void v.play().catch(() => {});
           if (!c.running && !v.paused) v.pause();
         });
@@ -298,7 +399,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     return () => cancelAnimationFrame(raf);
   }, [show, now]);
 
-  // Tocco: uno ferma o riprende, due a sinistra o a destra saltano di 10 secondi.
+  // Tocco: uno mostra i comandi, due a sinistra o a destra saltano di 10 secondi.
   const taps = useRef<{ at: number; x: number; timer: number }>({ at: 0, x: 0, timer: 0 });
   const onTap = (e: React.PointerEvent<HTMLDivElement>) => {
     if (ended || needsTap) return;
@@ -317,14 +418,12 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     tp.at = t0;
     tp.x = side;
     window.clearTimeout(tp.timer);
+    // Un tocco mostra o nasconde fascia e comandi (la pausa è sul pulsante).
     tp.timer = window.setTimeout(() => {
-      if (clock.current.running) {
-        pause();
-        setFlash({ kind: "pause", n: performance.now() });
-      } else {
-        void start();
-        setFlash({ kind: "play", n: performance.now() });
-      }
+      if (chrome && clock.current.running) {
+        window.clearTimeout(chromeTimer.current);
+        setChrome(false);
+      } else showChrome(!clock.current.running);
     }, side === 0 ? 0 : 300);
   };
 
@@ -373,6 +472,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
               </div>
             </div>
           </div>
+          {show.guest && <GuestInStudio playerId={show.guest.playerId} boxRef={guestBox} chairRef={guestChair} />}
           <div ref={lei} className="absolute" style={{ left: 27, top: 438, width: 170 }}>
             <Presenter who="lei" />
           </div>
@@ -397,41 +497,51 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         </div>
       </div>
 
-      {/* Il replay a tutto schermo: il campo intero (canestro compreso), clip dall'inizio alla fine. */}
+      {/* Il replay a tutto schermo: una telecamera virtuale tiene dentro canestro e giocatori e
+          allarga solo quando serve; clip dall'inizio alla fine. */}
       {replay && (
-        <div className={clsx("absolute inset-0 transition-opacity duration-150", mode === "replay" ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={mode !== "replay"}>
-          <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, var(--court) 0%, var(--court-deep) 100%)" }}>
-            <span className="blob -right-16 -top-10 h-72 w-72 bg-[radial-gradient(circle,rgb(255_197_49/0.4),transparent_68%)]" />
-            <span className="blob -bottom-24 -left-16 h-72 w-72 bg-[radial-gradient(circle,rgb(242_106_27/0.3),transparent_70%)]" />
-            <CourtLines className="absolute inset-x-0 bottom-0 h-1/2 w-full opacity-70" />
+        <div className={clsx("absolute inset-0 overflow-hidden transition-opacity duration-150", mode === "replay" ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={mode !== "replay"}>
+          <div className="absolute inset-0 bg-[#0d1124]">
+            <canvas ref={replayBg} width={32} height={18} className="absolute left-1/2 top-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-60" style={{ aspectRatio: "16 / 9" }} aria-hidden />
+            <span className="absolute inset-0 bg-gradient-to-b from-[#0d1124]/40 via-transparent to-[#0d1124]/50" />
           </div>
-          <div className="absolute inset-x-0 top-[24%] px-3">
+          {replay.clips.map((clip, i) => (
+            <div
+              key={clip.src + clip.from}
+              ref={(d) => {
+                videoBoxes.current[i] = d;
+              }}
+              className={clsx("absolute left-0 top-0 origin-top-left will-change-transform", i === replayClip ? "opacity-100" : "opacity-0")}
+              style={{ width: "100%", aspectRatio: "16 / 9", maskImage: "linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent)" }}
+            >
+              <video
+                ref={(v) => {
+                  videos.current[i] = v;
+                }}
+                src={`${clip.src}#t=${clip.from}`}
+                muted
+                playsInline
+                preload="auto"
+                className="h-full w-full bg-black object-cover"
+              />
+            </div>
+          ))}
+          <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/40 to-transparent px-4 pb-8 pt-[max(18px,calc(env(safe-area-inset-top)+10px))]">
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-volt px-3 py-1 text-[13px] font-bold text-volt-ink">Replay</span>
-              <span className="text-[15px] font-bold">{replayClip >= 0 ? `Partita ${replay.clips[replayClip].game}` : ""}</span>
+              <span className="text-[15px] font-bold drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)]">{replayClip >= 0 ? `Partita ${replay.clips[replayClip].game}` : ""}</span>
               <span className="ml-auto flex gap-1.5" aria-hidden>
                 {replay.clips.map((_, i) => (
-                  <span key={i} className={clsx("h-2 w-2 rounded-full", i === replayClip ? "bg-volt" : "bg-white/35")} />
+                  <span key={i} className={clsx("h-2 w-2 rounded-full", i === replayClip ? "bg-volt" : "bg-white/45")} />
                 ))}
               </span>
             </div>
-            <div className="relative mt-3 aspect-video overflow-hidden rounded-[20px] bg-black ring-[3px] ring-white/90 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.55)]">
-              {replay.clips.map((clip, i) => (
-                <video
-                  key={clip.src + clip.from}
-                  ref={(v) => {
-                    videos.current[i] = v;
-                  }}
-                  src={`${clip.src}#t=${clip.from}`}
-                  muted
-                  playsInline
-                  preload="auto"
-                  className={clsx("absolute inset-0 h-full w-full object-cover", i === replayClip ? "opacity-100" : "opacity-0")}
-                />
-              ))}
-            </div>
-            {replayClip >= 0 && <ReplayScore show={show} game={replay.clips[replayClip].game} />}
           </div>
+          {replayClip >= 0 && (
+            <div className="absolute inset-x-3" style={{ bottom: "calc(26px + env(safe-area-inset-bottom))" }}>
+              <ReplayScore show={show} game={replay.clips[replayClip].game} />
+            </div>
+          )}
         </div>
       )}
 
@@ -440,7 +550,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
 
       {/* Sopra lo studio: barra, titolo, sottotitoli e comandi (non zoomano). */}
-      <div className={clsx("pointer-events-none absolute inset-x-0 top-0 px-4 pb-8 pt-[max(14px,env(safe-area-inset-top))] transition-opacity", mode === "sigla" ? "opacity-0" : "bg-gradient-to-b from-black/45 to-transparent")}>
+      <div ref={top} data-on={chrome && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2">
           <Logo size={30} top="STUDIO" bottom="★ CAMPETTO ★" text={false} />
           <span className="min-w-0 flex-1">
@@ -455,20 +565,24 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
 
       <LowerThird show={show} now={now} />
 
-      {/* Sottotitoli come nei reel: poche parole alla volta, quella detta adesso in giallo. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-[112px] flex justify-center px-6" aria-live="polite">
+      {/* Sottotitoli come nei reel: poche parole alla volta, che compaiono mentre vengono dette;
+          l'ultima detta in giallo. */}
+      <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-5" style={{ bottom: mode === "replay" ? "calc(118px + env(safe-area-inset-bottom))" : "calc(104px + env(safe-area-inset-bottom))" }} aria-live="polite">
         {cap && mode !== "sigla" && (
-          <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[88%] flex-wrap justify-center gap-x-[0.4em] text-center text-[28px] font-extrabold leading-[1.15] tracking-[-0.01em] text-white">
-            {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => (
-              <span key={i} className={clsx("studio-word", cap.page.from + i === cap.active && "is-on")}>
-                {w.replace(/[.,:;]+$/, "")}
-              </span>
-            ))}
+          <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[92%] flex-wrap justify-center gap-x-[0.36em] gap-y-1 text-center text-[30px] font-extrabold leading-[1.2] tracking-[0.005em] text-white">
+            {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => {
+              const k = cap.page.from + i;
+              return (
+                <span key={i} className={clsx("studio-word", k <= cap.active && "is-said", k === cap.active && "is-on")}>
+                  {w.replace(/[.,:;]+$/, "")}
+                </span>
+              );
+            })}
           </p>
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-4 pb-[max(14px,env(safe-area-inset-bottom))] pt-10">
+      <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(env(safe-area-inset-bottom)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
         <div
           ref={bar}
@@ -584,17 +698,19 @@ function ReplayScore({ show, game }: { show: StudioShow; game: number }) {
   );
 }
 
-/** Il nome di chi parla, la prima volta che è inquadrato da vicino, come in TV. */
+/** Il nome di chi parla, la prima volta che è inquadrato da vicino, come in TV; quello
+ *  dell'ospite appena si siede. */
 function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
   const [who, setWho] = useState<StudioWho | null>(null);
   useEffect(() => {
-    const firsts = (["lui", "lei"] as const).map((w) => ({ w, t: show.shots.find((s) => s.cam === w)?.t ?? -99 }));
+    const firsts: { w: StudioWho; t: number }[] = (["lui", "lei"] as const).map((w) => ({ w, t: show.shots.find((s) => s.cam === w)?.t ?? -99 }));
+    if (show.guest) firsts.push({ w: "ospite", t: show.guest.sit + 0.2 });
     let raf = 0;
     let last: StudioWho | null = null;
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
-      const on = firsts.find((f) => t >= f.t && t < f.t + 2.8)?.w ?? null;
+      const on = firsts.find((f) => t >= f.t && t < f.t + (f.w === "ospite" ? 3.4 : 2.8))?.w ?? null;
       if (on !== last) {
         last = on;
         setWho(on);
@@ -604,6 +720,15 @@ function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
     return () => cancelAnimationFrame(raf);
   }, [show, now]);
   if (!who) return null;
+  if (who === "ospite" && show.guest)
+    return (
+      // Stretto e a sinistra: al centro della scrivania c'è il badge.
+      <div key="ospite" className="studio-in pointer-events-none absolute bottom-[190px] left-4 max-w-[150px] overflow-hidden rounded-[14px] bg-[#FFFAF0] px-3 py-1.5 text-[#1d1a16] shadow-[0_10px_24px_-8px_rgb(0_0_0/0.5)]" style={el(0)}>
+        <span className="block truncate text-[17px] font-extrabold leading-tight">{show.guest.name}</span>
+        <span className="block text-[11.5px] font-semibold text-[#1d1a16]/60">Ospite in studio</span>
+      </div>
+    );
+  const host = who as StudioHost;
   return (
     // Dal lato opposto al badge della scrivania, che nel primo piano di lui finisce a sinistra e in quello di lei a destra.
     <div
@@ -615,10 +740,59 @@ function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
         <Logo size={30} text={false} />
       </span>
       <span className="bg-[#FFFAF0] px-3 py-1.5 text-[#1d1a16]">
-        <span className="block text-[17px] font-extrabold leading-tight">{show.hosts[who]}</span>
+        <span className="block text-[17px] font-extrabold leading-tight">{show.hosts[host]}</span>
         <span className="block text-[11.5px] font-semibold text-[#1d1a16]/60">{who === "lei" ? "Conduttrice" : "Conduttore"} · Studio Campetto</span>
       </span>
     </div>
+  );
+}
+
+// Dove ha la bocca ogni personaggio (nel disegno a figura intera), per farla aprire quando parla.
+const MOUTH: Partial<Record<string, [number, number]>> = {
+  collana: [63, 1], bandana: [61, 0.8], coppola: [70, 0.92], muscoli: [61.6, 0.62], volo: [64, 1.05], gigante: [60, 0.9], mago: [66, 0.8],
+  rimbalzo: [60, 0.85], fuoco: [69, 0.9], uragano: [62, 0.8], bomber: [72, 0.92], postino: [72.6, 0.8], gentiluomo: [70, 0.8], marinaio: [69, 0.9],
+  professore: [65.4, 0.8], pirata: [72, 0.88], samurai: [66.5, 0.8], aviatore: [69, 0.9], faraone: [65, 0.8], drago: [71, 0.9], luchador: [63.4, 0.8],
+  astronauta: [67, 0.95], sole: [66, 1], direttore: [68.4, 0.8], leggenda: [65, 1],
+};
+/** Alto 288 px nello studio: la testa grande come quella dei conduttori. */
+const GUEST_H = 288;
+
+/**
+ * L'ospite: il personaggio del giocatore, come nell'app, con la sua sedia. Il player lo muove
+ * con transform e variabili CSS (--mouth); entra e palleggia, seduto il pallone non c'è.
+ */
+function GuestInStudio({ playerId, boxRef, chairRef }: { playerId: string; boxRef: React.RefObject<HTMLDivElement | null>; chairRef: React.RefObject<HTMLDivElement | null> }) {
+  const { data } = useData();
+  const player = data.players.find((p) => p.id === playerId);
+  if (!player) return null;
+  const id = characterOf(player);
+  const vh = 185 + (KIT[id]?.legs ?? 0);
+  const w = (GUEST_H * 100) / vh;
+  const [my, mw] = MOUTH[id] ?? [62, 0.85];
+  return (
+    <>
+      {/* La sedia: si vede lo schienale dietro le spalle; il resto è dietro la scrivania. */}
+      <div ref={chairRef} className="absolute will-change-transform" style={{ left: 195 - 56, top: 506, width: 112, height: 170, visibility: "hidden" }} aria-hidden>
+        <svg viewBox="0 0 112 170" width="112" height="170">
+          <path d="M14 60 L14 168 M98 60 L98 168" stroke="#1d1a16" strokeWidth="6" strokeLinecap="round" />
+          <rect x="4" y="2" width="104" height="80" rx="22" fill="#1f45b8" stroke="#1d1a16" strokeWidth="4" />
+          <rect x="14" y="11" width="84" height="62" rx="15" fill="#FFFAF0" />
+          <path d="M14 34 H98" stroke="#FFC531" strokeWidth="5" />
+          <rect x="2" y="104" width="108" height="18" rx="9" fill="#1f45b8" stroke="#1d1a16" strokeWidth="4" />
+        </svg>
+      </div>
+      <div ref={boxRef} className="studio-guest absolute will-change-transform" data-walk="0" data-seat="0" style={{ left: 195 - w / 2, top: 463, width: w, visibility: "hidden", transformOrigin: "50% 100%" }} aria-hidden>
+        <Character id={id} outfit={player.outfit} number={player.jerseyNumber} height={GUEST_H} idle />
+        <svg className="absolute inset-0" viewBox={`0 0 100 ${vh}`} width={w} height={GUEST_H} style={{ overflow: "visible" }}>
+          <g transform={`translate(50 ${my + 1}) scale(${mw} 1)`}>
+            <g className="studio-guest-mouth">
+              <ellipse rx="8.5" ry="6.5" fill="#5A1410" stroke="#1D1A16" strokeWidth="2" />
+              <ellipse cy="3" rx="4.6" ry="2.4" fill="#E5412D" />
+            </g>
+          </g>
+        </svg>
+      </div>
+    </>
   );
 }
 
@@ -659,7 +833,10 @@ function Fine({ show, at: t0 }: { show: StudioShow; at: number }) {
   const live = data.proposals
     .filter((p) => p.status === "aperta" && p.startsAt > nowIso)
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
-  const next = live ? { startsAt: live.startsAt, place: live.place === "indoor" ? "Indoor" : live.place === "niche" ? "Niche" : live.place === "decathlon" ? "Decathlon" : undefined } : show.outro.next;
+  // Il posto: per l'indoor l'indirizzo scritto nella proposta (nome e via), se c'è.
+  const placeOf = (p: (typeof data.proposals)[number]) =>
+    p.place === "indoor" ? (p.address?.split(",").slice(0, 2).join(",").trim() || "Indoor") : p.place === "niche" ? "Niche" : p.place === "decathlon" ? "Decathlon" : undefined;
+  const next = live ? { startsAt: live.startsAt, place: placeOf(live) } : show.outro.next;
   const when = next
     ? new Date(next.startsAt).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" }) +
       " · " +

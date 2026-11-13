@@ -8,8 +8,11 @@
  * avanti di 10 secondi come un reel.
  */
 
-export type StudioCam = "ampio" | "coppia" | "lui" | "lei" | "schermo" | "replay" | "fine";
-export type StudioWho = "lui" | "lei";
+export type StudioCam = "ampio" | "coppia" | "trio" | "lui" | "lei" | "ospite" | "schermo" | "replay" | "fine";
+/** I due conduttori. */
+export type StudioHost = "lui" | "lei";
+/** Chi parla: i conduttori o l'ospite della puntata. */
+export type StudioWho = StudioHost | "ospite";
 
 type Id = string;
 /** Un riquadro con un numero: valore, etichetta, eventuale nota sotto. */
@@ -73,7 +76,18 @@ export type StudioScreen =
     }
   | {
       kind: "replay";
-      clips: { src: string; from: number; to: number; game: number; t: number }[];
+      clips: {
+        src: string;
+        from: number;
+        to: number;
+        game: number;
+        t: number;
+        /**
+         * La regia del replay: [secondo della clip, centro x, larghezza visibile, centro y] in
+         * frazioni del video. Segue canestro e giocatori e allarga solo quanto serve.
+         */
+        cam?: [number, number, number, number][];
+      }[];
     }
   | { kind: "numeri"; kicker: string; tiles: StudioTile[] };
 
@@ -88,12 +102,29 @@ export interface StudioLine {
   words: [string, number, number][];
 }
 
+/**
+ * L'ospite della puntata: un giocatore delle ultime partite che entra in studio con la sua
+ * sedia, si siede tra i conduttori, risponde alle domande e poi saluta ed esce.
+ */
+export interface StudioGuest {
+  playerId: Id;
+  name: string;
+  /** Quando entra da destra camminando. */
+  enter: number;
+  /** Quando è seduto. */
+  sit: number;
+  /** Quando si alza per andare. */
+  rise: number;
+  /** Quando è uscito. */
+  exit: number;
+}
+
 export interface StudioShow {
   v: 2;
   id: string;
   /** Il giorno delle partite raccontate (YYYY-MM-DD). */
   day: string;
-  hosts: Record<StudioWho, string>;
+  hosts: Record<StudioHost, string>;
   audio: string;
   duration: number;
   /** Quanto dura la sigla iniziale. */
@@ -104,7 +135,8 @@ export interface StudioShow {
   screens: StudioScreen[];
   shots: { t: number; cam: StudioCam; screen: number }[];
   lines: StudioLine[];
-  props: { t: number; who: StudioWho; act: "foglio" }[];
+  props: { t: number; who: StudioHost; act: "foglio" }[];
+  guest?: StudioGuest | null;
 }
 
 /** La puntata più recente: /studio/ultima.json dice quale. */
@@ -121,15 +153,49 @@ interface Cam {
   x: number;
   y: number;
 }
+
+const ease = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const clamp01 = (u: number) => Math.min(1, Math.max(0, u));
+
+/** Di quanto si allargano i conduttori quando c'è l'ospite al centro (px dello studio). */
+export const GUEST_SPREAD = 34;
+/** Da dove entra l'ospite: fuori scena a destra, rispetto al posto al centro. */
+const GUEST_FROM = 280;
+
+/**
+ * Dove è l'ospite al tempo t. x: quanto è spostato a destra rispetto al suo posto (0 = seduto
+ * al centro); seat: 0 in piedi, 1 seduto; apart: quanto si sono allargati i conduttori (0-1);
+ * walk: la fase del passo mentre cammina (per il dondolio); on: se è in scena.
+ */
+export function guestAt(show: Pick<StudioShow, "guest">, t: number): { on: boolean; x: number; seat: number; apart: number; walk: number; dir: -1 | 0 | 1 } {
+  const g = show.guest;
+  const off = { on: false, x: GUEST_FROM, seat: 0, apart: 0, walk: 0, dir: 0 as const };
+  if (!g || t < g.enter || t > g.exit) return off;
+  // I conduttori fanno spazio mentre lui arriva, e si richiudono mentre esce.
+  const apart = Math.min(clamp01((t - g.enter) / 1.0), 1 - clamp01((t - (g.exit - 1.0)) / 1.0));
+  const walkIn = g.sit - 0.55 - g.enter;
+  if (t < g.sit - 0.55) {
+    const u = clamp01((t - g.enter) / walkIn);
+    return { on: true, x: GUEST_FROM * (1 - (1 - Math.pow(1 - u, 2))), seat: 0, apart: ease(apart), walk: (t - g.enter) * 2.6, dir: -1 };
+  }
+  if (t < g.sit) return { on: true, x: 0, seat: ease((t - (g.sit - 0.55)) / 0.55), apart: ease(apart), walk: 0, dir: 0 };
+  if (t < g.rise) return { on: true, x: 0, seat: 1, apart: ease(apart), walk: 0, dir: 0 };
+  if (t < g.rise + 0.45) return { on: true, x: 0, seat: 1 - ease((t - g.rise) / 0.45), apart: ease(apart), walk: 0, dir: 0 };
+  const u = clamp01((t - g.rise - 0.45) / Math.max(0.5, g.exit - g.rise - 0.45));
+  return { on: true, x: GUEST_FROM * u * u, seat: 0, apart: ease(apart), walk: (t - g.rise) * 2.6, dir: 1 };
+}
+
 /** Dove punta la telecamera: un punto dello studio che va al centro, e quanto zoom. */
-// vy: dove cade il punto nello schermo del telefono. Tutto sta tra la barra in alto (~80)
+// vy: dove cade il punto nello schermo del telefono. Tutto sta tra la parte alta (~80)
 // e i sottotitoli in basso (~600), così niente finisce sotto le scritte.
 type WorldCam = Exclude<StudioCam, "replay" | "fine">;
 const CAMS: Record<WorldCam, { fx: number; fy: number; s: number; vy: number }> = {
   ampio: { fx: 195, fy: 440, s: 0.92, vy: 360 },
   coppia: { fx: 195, fy: 470, s: 1.0, vy: 410 },
+  trio: { fx: 195, fy: 480, s: 0.96, vy: 415 },
   lei: { fx: 112, fy: 505, s: 1.55, vy: 340 },
   lui: { fx: 278, fy: 505, s: 1.55, vy: 340 },
+  ospite: { fx: 195, fy: 505, s: 1.55, vy: 340 },
   schermo: {
     fx: SCREEN.x + SCREEN.w / 2,
     fy: SCREEN.y + SCREEN.h / 2,
@@ -137,14 +203,13 @@ const CAMS: Record<WorldCam, { fx: number; fy: number; s: number; vy: number }> 
     vy: 350,
   },
 };
-const camOf = (c: WorldCam): Cam => {
+const camOf = (c: WorldCam, apart = 0): Cam => {
   const k = CAMS[c];
-  return { s: k.s, x: STAGE.w / 2 - k.fx * k.s, y: k.vy - k.fy * k.s };
+  // Con l'ospite in studio i primi piani dei conduttori seguono il loro posto, più largo.
+  const fx = k.fx + (c === "lei" ? -GUEST_SPREAD : c === "lui" ? GUEST_SPREAD : 0) * apart;
+  return { s: k.s, x: STAGE.w / 2 - fx * k.s, y: k.vy - k.fy * k.s };
 };
 const isWorld = (c: StudioCam): c is WorldCam => c !== "replay" && c !== "fine";
-
-const ease = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
-const clamp01 = (u: number) => Math.min(1, Math.max(0, u));
 
 /** L'inquadratura dello studio in ogni momento (durante replay e chiusura resta l'ultima). */
 function worldShot(show: Pick<StudioShow, "shots">, t: number): { i: number; cam: WorldCam } {
@@ -158,9 +223,10 @@ function worldShot(show: Pick<StudioShow, "shots">, t: number): { i: number; cam
  * l'unico movimento è lo zoom che porta sul maxischermo, e lì resta finché non si stacca su
  * chi parla. All'uscita dalla sigla la telecamera si allarga sullo studio.
  */
-export function cameraAt(show: Pick<StudioShow, "shots" | "intro">, t: number): Cam {
+export function cameraAt(show: Pick<StudioShow, "shots" | "intro" | "guest">, t: number): Cam {
   const { i, cam } = worldShot(show, t);
-  let out = camOf(cam);
+  const apart = guestAt(show, t).apart;
+  let out = camOf(cam, apart);
   let prevCam: WorldCam | null = null;
   for (let k = i - 1; k >= 0; k--)
     if (isWorld(show.shots[k].cam)) {
@@ -168,14 +234,14 @@ export function cameraAt(show: Pick<StudioShow, "shots" | "intro">, t: number): 
       break;
     }
   if (cam === "schermo" && prevCam && prevCam !== "schermo") {
-    const prev = camOf(prevCam);
+    const prev = camOf(prevCam, apart);
     const u = ease(clamp01((t - show.shots[i].t) / 0.85));
     out = { s: prev.s + (out.s - prev.s) * u, x: prev.x + (out.x - prev.x) * u, y: prev.y + (out.y - prev.y) * u };
   }
-  // Uscendo dalla sigla la telecamera si allarga sullo studio (da più vicino al posto giusto).
+  // Uscendo dalla sigla la telecamera si allarga sullo studio, solo sull'inquadratura larga.
   const r = clamp01((t - (show.intro - 0.5)) / 1.3);
-  if (r < 1) {
-    const k = 1.22 - 0.22 * ease(r);
+  if (r < 1 && (cam === "ampio" || cam === "coppia" || cam === "trio")) {
+    const k = 1.12 - 0.12 * ease(r);
     const vy = CAMS[cam].vy;
     out = { s: out.s * k, x: STAGE.w / 2 - (STAGE.w / 2 - out.x) * k, y: vy - (vy - out.y) * k };
   }
@@ -224,6 +290,27 @@ export function replayAt(show: Pick<StudioShow, "screens" | "shots">, t: number)
   });
   const c = scr.clips[clip];
   return { screen: index, clip, local: Math.min(c.to - c.from, Math.max(0, t - c.t)) };
+}
+
+/**
+ * La regia del replay a un certo punto della clip: centro e larghezza visibile (frazioni del
+ * video). Senza regia si vede tutto il campo.
+ */
+export function replayFrame(clip: { cam?: [number, number, number, number][] }, local: number): { cx: number; w: number; cy: number } {
+  const k = clip.cam;
+  if (!k?.length) return { cx: 0.5, w: 1, cy: 0.5 };
+  if (local <= k[0][0]) return { cx: k[0][1], w: k[0][2], cy: k[0][3] };
+  for (let i = 1; i < k.length; i++)
+    if (local <= k[i][0]) {
+      const u = (local - k[i - 1][0]) / Math.max(1e-6, k[i][0] - k[i - 1][0]);
+      return {
+        cx: k[i - 1][1] + (k[i][1] - k[i - 1][1]) * u,
+        w: k[i - 1][2] + (k[i][2] - k[i - 1][2]) * u,
+        cy: k[i - 1][3] + (k[i][3] - k[i - 1][3]) * u,
+      };
+    }
+  const l = k[k.length - 1];
+  return { cx: l[1], w: l[2], cy: l[3] };
 }
 
 /** Quale grafica c'è sul maxischermo al tempo t, e da quando c'è. */
@@ -291,14 +378,14 @@ export function mouthAt(line: StudioLine | null, who: StudioWho, t: number): num
 }
 
 /** Gli occhi si chiudono ogni tanto, in momenti diversi per i due (deterministico). */
-export function blinkAt(who: StudioWho, t: number): number {
+export function blinkAt(who: StudioHost, t: number): number {
   const period = who === "lui" ? 3.9 : 4.6;
   const phase = (t + (who === "lui" ? 0.7 : 2.1)) % period;
   return phase < 0.13 ? Math.abs(phase - 0.065) / 0.065 : 1;
 }
 
 /** Il braccio che alza il foglio degli appunti: sale, resta un attimo, torna giù. */
-export function armAt(show: Pick<StudioShow, "props">, who: StudioWho, t: number): number {
+export function armAt(show: Pick<StudioShow, "props">, who: StudioHost, t: number): number {
   for (const p of show.props) {
     if (p.who !== who) continue;
     const u = t - p.t;
@@ -310,9 +397,13 @@ export function armAt(show: Pick<StudioShow, "props">, who: StudioWho, t: number
   return 0;
 }
 
-/** Dove guarda: chi parla guarda in camera, chi ascolta guarda chi parla. */
-export function lookAt(line: StudioLine | null, who: StudioWho, t: number): number {
+/**
+ * Dove guarda: chi parla guarda in camera, chi ascolta guarda chi parla. Con l'ospite in studio
+ * i conduttori guardano lui (al centro), anche quando gli fanno una domanda.
+ */
+export function lookAt(line: StudioLine | null, who: StudioHost, t: number, guest = false): number {
   const toOther = who === "lei" ? 1 : -1;
+  if (guest) return line?.who === who ? toOther * 0.75 : toOther;
   if (!line) return toOther * 0.35;
   if (line.who === who) {
     // All'inizio della battuta un'occhiata al collega, poi in camera.

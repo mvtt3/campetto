@@ -321,8 +321,22 @@ a,
 .safe-bottom {
   margin-bottom: env(safe-area-inset-bottom);
 }
+/* Sotto la barra di navigazione. Su iPhone la striscia di casa lascia spazio libero e si può
+   stare più in basso; su Android lo spazio sicuro è la barra dei tasti (indietro, home…), che
+   copre davvero: lì si sta sopra per intero. */
+.nav-pad {
+  padding-bottom: max(12px, calc(env(safe-area-inset-bottom) + 4px));
+}
 :root {
-  --hl-safe: calc(env(safe-area-inset-bottom) * 0.4);
+  --hl-safe: env(safe-area-inset-bottom);
+}
+@supports (-webkit-touch-callout: none) {
+  .nav-pad {
+    padding-bottom: max(12px, calc(env(safe-area-inset-bottom) - 10px));
+  }
+  :root {
+    --hl-safe: calc(env(safe-area-inset-bottom) * 0.4);
+  }
 }
 
 /* Cornice dell'MVP in carica: oro che gira lentamente */
@@ -2803,7 +2817,6 @@ html[data-shot="3"] .intro-ball-x {
   }
 }
 .studio-cap {
-  animation: studio-cap 0.16s cubic-bezier(0.3, 1.4, 0.5, 1) both;
   text-shadow:
     0 2px 0 #1d1a16,
     0 -2px 0 #1d1a16,
@@ -2815,21 +2828,55 @@ html[data-shot="3"] .intro-ball-x {
     -2px -2px 0 #1d1a16,
     0 6px 14px rgb(0 0 0 / 0.45);
 }
-@keyframes studio-cap {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.86);
-  }
-}
+/* Le parole compaiono quando vengono dette: prima non ci sono (ma il loro posto sì, così la
+   riga non si sposta), poi entrano con un piccolo salto; l'ultima detta è gialla. */
 .studio-word {
   display: inline-block;
+  opacity: 0;
+  transform: translateY(8px) scale(0.7);
+}
+.studio-word.is-said {
+  opacity: 1;
+  transform: none;
   transition:
-    color 80ms linear,
-    transform 120ms cubic-bezier(0.3, 1.4, 0.5, 1);
+    opacity 90ms linear,
+    transform 180ms cubic-bezier(0.3, 1.5, 0.5, 1),
+    color 160ms linear;
 }
 .studio-word.is-on {
   color: var(--volt);
-  transform: scale(1.1);
+}
+/* Fascia alta e comandi: compaiono al tocco e spariscono da soli. */
+.studio-chrome {
+  transition:
+    opacity 220ms ease,
+    transform 260ms cubic-bezier(0.3, 1, 0.4, 1);
+}
+.studio-chrome[data-on="0"] {
+  opacity: 0;
+  pointer-events: none !important;
+}
+.studio-chrome[data-on="0"] * {
+  pointer-events: none !important;
+}
+.studio-chrome.is-top[data-on="0"] {
+  transform: translateY(-12px);
+}
+.studio-chrome.is-bottom[data-on="0"] {
+  transform: translateY(12px);
+}
+/* L'ospite: palleggia solo mentre cammina; seduto il pallone non c'è. */
+.studio-guest[data-walk="0"] .character-ball,
+.studio-guest[data-walk="0"] .character-body {
+  animation: none;
+}
+.studio-guest[data-seat="1"] .character-ball {
+  display: none;
+}
+.studio-guest-mouth {
+  transform: scaleY(var(--mouth, 0));
+  transform-box: fill-box;
+  transform-origin: center;
 }
 .studio-sigla {
   animation: studio-sigla-out 0.75s cubic-bezier(0.6, 0, 0.3, 1) both;

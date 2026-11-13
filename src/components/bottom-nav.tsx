@@ -81,7 +81,7 @@ export function BottomNav({
     <nav
       aria-label="Navigazione principale"
       data-tour="nav"
-      className="shrink-0 px-4 pb-[max(12px,calc(env(safe-area-inset-bottom)-10px))] pt-1"
+      className="nav-pad shrink-0 px-4 pt-1"
     >
       <ul className="sticker relative mx-auto grid h-16 max-w-[340px] grid-cols-4 gap-1 rounded-full bg-surface p-1.5">
         {/* La pillola blu scorre da una scheda all'altra (e segue il dito durante lo swipe). */}
