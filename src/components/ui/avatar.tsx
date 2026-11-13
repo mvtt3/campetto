@@ -72,6 +72,22 @@ export function Avatar({
     (ring === "auto" && engine.mvp?.entry.playerId === player.id);
   const preset = presetOf(player.avatarUrl);
   const name = shortName(player);
+  // Gli extra (senza app): tondo chiaro col bordo tratteggiato arancio e le iniziali; niente profilo.
+  if (player.extra) {
+    return (
+      <span
+        className={clsx("relative inline-grid shrink-0 place-items-center rounded-full", className)}
+        style={{ width: size, height: size }}
+        title={`${name}, extra`}
+      >
+        <span className="grid h-full w-full place-items-center rounded-full border-2 border-dashed border-ball bg-surface text-ball ring-2 ring-surface">
+          <span className="num" style={{ fontSize: Math.max(9, size * 0.32) }} aria-hidden>
+            {initials(player)}
+          </span>
+        </span>
+      </span>
+    );
+  }
   const pad = isMvp ? Math.max(2, Math.round(size * 0.07)) : 0;
   const inner = (
     <span

@@ -125,6 +125,8 @@ export interface Backend {
   /** Con un motivo ("meteo") la partita resta visibile quel giorno come annullata. */
   cancelProposal(id: string, reason?: CancelReason): Promise<void>;
   respond(proposalId: string, response: ResponseKind | null): Promise<void>;
+  /** La risposta di un extra (senza app), data da chi lo porta. */
+  respondFor(proposalId: string, playerId: string, response: ResponseKind | null): Promise<void>;
   /** La mia controproposta (stesso giorno): null la toglie. */
   setAlternative(
     proposalId: string,
@@ -143,6 +145,8 @@ export interface Backend {
   upsertPlayer(input: PlayerInput): Promise<string>;
   /** Un ospite per una partita: fuori dal gruppo e dalle statistiche. */
   createGuest(name: string): Promise<string>;
+  /** Un extra (senza app, con un nome fisso): lo può creare chiunque del gruppo. */
+  createExtra(name: string): Promise<string>;
   listPrivate(): Promise<PlayerPrivate[]>;
   setLinkEmail(playerId: string, email: string | null): Promise<void>;
   regenerateInvite(playerId: string): Promise<string>;

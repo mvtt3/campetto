@@ -39,6 +39,8 @@ export function mapPlayer(r: any): Player {
     archived: r.archived,
     createdAt: r.created_at,
     guest: r.guest ?? false,
+    extra: r.extra ?? false,
+    extraBy: r.extra_by ?? null,
     outfit: (r.outfit as Record<string, string> | null) ?? {},
   };
 }
@@ -119,6 +121,7 @@ export function mapProposal(r: any): Proposal {
       updatedAt: x.updated_at,
       altStartsAt: x.alt_starts_at ?? null,
       altPlace: x.alt_place ?? null,
+      addedBy: x.added_by ?? null,
     })),
   };
 }

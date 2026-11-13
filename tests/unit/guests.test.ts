@@ -71,3 +71,23 @@ describe("ospiti", () => {
     expect(plain.matches[0]).toBe(match);
   });
 });
+
+describe("extra (senza app)", () => {
+  const leo = { id: "ospite", firstName: "Leo", extra: true } as unknown as Player;
+  const all = [player("p1"), player("p2"), player("p3"), leo];
+  const out = splitGuests(all, [match]);
+
+  it("si segna e si sceglie (extras), ma resta fuori da gruppo e statistiche", () => {
+    expect(out.players.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+    expect(out.extras.map((p) => p.firstName)).toEqual(["Leo"]);
+    expect(out.guests.map((p) => p.id)).toEqual(["ospite"]);
+    expect(out.matches[0].guests?.map((l) => l.playerId)).toEqual(["ospite"]);
+    expect(out.matches[0].events).toEqual([]);
+  });
+
+  it("un extra archiviato non si propone più, ma il suo tabellino resta", () => {
+    const old = splitGuests([player("p1"), { ...leo, archived: true }], [match]);
+    expect(old.extras).toEqual([]);
+    expect(old.matches[0].guests?.map((l) => l.playerId)).toEqual(["ospite"]);
+  });
+});

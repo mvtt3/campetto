@@ -52,7 +52,7 @@ function TeamSide({
     .sort((x, y) => Number(!!x.sub) - Number(!!y.sub));
   const nm = (id: string) => {
     const p = players.find((x) => x.id === id);
-    return p?.guest ? `${shortName(p)} (ospite)` : shortName(p, players);
+    return p?.guest ? `${shortName(p)} (ospite)` : p?.extra ? `${shortName(p)} (extra)` : shortName(p, players);
   };
   return (
     <div

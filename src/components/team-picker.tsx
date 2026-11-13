@@ -94,7 +94,8 @@ export function TeamPicker({
   const { data, engine } = useData();
   const size = TEAM_SIZE[format];
   const max = maxPerTeam(format);
-  const players = data.players.filter((p) => !p.archived);
+  // Il gruppo, e in fondo gli extra (senza app): si scelgono uguale, hanno il bordo tratteggiato.
+  const players = [...data.players.filter((p) => !p.archived), ...(data.extras ?? [])];
   const a = teamIds(value, "A");
   const b = teamIds(value, "B");
   const selected = [...a, ...b];
@@ -177,6 +178,7 @@ export function TeamPicker({
                 t === "A" && "bg-court text-court-ink",
                 t === "B" && "bg-ball text-ball-ink",
                 !t && "bg-surface shadow-[var(--shadow)]",
+                p.extra && !t && "border-2 border-dashed border-ball/50 shadow-none",
               )}
             >
               <span className="relative shrink-0">
@@ -191,9 +193,9 @@ export function TeamPicker({
                 <span className="block truncate text-[14px] font-semibold">
                   {shortName(p, data.players)}
                 </span>
-                {subs.has(p.id) && (
+                {(subs.has(p.id) || p.extra) && (
                   <span className="block text-[11.5px] font-bold opacity-80">
-                    cambio
+                    {p.extra ? (subs.has(p.id) ? "extra · cambio" : "extra, non conta") : "cambio"}
                   </span>
                 )}
               </span>

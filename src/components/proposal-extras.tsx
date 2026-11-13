@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { useState } from "react";
-import { IconChevronDown } from "@tabler/icons-react";
+import { IconChevronDown, IconPlus, IconUserPlus, IconX } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Avatar, AvatarStack } from "./ui/avatar";
 import { Button, Segmented } from "./ui/basics";
@@ -25,7 +25,8 @@ import { say } from "@/lib/voice";
  */
 export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const { data, me } = useData();
-  const byId = new Map(data.players.map((p) => [p.id, p]));
+  const byId = new Map([...data.players, ...(data.extras ?? [])].map((p) => [p.id, p]));
+  const addedBy = new Map(proposal.responses.map((r) => [r.playerId, r.addedBy ?? null]));
   const by = (k: "si" | "forse" | "no") =>
     proposal.responses
       .filter((r) => r.response === k)
@@ -70,6 +71,8 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const name = (p: Player) =>
     p.id === me?.id ? "Tu" : shortName(p, data.players);
   const [open, setOpen] = useState<string | null>(null);
+  const now = useNow();
+  const canBring = !!me && proposal.status === "aperta" && new Date(proposal.startsAt).getTime() > now.getTime() - 3 * 3600e3;
   return (
     <div
       className="flex flex-col gap-1.5"
@@ -140,6 +143,9 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                       >
                         <Avatar player={p} size={22} href={false} ring="none" />
                         {name(p)}
+                        {p.extra && (
+                          <ExtraTag by={addedBy.get(p.id) ? byId.get(addedBy.get(p.id)!) : undefined} />
+                        )}
                       </li>
                     ))}
                   </motion.ul>
@@ -148,6 +154,191 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
             </section>
           );
         })}
+      {canBring && <BringExtra proposal={proposal} />}
+    </div>
+  );
+}
+
+/** "extra · di Matteo": chi non ha l'app, e chi l'ha portato. */
+function ExtraTag({ by }: { by?: Player }) {
+  return (
+    <span className="rounded-full bg-ball-soft px-1.5 py-[1px] text-[10.5px] font-bold text-ball">
+      extra{by ? ` · di ${shortName(by)}` : ""}
+    </span>
+  );
+}
+
+/**
+ * Porta un extra: chi gioca con noi ma non ha l'app. Si apre qui nella scheda (come il resto):
+ * gli extra che conosciamo già sono lì da toccare, o si scrive un nome nuovo. Entra tra quelli
+ * che "ci sono"; gioca e ha il suo tabellino, ma classifiche e record restano del gruppo.
+ */
+function BringExtra({ proposal }: { proposal: Proposal }) {
+  const { data, me, backend, mutate, refresh } = useData();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const extras = data.extras ?? [];
+  const inIds = new Set(proposal.responses.filter((r) => r.response === "si").map((r) => r.playerId));
+  const mine = extras.filter((x) => inIds.has(x.id));
+  const others = extras.filter((x) => !inIds.has(x.id));
+
+  const setIn = async (playerId: string, on: boolean, extra?: Player) => {
+    if (!me) return;
+    mutate((d) => ({
+      ...d,
+      extras: extra && !(d.extras ?? []).some((x) => x.id === extra.id) ? [...(d.extras ?? []), extra] : d.extras,
+      proposals: d.proposals.map((x) =>
+        x.id !== proposal.id
+          ? x
+          : {
+              ...x,
+              responses: [
+                ...x.responses.filter((r) => r.playerId !== playerId),
+                ...(on ? [{ playerId, response: "si" as const, updatedAt: new Date().toISOString(), addedBy: me.id }] : []),
+              ],
+            },
+      ),
+    }));
+    await backend.respondFor(proposal.id, playerId, on ? "si" : null);
+  };
+
+  const add = async (p: Player) => {
+    try {
+      await setIn(p.id, true);
+      toast(`${shortName(p)} c'è`, "ok");
+    } catch (e) {
+      toast(say(e), "error");
+    }
+  };
+  const create = async () => {
+    const n = name.trim().replace(/\s+/g, " ");
+    if (!n || busy || !me) return;
+    // Se c'è già un extra con questo nome, è lui.
+    const same = extras.find((x) => shortName(x).toLowerCase() === n.toLowerCase());
+    if (same) {
+      setName("");
+      return void add(same);
+    }
+    setBusy(true);
+    try {
+      const id = await backend.createExtra(n);
+      const p: Player = {
+        id,
+        firstName: n,
+        lastName: null,
+        nickname: null,
+        roles: [],
+        jerseyNumber: null,
+        cardColor: null,
+        avatarUrl: null,
+        character: null,
+        userId: null,
+        isAdmin: false,
+        showcase: [],
+        notifyPrefs: me.notifyPrefs,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        extra: true,
+        extraBy: me.id,
+      };
+      await setIn(id, true, p);
+      setName("");
+      toast(`${n} c'è`, "ok");
+      void refresh();
+    } catch (e) {
+      toast(say(e), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="pt-1">
+      {/* Chi è già segnato come extra: si toglie con la X. */}
+      {mine.length > 0 && (
+        <ul className="mb-1.5 flex flex-wrap gap-1.5" aria-label="Extra segnati">
+          {mine.map((p) => (
+            <li key={p.id} className="flex items-center gap-1.5 rounded-full border border-dashed border-ball/60 bg-ball-soft py-0.5 pl-0.5 pr-1 text-[13px] font-semibold">
+              <Avatar player={p} size={22} href={false} ring="none" />
+              {shortName(p)}
+              <span className="text-[10.5px] font-bold text-ball">extra</span>
+              <button
+                type="button"
+                aria-label={`Togli ${shortName(p)}`}
+                className="press grid h-6 w-6 place-items-center rounded-full text-muted"
+                onClick={() => void setIn(p.id, false).catch((e) => toast(say(e), "error"))}
+              >
+                <IconX size={13} strokeWidth={2.6} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="press inline-flex items-center gap-1.5 rounded-full border border-dashed border-ball/70 bg-ball-soft px-3 py-1.5 text-[12.5px] font-semibold text-ball"
+        data-testid="porta-extra"
+      >
+        <IconUserPlus size={15} aria-hidden />
+        Porta un extra
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 rounded-[18px] bg-raised p-3">
+              <p className="text-[13.5px] font-semibold">Chi viene senza l&apos;app?</p>
+              <p className="mt-0.5 text-[12px] leading-snug text-muted">
+                Gioca e ha il suo tabellino, ma classifiche e record restano del gruppo.
+              </p>
+              {others.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {others.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => void add(p)}
+                      className="press flex items-center gap-1.5 rounded-full border border-dashed border-ball/60 bg-surface py-0.5 pl-0.5 pr-2.5 text-[13px] font-semibold"
+                    >
+                      <Avatar player={p} size={22} href={false} ring="none" />
+                      {shortName(p)}
+                      <IconPlus size={13} className="text-ball" aria-hidden />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <form
+                className="mt-2.5 flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void create();
+                }}
+              >
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value.slice(0, 24))}
+                  placeholder={others.length ? "Oppure un nome nuovo" : "Il suo nome"}
+                  aria-label="Nome dell'extra"
+                  className="h-10 min-w-0 flex-1 rounded-full border border-line bg-surface px-3.5 text-[14px] outline-none focus:border-ball"
+                  autoComplete="off"
+                />
+                <Button variant="primary" className="h-10 shrink-0 px-4" disabled={!name.trim() || busy} type="submit">
+                  Aggiungi
+                </Button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

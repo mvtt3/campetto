@@ -162,6 +162,11 @@ export function BoxTable({
                       ospite
                     </span>
                   )}
+                  {p?.extra && (
+                    <span className="ml-1 rounded-full bg-ball-soft px-1.5 text-[10px] font-bold uppercase text-ball">
+                      extra
+                    </span>
+                  )}
                   {l.sub && (
                     <IconRefresh
                       size={11}

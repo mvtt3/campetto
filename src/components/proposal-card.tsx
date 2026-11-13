@@ -102,7 +102,7 @@ export function ProposalCard({
   // Annullata per il meteo: resta visibile quel giorno come "annullata per pioggia".
   const [rain, setRain] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
-  const byId = new Map(data.players.map((p) => [p.id, p]));
+  const byId = new Map([...data.players, ...(data.extras ?? [])].map((p) => [p.id, p]));
   const yes = proposal.responses
     .filter((r) => r.response === "si")
     .map((r) => byId.get(r.playerId)!)

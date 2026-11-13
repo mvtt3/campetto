@@ -208,10 +208,10 @@ async function highlightReply(ctx: Ctx, commentId: string) {
   });
 }
 
-/** Solo il gruppo: gli ospiti non ricevono notifiche e non entrano nei conti. */
+/** Solo il gruppo: ospiti ed extra (senza app) non ricevono notifiche e non entrano nei conti. */
 async function loadPlayers(sb: SupabaseClient): Promise<Player[]> {
   const { data } = await sb.from("players").select("*");
-  return (data ?? []).map(mapPlayer).filter((p) => !p.guest);
+  return (data ?? []).map(mapPlayer).filter((p) => !p.guest && !p.extra);
 }
 
 async function proposalSummary(
@@ -470,10 +470,10 @@ async function matchSaved(ctx: Ctx, matchId: string) {
     loadPlayers(ctx.sb),
     ctx.sb.from("matches").select(MATCH_SELECT).order("played_at"),
   ]);
-  // Le righe degli ospiti escono dai conti (statistiche, MVP, record, badge).
+  // Le righe di ospiti ed extra escono dai conti (statistiche, MVP, record, badge).
   const guestIds = new Set(
     (
-      (await ctx.sb.from("players").select("id").eq("guest", true)).data ?? []
+      (await ctx.sb.from("players").select("id").or("guest.eq.true,extra.eq.true")).data ?? []
     ).map((r: { id: string }) => r.id),
   );
   const matches: Match[] = (data ?? []).map(mapMatch).map((x) =>

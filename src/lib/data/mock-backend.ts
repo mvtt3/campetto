@@ -688,6 +688,7 @@ export function createMockBackend(): Backend {
         players: split.players,
         guests: split.guests,
         matches: split.matches,
+        extras: split.extras,
         proposals: state.proposals,
         news: [...promo, ...(state.news ?? [])],
         // Come nel database: gli highlights li vede tutto il gruppo (aperti a tutti il 31/10).
@@ -713,6 +714,30 @@ export function createMockBackend(): Backend {
         archived: false,
         createdAt: new Date().toISOString(),
         guest: true,
+      });
+      save();
+      return id;
+    },
+    async createExtra(name) {
+      const id = `extra-${rid().slice(0, 8)}`;
+      state.players.push({
+        id,
+        firstName: name.trim() || "Extra",
+        lastName: null,
+        nickname: null,
+        roles: [],
+        jerseyNumber: null,
+        cardColor: null,
+        avatarUrl: null,
+        character: null,
+        userId: null,
+        isAdmin: false,
+        showcase: [],
+        notifyPrefs: DEFAULT_NOTIFY_PREFS,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        extra: true,
+        extraBy: state.meId,
       });
       save();
       return id;
@@ -846,6 +871,14 @@ export function createMockBackend(): Backend {
             ? { altStartsAt: prev.altStartsAt, altPlace: prev.altPlace }
             : {}),
         });
+      save();
+    },
+    async respondFor(proposalId, playerId, response) {
+      const p = state.proposals.find((x) => x.id === proposalId);
+      if (!p) return;
+      p.responses = p.responses.filter((r) => r.playerId !== playerId);
+      if (response)
+        p.responses.push({ playerId, response, updatedAt: new Date().toISOString(), addedBy: state.meId });
       save();
     },
     async setAlternative(proposalId, alt) {

@@ -112,6 +112,7 @@ export function createSupabaseBackend(): Backend {
       return {
         players: split.players,
         guests: split.guests,
+        extras: split.extras,
         matches: split.matches,
         proposals: (pr.data ?? []).map(mapProposal),
         // Le notizie non devono mai bloccare l'app: se non arrivano, se ne fa a meno.
@@ -267,6 +268,34 @@ export function createSupabaseBackend(): Backend {
       );
     },
 
+    async respondFor(proposalId, playerId, response) {
+      if (!response) {
+        fail(
+          (
+            await sb
+              .from("proposal_responses")
+              .delete()
+              .eq("proposal_id", proposalId)
+              .eq("player_id", playerId)
+          ).error,
+        );
+        return;
+      }
+      fail(
+        (
+          await sb.from("proposal_responses").upsert({
+            proposal_id: proposalId,
+            player_id: playerId,
+            response,
+            added_by: meId,
+            // Non ha l'app: niente avvisi per lui.
+            notified: true,
+            updated_at: new Date().toISOString(),
+          })
+        ).error,
+      );
+    },
+
     async setAlternative(proposalId, alt) {
       fail(
         (
@@ -322,6 +351,20 @@ export function createSupabaseBackend(): Backend {
         .insert({
           first_name: name.trim().slice(0, 40) || "Ospite",
           guest: true,
+        })
+        .select("id")
+        .single();
+      fail(error);
+      return data!.id as string;
+    },
+
+    async createExtra(name) {
+      const { data, error } = await sb
+        .from("players")
+        .insert({
+          first_name: name.trim().slice(0, 40) || "Extra",
+          extra: true,
+          extra_by: meId,
         })
         .select("id")
         .single();

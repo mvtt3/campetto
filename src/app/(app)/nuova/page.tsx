@@ -9,7 +9,7 @@ import {
   IconRefresh,
   IconX,
 } from "@tabler/icons-react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoxEditor } from "@/components/box-editor";
 import {
   autoBalance,
@@ -146,9 +146,15 @@ function NewMatchInner() {
   const [maxDate] = useState(() => new Date());
   // Gli ospiti di questa partita: quelli nuovi hanno un id provvisorio finché non si salva.
   const [guests, setGuests] = useState<Player[]>([]);
+  // Il gruppo, gli extra (senza app) e gli ospiti di questa partita.
   const allPlayers = useMemo(
-    () => [...data.players, ...guests],
-    [data.players, guests],
+    () => [...data.players, ...(data.extras ?? []), ...guests],
+    [data.players, data.extras, guests],
+  );
+  const known = useCallback(
+    (id: string) =>
+      data.players.some((p) => p.id === id) || (data.extras ?? []).some((p) => p.id === id),
+    [data.players, data.extras],
   );
   const addGuest = () => {
     const n = guests.length + 1;
@@ -187,9 +193,10 @@ function NewMatchInner() {
     if (editing) {
       // Gli ospiti tornano nella partita, con il loro tabellino.
       const lines = [...editing.players, ...(editing.guests ?? [])];
+      // (gli extra no: sono già tra i giocatori da scegliere)
       setGuests(
-        (data.guests ?? []).filter((g) =>
-          editing.guests?.some((l) => l.playerId === g.id),
+        (data.guests ?? []).filter(
+          (g) => !g.extra && editing.guests?.some((l) => l.playerId === g.id),
         ),
       );
       setFormat(editing.format);
@@ -213,15 +220,15 @@ function NewMatchInner() {
     }
     const ids = (params.get("players") ?? "")
       .split(",")
-      .filter((id) => data.players.some((p) => p.id === id));
+      .filter(known);
     const f = params.get("format") as Format | null;
     // Dalle squadre già fatte (con i cambi in fondo a ogni squadra).
     const fromA = (params.get("a") ?? "")
       .split(",")
-      .filter((id) => data.players.some((p) => p.id === id));
+      .filter(known);
     const fromB = (params.get("b") ?? "")
       .split(",")
-      .filter((id) => data.players.some((p) => p.id === id));
+      .filter(known);
     if (f && FORMATS.includes(f) && fromA.length && fromB.length) {
       setFormat(f);
       setAssign(
@@ -252,7 +259,7 @@ function NewMatchInner() {
       }
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [data.players, data.guests, editId, editing, params, engine.elo.ratings]);
+  }, [data.players, data.guests, known, editId, editing, params, engine.elo.ratings]);
 
   const size = TEAM_SIZE[format];
   const a = teamIds(assign, "A");
