@@ -1,7 +1,11 @@
 """Studio Campetto: dalla scaletta (battute + grafiche) alla puntata pronta per l'app.
 
-Per ogni battuta genera la voce (voci neurali italiane gratuite di Edge: Giuseppe e Isabella),
-con i tempi di ogni parola per i sottotitoli e l'apertura della bocca fotogramma per fotogramma.
+Per ogni battuta genera la voce, con i tempi di ogni parola per i sottotitoli e l'apertura della
+bocca fotogramma per fotogramma. Due motori: Edge (voci neurali gratuite, per battuta) oppure, con
+"tts": "gemini" nella scaletta, Gemini TTS (più naturale, con la regia in "regia"): il dialogo si
+genera a pezzi da una o due voci sul PC con la chiave (gemini-batch.mjs), e qui si ritrovano
+battute e parole col riconoscimento vocale (faster-whisper). Prima volta: scrive tts-jobs.json ed
+esce; si lancia gemini-batch.mjs, si copiano i .wav in <uscita>/gemini e si rilancia.
 Mette in fila sigla, battute, grafiche, replay e chiusura, e mixa voci e musica:
 voci pulite e compresse, musica senza bassi pesanti che si abbassa sotto le voci (ducking),
 loudness finale -15 LUFS con picchi sotto -1,5 dBTP, come i video brevi sui social.
@@ -116,7 +120,8 @@ def balance_check():
         scr = seg["screen"]
         pid = scr.get("playerId")
         if pid:
-            focus[pid] = focus.get(pid, 0) + 1
+            if scr.get("kind") != "mvp":  # il premio della serata non toglie spazio agli altri
+                focus[pid] = focus.get(pid, 0) + 1
             seen.add(pid)
         for key in ("slices", "rows"):
             for r in scr.get(key, []):
@@ -228,6 +233,193 @@ def pronounce(text):
     return text
 
 
+TTS = plan.get("tts", "edge")
+REGIA = plan.get("regia") or (
+    "Leggi in italiano, con accento italiano naturale, le battute dei conduttori dello Studio Campetto, "
+    "il commento serale alle partite di basket tra amici. Stile giornalistico da studio sportivo "
+    "televisivo italiano: tono professionale, misurato e sicuro, voce calda, intonazione naturale e varia "
+    "ma senza enfasi esagerata. Niente toni da cartone animato, niente urla, niente stupore teatrale: un "
+    "sorriso nella voce, e un filo di entusiasmo solo quando c'è davvero una notizia, sempre contenuto. "
+    "Ritmo scorrevole da notiziario, pause naturali alle virgole e ai punti."
+)
+gem_dir = os.path.join(out, "gemini")
+os.makedirs(gem_dir, exist_ok=True)
+
+
+def speaker_name(who):
+    if who == "ospite":
+        return re.sub(r"[^\w]", "", plan["guest"]["name"]) or "Ospite"
+    return re.sub(r"[^\w]", "", plan["hosts"][who])
+
+
+def gemini_voice(who):
+    v = plan["voices"][who]
+    return v.get("gemini") if isinstance(v, dict) else v
+
+
+def strip_accents(x):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", x) if unicodedata.category(c) != "Mn")
+
+
+def tok(x):
+    return re.sub(r"[^\w]", "", strip_accents(x.lower()))
+
+
+def gemini_jobs():
+    """
+    Il dialogo a pezzi per Gemini: battute di fila con al massimo due voci (una richiesta può averne
+    due), al massimo 10 battute; il coro a parte, una richiesta per voce. Ogni pezzo ha un id dal suo
+    contenuto: se il .wav c'è già non si rifà.
+    """
+    chunks, cur = [], None
+    for si, seg in enumerate(plan["segments"]):
+        for li, line in enumerate(seg["lines"]):
+            say = pronounce(line.get("say") or line["text"])
+            if line.get("with"):
+                chunks.append({"coro": True, "lines": [(si, li, line["who"], say)], "who": [line["who"], *line["with"]]})
+                cur = None
+                continue
+            if cur is None or len(cur["lines"]) >= 10 or (line["who"] not in cur["who"] and len(cur["who"]) >= 2):
+                cur = {"coro": False, "lines": [], "who": []}
+                chunks.append(cur)
+            if line["who"] not in cur["who"]:
+                cur["who"].append(line["who"])
+            cur["lines"].append((si, li, line["who"], say))
+    jobs = []
+    for c in chunks:
+        if c["coro"]:
+            _, _, _, say = c["lines"][0]
+            c["parts"] = []
+            for who in c["who"]:
+                prompt = (f"Fai, da solo, il tuo pezzo di un coro di attesa a due voci prima di una rivelazione in uno "
+                          f"studio televisivo: una lunga O sostenuta, che cresce piano, divertita ma misurata, senza parole, "
+                          f"di circa tre secondi.\n\n{say}")
+                job = {"speakers": [{"name": speaker_name(who), "voice": gemini_voice(who)}], "prompt": prompt}
+                job["id"] = hashlib.sha1(json.dumps(job, sort_keys=True).encode()).hexdigest()[:16]
+                c["parts"].append(job["id"])
+                jobs.append(job)
+            continue
+        names = {w: speaker_name(w) for w in c["who"]}
+        if len(c["who"]) > 1:
+            body = "\n".join(f"{names[w]}: {say}" for _, _, w, say in c["lines"])
+            notes = REGIA + " " + " ".join(f"{names[w]} è {plan.get('ruoli', {}).get(w, 'uno dei conduttori' if w != 'ospite' else 'l ospite, un giocatore della serata, più semplice e spontaneo')}." for w in c["who"])
+        else:
+            body = "\n".join(say for _, _, _, say in c["lines"])
+            notes = REGIA
+        job = {"speakers": [{"name": names[w], "voice": gemini_voice(w)} for w in c["who"]], "prompt": notes + "\n\n" + body}
+        job["id"] = hashlib.sha1(json.dumps(job, sort_keys=True).encode()).hexdigest()[:16]
+        c["parts"] = [job["id"]]
+        jobs.append(job)
+    return chunks, jobs
+
+
+_whisper = None
+
+
+def whisper_words(path):
+    """Le parole dette, con inizio e fine, dal riconoscimento vocale (in cache accanto al .wav)."""
+    global _whisper
+    meta = path + ".words.json"
+    if os.path.exists(meta):
+        return json.load(open(meta))
+    if _whisper is None:
+        from faster_whisper import WhisperModel
+        _whisper = WhisperModel(os.environ.get("STUDIO_WHISPER", "small"), device="cpu", compute_type="int8")
+    pcm = run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "s16le", "-"]).stdout
+    audio = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768
+    segs, _ = _whisper.transcribe(audio, language="it", word_timestamps=True, vad_filter=False)
+    words = [[w.word.strip(), float(w.start), float(w.end)] for sg in segs for w in sg.words]
+    json.dump(words, open(meta, "w"), ensure_ascii=False)
+    return words
+
+
+def align_chunk(c):
+    """
+    Dal pezzo di dialogo alle battute: si allineano le parole riconosciute con quelle del copione
+    (numeri e nomi detti in modo diverso si spalmano sul tratto corrispondente), poi ogni battuta
+    prende il suo pezzo d'audio e i tempi delle sue parole.
+    """
+    path = os.path.join(gem_dir, c["parts"][0] + ".wav")
+    heard = whisper_words(path)
+    a, sr_in = sf.read(path, dtype="float32")
+    script = [(k, w) for k, (_, _, _, say) in enumerate(c["lines"]) for w in say.split()]
+    A, B = [tok(w) for _, w in script], [tok(w) for w, _, _ in heard]
+    times = [None] * len(script)
+    sm_ = difflib.SequenceMatcher(a=A, b=B, autojunk=False)
+    for op, i1, i2, j1, j2 in sm_.get_opcodes():
+        if op == "equal":
+            for k in range(i2 - i1):
+                times[i1 + k] = [heard[j1 + k][1], heard[j1 + k][2]]
+        elif op == "replace":
+            t0, t1 = heard[j1][1], heard[j2 - 1][2]
+            lens = [max(1, len(script[i][1])) for i in range(i1, i2)]
+            acc, tot = 0, sum(lens)
+            for n, i in enumerate(range(i1, i2)):
+                times[i] = [t0 + (t1 - t0) * acc / tot, t0 + (t1 - t0) * (acc + lens[n]) / tot]
+                acc += lens[n]
+    # Le parole non sentite: tra la precedente e la successiva.
+    for i in range(len(times)):
+        if times[i] is None:
+            prev = next((times[j][1] for j in range(i - 1, -1, -1) if times[j]), 0.0)
+            nxt = next((times[j][0] for j in range(i + 1, len(times)) if times[j]), prev + 0.3)
+            times[i] = [prev, max(prev + 0.05, min(nxt, prev + 0.4))]
+    total = len(a) / sr_in
+    spans = []
+    for k in range(len(c["lines"])):
+        idx = [i for i, (kk, _) in enumerate(script) if kk == k]
+        spans.append([times[idx[0]][0], times[idx[-1]][1]])
+    res = []
+    for k, (si, li, who, say) in enumerate(c["lines"]):
+        s0 = max(0.0, spans[k][0] - 0.08)
+        if k:
+            s0 = max(s0, (spans[k - 1][1] + spans[k][0]) / 2)
+        s1 = min(total, spans[k][1] + 0.18)
+        if k + 1 < len(spans):
+            s1 = min(s1, (spans[k][1] + spans[k + 1][0]) / 2)
+        seg_a = a[int(s0 * sr_in):int(s1 * sr_in)]
+        words = [[w, round(times[i][0] - s0, 3), round(times[i][1] - s0, 3)] for i, (kk, w) in enumerate(script) if kk == k]
+        res.append((si, li, seg_a, sr_in, words))
+    return res
+
+
+GEM = {}
+
+
+def gemini_prepare():
+    """Le voci di tutta la puntata: se manca qualche pezzo scrive tts-jobs.json ed esce."""
+    chunks, jobs = gemini_jobs()
+    missing = [j for j in jobs if not os.path.exists(os.path.join(gem_dir, j["id"] + ".wav"))]
+    if missing:
+        json.dump(missing, open(os.path.join(out, "tts-jobs.json"), "w"), ensure_ascii=False, indent=1)
+        sys.exit(f"Voci Gemini da generare: {len(missing)} richieste in {os.path.join(out, 'tts-jobs.json')}. "
+                 f"Sul PC: node gemini-batch.mjs tts-jobs.json <cartella>, poi i .wav in {gem_dir} e si rilancia.")
+    for c in chunks:
+        if c["coro"]:
+            si, li, who, say = c["lines"][0]
+            parts = []
+            for pid in c["parts"]:
+                x, sr_in = sf.read(os.path.join(gem_dir, pid + ".wav"), dtype="float32")
+                on = np.where(np.abs(x) > 0.01)[0]
+                parts.append(x[on[0]:on[-1]] if len(on) else x)
+            n = max(len(x) for x in parts)
+            mix = sum(np.pad(x, (0, n - len(x))) for x in parts) * 0.72
+            GEM[(si, li)] = (mix.astype(np.float32), sr_in, [[say, 0.05, round(n / sr_in - 0.1, 3)]])
+        else:
+            for si, li, seg_a, sr_in, words in align_chunk(c):
+                GEM[(si, li)] = (seg_a, sr_in, words)
+
+
+def gemini_line(si, li):
+    """Il pezzo d'audio di una battuta, già pronto come file, e le sue parole (tempi dal suo inizio)."""
+    seg_a, sr_in, words = GEM[(si, li)]
+    key = hashlib.sha1(seg_a.tobytes()).hexdigest()[:16]
+    raw = os.path.join(cache, f"g-{key}-raw.flac")
+    if not os.path.exists(raw):
+        sf.write(raw, seg_a, sr_in)
+    return raw, words
+
+
 def sign_off():
     """Ogni puntata finisce con la firma dei due conduttori, dopo i saluti."""
     if plan.get("firma") is False:
@@ -247,6 +439,9 @@ def sign_off():
 async def main():
     balance_check()
     sign_off()
+    if TTS == "gemini":
+        gemini_prepare()
+    line_t = {}
     t = plan.get("intro", 4.5)
     lines, shots, props, cues = [], [], [], []
     voice_track = []
@@ -286,7 +481,10 @@ async def main():
             say = pronounce(line.get("say") or text)
             if line["who"] == "ospite" and guest and t < guest["sit"] + 0.15:
                 t = guest["sit"] + 0.15  # parla da seduto
-            mp3, words = await tts(*voice_of(line["who"], line), say)
+            if TTS == "gemini":
+                mp3, words = gemini_line(si, li)
+            else:
+                mp3, words = await tts(*voice_of(line["who"], line), say)
             a = clean_voice(mp3)
             # Via i silenzi in testa e in coda (le pause le decide la scaletta).
             env = np.abs(a)
@@ -334,7 +532,11 @@ async def main():
                     cues.append({"t": round(ts, 3), "kind": "whoosh"})
                 shots.append({"t": round(ts, 3), "cam": cam, "screen": shown_screen})
                 cur = cam
-            lines.append({"who": line["who"], "t": round(t, 3), "d": round(d, 3), "text": text, "mouth": mouth(a), "words": ws})
+            out_line = {"who": line["who"], "t": round(t, 3), "d": round(d, 3), "text": text, "mouth": mouth(a), "words": ws}
+            if line.get("with"):
+                out_line["with"] = line["with"]  # il coro: si muove la bocca a tutti
+            lines.append(out_line)
+            line_t[(si, li)] = t
             if line.get("act") and line["who"] in ("lui", "lei"):
                 props.append({"t": round(t + 0.3, 2), "who": line["who"], "act": line["act"]})
             voice_track.append((t, a))
@@ -380,6 +582,13 @@ async def main():
             music_marks.append((r0, ct, 0.55))
             t = ct + 0.35
             cur = "replay"  # dopo il replay si torna in studio con uno stacco su chi parla
+    # MVP: "reveal": {"line": n} = la rivelazione arriva con la battuta n del suo pezzo, a zoom finito.
+    for si, scr in enumerate(screens):
+        rv = scr.get("reveal")
+        if scr.get("kind") == "mvp" and isinstance(rv, dict):
+            since = min(sh["t"] for sh in shots if sh["screen"] == si)
+            target = line_t[(si, rv["line"])] + rv.get("after", 1.0)
+            scr["reveal"] = round(max(3.2, target - since), 2)
     last_voice = lines[-1]["t"] + lines[-1]["d"]
     outro_t = round(last_voice + 0.4, 3)
     duration = round(outro_t + plan.get("outro", 5.0), 2)
@@ -500,7 +709,8 @@ async def main():
         episodes = json.load(open(os.path.join(public_dir, "studio", "puntate.json")))
     except (OSError, ValueError):
         episodes = []
-    episodes = sorted([e for e in episodes if e.get("id") != plan["id"]] + [entry], key=lambda e: e["day"], reverse=True)
+    # Una puntata per serata: una nuova versione dello stesso giorno prende il posto della vecchia.
+    episodes = sorted([e for e in episodes if e.get("id") != plan["id"] and e.get("day") != plan["day"]] + [entry], key=lambda e: e["day"], reverse=True)
     json.dump(episodes, open(os.path.join(out, "puntate.json"), "w"))
     check = run(["ffmpeg", "-v", "info", "-i", os.path.join(out, audio_name), "-af", "loudnorm=print_format=json", "-f", "null", "-"]).stderr.decode()
     cj = json.loads(check[check.rindex("{"): check.rindex("}") + 1])
