@@ -131,7 +131,8 @@ export const StudioScreenView = memo(function StudioScreenView({ screen }: { scr
 
 function Body({ screen }: { screen: StudioScreen }) {
   const { data } = useData();
-  const player = (id: string) => data.players.find((p) => p.id === id);
+  // Anche ospiti ed extra (senza app): nei risultati della serata hanno il loro nome.
+  const player = (id: string) => data.players.find((p) => p.id === id) ?? data.guests?.find((p) => p.id === id);
   const name = (id: string) => shortName(player(id));
 
   switch (screen.kind) {

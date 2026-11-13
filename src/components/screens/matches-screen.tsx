@@ -63,10 +63,16 @@ const MatchRow = memo(function MatchRow({
     );
   const names = (t: "A" | "B") => {
     const line = m.players.filter((p) => p.team === t);
-    const guests = (m.guests ?? []).filter((p) => p.team === t).length;
+    // Gli ospiti restano "ospite"; gli extra (senza app) col loro nome.
+    const guests = (m.guests ?? [])
+      .filter((p) => p.team === t)
+      .map((l) => {
+        const g = data.guests?.find((x) => x.id === l.playerId);
+        return g?.extra ? shortName(g) : "ospite";
+      });
     const base = [
       ...line.filter((p) => !p.sub).map((p) => nm(p.playerId)),
-      ...Array.from({ length: guests }, () => "ospite"),
+      ...guests,
     ].join(", ");
     const subs = line.filter((p) => p.sub).map((p) => nm(p.playerId));
     return subs.length ? `${base} + ${subs.join(", ")}` : base;
