@@ -594,23 +594,13 @@ async def main():
             music_marks.append((guest["rise"], guest["exit"] - 0.6, 0.42))
             t = guest["rise"] + seg.get("afterExit", 1.3)
         if seg.get("replay"):
-            # Due modi. Classico: i canestri, interi, uno dopo l'altro a tutto schermo dopo le battute.
-            # "muro": le azioni passano già sul maxischermo mentre si parla (dall'inizio del pezzo);
-            # finite le battute la telecamera entra nel maxischermo e le azioni vanno a tutto schermo,
-            # al massimo "pieno" secondi (15), poi si stacca. Nessuno le annuncia.
+            # Due modi. "muro": le azioni passano sul maxischermo mentre si parla (dall'inizio del
+            # pezzo, ricominciando se le battute durano di più), come una grafica qualsiasi: niente
+            # sezione dedicata, niente tutto schermo, nessuno le annuncia.
+            # Classico (vecchie puntate): i canestri interi uno dopo l'altro a tutto schermo.
             muro = seg.get("replay") == "muro"
-            if muro:
-                zoom_t = t - GAP + 0.2
-                shots.append({"t": round(zoom_t, 3), "cam": "schermo", "screen": si})
-                r0 = zoom_t + 1.0
-                ct = seg_start
-            else:
-                r0 = t - GAP + 0.25
-                ct = r0
-            shots.append({"t": round(r0, 3), "cam": "replay", "screen": si})
-            cues.append({"t": round(r0, 3), "kind": "whoosh"})
-            for c in screen["clips"]:
-                c["t"] = round(ct, 3)
+            base = [dict(c) for c in screen["clips"]]
+            for c in base:
                 path = os.path.join(public_dir, c["src"].lstrip("/"))
                 hoop = tuple(c.pop("hoop", (0.2, 0.25)))
                 if os.path.exists(path):
@@ -621,13 +611,30 @@ async def main():
                     c["bg"] = "data:image/jpeg;base64," + base64.b64encode(jpg).decode()
                 else:
                     print("replay: video non trovato, si vede il campo intero:", path)
-                ct += c["to"] - c["from"]
-            end_r = min(ct, r0 + seg.get("pieno", 15)) if muro else ct
-            if muro and ct < r0 + 3:
-                print("replay muro: poche azioni dopo lo zoom (servono più clip o battute più corte)")
-            music_marks.append((r0, end_r, 0.55))
-            t = end_r + 0.35
-            cur = "replay"  # dopo il replay si torna in studio con uno stacco su chi parla
+            clips = []
+            if muro:
+                ct = seg_start
+                k = 0
+                while ct < t + 0.5 and base:
+                    c = dict(base[k % len(base)])
+                    c["t"] = round(ct, 3)
+                    clips.append(c)
+                    ct += c["to"] - c["from"]
+                    k += 1
+                screen["clips"] = clips
+            else:
+                r0 = t - GAP + 0.25
+                shots.append({"t": round(r0, 3), "cam": "replay", "screen": si})
+                cues.append({"t": round(r0, 3), "kind": "whoosh"})
+                ct = r0
+                for c in base:
+                    c["t"] = round(ct, 3)
+                    clips.append(c)
+                    ct += c["to"] - c["from"]
+                screen["clips"] = clips
+                music_marks.append((r0, ct, 0.55))
+                t = ct + 0.35
+                cur = "replay"  # dopo il replay si torna in studio con uno stacco su chi parla
     # MVP: "reveal": {"line": n} = la rivelazione arriva con la battuta n del suo pezzo, a zoom finito.
     for si, scr in enumerate(screens):
         rv = scr.get("reveal")

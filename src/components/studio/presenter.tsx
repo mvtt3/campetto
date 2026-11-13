@@ -9,8 +9,9 @@ const CREAM = "#FFF8EA";
 
 /**
  * I due presentatori dello Studio Campetto: la stessa testa a pallone dei personaggi dell'app.
- * Paul (lui): felpa grigio grafite col cappuccio e i lacci, cappellino nero girato all'indietro,
- * niente occhiali. Silvia Dema (lei): capelli lunghi ramati, occhiali sottili dorati, tunica
+ * Paul (lui): felpa grigio grafite col cappuccio e i lacci, cappellino nero girato all'indietro
+ * (visiera piatta che esce da dietro), niente occhiali. Silvia Dema (lei): caschetto ramato con
+ * la frangia, occhiali sottili dorati, tunica
  * indiana (kurta) verde petrolio con il collo alla coreana e i ricami dorati.
  *
  * Si muovono con poche variabili CSS che il player aggiorna a ogni fotogramma, senza
@@ -23,7 +24,6 @@ const KURTA = "#167A6C";
 const KURTA_DARK = "#0F5A50";
 const GOLD = "#E3B23C";
 const HAIR = "#A8462A";
-const HAIR_DARK = "#7C301C";
 const CAP = "#141414";
 
 export const Presenter = memo(function Presenter({ who, className }: { who: "lui" | "lei"; className?: string }) {
@@ -80,16 +80,16 @@ export const Presenter = memo(function Presenter({ who, className }: { who: "lui
         {/* La testa annuisce e si gira verso chi parla. */}
         <g className="studio-head">
           {lei && (
-            // I capelli lunghi ramati, dietro la testa e giù sulle spalle.
-            <path
-              d="M42 92 Q36 28 100 24 Q164 28 158 92 Q164 150 152 186 Q140 182 134 156 L132 118 L68 118 L66 156 Q60 182 48 186 Q36 150 42 92 Z"
-              fill={HAIR}
-              stroke={INK}
-              strokeWidth="4"
-              strokeLinejoin="round"
-            />
+            // Il caschetto ramato dietro la testa (come quello di prima).
+            <path d="M44 92 Q40 30 100 26 Q160 30 156 92 Q158 122 146 130 L132 118 L68 118 L54 130 Q42 122 44 92 Z" fill={HAIR} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
           )}
-          {lei && <path d="M50 120 Q52 150 50 176 M150 120 Q148 150 150 176" stroke={HAIR_DARK} strokeWidth="3" fill="none" strokeLinecap="round" />}
+          {!lei && (
+            // La visiera piatta del cappellino girato: esce da dietro la testa, dritta.
+            <g>
+              <path d="M112 50 L178 38 Q186 37 186 44 L186 47 Q186 52 179 53 L114 62 Z" fill={CAP} stroke={INK} strokeWidth="3.4" strokeLinejoin="round" />
+              <path d="M150 49.5 L182 44.5" stroke="#3E3E3E" strokeWidth="2.4" strokeLinecap="round" />
+            </g>
+          )}
           <circle cx="100" cy="82" r="50" fill={BALL} />
           <g clipPath={`url(#ball-${uid})`}>
             <path d="M58 58 A62 62 0 0 0 134 132 L160 140 L160 20 Z" fill={`url(#dots-${uid})`} opacity="0.9" />
@@ -98,19 +98,19 @@ export const Presenter = memo(function Presenter({ who, className }: { who: "lui
           </g>
           <circle cx="100" cy="82" r="50" fill="none" stroke={INK} strokeWidth="4.5" />
           {lei ? (
-            // Frangia ramata, divisa di lato.
-            <path d="M52 68 Q60 26 102 27 Q140 28 148 66 Q132 50 114 52 Q104 40 92 50 Q72 46 52 68 Z" fill={HAIR} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
+            // La frangia, come prima, ramata.
+            <path d="M52 66 Q62 28 100 28 Q138 28 148 66 Q128 52 112 56 Q100 44 86 56 Q70 50 52 66 Z" fill={HAIR} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
           ) : (
             <>
-              {/* Il cappellino nero girato all'indietro: la visiera spunta dietro, davanti l'apertura con la fibbia. */}
-              {/* La visiera, girata dietro: spunta in alto a destra, oltre la testa. */}
-              <path d="M112 30 Q142 6 176 14 Q178 22 170 26 Q146 28 128 40 Z" fill={CAP} stroke={INK} strokeWidth="3.4" strokeLinejoin="round" />
-              <path d="M132 30 Q150 18 170 18" fill="none" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" opacity="0.2" />
-              <path d="M50 64 Q50 21 100 19 Q150 21 150 64 Q100 34 50 64 Z" fill={CAP} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
-              <path d="M86 50 Q100 34 114 50 Z" fill={BALL} stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
-              <path d="M86 46 H114" stroke="#3A3A3A" strokeWidth="3" />
-              <circle cx="100" cy="20" r="3" fill={CAP} stroke={INK} strokeWidth="2" />
-              <path d="M62 34 Q80 24 98 23" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" opacity="0.22" />
+              {/* La calotta del cappellino nero: sei spicchi con le cuciture e il bottone in cima;
+                  davanti, girata, l'apertura con la fibbia. */}
+              <path d="M50 62 Q49 20 100 18 Q151 20 150 62 Q100 40 50 62 Z" fill={CAP} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
+              <path d="M100 19 Q82 26 74 50 M100 19 Q118 26 126 50 M100 19 L100 41" fill="none" stroke="#3A3A3A" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M84 50 Q100 30 116 50 Z" fill={BALL} stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
+              <path d="M84 45 H116" stroke="#2B2B2B" strokeWidth="3.4" />
+              <rect x="96" y="42" width="8" height="6" rx="1.5" fill="#9AA0A8" stroke={INK} strokeWidth="1.4" />
+              <circle cx="100" cy="18.5" r="3.2" fill={CAP} stroke={INK} strokeWidth="2" />
+              <path d="M60 36 Q76 25 94 23" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" opacity="0.2" />
             </>
           )}
 

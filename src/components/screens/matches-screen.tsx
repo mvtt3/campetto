@@ -23,7 +23,7 @@ import { MatchSheet } from "@/components/match-sheet";
 import { NightHighlightsButton } from "@/components/highlights/entry";
 import {
   StudioDateBadge,
-  StudioNewsCard,
+  StudioNightCard,
   useStudioEpisode,
 } from "@/components/studio/studio-entry";
 import { EmptyState, Segmented } from "@/components/ui/basics";
@@ -255,7 +255,7 @@ function NightCard({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-2 border-t border-line p-3">
-              {episode && <StudioNewsCard latest={episode} />}
+              {episode && <StudioNightCard latest={episode} />}
               {night.items.map((m) => (
                 <MatchRow key={m.id} m={m} onOpen={onOpen} />
               ))}

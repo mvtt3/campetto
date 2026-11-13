@@ -860,8 +860,8 @@ function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
   if (on === "apertura")
     return (
       <>
-        <Plate key="lei" name={show.hosts.lei} role="Conduttrice" style={{ left: "3.5%", top: "66%", maxWidth: "39%" }} out={(show.opening ?? 3) - 0.6} small />
-        <Plate key="lui" name={show.hosts.lui} role="Conduttore" style={{ right: "3.5%", top: "66%", maxWidth: "39%" }} out={(show.opening ?? 3) - 0.6} small right />
+        <Plate key="lei" name={show.hosts.lei} role="Conduttrice" style={{ left: "3.5%", top: "66%", maxWidth: "46%" }} out={(show.opening ?? 3) - 0.6} small />
+        <Plate key="lui" name={show.hosts.lui} role="Conduttore" style={{ right: "3.5%", top: "66%", maxWidth: "46%" }} out={(show.opening ?? 3) - 0.6} small right />
       </>
     );
   if (on === "ospite" && show.guest)
@@ -886,7 +886,9 @@ function Plate({ name, role, style, out, small, right }: { name: string; role: s
       )}
       <span className="min-w-0">
         <span className={clsx("block whitespace-nowrap font-semibold tracking-[0.01em] text-volt", small ? "text-[10.5px]" : "text-[12.5px]")}>{role}</span>
-        <span className={clsx("display block truncate leading-[1.02]", small ? "text-[20px]" : "text-[30px]")}>{name}</span>
+        <span className="display block whitespace-nowrap leading-[1.02]" style={{ fontSize: small ? (name.length > 8 ? 16.5 : 20) : name.length > 12 ? 24 : 30 }}>
+          {name}
+        </span>
       </span>
     </div>
   );
