@@ -21,11 +21,9 @@ import {
 } from "react";
 import { MatchSheet } from "@/components/match-sheet";
 import { NightHighlightsButton } from "@/components/highlights/entry";
-import { StudioShowLoader } from "@/components/studio/studio-show";
 import {
-  setStudioSeen,
-  StudioNightBadge,
-  studioSeen,
+  StudioDateBadge,
+  StudioNewsCard,
   useStudioEpisode,
 } from "@/components/studio/studio-entry";
 import { EmptyState, Segmented } from "@/components/ui/basics";
@@ -179,7 +177,6 @@ function NightCard({
   // La puntata dello Studio di questa serata, se c'è: si apre dal bollino e si richiude da sola.
   const day = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`;
   const episode = useStudioEpisode(day);
-  const [studio, setStudio] = useState(false);
   const ids = new Set(
     night.items.flatMap((m) => m.players.map((l) => l.playerId)),
   );
@@ -200,37 +197,22 @@ function NightCard({
     >
       <button
         type="button"
-        onClick={(e) => {
-          if (episode && (e.target as HTMLElement).closest("[data-studio-badge]")) {
-            setStudioSeen(episode.id);
-            setStudio(true);
-            return;
-          }
-          onToggle();
-        }}
+        onClick={onToggle}
         aria-expanded={open}
         className="press flex w-full items-center gap-3 p-3 text-left"
       >
-        <div className="flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-raised">
+        <div className="relative flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-raised">
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] opacity-70">
             {WEEKDAY.format(at)}
           </span>
           <span className="num text-[22px] leading-none">{at.getDate()}</span>
           <span className="sr-only">{MONTH.format(at)}</span>
+          {episode && <StudioDateBadge />}
         </div>
         <div className="min-w-0 flex-1">
-          {episode ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <p className="title truncate text-[16px]">
-                {countLabel(night.items.length)}
-              </p>
-              <StudioNightBadge fresh={!studio && !studioSeen(episode.id)} />
-            </div>
-          ) : (
-            <p className="title truncate text-[16px]">
-              {countLabel(night.items.length)}
-            </p>
-          )}
+          <p className="title truncate text-[16px]">
+            {countLabel(night.items.length)}
+          </p>
           <div className="mt-1 flex items-center gap-1.5">
             {won + lost > 0 && (
               <span
@@ -273,6 +255,7 @@ function NightCard({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-2 border-t border-line p-3">
+              {episode && <StudioNewsCard latest={episode} />}
               {night.items.map((m) => (
                 <MatchRow key={m.id} m={m} onOpen={onOpen} />
               ))}
@@ -281,9 +264,6 @@ function NightCard({
           </motion.div>
         )}
       </AnimatePresence>
-      {studio && episode && (
-        <StudioShowLoader id={episode.id} onClose={() => setStudio(false)} />
-      )}
     </div>
   );
 }

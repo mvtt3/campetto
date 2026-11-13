@@ -1,7 +1,6 @@
 "use client";
 
 import { IconDeviceTv, IconPlayerPlayFilled } from "@tabler/icons-react";
-import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { useData } from "@/lib/data/provider";
 import { STUDIO_LATEST, STUDIO_LIST } from "@/lib/studio";
@@ -97,30 +96,23 @@ export function useStudioEpisode(day: string): StudioLatest | null {
 }
 
 /**
- * Il bollino dello Studio nella riga di una serata, accanto al numero di partite. Non è un
- * pulsante a parte (la riga è già un pulsante): è la riga a riconoscere il tocco su
- * [data-studio-badge] e ad aprire la puntata. L'area di tocco è più grande del bollino.
+ * Il segno dello Studio sulla data di una serata (come un bollino su una miniatura): dice che
+ * c'è la puntata; la scheda per guardarla è in cima alla serata aperta.
  */
-export function StudioNightBadge({ fresh }: { fresh: boolean }) {
+export function StudioDateBadge() {
   return (
     <span
-      data-studio-badge
-      title="Guarda la puntata dello Studio"
+      title="C'è la puntata dello Studio"
       data-testid="studio-night"
-      className="studio-badge press relative inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-2.5 text-[12.5px] font-semibold text-court-deep before:absolute before:-inset-x-1.5 before:-inset-y-2.5 before:content-[''] dark:text-[#b9c8ff]"
+      className="studio-badge-tv pointer-events-none absolute -bottom-1.5 -right-1.5 grid h-[22px] w-[22px] place-items-center rounded-full text-volt ring-[2.5px] ring-surface"
     >
-      <span className="studio-badge-tv grid h-5 w-5 place-items-center rounded-full text-volt">
-        <IconDeviceTv size={13} stroke={2.2} aria-hidden />
-      </span>
-      Studio
-      {fresh && <span aria-hidden className={clsx("new-dot absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-ball")} />}
+      <IconDeviceTv size={13} stroke={2.2} aria-hidden />
     </span>
   );
 }
 
 export const studioDay = (day: string) =>
   new Date(`${day}T12:00:00`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
-export const studioLength = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
 /** I due presentatori, piccoli, uno accanto all'altra: la copertina della puntata. */
 export function StudioHosts({ size = 92 }: { size?: number }) {
@@ -155,7 +147,7 @@ export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
         <span className="min-w-0 flex-1">
           <span className="block text-[12px] font-semibold text-volt">Studio Campetto</span>
           <span className="block text-[14.5px] font-semibold leading-snug">La puntata di {studioDay(latest.day)}</span>
-          <span className="block text-[12.5px] text-white/70">Risultati, record e canestri · {studioLength(latest.duration)}</span>
+          <span className="block text-[12.5px] text-white/70">Risultati, record, MVP e canestri</span>
         </span>
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[#0C1736]">
           <IconPlayerPlayFilled size={18} aria-hidden />

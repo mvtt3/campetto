@@ -187,11 +187,17 @@ export interface StudioShow {
   duration: number;
   /** Quanto dura la sigla iniziale. */
   intro: number;
+  /**
+   * Dopo la sigla, quanti secondi di inquadratura larga senza parlare, con le targhe dei due
+   * conduttori sotto ciascuno: le presentazioni, prima di cominciare.
+   */
+  opening?: number;
   /** Da quando c'è la scheda finale, e la prossima partita annunciata. */
   outro: { t: number; next?: { startsAt: string; place?: string } | null };
   credits: string;
   screens: StudioScreen[];
-  shots: { t: number; cam: StudioCam; screen: number }[];
+  /** move: secondi di movimento morbido dall'inquadratura di prima (es. l'allargata finale). */
+  shots: { t: number; cam: StudioCam; screen: number; move?: number }[];
   lines: StudioLine[];
   props: { t: number; who: StudioHost; act: "foglio" }[];
   guest?: StudioGuest | null;
@@ -293,9 +299,11 @@ export function cameraAt(show: Pick<StudioShow, "shots" | "intro" | "guest">, t:
       prevCam = show.shots[k].cam as WorldCam;
       break;
     }
-  if (cam === "schermo" && prevCam && prevCam !== "schermo") {
+  const move = show.shots[i].move;
+  if ((move || cam === "schermo") && prevCam && prevCam !== cam) {
+    // Lo zoom sul maxischermo, o un movimento chiesto dalla regia (l'allargata finale sullo studio).
     const prev = camOf(prevCam, apart);
-    const u = ease(clamp01((t - show.shots[i].t) / 0.85));
+    const u = ease(clamp01((t - show.shots[i].t) / (move ?? 0.85)));
     out = { s: prev.s + (out.s - prev.s) * u, x: prev.x + (out.x - prev.x) * u, y: prev.y + (out.y - prev.y) * u };
   }
   // Uscendo dalla sigla la telecamera si allarga sullo studio, solo sull'inquadratura larga.

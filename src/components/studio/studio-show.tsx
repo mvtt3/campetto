@@ -34,7 +34,6 @@ import {
   studioUrl,
   type StudioHost,
   type StudioShow,
-  type StudioWho,
   captionZoneAt,
 } from "@/lib/studio";
 import { KIT } from "@/components/avatar-presets";
@@ -789,41 +788,60 @@ function Captions({ show, now, hidden }: { show: StudioShow; now: () => number; 
   );
 }
 
-/** Il nome di chi parla, la prima volta che è inquadrato da vicino, come in TV; quello
- *  dell'ospite appena si siede. */
+/**
+ * Le targhe con i nomi, una volta sola per ciascuno (come in TV). In apertura, sull'inquadratura
+ * larga e prima che si parli, quelle dei due conduttori in basso, ognuna sotto il suo; quella
+ * dell'ospite in basso, sotto di lui, appena si siede (sopra c'è il maxischermo con i suoi numeri).
+ * Nelle puntate senza apertura i conduttori hanno la targa in alto al loro primo primo piano.
+ */
 function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
-  const [who, setWho] = useState<StudioWho | null>(null);
+  const [on, setOn] = useState<"apertura" | "ospite" | "lui" | "lei" | null>(null);
   useEffect(() => {
-    const firsts: { w: StudioWho; t: number }[] = (["lui", "lei"] as const).map((w) => ({ w, t: show.shots.find((s) => s.cam === w)?.t ?? -99 }));
-    if (show.guest) firsts.push({ w: "ospite", t: show.guest.sit + 0.2 });
+    const opening = show.opening ?? 0;
+    const firsts: { w: "apertura" | "ospite" | "lui" | "lei"; t: number; d: number }[] = opening
+      ? [{ w: "apertura", t: show.intro + 0.25, d: Math.max(2.4, opening - 0.1) }]
+      : (["lui", "lei"] as const).map((w) => ({ w, t: show.shots.find((s) => s.cam === w)?.t ?? -99, d: 3.6 }));
+    if (show.guest) firsts.push({ w: "ospite", t: show.guest.sit + 0.2, d: 4.2 });
     let raf = 0;
-    let last: StudioWho | null = null;
+    let last: string | null = null;
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
-      const on = firsts.find((f) => t >= f.t && t < f.t + (f.w === "ospite" ? 4.2 : 3.6))?.w ?? null;
-      if (on !== last) {
-        last = on;
-        setWho(on);
+      const cur = firsts.find((f) => t >= f.t && t < f.t + f.d)?.w ?? null;
+      if (cur !== last) {
+        last = cur;
+        setOn(cur);
       }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [show, now]);
-  if (!who) return null;
-  const guest = who === "ospite" ? show.guest : null;
-  const name = guest ? guest.name : show.hosts[who as StudioHost];
-  const role = guest ? "Ospite in studio" : who === "lei" ? "Conduttrice" : "Conduttore";
+  if (!on) return null;
+  if (on === "apertura")
+    return (
+      <>
+        <Plate key="lei" name={show.hosts.lei} role="Conduttrice" style={{ left: "3.5%", top: "66%", maxWidth: "39%" }} out={(show.opening ?? 3) - 0.6} small />
+        <Plate key="lui" name={show.hosts.lui} role="Conduttore" style={{ right: "3.5%", top: "66%", maxWidth: "39%" }} out={(show.opening ?? 3) - 0.6} small right />
+      </>
+    );
+  if (on === "ospite" && show.guest)
+    return <Plate key="ospite" name={show.guest.name} role="Ospite in studio" style={{ left: "50%", top: "71%", maxWidth: "70%", translate: "-50% 0" }} out={3.85} />;
+  return <Plate key={on} name={show.hosts[on as StudioHost]} role={on === "lei" ? "Conduttrice" : "Conduttore"} style={{ left: 20, top: "18%", maxWidth: "calc(100% - 40px)" }} out={3.25} />;
+}
+
+/** Una targa: vetro blu senza bordi, il badge dello Studio in giallo, il ruolo sopra il nome. */
+function Plate({ name, role, style, out, small, right }: { name: string; role: string; style: CSSProperties; out: number; small?: boolean; right?: boolean }) {
   return (
-    // Grande e in alto, sopra la testa di chi è inquadrato: si legge con calma e lascia libere
-    // la faccia e la zona dei sottotitoli. Vetro blu, niente bordi, il badge dello Studio in giallo.
-    <div key={who} className="studio-plate pointer-events-none absolute left-5 z-10 flex max-w-[calc(100%-40px)] items-center gap-3 rounded-[24px] py-2.5 pl-2.5 pr-5 text-white" style={{ top: "18%", ["--plate-out" as string]: guest ? "3.85s" : "3.25s" }}>
-      <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[18px] bg-volt shadow-[0_6px_14px_-6px_rgb(0_0_0/0.5)]">
-        <Logo size={40} text={false} />
+    <div
+      className={clsx("studio-plate pointer-events-none absolute z-10 flex items-center text-white", small ? "gap-2 rounded-[20px] py-2 pl-2 pr-3.5" : "gap-3 rounded-[24px] py-2.5 pl-2.5 pr-5", right && "flex-row-reverse pl-3.5 pr-2 text-right")}
+      style={{ ...style, ["--plate-out" as string]: `${out}s` }}
+    >
+      <span className={clsx("grid shrink-0 place-items-center bg-volt shadow-[0_6px_14px_-6px_rgb(0_0_0/0.5)]", small ? "h-[34px] w-[34px] rounded-[12px]" : "h-[50px] w-[50px] rounded-[17px]")}>
+        <Logo size={small ? 27 : 38} text={false} />
       </span>
       <span className="min-w-0">
-        <span className="block text-[12.5px] font-semibold tracking-[0.01em] text-volt">{role}</span>
-        <span className="display block truncate text-[32px] leading-[1.02]">{name}</span>
+        <span className={clsx("block whitespace-nowrap font-semibold tracking-[0.01em] text-volt", small ? "text-[10.5px]" : "text-[12.5px]")}>{role}</span>
+        <span className={clsx("display block truncate leading-[1.02]", small ? "text-[20px]" : "text-[30px]")}>{name}</span>
       </span>
     </div>
   );

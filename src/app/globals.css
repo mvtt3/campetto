@@ -3053,24 +3053,12 @@ html[data-shot="3"] .intro-ball-x {
     transform: translateY(26px) scale(0.94);
   }
 }
-/* Il bollino della serata: vetro azzurro campo, niente bordi, la TV su un tondo blu con riflesso giallo. */
-.studio-badge {
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgb(255 197 49 / 0.22), transparent 55%),
-    linear-gradient(135deg, rgb(45 91 227 / 0.16), rgb(31 69 184 / 0.08));
-  box-shadow: 0 6px 14px -8px rgb(31 69 184 / 0.55);
-  backdrop-filter: blur(6px);
-}
+/* Il bollino dello Studio sulla data della serata: tondo blu campo con riflesso, TV gialla. */
 .studio-badge-tv {
   background:
     radial-gradient(80% 80% at 30% 25%, rgb(255 255 255 / 0.28), transparent 60%),
     linear-gradient(145deg, var(--court), var(--court-deep));
   box-shadow: 0 3px 8px -3px rgb(31 69 184 / 0.7);
-}
-:root[data-theme="dark"] .studio-badge {
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgb(255 197 49 / 0.16), transparent 55%),
-    linear-gradient(135deg, rgb(61 106 240 / 0.28), rgb(42 80 201 / 0.16));
 }
 @media (prefers-reduced-motion: reduce) {
   .studio-shell,

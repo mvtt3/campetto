@@ -23,7 +23,6 @@ import {
   setStudioSeen,
   StudioHosts,
   studioDay,
-  studioLength,
   studioSeen,
   useStudioEnabled,
   useStudioLatest,
@@ -399,7 +398,7 @@ export function BadgeCelebration() {
                 setStudioOpen(id);
               }}
             >
-              Guarda · {studioLength(current.latest.duration)}
+              Guarda ora
             </Button>
           </div>
         ) : current.kind === "preview" ? (

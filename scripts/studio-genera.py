@@ -86,11 +86,13 @@ async def tts(voice, rate, pitch, text):
     return mp3, json.load(open(meta))
 
 
-def clean_voice(mp3):
-    """Voce pulita: via i bassi inutili, compressione leggera, un filo di presenza."""
-    wav = mp3[:-4] + ".wav"
+def clean_voice(mp3, tempo=1.0):
+    """Voce pulita: via i bassi inutili, compressione leggera, un filo di presenza.
+    tempo > 1 accelera un filo senza cambiare il tono (per stare nella durata giusta)."""
+    wav = mp3[:-4] + (f"-t{tempo:.3f}" if tempo != 1 else "") + ".wav"
     if not os.path.exists(wav):
         run(["ffmpeg", "-v", "error", "-y", "-i", mp3, "-af",
+             (f"atempo={tempo:.3f}," if tempo != 1 else "") +
              "highpass=f=85,equalizer=f=3200:t=q:w=1.2:g=2,"
              "acompressor=threshold=-20dB:ratio=3:attack=6:release=90:makeup=2",
              "-ac", "1", "-ar", str(SR), wav])
@@ -219,7 +221,7 @@ def voice_of(who, line):
 
 # Parole che la voce di lui (multilingue) tende a dire in inglese: scritte all'italiana, con
 # l'accento, le legge come un telecronista italiano. Valgono per tutte le puntate.
-ITALIANO = {"assist": "àssist", "record": "rècord", "Elo": "elo", "MVP": "emme vu pi", "replay": "riplèi"}
+ITALIANO = {"assist": "àssist", "record": "rècord", "Elo": "elo", "MVP": "emvipì", "replay": "riplèi"}
 
 
 def pronounce(text):
@@ -235,12 +237,20 @@ def pronounce(text):
 
 TTS = plan.get("tts", "edge")
 REGIA = plan.get("regia") or (
-    "Leggi in italiano, con accento italiano naturale, le battute dei conduttori dello Studio Campetto, "
-    "il commento serale alle partite di basket tra amici. Stile giornalistico da studio sportivo "
-    "televisivo italiano: tono professionale, misurato e sicuro, voce calda, intonazione naturale e varia "
-    "ma senza enfasi esagerata. Niente toni da cartone animato, niente urla, niente stupore teatrale: un "
-    "sorriso nella voce, e un filo di entusiasmo solo quando c'è davvero una notizia, sempre contenuto. "
-    "Ritmo scorrevole da notiziario, pause naturali alle virgole e ai punti."
+    "Profilo audio: i conduttori dello Studio Campetto, il commento serale in italiano alle partite di basket "
+    "tra amici, come in uno studio sportivo televisivo italiano. Regia: tono giornalistico, professionale e "
+    "misurato, voce calda e sicura, intonazione naturale e varia; energia media e costante, sempre la stessa "
+    "dall'inizio alla fine; ritmo scorrevole da notiziario, né lento né affrettato; pause naturali alle virgole "
+    "e ai punti. Niente enfasi teatrale, niente toni da cartone animato, niente lettura piatta o robotica. "
+    "Ogni battuta, compresi i saluti finali, ha lo stesso tono, la stessa energia e lo stesso ritmo delle altre: "
+    "non rallentare, non abbassare la voce, non chiudere come a fine discorso. Ogni riga è una battuta a sé, "
+    "con una breve pausa prima della successiva."
+)
+REGIA_OSPITE = plan.get("regiaOspite") or (
+    "Profilo audio: l'ospite dello Studio Campetto, un ragazzo che ha giocato la serata, intervistato dai "
+    "conduttori. Parla in italiano, spontaneo e alla mano ma chiaro, con la stessa energia media e costante "
+    "dall'inizio alla fine, ritmo naturale, niente enfasi teatrale e niente lettura piatta. Ogni riga è una "
+    "risposta a sé, con una breve pausa prima della successiva."
 )
 gem_dir = os.path.join(out, "gemini")
 os.makedirs(gem_dir, exist_ok=True)
@@ -268,24 +278,26 @@ def tok(x):
 
 def gemini_jobs():
     """
-    Il dialogo a pezzi per Gemini: battute di fila con al massimo due voci (una richiesta può averne
-    due), al massimo 10 battute; il coro a parte, una richiesta per voce. Ogni pezzo ha un id dal suo
-    contenuto: se il .wav c'è già non si rifà.
+    Il dialogo per Gemini, in poche richieste perché la voce resti uguale dall'inizio alla fine
+    (ogni richiesta interpreta la regia a modo suo): tutte le battute dei conduttori insieme (al
+    massimo 24 per richiesta), quelle dell'ospite in una richiesta sua, il coro a parte (una
+    richiesta per voce). Ogni pezzo ha un id dal suo contenuto: se il .wav c'è già non si rifà.
     """
-    chunks, cur = [], None
+    hosts, guest_lines, chunks = [], [], []
     for si, seg in enumerate(plan["segments"]):
         for li, line in enumerate(seg["lines"]):
             say = pronounce(line.get("say") or line["text"])
             if line.get("with"):
                 chunks.append({"coro": True, "lines": [(si, li, line["who"], say)], "who": [line["who"], *line["with"]]})
-                cur = None
-                continue
-            if cur is None or len(cur["lines"]) >= 10 or (line["who"] not in cur["who"] and len(cur["who"]) >= 2):
-                cur = {"coro": False, "lines": [], "who": []}
-                chunks.append(cur)
-            if line["who"] not in cur["who"]:
-                cur["who"].append(line["who"])
-            cur["lines"].append((si, li, line["who"], say))
+            elif line["who"] == "ospite":
+                guest_lines.append((si, li, "ospite", say))
+            else:
+                hosts.append((si, li, line["who"], say))
+    for k in range(0, len(hosts), 24):
+        part = hosts[k:k + 24]
+        chunks.append({"coro": False, "lines": part, "who": sorted({w for _, _, w, _ in part}, key=["lui", "lei"].index)})
+    if guest_lines:
+        chunks.append({"coro": False, "lines": guest_lines, "who": ["ospite"]})
     jobs = []
     for c in chunks:
         if c["coro"]:
@@ -295,19 +307,20 @@ def gemini_jobs():
                 prompt = (f"Fai, da solo, il tuo pezzo di un coro di attesa a due voci prima di una rivelazione in uno "
                           f"studio televisivo: una lunga O sostenuta, che cresce piano, divertita ma misurata, senza parole, "
                           f"di circa tre secondi.\n\n{say}")
-                job = {"speakers": [{"name": speaker_name(who), "voice": gemini_voice(who)}], "prompt": prompt}
+                job = {"speakers": [{"name": speaker_name(who), "voice": gemini_voice(who)}], "prompt": prompt, "seed": 7}
                 job["id"] = hashlib.sha1(json.dumps(job, sort_keys=True).encode()).hexdigest()[:16]
                 c["parts"].append(job["id"])
                 jobs.append(job)
             continue
         names = {w: speaker_name(w) for w in c["who"]}
-        if len(c["who"]) > 1:
-            body = "\n".join(f"{names[w]}: {say}" for _, _, w, say in c["lines"])
-            notes = REGIA + " " + " ".join(f"{names[w]} è {plan.get('ruoli', {}).get(w, 'uno dei conduttori' if w != 'ospite' else 'l ospite, un giocatore della serata, più semplice e spontaneo')}." for w in c["who"])
-        else:
+        roles = plan.get("ruoli", {})
+        if c["who"] == ["ospite"]:
+            notes = REGIA_OSPITE
             body = "\n".join(say for _, _, _, say in c["lines"])
-            notes = REGIA
-        job = {"speakers": [{"name": names[w], "voice": gemini_voice(w)} for w in c["who"]], "prompt": notes + "\n\n" + body}
+        else:
+            notes = REGIA + " " + " ".join(f"{names[w]}: {roles.get(w, 'uno dei conduttori')}." for w in c["who"])
+            body = "\n".join(f"{names[w]}: {say}" for _, _, w, say in c["lines"]) if len(c["who"]) > 1 else "\n".join(say for _, _, _, say in c["lines"])
+        job = {"speakers": [{"name": names[w], "voice": gemini_voice(w)} for w in c["who"]], "prompt": notes + "\n\n" + body, "seed": 7}
         job["id"] = hashlib.sha1(json.dumps(job, sort_keys=True).encode()).hexdigest()[:16]
         c["parts"] = [job["id"]]
         jobs.append(job)
@@ -444,6 +457,12 @@ async def main():
     line_t = {}
     t = plan.get("intro", 4.5)
     lines, shots, props, cues = [], [], [], []
+    # Dopo la sigla: l'inquadratura larga sullo studio col logo sul maxischermo e le targhe dei due
+    # conduttori; si comincia a parlare dopo (le presentazioni sono fatte).
+    opening = plan.get("apertura", 3.4)
+    if opening:
+        shots.append({"t": round(t, 3), "cam": "ampio", "screen": 0})
+        t += opening
     voice_track = []
     music_marks = []
     screens = []
@@ -483,15 +502,27 @@ async def main():
                 t = guest["sit"] + 0.15  # parla da seduto
             if TTS == "gemini":
                 mp3, words = gemini_line(si, li)
+                tempo = float(plan.get("tempo", 1.0))
+                if tempo != 1:
+                    words = [[w, w0 / tempo, w1 / tempo] for w, w0, w1 in words]
+                a = clean_voice(mp3, tempo)
             else:
                 mp3, words = await tts(*voice_of(line["who"], line), say)
-            a = clean_voice(mp3)
+                a = clean_voice(mp3)
             # Via i silenzi in testa e in coda (le pause le decide la scaletta).
             env = np.abs(a)
             on = np.where(env > 0.012)[0]
             s0 = max(0, on[0] - int(0.02 * SR)) if len(on) else 0
             s1 = min(len(a), on[-1] + int(0.06 * SR)) if len(on) else len(a)
             a = a[s0:s1]
+            if TTS == "gemini":
+                # Ogni richiesta esce a un volume suo: ogni battuta allo stesso livello (parti dette).
+                fr = a[: len(a) // 441 * 441].reshape(-1, 441)
+                r = np.sqrt((fr ** 2).mean(1))
+                act = r[r > 10 ** (-45 / 20)]
+                if len(act):
+                    g = 10 ** (-20 / 20) / float(np.sqrt((act ** 2).mean()))
+                    a = (a * min(max(g, 10 ** (-12 / 20)), 10 ** (12 / 20))).astype(np.float32)
             shift = s0 / SR
             d = len(a) / SR
             # Le parole: tempi relativi all'inizio della battuta, scritte come nel testo.
@@ -590,6 +621,12 @@ async def main():
             target = line_t[(si, rv["line"])] + rv.get("after", 1.0)
             scr["reveal"] = round(max(3.2, target - since), 2)
     last_voice = lines[-1]["t"] + lines[-1]["d"]
+    end_move = plan.get("allargata", 2.4)
+    if end_move:
+        # Finiti i saluti la telecamera si allarga piano fino all'inquadratura dell'apertura (il logo
+        # sul maxischermo), poi la sigla di chiusura.
+        shots.append({"t": round(last_voice + 0.35, 3), "cam": "ampio", "screen": shots[-1]["screen"], "move": end_move})
+        last_voice += 0.35 + end_move + 0.5
     outro_t = round(last_voice + 0.4, 3)
     duration = round(outro_t + plan.get("outro", 5.0), 2)
     shots.append({"t": outro_t, "cam": "fine", "screen": len(screens) - 1})
@@ -692,6 +729,7 @@ async def main():
         "audio": f"/studio/{audio_name}",
         "duration": duration,
         "intro": plan.get("intro", 4.5),
+        "opening": opening,
         "outro": {"t": outro_t, "next": plan.get("next")},
         "credits": "Musica: «Werq» di Kevin MacLeod (incompetech.com), licenza CC BY 4.0"
         + (". Le risposte dell'ospite sono inventate per gioco." if guest else ""),
