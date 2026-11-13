@@ -7,7 +7,6 @@ import {
   IconPlayerPlayFilled,
   IconRewindBackward10,
   IconRewindForward10,
-  IconRotate,
   IconVolume,
   IconVolumeOff,
   IconX,
@@ -59,6 +58,18 @@ const longDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString
 export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onClose: () => void; startAt?: number }) {
   const [show, setShow] = useState<StudioShow | null>(null);
   const [error, setError] = useState(false);
+  // Chiudere (a mano o a fine puntata) fa uscire la puntata come è entrata, poi la toglie.
+  const shell = useRef<HTMLDivElement>(null);
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const close = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    shell.current?.querySelectorAll("audio, video").forEach((m) => (m as HTMLMediaElement).pause());
+    setClosing(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(onClose, reduce ? 0 : 280);
+  }, [onClose]);
   useEffect(() => {
     let alive = true;
     fetch(studioUrl(id), { cache: "no-store" })
@@ -71,15 +82,16 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
   }, [id]);
   if (typeof document === "undefined") return null;
   return createPortal(
-    show ? (
-      <StudioShowPlayer show={show} onClose={onClose} startAt={startAt} />
+    <div ref={shell} className={clsx("studio-shell fixed inset-0 z-[90]", closing && "is-closing")}>
+    {show ? (
+      <StudioShowPlayer show={show} onClose={close} startAt={startAt} />
     ) : (
       <div className="fixed inset-0 z-[90] grid place-items-center bg-[#FFC531] text-[#1d1a16]" role="dialog" aria-modal="true" aria-label="Studio Campetto">
         {error ? (
           <div className="px-8 text-center">
             <p className="title text-[18px]">La puntata non si apre</p>
             <p className="mt-1 text-[14px] opacity-70">Controlla la connessione e riprova.</p>
-            <button type="button" className="press mt-5 rounded-full bg-[#1d1a16] px-5 py-2.5 font-semibold text-white" onClick={onClose}>
+            <button type="button" className="press mt-5 rounded-full bg-[#1d1a16] px-5 py-2.5 font-semibold text-white" onClick={close}>
               Chiudi
             </button>
           </div>
@@ -87,7 +99,8 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
           <Logo size={110} top="STUDIO" bottom="★ CAMPETTO ★" className="animate-pulse" />
         )}
       </div>
-    ),
+    )}
+    </div>,
     document.body,
   );
 }
@@ -462,6 +475,11 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, pause, start, seek, now]);
 
+  // Finita la puntata si richiude da sola e lascia dove si era (Home, Partite...).
+  useEffect(() => {
+    if (ended) onClose();
+  }, [ended, onClose]);
+
   const screen = show.screens[scr.index];
   const replay = screen?.kind === "replay" ? screen : null;
 
@@ -652,27 +670,19 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         </span>
       )}
 
-      {(needsTap || ended) && (
+      {needsTap && (
         <div className="absolute inset-0 grid place-items-center bg-[#1f45b8]/70">
           <div className="text-center">
             <Logo size={96} top="STUDIO" bottom="★ CAMPETTO ★" className="mx-auto" />
-            <p className="display mt-3 text-[28px]">{ended ? "Fine della puntata" : "Studio Campetto"}</p>
+            <p className="display mt-3 text-[28px]">Studio Campetto</p>
             <div className="mt-5 flex justify-center gap-3">
-              {ended && (
-                <button type="button" className="press rounded-full bg-white/20 px-5 py-3 font-semibold" onClick={onClose}>
-                  Chiudi
-                </button>
-              )}
               <button
                 type="button"
                 className="press inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 font-semibold text-[#1f45b8]"
-                onClick={() => {
-                  if (ended) seek(0);
-                  void start();
-                }}
+                onClick={() => void start()}
               >
-                {ended ? <IconRotate size={20} /> : <IconPlayerPlayFilled size={20} />}
-                {ended ? "Rivedi" : "Guarda"}
+                <IconPlayerPlayFilled size={20} />
+                Guarda
               </button>
             </div>
           </div>

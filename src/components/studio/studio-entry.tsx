@@ -1,9 +1,10 @@
 "use client";
 
 import { IconDeviceTv, IconPlayerPlayFilled } from "@tabler/icons-react";
+import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { useData } from "@/lib/data/provider";
-import { STUDIO_LATEST } from "@/lib/studio";
+import { STUDIO_LATEST, STUDIO_LIST } from "@/lib/studio";
 import { Presenter } from "./presenter";
 import { StudioShowLoader } from "./studio-show";
 
@@ -47,19 +48,74 @@ export function useStudioLatest(enabled: boolean): StudioLatest | null {
 }
 
 const seenKey = "campetto:studio-visto";
-export function studioSeen(id: string): boolean {
+/** Le puntate già aperte (prima si salvava solo l'ultima: si legge anche quel formato). */
+function seenList(): string[] {
   try {
-    return localStorage.getItem(seenKey) === id;
+    const v = localStorage.getItem(seenKey);
+    if (!v) return [];
+    if (!v.startsWith("[")) return [v];
+    const l: unknown = JSON.parse(v);
+    return Array.isArray(l) ? l.filter((x): x is string => typeof x === "string") : [];
   } catch {
-    return false;
+    return [];
   }
+}
+export function studioSeen(id: string): boolean {
+  return seenList().includes(id);
 }
 export function setStudioSeen(id: string) {
   try {
-    localStorage.setItem(seenKey, id);
+    localStorage.setItem(seenKey, JSON.stringify([id, ...seenList().filter((x) => x !== id)].slice(0, 40)));
   } catch {
     /* niente: al massimo ricompare */
   }
+}
+
+let listed: Promise<StudioLatest[]> | null = null;
+/** L'elenco delle puntate; se non c'è ancora, almeno l'ultima. */
+function loadEpisodes(): Promise<StudioLatest[]> {
+  listed ??= fetch(STUDIO_LIST, { cache: "no-store" })
+    .then((r) => (r.ok ? (r.json() as Promise<unknown>) : Promise.reject(new Error(String(r.status)))))
+    .then((l) => (Array.isArray(l) ? (l as StudioLatest[]) : Promise.reject(new Error("elenco"))))
+    .catch(() => loadLatest().then((l) => (l ? [l] : [])));
+  return listed;
+}
+
+/** La puntata di una serata (giorno "aaaa-mm-gg"), se c'è e se lo Studio è visibile. */
+export function useStudioEpisode(day: string): StudioLatest | null {
+  const enabled = useStudioEnabled();
+  const [list, setList] = useState<StudioLatest[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    void loadEpisodes().then((l) => alive && setList(l));
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
+  return enabled ? (list.find((e) => e.day === day) ?? null) : null;
+}
+
+/**
+ * Il bollino dello Studio nella riga di una serata, accanto al numero di partite. Non è un
+ * pulsante a parte (la riga è già un pulsante): è la riga a riconoscere il tocco su
+ * [data-studio-badge] e ad aprire la puntata. L'area di tocco è più grande del bollino.
+ */
+export function StudioNightBadge({ fresh }: { fresh: boolean }) {
+  return (
+    <span
+      data-studio-badge
+      title="Guarda la puntata dello Studio"
+      data-testid="studio-night"
+      className="studio-badge press relative inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-2.5 text-[12.5px] font-semibold text-court-deep before:absolute before:-inset-x-1.5 before:-inset-y-2.5 before:content-[''] dark:text-[#b9c8ff]"
+    >
+      <span className="studio-badge-tv grid h-5 w-5 place-items-center rounded-full text-volt">
+        <IconDeviceTv size={13} stroke={2.2} aria-hidden />
+      </span>
+      Studio
+      {fresh && <span aria-hidden className={clsx("new-dot absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-ball")} />}
+    </span>
+  );
 }
 
 export const studioDay = (day: string) =>
@@ -110,29 +166,3 @@ export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
   );
 }
 
-/**
- * Il tasto dello Studio nella barra della Home, accanto a highlights e notizie: fa partire
- * subito l'ultima puntata. Lo vede solo l'amministratore, per provare le puntate.
- */
-export function StudioHomeButton() {
-  const latest = useStudioLatest(useStudioEnabled());
-  const [open, setOpen] = useState(false);
-  if (!latest) return null;
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setStudioSeen(latest.id);
-          setOpen(true);
-        }}
-        aria-label="Studio Campetto, guarda la puntata"
-        className="sticker-sm press relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#0C1736,#1C3576)] text-volt"
-        data-testid="studio-home"
-      >
-        <IconDeviceTv size={20} aria-hidden />
-      </button>
-      {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
-    </>
-  );
-}

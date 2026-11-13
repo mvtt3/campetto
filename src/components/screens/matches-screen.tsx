@@ -21,6 +21,13 @@ import {
 } from "react";
 import { MatchSheet } from "@/components/match-sheet";
 import { NightHighlightsButton } from "@/components/highlights/entry";
+import { StudioShowLoader } from "@/components/studio/studio-show";
+import {
+  setStudioSeen,
+  StudioNightBadge,
+  studioSeen,
+  useStudioEpisode,
+} from "@/components/studio/studio-entry";
 import { EmptyState, Segmented } from "@/components/ui/basics";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -169,6 +176,10 @@ function NightCard({
 }) {
   const { data, me } = useData();
   const at = new Date(night.items[0].playedAt);
+  // La puntata dello Studio di questa serata, se c'è: si apre dal bollino e si richiude da sola.
+  const day = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`;
+  const episode = useStudioEpisode(day);
+  const [studio, setStudio] = useState(false);
   const ids = new Set(
     night.items.flatMap((m) => m.players.map((l) => l.playerId)),
   );
@@ -189,7 +200,14 @@ function NightCard({
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={(e) => {
+          if (episode && (e.target as HTMLElement).closest("[data-studio-badge]")) {
+            setStudioSeen(episode.id);
+            setStudio(true);
+            return;
+          }
+          onToggle();
+        }}
         aria-expanded={open}
         className="press flex w-full items-center gap-3 p-3 text-left"
       >
@@ -201,9 +219,18 @@ function NightCard({
           <span className="sr-only">{MONTH.format(at)}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="title truncate text-[16px]">
-            {countLabel(night.items.length)}
-          </p>
+          {episode ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="title truncate text-[16px]">
+                {countLabel(night.items.length)}
+              </p>
+              <StudioNightBadge fresh={!studio && !studioSeen(episode.id)} />
+            </div>
+          ) : (
+            <p className="title truncate text-[16px]">
+              {countLabel(night.items.length)}
+            </p>
+          )}
           <div className="mt-1 flex items-center gap-1.5">
             {won + lost > 0 && (
               <span
@@ -254,6 +281,9 @@ function NightCard({
           </motion.div>
         )}
       </AnimatePresence>
+      {studio && episode && (
+        <StudioShowLoader id={episode.id} onClose={() => setStudio(false)} />
+      )}
     </div>
   );
 }

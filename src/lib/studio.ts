@@ -184,6 +184,8 @@ export interface StudioShow {
 
 /** La puntata più recente: /studio/ultima.json dice quale. */
 export const STUDIO_LATEST = "/studio/ultima.json";
+/** Tutte le puntate uscite (una per serata), dalla più recente. */
+export const STUDIO_LIST = "/studio/puntate.json";
 export const studioUrl = (id: string) => `/studio/${id}.json`;
 
 /** Lo studio è disegnato su 390×844: le inquadrature sono uno zoom su questo spazio. */

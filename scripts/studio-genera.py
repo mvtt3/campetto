@@ -493,7 +493,15 @@ async def main():
         "guest": guest,
     }
     json.dump(show, open(os.path.join(out, f"{plan['id']}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
-    json.dump({"id": plan["id"], "day": plan["day"], "duration": duration}, open(os.path.join(out, "ultima.json"), "w"))
+    entry = {"id": plan["id"], "day": plan["day"], "duration": duration}
+    json.dump(entry, open(os.path.join(out, "ultima.json"), "w"))
+    # L'elenco di tutte le puntate (una per serata): si aggiunge o si aggiorna questa, dalla più recente.
+    try:
+        episodes = json.load(open(os.path.join(public_dir, "studio", "puntate.json")))
+    except (OSError, ValueError):
+        episodes = []
+    episodes = sorted([e for e in episodes if e.get("id") != plan["id"]] + [entry], key=lambda e: e["day"], reverse=True)
+    json.dump(episodes, open(os.path.join(out, "puntate.json"), "w"))
     check = run(["ffmpeg", "-v", "info", "-i", os.path.join(out, audio_name), "-af", "loudnorm=print_format=json", "-f", "null", "-"]).stderr.decode()
     cj = json.loads(check[check.rindex("{"): check.rindex("}") + 1])
     print("durata", duration, "battute", len(lines), "inquadrature", len(shots), "LUFS", cj["input_i"], "picco", cj["input_tp"])
