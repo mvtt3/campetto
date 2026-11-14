@@ -91,9 +91,12 @@ export type StudioScreen =
         bg?: string;
         /**
          * Il tiro, per il misuratore stile NBA 2K: t = secondo del rilascio dall'inizio della clip,
-         * x/y = dove sta la testa di chi tira in quel momento (frazioni del video).
+         * x/y = dove sta la testa di chi tira in quel momento (frazioni del video). Serve a
+         * scripts/studio-muro.py per disegnare il misuratore dentro il video del maxischermo.
          */
         shot?: { t: number; x: number; y: number };
+        /** Dove sta il canestro (frazioni del video): l'inquadratura del maxischermo lo tiene dentro. */
+        hoop?: [number, number];
       }[];
     }
   | { kind: "numeri"; kicker: string; tiles: StudioTile[] }
@@ -206,6 +209,12 @@ export interface StudioShow {
   lines: StudioLine[];
   props: { t: number; who: StudioHost; act: "foglio" }[];
   guest?: StudioGuest | null;
+  /**
+   * Le azioni sul maxischermo mentre si parla: un solo video piccolo, già tagliato per lo schermo e
+   * con il misuratore di tiro disegnato dentro i fotogrammi (scripts/studio-muro.py). Parte al
+   * secondo t0 della puntata e va avanti insieme all'audio.
+   */
+  muro?: { src: string; t0: number };
 }
 
 /** La puntata più recente: /studio/ultima.json dice quale. */
@@ -437,22 +446,6 @@ export function captionPages(line: Pick<StudioLine, "words" | "d">): CaptionPage
   // Ogni pagina resta fino all'inizio della successiva (niente buchi), l'ultima fino a fine battuta.
   pages.forEach((p, k) => (p.e = pages[k + 1]?.s ?? line.d + 0.25));
   return pages;
-}
-
-/**
- * Il misuratore di tiro (stile NBA 2K) a un certo punto della clip: prima del rilascio la barra
- * si riempie (fill 0→1, in 0,6 s), al rilascio diventa verde e resta un attimo, poi sparisce.
- */
-export function shotMeterAt(shot: { t: number } | undefined, local: number): { state: "off" | "fill" | "green"; fill: number; fade: number } {
-  if (!shot) return { state: "off", fill: 0, fade: 0 };
-  const FILL = 0.6;
-  const d = local - shot.t;
-  if (d < -FILL - 0.12 || d > 1.0) return { state: "off", fill: 0, fade: 0 };
-  if (d < 0) {
-    const u = Math.min(1, Math.max(0, (d + FILL) / FILL));
-    return { state: "fill", fill: u * u * (0.35 + 0.65 * u), fade: Math.min(1, (d + FILL + 0.12) / 0.12) };
-  }
-  return { state: "green", fill: 1, fade: d < 0.75 ? 1 : Math.max(0, 1 - (d - 0.75) / 0.25) };
 }
 
 /** Il sottotitolo del momento: la pagina e la parola in corso. */

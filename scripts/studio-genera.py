@@ -191,6 +191,57 @@ def frame_clip(path, t0, t1, hoop):
     return [[round(float(r[0]), 2), round(float(r[1]), 3), round(float(r[2]), 3), round(float(r[3]), 3)] for r in a[::2]]
 
 
+WALL_LEAD = 1.8      # sul maxischermo: almeno questi secondi di azione prima del tiro
+WALL_LEAD_MAX = 4.0  # e al massimo questi (il tempo che avanza si usa qui)
+
+
+def fit_wall(clips, win):
+    """Le azioni che passano sul maxischermo in una finestra di `win` secondi (finché non cambia
+    grafica): in ordine, quante ce ne stanno intere, cioè dal tiro alla fine dell'azione con almeno
+    WALL_LEAD secondi prima; nessuna tagliata a metà. Il tempo che avanza allunga l'azione prima del
+    tiro, in parti uguali. Una clip senza "shot" resta com'è."""
+    def parts(c):
+        if not c.get("shot"):
+            return None
+        rel = c["from"] + c["shot"]["t"]  # il rilascio, nel video intero
+        return rel, min(WALL_LEAD, rel), min(WALL_LEAD_MAX, rel), c["to"] - rel
+
+    def core(c):
+        p = parts(c)
+        return c["to"] - c["from"] if p is None else p[1] + p[3]
+
+    chosen, tot = [], 0.0
+    for c in clips:
+        if tot + core(c) <= win + 0.05:
+            chosen.append(dict(c, shot=dict(c["shot"])) if c.get("shot") else dict(c))
+            tot += core(c)
+    if not chosen and clips and parts(clips[0]):
+        # Finestra cortissima: la prima azione, con quel che ci sta prima del tiro (almeno 0,8 s).
+        c = dict(clips[0], shot=dict(clips[0]["shot"]))
+        rel, _, _, tail = parts(c)
+        lead = max(0.8, min(rel, win - tail))
+        c["from"], c["to"], c["shot"]["t"] = round(rel - lead, 3), round(min(c["to"], rel - lead + win), 3), round(lead, 3)
+        return [c]
+    leads = [parts(c)[1] if parts(c) else 0.0 for c in chosen]
+    left = win - tot
+    # Il tempo che avanza: a turno a chi può ancora allungare, finché c'è.
+    for _ in range(20):
+        open_ = [i for i, c in enumerate(chosen) if parts(c) and leads[i] < parts(c)[2] - 1e-6]
+        if left <= 0.02 or not open_:
+            break
+        share = left / len(open_)
+        for i in open_:
+            add = min(share, parts(chosen[i])[2] - leads[i])
+            leads[i] += add
+            left -= add
+    for i, c in enumerate(chosen):
+        p = parts(c)
+        if p:
+            c["from"] = round(p[0] - leads[i], 3)
+            c["shot"]["t"] = round(leads[i], 3)
+    return chosen
+
+
 def shift(value, delta, unit):
     """'+10%' + 4 → '+14%'; '-2Hz' + 3 → '+1Hz'."""
     n = int(re.sub(r"[^\d-]", "", value) or 0) + delta
@@ -600,9 +651,12 @@ async def main():
             # Classico (vecchie puntate): i canestri interi uno dopo l'altro a tutto schermo.
             muro = seg.get("replay") == "muro"
             base = [dict(c) for c in screen["clips"]]
+            if muro:
+                # Sul maxischermo finché non cambia grafica: solo azioni intere che ci stanno.
+                base = fit_wall(base, (t + SEG_GAP - GAP) - seg_start)
             for c in base:
                 path = os.path.join(public_dir, c["src"].lstrip("/"))
-                hoop = tuple(c.pop("hoop", (0.2, 0.25)))
+                hoop = tuple(c.get("hoop", (0.2, 0.25)))
                 if os.path.exists(path):
                     c["cam"] = frame_clip(path, c["from"], c["to"], hoop)
                     # Lo sfondo sfocato: un fotogramma a metà clip, 48×27, come immagine dentro il JSON.
@@ -614,13 +668,10 @@ async def main():
             clips = []
             if muro:
                 ct = seg_start
-                k = 0
-                while ct < t + 0.5 and base:
-                    c = dict(base[k % len(base)])
+                for c in base:
                     c["t"] = round(ct, 3)
                     clips.append(c)
                     ct += c["to"] - c["from"]
-                    k += 1
                 screen["clips"] = clips
             else:
                 r0 = t - GAP + 0.25
@@ -762,6 +813,10 @@ async def main():
         "guest": guest,
     }
     json.dump(show, open(os.path.join(out, f"{plan['id']}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
+    # Le azioni sul maxischermo: un solo video piccolo con il misuratore di tiro già dentro.
+    if not any(sh.get("cam") == "replay" for sh in shots) and any(sc.get("kind") == "replay" for sc in screens):
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "studio-muro.py"),
+                        os.path.join(out, f"{plan['id']}.json"), public_dir], check=True)
     entry = {"id": plan["id"], "day": plan["day"], "duration": duration}
     json.dump(entry, open(os.path.join(out, "ultima.json"), "w"))
     # L'elenco di tutte le puntate (una per serata): si aggiunge o si aggiorna questa, dalla più recente.

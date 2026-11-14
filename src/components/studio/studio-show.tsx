@@ -27,7 +27,6 @@ import {
   fullScreenAt,
   replayAt,
   replayFrame,
-  shotMeterAt,
   SCREEN,
   screenAt,
   screenRect,
@@ -124,10 +123,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const bar = useRef<HTMLDivElement>(null);
   const timeLabel = useRef<HTMLSpanElement>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
-  // Le azioni sul maxischermo mentre si parla (replay "muro"): stessi video, piccoli e muti.
-  const wallVideos = useRef<(HTMLVideoElement | null)[]>([]);
-  // Il misuratore di tiro stile NBA 2K sopra il video del maxischermo.
-  const meter = useRef<HTMLDivElement>(null);
+  // Le azioni sul maxischermo mentre si parla: un solo video piccolo (show.muro), con il misuratore
+  // di tiro già dentro i fotogrammi. Si vede solo quando ha davvero il fotogramma giusto.
+  const wall = useRef<HTMLVideoElement>(null);
+  const wallChip = useRef<HTMLSpanElement>(null);
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
@@ -220,6 +219,11 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     setPlaying(true);
     setNeedsTap(false);
     root.current?.classList.remove("studio-paused");
+    const w = wall.current;
+    if (w && w.paused) {
+      // Dentro il tocco: così il telefono lo lascia partire anche dopo; il motore poi lo mette a tempo.
+      void w.play().then(() => clock.current.t < (show.muro?.t0 ?? 0) - 1 && w.pause()).catch(() => {});
+    }
     if (a && c.audioOk) {
       try {
         if (Math.abs(a.currentTime - c.t) > 0.05) a.currentTime = c.t;
@@ -233,7 +237,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         } else c.audioOk = false;
       }
     }
-  }, []);
+  }, [show.muro]);
 
   const pause = useCallback(() => {
     const c = clock.current;
@@ -393,45 +397,38 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       // Il replay: un video per canestro, già caricato; parte dall'inizio della clip e va fino in fondo.
       const r = replayAt(show, t);
       const scrR = show.screens[s.index];
+      // Il maxischermo: il video delle azioni va avanti con l'audio; si vede solo durante le clip,
+      // e solo se ha il fotogramma giusto (altrimenti resta la grafica del campo, mai lo schermo nero).
+      const w = wall.current;
+      if (w && show.muro) {
+        const want = t - show.muro.t0;
+        const len = Number.isFinite(w.duration) ? w.duration : Infinity;
+        const inside = want > -0.05 && want < len - 0.05;
+        // Quanto è indietro (positivo) o avanti il video rispetto alla puntata.
+        const lag = want - w.currentTime;
+        if (inside && c.running) {
+          if (Math.abs(lag) > 0.35) {
+            // Salto (all'inizio, dopo una pausa o andando avanti e indietro): un po' più avanti,
+            // perché il telefono ci mette un attimo a ripartire.
+            if (w.readyState >= 1 && !w.seeking) w.currentTime = Math.max(0, want + 0.1);
+          } else {
+            // Piccoli scarti: accelera o rallenta appena finché non è a tempo, senza salti.
+            const rate = Math.abs(lag) < 0.04 ? 1 : Math.min(1.12, Math.max(0.88, 1 + lag * 0.8));
+            if (Math.abs(w.playbackRate - rate) > 0.005) w.playbackRate = rate;
+          }
+          if (w.paused) void w.play().catch(() => {});
+        } else if (!w.paused) w.pause();
+        const wallOn = scrR?.kind === "replay" && m !== "replay" && !!r && t >= (scrR.clips[0]?.t ?? Infinity);
+        const off = Math.abs(lag);
+        const was = w.style.opacity === "1";
+        // Per comparire serve un fotogramma pronto e quasi a tempo; per restare basta che non si fermi.
+        // (Rilascio e verde sono nello stesso fotogramma: qualche decimo di scarto con la voce non si nota.)
+        const ok = wallOn && inside && !w.seeking && (was ? w.readyState >= 2 && off < 0.6 : w.readyState >= 3 && off < 0.4);
+        const op = ok ? "1" : "0";
+        if (w.style.opacity !== op) w.style.opacity = op;
+        if (wallChip.current && wallChip.current.style.opacity !== op) wallChip.current.style.opacity = op;
+      }
       if (scrR?.kind === "replay") {
-        // Sul maxischermo (finché non si va a tutto schermo) passa l'azione in corso, a tempo con la puntata.
-        const wallOn = m !== "replay" && r && t >= scrR.clips[0].t ? r.clip : -1;
-        scrR.clips.forEach((clip, i) => {
-          const w = wallVideos.current[i];
-          if (!w) return;
-          const vis = i === wallOn;
-          const op = vis ? "1" : "0";
-          if (w.style.opacity !== op) w.style.opacity = op;
-          if (!vis) {
-            if (!w.paused) w.pause();
-            return;
-          }
-          const want = clip.from + (r?.local ?? 0);
-          if (w.readyState >= 1 && Math.abs(w.currentTime - want) > 0.3) w.currentTime = want;
-          const f = replayFrame(clip, r?.local ?? 0);
-          const pos = `${(f.cx * 100).toFixed(0)}% ${(f.cy * 100).toFixed(0)}%`;
-          if (w.style.objectPosition !== pos) w.style.objectPosition = pos;
-          // Il misuratore: in alto a destra di chi tira, dove sta nel video (che riempie il riquadro in altezza).
-          const mt = meter.current;
-          if (mt) {
-            const sm = shotMeterAt(clip.shot, r?.local ?? 0);
-            if (mt.dataset.s !== sm.state) mt.dataset.s = sm.state;
-            if (sm.state !== "off" && clip.shot) {
-              const bw = SCREEN.w, bh = SCREEN.h, vw = (bh * 16) / 9;
-              const px = Math.round(f.cx * 100) / 100;
-              const sx = (bw - vw) * px + clip.shot.x * vw;
-              const sy = clip.shot.y * bh;
-              const x = Math.min(bw - 16, Math.max(6, sx + 13));
-              const y = Math.min(bh - 50, Math.max(8, sy - 44));
-              const tr = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
-              if (mt.style.transform !== tr) mt.style.transform = tr;
-              setVar(mt, "--fill", sm.fill.toFixed(3));
-              setVar(mt, "--fade", sm.fade.toFixed(3));
-            }
-          }
-          if (c.running && w.paused) void w.play().catch(() => {});
-          if (!c.running && !w.paused) w.pause();
-        });
         const on = m === "replay" && r ? r.clip : -1;
         if (on !== lastClip) {
           lastClip = on;
@@ -526,7 +523,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   }, [ended, onClose]);
 
   const screen = show.screens[scr.index];
-  const replay = screen?.kind === "replay" ? screen : null;
+  // Il replay a tutto schermo c'è solo nelle vecchie puntate (con l'inquadratura "replay"): nelle
+  // nuove le azioni passano sul maxischermo e i video interi non si caricano proprio.
+  const replay = screen?.kind === "replay" && show.shots.some((x) => x.cam === "replay") ? screen : null;
 
   return (
     <div ref={root} className="fixed inset-0 z-[90] select-none overflow-hidden bg-[#1f45b8] text-white" role="dialog" aria-modal="true" aria-label={`Studio Campetto, le partite di ${longDate(show.day)}`} onPointerUp={onTap}>
@@ -559,28 +558,23 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
                 {screen && <StudioScreenView screen={screen} />}
               </div>
             </div>
-            {replay && (
-              <div className="absolute inset-0 bg-[#0c1736]">
-                {replay.clips.map((c, i) => (
-                  <video
-                    key={`${c.src}-${c.from}-${i}`}
-                    ref={(v) => {
-                      wallVideos.current[i] = v;
-                    }}
-                    src={c.src}
-                    muted
-                    playsInline
-                    preload="auto"
-                    className="absolute inset-0 h-full w-full object-cover opacity-0"
-                  />
-                ))}
-                <span className="absolute left-2.5 top-2.5 rounded-full bg-volt px-2 py-0.5 text-[10px] font-bold text-volt-ink">Highlights</span>
-                {/* Il misuratore di tiro: si riempie dal basso e al rilascio diventa verde. */}
-                <div ref={meter} className="studio-meter" data-s="off" aria-hidden>
-                  <span className="studio-meter-fill" />
-                  <span className="studio-meter-burst" />
-                </div>
-              </div>
+            {show.muro && (
+              <>
+                <video
+                  ref={wall}
+                  src={show.muro.src}
+                  muted
+                  playsInline
+                  preload="auto"
+                  disablePictureInPicture
+                  aria-hidden
+                  className="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
+                  style={{ opacity: 0 }}
+                />
+                <span ref={wallChip} className="absolute left-2.5 top-2.5 rounded-full bg-volt px-2 py-0.5 text-[10px] font-bold text-volt-ink transition-opacity duration-150" style={{ opacity: 0 }}>
+                  Highlights
+                </span>
+              </>
             )}
           </div>
           {show.guest && <GuestInStudio playerId={show.guest.playerId} boxRef={guestBox} chairRef={guestChair} />}
