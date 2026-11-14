@@ -51,29 +51,35 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
     new Date(proposal.startsAt).getTime() > now.getTime() - 3 * 3600e3;
   const current = groups.find((g) => g.key === tab)!;
   return (
-    <section className="flex flex-col gap-2.5" aria-label="Chi c'è">
-      <Segmented
-        size="sm"
-        value={tab}
-        onChange={setTab}
-        options={groups.map((g) => ({
-          value: g.key,
-          label: (
-            <>
-              {g.label}{" "}
-              <span className="tnum opacity-60">{g.players.length}</span>
-            </>
-          ),
-        }))}
-      />
-      <ul className="flex flex-wrap gap-1.5">
+    <section className="flex flex-col gap-3" aria-label="Chi c'è">
+      <div role="tablist" className="flex gap-4 border-b border-line">
+        {groups.map((g) => {
+          const active = g.key === tab;
+          return (
+            <button
+              key={g.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(g.key)}
+              className={clsx(
+                "-mb-px flex items-center gap-1 border-b-2 pb-2 text-[13px] font-semibold transition-colors",
+                active
+                  ? "border-text text-text"
+                  : "border-transparent text-muted",
+              )}
+            >
+              {g.label}
+              <span className="tnum text-faint">{g.players.length}</span>
+            </button>
+          );
+        })}
+      </div>
+      <ul className="flex min-h-7 flex-wrap items-center gap-x-3.5 gap-y-2">
         {current.players.map((p) => (
           <li
             key={p.id}
-            className={clsx(
-              "flex items-center gap-1.5 rounded-full py-[3px] pl-[3px] pr-3 text-[13px] font-semibold",
-              p.id === me?.id ? "bg-text text-bg" : "bg-raised",
-            )}
+            className="flex items-center gap-1.5 text-[13px] font-semibold"
           >
             <Avatar player={p} size={24} href={false} ring="none" />
             {name(p)}
@@ -86,7 +92,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
           </li>
         )}
         {!current.players.length && !(tab === "si" && canBring) && (
-          <li className="py-1 text-[13px] text-muted">Nessuno</li>
+          <li className="text-[13px] text-muted">Nessuno</li>
         )}
       </ul>
     </section>
@@ -208,10 +214,10 @@ function BringExtra({ proposal }: { proposal: Proposal }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="press flex items-center gap-1.5 rounded-full bg-raised py-[3px] pl-[3px] pr-3 text-[13px] font-semibold text-muted"
+        className="press flex items-center gap-1.5 text-[13px] font-semibold text-muted"
         data-testid="porta-extra"
       >
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-surface">
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-raised">
           <IconPlus size={13} strokeWidth={2.6} aria-hidden />
         </span>
         Extra
