@@ -35,30 +35,35 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const waiting = data.players.filter(
     (p) => !p.archived && !answered.has(p.id),
   );
-  const groups = [
+  const groups: {
+    title: string;
+    short: string;
+    players: Player[];
+    tone: string;
+  }[] = [
     {
       title: "Ci sono",
       short: "Ci sono",
       players: by("si"),
-      tone: "bg-volt text-volt-ink",
+      tone: "bg-volt",
     },
     {
       title: "Forse",
       short: "Forse",
       players: by("forse"),
-      tone: "bg-ball-soft text-ball",
+      tone: "bg-ball",
     },
     {
       title: "Non ci sono",
       short: "No",
       players: by("no"),
-      tone: "bg-danger/12 text-danger",
+      tone: "bg-danger",
     },
     {
       title: "Non hanno ancora risposto",
       short: "In attesa",
       players: waiting,
-      tone: "bg-surface text-muted",
+      tone: "bg-line-strong",
     },
   ];
   const name = (p: Player) =>
@@ -70,42 +75,43 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
     proposal.status === "aperta" &&
     new Date(proposal.startsAt).getTime() > now.getTime() - 3 * 3600e3;
   return (
-    <div
-      className="flex flex-col gap-0.5 rounded-[20px] bg-raised p-1"
-      aria-label="Chi c'è"
-      role="group"
-    >
+    <div className="flex flex-col gap-1.5" aria-label="Chi c'è" role="group">
       {groups
         .filter((g) => g.players.length)
         .map((g) => {
           const isOpen = open === g.title;
           return (
-            <section
-              key={g.title}
-              aria-label={g.title}
-              className={clsx(
-                "min-w-0 rounded-[16px] transition-colors",
-                isOpen && "bg-surface",
-              )}
-            >
+            <section key={g.title} aria-label={g.title} className="min-w-0">
               <button
                 type="button"
                 aria-expanded={isOpen}
                 onClick={() => setOpen(isOpen ? null : g.title)}
-                className="press flex w-full min-w-0 items-center gap-2 rounded-[16px] px-1.5 py-1.5 text-left"
+                className="press -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-2 rounded-full px-1 py-0.5 text-left"
               >
-                <span
-                  className={clsx(
-                    "flex w-[92px] shrink-0 items-center justify-between rounded-full py-1 pl-2.5 pr-2 text-[12px] font-bold",
-                    g.tone,
-                  )}
-                >
+                <span className="flex w-[100px] shrink-0 items-center gap-2 whitespace-nowrap text-[12.5px] font-semibold">
+                  <span
+                    className={clsx("h-2 w-2 shrink-0 rounded-full", g.tone)}
+                  />
                   {g.short}
-                  <span className="tnum">{g.players.length}</span>
+                  <span className="tnum ml-auto pr-1 text-muted">
+                    {g.players.length}
+                  </span>
                 </span>
-                <AvatarStack players={g.players} size={24} max={4} />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
-                  {g.players.map((p) => name(p)).join(", ")}
+                <AvatarStack players={g.players} size={22} max={4} />
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">
+                  {g.players.map((p, i) => (
+                    <span key={p.id}>
+                      {i > 0 && ", "}
+                      <span
+                        className={clsx(
+                          "font-semibold",
+                          p.id === me?.id ? "text-ball" : "text-text",
+                        )}
+                      >
+                        {name(p)}
+                      </span>
+                    </span>
+                  ))}
                 </span>
                 <IconChevronDown
                   size={15}
@@ -123,7 +129,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-                    className="flex flex-wrap gap-1.5 overflow-hidden px-1.5 pb-2"
+                    className="flex flex-wrap gap-1.5 overflow-hidden pl-1 pt-1.5"
                   >
                     {g.players.map((p) => (
                       <li
@@ -264,10 +270,10 @@ function BringExtra({ proposal }: { proposal: Proposal }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="press flex w-full items-center gap-2 rounded-[16px] px-1.5 py-1.5 text-left text-[12.5px] font-semibold text-muted"
+        className="press -mx-1 flex w-[calc(100%+0.5rem)] items-center gap-2 rounded-full px-1 py-0.5 text-left text-[12.5px] font-semibold text-muted"
         data-testid="porta-extra"
       >
-        <span className="flex w-[92px] shrink-0 items-center gap-1.5 py-1 pl-2.5 text-[12px] font-bold">
+        <span className="flex w-[100px] shrink-0 items-center gap-2">
           <IconPlus size={12} strokeWidth={3} aria-hidden />
           Extra
         </span>
@@ -447,7 +453,7 @@ export function AltForm({
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-[18px] border border-line p-3"
+      className="flex flex-col gap-3 rounded-[18px] p-3"
       role="group"
       aria-label={
         mode === "move" ? "Sposta la partita" : "Proponi un'alternativa"
