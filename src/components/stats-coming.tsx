@@ -33,7 +33,7 @@ export function StatsComing({ first }: { first?: boolean }) {
       />
       <div className="min-w-0 flex-1">
         <p className="title text-[17px] leading-tight">
-          Sto preparando le statistiche
+          Calcolo statistiche in corso
         </p>
         <p className="mt-0.5 text-[12.5px] text-white/60">
           Partita finita alle {time}

@@ -1,7 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { IconArrowUpRight, IconFlag, IconTrophy } from "@tabler/icons-react";
+import {
+  IconArrowUpRight,
+  IconCalendarEvent,
+  IconFlag,
+  IconTrophy,
+} from "@tabler/icons-react";
 import { animate, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useData } from "@/lib/data/provider";
@@ -9,8 +14,7 @@ import { play } from "@/lib/sound";
 import { unitOf, type PregameTarget } from "@/lib/stats/pregame";
 import { placeLabel, shortName, type Proposal } from "@/lib/types";
 import { Avatar } from "./ui/avatar";
-import { Button, CountUp } from "./ui/basics";
-import { Sheet } from "./ui/sheet";
+import { CountUp } from "./ui/basics";
 
 const TZ = "Europe/Rome";
 const hhmm = (iso: string) =>
@@ -38,8 +42,6 @@ export function whenWord(
   return h >= 18 ? "stasera" : "oggi";
 }
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
-const LABEL =
-  "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted";
 
 function formatter(t: PregameTarget) {
   const b = t.board!;
@@ -171,7 +173,7 @@ function MiniBoard({ t }: { t: PregameTarget }) {
   return (
     <button
       type="button"
-      className="block w-full text-left"
+      className="relative mt-4 block w-full text-left"
       aria-label={`${b.label}, ${b.scope.label}: oggi sei ${b.myRank}°, con ${t.need} passi ${shortName(rival)} e diventi ${b.afterRank}°. Tocca per rivederlo`}
       onClick={() => {
         if (reduce) return;
@@ -179,20 +181,27 @@ function MiniBoard({ t }: { t: PregameTarget }) {
         setRound((r) => r + 1);
       }}
     >
-      <span className={clsx(LABEL, "mb-1.5 block px-1")}>
+      <span className="mb-1.5 block text-[12px] font-semibold text-white/70">
         {b.label} · {b.scope.label}
       </span>
-      <ul className="space-y-1.5" aria-hidden>
+      <ul className="space-y-1.5 [perspective:600px]" aria-hidden>
         {ordered.map((r) => (
           <motion.li
             key={r.id}
             layout={!reduce}
             transition={{ type: "spring", stiffness: 420, damping: 32 }}
-            initial={reduce ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0, scale: r.mine && passed ? 1.02 : 1 }}
+            initial={reduce ? false : { opacity: 0, rotateX: -35, y: 10 }}
+            animate={{
+              opacity: 1,
+              rotateX: 0,
+              y: 0,
+              scale: r.mine && passed ? 1.03 : 1,
+            }}
             className={clsx(
-              "flex h-12 items-center gap-2.5 rounded-[18px] px-3",
-              r.mine ? "bg-linear-to-r from-gold-soft to-raised" : "bg-raised",
+              "flex h-11 items-center gap-2.5 rounded-2xl px-3",
+              r.mine
+                ? "bg-volt text-volt-ink shadow-[var(--shadow)]"
+                : "bg-white/12",
             )}
           >
             <span className="tnum w-7 shrink-0 text-[14px] font-bold">
@@ -212,7 +221,7 @@ function MiniBoard({ t }: { t: PregameTarget }) {
                   damping: 20,
                   delay: 0.15,
                 }}
-                className="inline-flex items-center rounded-full bg-surface px-1.5 py-0.5 text-[11.5px] font-bold text-gold"
+                className="inline-flex items-center rounded-full bg-volt-ink/12 px-1.5 py-0.5 text-[11.5px] font-bold"
               >
                 <IconArrowUpRight size={13} stroke={2.6} aria-hidden />
                 {b.myRank - b.afterRank}
@@ -242,11 +251,13 @@ function GoalBar({ t }: { t: PregameTarget }) {
           ? "Vittorie, da quando giochi"
           : `${cap(unitOf(t.stat, 2))}, da quando giochi`;
   return (
-    <div className="w-full text-left">
-      <span className={clsx(LABEL, "mb-1.5 block px-1")}>{label}</span>
-      <div className="relative h-3.5 w-full overflow-hidden rounded-full bg-raised">
+    <div className="relative mt-4 w-full text-left">
+      <span className="mb-1.5 block text-[12px] font-semibold text-white/70">
+        {label}
+      </span>
+      <div className="relative h-3.5 w-full overflow-hidden rounded-full bg-white/12">
         <motion.span
-          className="absolute inset-y-0 left-0 origin-left rounded-full bg-court"
+          className="absolute inset-y-0 left-0 origin-left rounded-full bg-white"
           style={{ width: `${share * 100}%` }}
           initial={reduce ? false : { scaleX: 0 }}
           animate={{ scaleX: 1 }}
@@ -260,7 +271,7 @@ function GoalBar({ t }: { t: PregameTarget }) {
           transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1], delay: 1.05 }}
         />
       </div>
-      <div className="tnum mt-1.5 flex justify-between px-1 text-[12.5px] font-semibold text-muted">
+      <div className="tnum mt-1.5 flex justify-between text-[12.5px] font-semibold text-white/80">
         <span>{t.kind === "record" ? `Tuo massimo ${from}` : from}</span>
         <span className="inline-flex items-center gap-1">
           {t.kind === "record" ? (
@@ -302,22 +313,22 @@ function Extra({ t, i }: { t: PregameTarget; i: number }) {
           : `e passi ${rival}`;
   return (
     <motion.li
-      initial={reduce ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={reduce ? false : { opacity: 0, rotateX: -40, y: 14 }}
+      animate={{ opacity: 1, rotateX: 0, y: 0 }}
       transition={{
         type: "spring",
         stiffness: 260,
         damping: 24,
-        delay: 0.6 + i * 0.1,
+        delay: 1.5 + i * 0.12,
       }}
-      className="flex items-center gap-2.5 rounded-[18px] bg-raised px-3 py-2.5 text-[13.5px] leading-snug"
+      className="flex items-center gap-2.5 rounded-2xl bg-white/12 px-3 py-2 text-[13.5px] leading-snug"
     >
-      <Icon size={17} className="shrink-0 text-ball" aria-hidden />
+      <Icon size={17} className="shrink-0 text-volt" aria-hidden />
       <span className="min-w-0 [overflow-wrap:anywhere]">
         <span className="block">
           <b className="font-bold">{what}</b> {rest}
         </span>
-        <span className="block text-[12px] text-muted">
+        <span className="block text-[12px] text-white/65">
           {t.board
             ? `${t.board.label} · ${t.board.scope.label}`
             : t.kind === "record"
@@ -329,18 +340,12 @@ function Extra({ t, i }: { t: PregameTarget; i: number }) {
   );
 }
 
-export function PregameSheet({
+export function PregameBody({
   proposal,
   targets,
-  open,
-  onClose,
-  onBoards,
 }: {
   proposal: Proposal;
   targets: PregameTarget[];
-  open: boolean;
-  onClose: () => void;
-  onBoards: () => void;
 }) {
   const { data } = useData();
   const [main, ...others] = targets;
@@ -356,66 +361,54 @@ export function PregameSheet({
     : null;
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(o) => !o && onClose()}
-      title={`${cap(when)} alle ${hhmm(proposal.startsAt)}`}
-      description={place ? `${place} · ${proposal.format}` : proposal.format}
-      footer={
-        <div className="flex gap-2">
-          <Button className="flex-1" onClick={onBoards}>
-            Classifiche
-          </Button>
-          <Button
-            variant="primary"
-            className="flex-1"
-            data-testid="anteprima-ok"
-            onClick={onClose}
-          >
-            Ci provo
-          </Button>
+    <>
+      <p className="relative mx-auto mt-6 inline-flex bg-white/12 max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[13.5px] font-semibold text-white">
+        <IconCalendarEvent
+          size={15}
+          className="shrink-0 text-volt"
+          aria-hidden
+        />
+        <span className="truncate">
+          {cap(when)} alle {hhmm(proposal.startsAt)}
+          {place && ` · ${place}`}
+        </span>
+      </p>
+      <h2
+        id="party-title"
+        className="display relative mt-1 text-[26px] leading-tight"
+      >
+        {title(main)}
+      </h2>
+      <p className="relative mt-3 flex items-baseline justify-center gap-2">
+        <CountUp
+          value={main.need}
+          className="score text-[64px] leading-none text-volt"
+        />
+        <span className="text-[20px] font-bold">
+          {main.stat === "campo"
+            ? `su ${main.attempts}`
+            : unitOf(main.stat, main.need)}
+        </span>
+      </p>
+      <p className="relative mt-1.5 text-[15px] font-semibold leading-snug text-white/90 [overflow-wrap:anywhere]">
+        {line(main, rival)}
+      </p>
+      {main.kind === "sorpasso" ? <MiniBoard t={main} /> : <GoalBar t={main} />}
+      <p className="relative mt-2 text-[12.5px] leading-snug text-white/70 [overflow-wrap:anywhere]">
+        {note(main, rival, when, holder)}
+      </p>
+      {others.length > 0 && (
+        <div className="relative mt-4 w-full text-left">
+          <p className="mb-1.5 text-[12px] font-semibold text-white/70">
+            Anche alla portata
+          </p>
+          <ul className="space-y-1.5 [perspective:600px]">
+            {others.map((t, i) => (
+              <Extra key={t.id} t={t} i={i} />
+            ))}
+          </ul>
         </div>
-      }
-    >
-      <div className="flex flex-col gap-3 pb-1 pt-1">
-        <section className="rounded-[22px] bg-linear-to-r from-court/12 via-raised to-ball/12 px-4 py-5 text-center">
-          <p className={LABEL}>{title(main)}</p>
-          <p className="mt-2 flex items-baseline justify-center gap-2">
-            <CountUp
-              value={main.need}
-              className="score text-[56px] leading-none"
-            />
-            <span className="text-[18px] font-bold">
-              {main.stat === "campo"
-                ? `su ${main.attempts}`
-                : unitOf(main.stat, main.need)}
-            </span>
-          </p>
-          <p className="mt-1.5 text-[14.5px] font-semibold leading-snug [overflow-wrap:anywhere]">
-            {line(main, rival)}
-          </p>
-        </section>
-        <div>
-          {main.kind === "sorpasso" ? (
-            <MiniBoard t={main} />
-          ) : (
-            <GoalBar t={main} />
-          )}
-          <p className="mt-2 px-1 text-[12.5px] leading-snug text-muted [overflow-wrap:anywhere]">
-            {note(main, rival, when, holder)}
-          </p>
-        </div>
-        {others.length > 0 && (
-          <div>
-            <p className={clsx(LABEL, "mb-1.5 px-1")}>Anche alla portata</p>
-            <ul className="space-y-1.5">
-              {others.map((t, i) => (
-                <Extra key={t.id} t={t} i={i} />
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </Sheet>
+      )}
+    </>
   );
 }

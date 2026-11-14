@@ -1,7 +1,7 @@
 "use client";
 
 
-import { IconCrown } from "@tabler/icons-react";
+import { IconCrown, IconX } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { BADGE_BY_KEY, type BadgeUnlock } from "@/lib/badges";
@@ -16,7 +16,7 @@ import {
   previewProposal,
   type PregameTarget,
 } from "@/lib/stats/pregame";
-import { PregameSheet } from "./pregame-preview";
+import { PregameBody } from "./pregame-preview";
 import { StudioShowLoader } from "./studio/studio-show";
 import {
   setStudioSeen,
@@ -325,24 +325,6 @@ export function BadgeCelebration() {
   };
   const more = queue.length > 1;
 
-  if (current.kind === "preview")
-    return (
-      <>
-        {player}
-        <PregameSheet
-          key={current.id}
-          open
-          proposal={current.proposal}
-          targets={current.targets}
-          onClose={next}
-          onBoards={() => {
-            next();
-            router.push("/classifiche");
-          }}
-        />
-      </>
-    );
-
   return (
     <>
     {player}
@@ -358,15 +340,32 @@ export function BadgeCelebration() {
         initial={{ opacity: 0, scale: 0.88, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
-        className="court relative flex w-full max-w-xs flex-col items-center overflow-hidden rounded-[32px] px-6 pb-6 pt-7 text-center"
-        // Il tocco sulla scheda resta qui: avanzano solo i pulsanti o il tocco fuori (prima saltava una festa).
+        className="court relative flex max-h-[calc(100dvh-24px)] w-full max-w-xs flex-col items-center overflow-y-auto overflow-x-hidden overscroll-contain rounded-[32px] px-6 pb-6 pt-7 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <CourtLines className="absolute inset-0 h-full w-full" />
+        <CourtLines
+          arcOnly={current.kind === "preview"}
+          className={
+            current.kind === "preview"
+              ? "absolute inset-x-0 top-0 h-[250px] w-full"
+              : "absolute inset-0 h-full w-full"
+          }
+        />
+        <button
+          type="button"
+          aria-label="Chiudi"
+          onClick={next}
+          className="press absolute right-3.5 top-3.5 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white"
+        >
+          <IconX size={17} strokeWidth={2.4} />
+        </button>
         {current.kind === "result" && <ResultBody item={current} />}
         {current.kind === "badge" && <BadgeBody unlock={current.unlock} />}
         {current.kind === "character" && <CharacterBody id={current.id} />}
         {current.kind === "news" && <NewsBody post={current.post} />}
+        {current.kind === "preview" && (
+          <PregameBody proposal={current.proposal} targets={current.targets} />
+        )}
         {current.kind === "studio" && <StudioBody latest={current.latest} />}
         {current.kind === "studio" ? (
           <div className="relative mt-5 flex w-full gap-2">
@@ -445,7 +444,7 @@ export function BadgeCelebration() {
             className="relative mt-6 text-court"
             onClick={next}
           >
-            {more ? "Avanti" : "Grande!"}
+            {more ? "Avanti" : current.kind === "preview" ? "Ci provo" : "Grande!"}
           </Button>
         )}
       </motion.div>
