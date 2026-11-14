@@ -163,7 +163,7 @@ export function BoxTable({
                     </span>
                   )}
                   {p?.extra && (
-                    <span className="ml-1 rounded-full bg-ball-soft px-1.5 text-[10px] font-bold uppercase text-ball">
+                    <span className="ml-1 rounded-full bg-raised px-1.5 text-[10px] font-bold uppercase text-muted">
                       extra
                     </span>
                   )}
