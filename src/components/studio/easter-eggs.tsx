@@ -13,7 +13,7 @@ const BALL = "#F26A1B";
  * Le coordinate sono quelle dello studio (390×844).
  */
 
-/** L'attaccapanni sulla parete di sinistra, sotto il pannello della data: un cappellino, una felpa e, davanti, la maglia con la montagnetta. */
+/** L'attaccapanni sulla parete di sinistra, sotto il pannello della data: un cappellino, una felpa e, davanti, la maglia PROLASSO con la montagnetta. */
 export const CoatRack = memo(function CoatRack() {
   return (
     <svg className="absolute" style={{ left: 2, top: 284, width: 84, height: 304, overflow: "visible" }} viewBox="0 0 84 304" aria-hidden>
@@ -33,20 +33,26 @@ export const CoatRack = memo(function CoatRack() {
         <circle cx="15" cy="3" r="1.8" fill={INK} />
       </g>
       {/* La felpa arancio dietro, che spunta. */}
-      <path d="M58 40 L74 46 L82 66 L76 69 L74 62 L74 104 L50 104 L50 50 Z" fill={BALL} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M58 40 L74 46 L82 66 L76 69 L74 62 L74 96 L50 96 L50 50 Z" fill={BALL} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
       <path d="M56 44 Q63 52 70 45" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" />
-      {/* La maglia davanti, sulla gruccia. */}
-      <path d="M67 36 L67 41 M57 47 L67 41 L77 47" fill="none" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* La maglia davanti, sulla gruccia: più grande, con le maniche che cadono, e PROLASSO sul petto. */}
+      <path d="M67 36 L67 41 M53 49 L67 41 L81 49" fill="none" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M51.5 50.5 L42 61.5 Q40.6 64.6 43.6 66.4 L50.6 62.6 Z" fill={CREAM} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M82.5 50.5 L92 61.5 Q93.4 64.6 90.4 66.4 L83.4 62.6 Z" fill={CREAM} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
       <path
-        d="M52 47 Q58 45 61 45 Q67 52 73 45 Q76 45 82 47 L92 60 L85 66 L81 61 L81 104 L53 104 L53 61 L49 66 L42 60 Z"
+        d="M58 47 Q67 55 76 47 L84 50 L84 100 Q84 102 82 102 L52 102 Q50 102 50 100 L50 50 Z"
         fill={CREAM}
         stroke={INK}
         strokeWidth="2.6"
         strokeLinejoin="round"
       />
-      <path d="M61 45 Q67 52 73 45" fill="none" stroke={INK} strokeWidth="2" />
-      {/* Il distintivo sul petto: una montagnetta innevata davanti al sole. */}
-      <g transform="translate(58 62)">
+      <path d="M59.6 48.6 Q67 54.2 74.4 48.6" fill="none" stroke={INK} strokeWidth="1.2" opacity="0.5" />
+      {/* La scritta, grande e scura: si legge anche nell'inquadratura larga. */}
+      <text x="67" y="70.5" textAnchor="middle" fontSize="9" fontWeight="900" fill={INK} fontFamily="inherit" textLength="29" lengthAdjust="spacingAndGlyphs">
+        PROLASSO
+      </text>
+      {/* Sotto, il distintivo: una montagnetta innevata davanti al sole. */}
+      <g transform="translate(59.8 76.5) scale(0.8)">
         <rect width="18" height="15" rx="4" fill="#2D5BE3" />
         <circle cx="12.5" cy="6" r="3.2" fill={VOLT} />
         <path d="M1.5 15 L7 6 L10 10 L12.5 7.5 L16.5 15 Z" fill={INK} />
