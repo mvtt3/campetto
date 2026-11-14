@@ -20,17 +20,10 @@ import {
 import { useNow } from "@/lib/use-now";
 import { say } from "@/lib/voice";
 
-/**
- * Chi c'è, chi forse, chi no e chi deve ancora rispondere: una riga per gruppo, con le facce e
- * i nomi. Sta tutto nella scheda, senza scorrere.
- */
 export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const { data, me } = useData();
   const byId = new Map(
     [...data.players, ...(data.extras ?? [])].map((p) => [p.id, p]),
-  );
-  const addedBy = new Map(
-    proposal.responses.map((r) => [r.playerId, r.addedBy ?? null]),
   );
   const by = (k: "si" | "forse" | "no") =>
     proposal.responses
@@ -42,35 +35,30 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const waiting = data.players.filter(
     (p) => !p.archived && !answered.has(p.id),
   );
-  const groups: {
-    title: string;
-    short: string;
-    players: Player[];
-    tone: string;
-  }[] = [
+  const groups = [
     {
       title: "Ci sono",
       short: "Ci sono",
       players: by("si"),
-      tone: "bg-volt",
+      tone: "bg-volt text-volt-ink",
     },
     {
       title: "Forse",
       short: "Forse",
       players: by("forse"),
-      tone: "bg-ball",
+      tone: "bg-ball-soft text-ball",
     },
     {
       title: "Non ci sono",
       short: "No",
       players: by("no"),
-      tone: "bg-danger",
+      tone: "bg-danger/12 text-danger",
     },
     {
       title: "Non hanno ancora risposto",
       short: "In attesa",
       players: waiting,
-      tone: "bg-line-strong",
+      tone: "bg-surface text-muted",
     },
   ];
   const name = (p: Player) =>
@@ -82,44 +70,42 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
     proposal.status === "aperta" &&
     new Date(proposal.startsAt).getTime() > now.getTime() - 3 * 3600e3;
   return (
-    <div className="flex flex-col gap-1.5" aria-label="Chi c'è" role="group">
+    <div
+      className="flex flex-col gap-0.5 rounded-[20px] bg-raised p-1"
+      aria-label="Chi c'è"
+      role="group"
+    >
       {groups
         .filter((g) => g.players.length)
         .map((g) => {
           const isOpen = open === g.title;
           return (
-            <section key={g.title} aria-label={g.title} className="min-w-0">
-              {/* Un tocco sulla riga e si aprono tutti i nomi, per intero; un altro la richiude. */}
+            <section
+              key={g.title}
+              aria-label={g.title}
+              className={clsx(
+                "min-w-0 rounded-[16px] transition-colors",
+                isOpen && "bg-surface",
+              )}
+            >
               <button
                 type="button"
                 aria-expanded={isOpen}
                 onClick={() => setOpen(isOpen ? null : g.title)}
-                className="press -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-2 rounded-full px-1 py-0.5 text-left"
+                className="press flex w-full min-w-0 items-center gap-2 rounded-[16px] px-1.5 py-1.5 text-left"
               >
-                <span className="flex w-[100px] shrink-0 items-center gap-2 whitespace-nowrap text-[12.5px] font-semibold">
-                  <span
-                    className={clsx("h-2 w-2 shrink-0 rounded-full", g.tone)}
-                  />
+                <span
+                  className={clsx(
+                    "flex w-[92px] shrink-0 items-center justify-between rounded-full py-1 pl-2.5 pr-2 text-[12px] font-bold",
+                    g.tone,
+                  )}
+                >
                   {g.short}
-                  <span className="tnum ml-auto pr-1 text-muted">
-                    {g.players.length}
-                  </span>
+                  <span className="tnum">{g.players.length}</span>
                 </span>
-                <AvatarStack players={g.players} size={22} max={4} />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">
-                  {g.players.map((p, i) => (
-                    <span key={p.id}>
-                      {i > 0 && ", "}
-                      <span
-                        className={clsx(
-                          "font-semibold",
-                          p.id === me?.id ? "text-ball" : "text-text",
-                        )}
-                      >
-                        {name(p)}
-                      </span>
-                    </span>
-                  ))}
+                <AvatarStack players={g.players} size={24} max={4} />
+                <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
+                  {g.players.map((p) => name(p)).join(", ")}
                 </span>
                 <IconChevronDown
                   size={15}
@@ -137,27 +123,19 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-                    className="flex flex-wrap gap-1.5 overflow-hidden pl-1 pt-1.5"
+                    className="flex flex-wrap gap-1.5 overflow-hidden px-1.5 pb-2"
                   >
                     {g.players.map((p) => (
                       <li
                         key={p.id}
                         className={clsx(
-                          "flex items-center gap-1.5 rounded-full border border-line bg-surface py-0.5 pl-0.5 pr-2.5 text-[13px] font-semibold",
-                          p.id === me?.id && "!border-ball bg-ball-soft",
+                          "flex items-center gap-1.5 rounded-full py-[3px] pl-[3px] pr-3 text-[13px] font-semibold",
+                          p.id === me?.id ? "bg-text text-bg" : "bg-raised",
                         )}
                       >
-                        <Avatar player={p} size={22} href={false} ring="none" />
+                        <Avatar player={p} size={24} href={false} ring="none" />
                         {name(p)}
-                        {p.extra && (
-                          <ExtraTag
-                            by={
-                              addedBy.get(p.id)
-                                ? byId.get(addedBy.get(p.id)!)
-                                : undefined
-                            }
-                          />
-                        )}
+                        {p.extra && <ExtraTag />}
                       </li>
                     ))}
                   </motion.ul>
@@ -171,10 +149,10 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   );
 }
 
-function ExtraTag({ by }: { by?: Player }) {
+function ExtraTag() {
   return (
-    <span className="rounded-full bg-raised px-1.5 py-[1px] text-[10.5px] font-bold text-muted">
-      extra{by ? ` · di ${shortName(by)}` : ""}
+    <span className="text-[10px] font-bold uppercase tracking-wide text-faint">
+      extra
     </span>
   );
 }
@@ -286,10 +264,10 @@ function BringExtra({ proposal }: { proposal: Proposal }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="press -mx-1 flex w-[calc(100%+0.5rem)] items-center gap-2 rounded-full px-1 py-0.5 text-left text-[12.5px] font-semibold text-muted"
+        className="press flex w-full items-center gap-2 rounded-[16px] px-1.5 py-1.5 text-left text-[12.5px] font-semibold text-muted"
         data-testid="porta-extra"
       >
-        <span className="flex w-[100px] shrink-0 items-center gap-2">
+        <span className="flex w-[92px] shrink-0 items-center gap-1.5 py-1 pl-2.5 text-[12px] font-bold">
           <IconPlus size={12} strokeWidth={3} aria-hidden />
           Extra
         </span>
