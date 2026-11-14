@@ -51,7 +51,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
     new Date(proposal.startsAt).getTime() > now.getTime() - 3 * 3600e3;
   const current = groups.find((g) => g.key === tab)!;
   return (
-    <section className="flex flex-col gap-3" aria-label="Chi c'è">
+    <section className="mt-2 flex flex-col gap-3" aria-label="Chi c'è">
       <div role="tablist" className="flex gap-4 border-b border-line">
         {groups.map((g) => {
           const active = g.key === tab;
@@ -63,7 +63,7 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
               aria-selected={active}
               onClick={() => setTab(g.key)}
               className={clsx(
-                "-mb-px flex items-center gap-1 border-b-2 pb-2 text-[13px] font-semibold transition-colors",
+                "-mb-px flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-semibold transition-colors",
                 active
                   ? "border-text text-text"
                   : "border-transparent text-muted",
@@ -83,7 +83,6 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
           >
             <Avatar player={p} size={24} href={false} ring="none" />
             {name(p)}
-            {p.extra && <ExtraTag />}
           </li>
         ))}
         {tab === "si" && canBring && (
@@ -96,14 +95,6 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
         )}
       </ul>
     </section>
-  );
-}
-
-function ExtraTag() {
-  return (
-    <span className="text-[10px] font-bold uppercase tracking-wide text-faint">
-      extra
-    </span>
   );
 }
 
