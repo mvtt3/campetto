@@ -135,6 +135,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const guestMic = useRef<HTMLDivElement>(null);
   const top = useRef<HTMLDivElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  // La targa dell'ospite (sotto la scrivania): i sottotitoli le lasciano posto.
+  const guestPlate = useRef<HTMLDivElement>(null);
   const chromeTimer = useRef(0);
   const clock = useRef({ t: startAt, at: 0, running: false, audioOk: true });
   const smooth = useRef({ lui: { mouth: 0, look: 0 }, lei: { mouth: 0, look: 0 }, ospite: { mouth: 0, look: 0 } });
@@ -698,9 +700,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         </div>
       </div>
 
-      <LowerThird show={show} now={now} />
+      <LowerThird show={show} now={now} guestPlate={guestPlate} />
 
-      <Captions show={show} now={now} hidden={mode === "sigla"} />
+      <Captions show={show} now={now} hidden={mode === "sigla"} view={view} k={k} chrome={chrome} chromeBox={bottom} guestPlate={guestPlate} />
 
       <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
@@ -816,45 +818,103 @@ function ReplayScore({ show, game }: { show: StudioShow; game: number }) {
  * solo loro, non tutto lo studio (conduttori, ospite, grafiche).
  */
 /**
- * Dove stanno i sottotitoli (centro della riga, in % dell'altezza dello schermo): vicino a dove
- * si guarda, mai nell'ultimo quarto. In studio subito sotto le facce, sul bordo della scrivania
- * (senza coprire le bocche); con la grafica a tutto schermo appena sotto la grafica; nei replay
- * sotto l'azione, sopra il risultato.
+ * Dove stanno i sottotitoli. In studio, in ogni inquadratura, sotto la scrivania: nello spazio tra
+ * il bordo basso della scrivania e il fondo dello schermo, dove si leggono bene senza coprire
+ * nessuno (seguono la telecamera, così restano attaccati alla scrivania anche negli stacchi). Se c'è
+ * la targa dell'ospite stanno sotto di lei; se compaiono i comandi salgono quel tanto che basta.
+ * Con la grafica a tutto schermo appena sotto la grafica; nei replay sotto l'azione (in % dello schermo).
  */
-const CAP_ZONE = { studio: 63, grafica: 76, replay: 71 } as const;
+const CAP_ZONE = { grafica: 76, replay: 71 } as const;
+/** Il bordo basso della scrivania, nello studio (390×844). */
+const DESK_BOTTOM = 596 + 150;
 
-function Captions({ show, now, hidden }: { show: StudioShow; now: () => number; hidden: boolean }) {
+function Captions({
+  show,
+  now,
+  hidden,
+  view,
+  k,
+  chrome,
+  chromeBox,
+  guestPlate,
+}: {
+  show: StudioShow;
+  now: () => number;
+  hidden: boolean;
+  view: React.RefObject<{ w: number; h: number }>;
+  k: number;
+  chrome: boolean;
+  chromeBox: React.RefObject<HTMLDivElement | null>;
+  guestPlate: React.RefObject<HTMLDivElement | null>;
+}) {
   const [cap, setCap] = useState<ReturnType<typeof captionAt>>(null);
-  const [zone, setZone] = useState<keyof typeof CAP_ZONE>("studio");
+  const box = useRef<HTMLDivElement>(null);
+  const line = useRef<HTMLParagraphElement>(null);
+  const sab = useRef<HTMLSpanElement>(null);
+  const live = useRef({ k, chrome });
+  useEffect(() => {
+    live.current = { k, chrome };
+  }, [k, chrome]);
   useEffect(() => {
     let raf = 0;
     let last = "";
-    let lastZone = "";
+    let lastY = "";
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const z = captionZoneAt(show, now());
-      if (z !== lastZone) {
-        lastZone = z;
-        setZone(z);
-      }
-      const cp = captionAt(show, now());
+      const t = now();
+      const cp = captionAt(show, t);
       const key = cp ? `${cp.line.t}:${cp.page.from}:${cp.active}` : "";
       if (key !== last) {
         last = key;
         setCap(cp);
       }
+      const el = box.current;
+      if (!el) return;
+      const { h } = view.current;
+      const { k: kk, chrome: on } = live.current;
+      const capH = line.current?.offsetHeight ?? 38;
+      const z = captionZoneAt(show, t);
+      // Il fondo utile: sopra la barra di sistema e, se ci sono, sopra i comandi.
+      const safe = Math.max(20, (sab.current?.offsetHeight ?? 0) + 12);
+      const cb = chromeBox.current;
+      const floor = on && cb ? cb.offsetTop + 40 - 6 : h - safe;
+      let y: number;
+      if (z === "studio") {
+        const cam = cameraAt(show, t);
+        const desk = (h - STAGE.h * kk) / 2 + (cam.y + DESK_BOTTOM * cam.s) * kk;
+        el.parentElement?.style.setProperty("--studio-desk-y", `${desk.toFixed(1)}px`);
+        const plate = guestPlate.current;
+        if (plate) {
+          // La targa subito sotto la scrivania e i sottotitoli sotto di lei; se lo spazio non basta
+          // (comandi aperti) salgono insieme, senza sovrapporsi.
+          const ph = plate.offsetHeight;
+          const top = Math.min(desk + 10, floor - capH - 8 - ph);
+          el.parentElement?.style.setProperty("--studio-plate-y", `${top.toFixed(1)}px`);
+          y = top + ph + 8;
+        } else {
+          y = Math.min(desk + 10, floor - capH);
+        }
+      } else {
+        y = Math.min((h * CAP_ZONE[z]) / 100 - capH / 2, floor - capH);
+      }
+      const ty = `translate3d(0, ${y.toFixed(1)}px, 0)`;
+      if (ty !== lastY) {
+        lastY = ty;
+        el.style.transform = ty;
+      }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [show, now]);
+  }, [show, now, view, chromeBox, guestPlate]);
   return (
-    <div className="studio-caps pointer-events-none absolute inset-x-0 z-10 flex -translate-y-1/2 justify-center px-5" style={{ top: `${CAP_ZONE[zone]}%` }} aria-live="polite">
+    <div ref={box} className="studio-caps pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center px-5" aria-live="polite">
+      <span ref={sab} className="pointer-events-none absolute h-[var(--sab)] w-0 opacity-0" aria-hidden />
       {cap && !hidden && (
-        <p key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[92%] flex-wrap justify-center gap-x-[0.36em] gap-y-1 text-center text-[30px] font-extrabold leading-[1.2] tracking-[0.005em] text-white">
+        <p ref={line} key={`${cap.line.t}:${cap.page.from}`} className="studio-cap flex max-w-[92%] flex-wrap justify-center gap-x-[0.36em] gap-y-1 text-center text-[30px] font-extrabold leading-[1.2] tracking-[0.005em] text-white">
           {cap.line.words.slice(cap.page.from, cap.page.to + 1).map(([w], i) => {
-            const k = cap.page.from + i;
+            const kw = cap.page.from + i;
             return (
-              <span key={i} className={clsx("studio-word", k <= cap.active && "is-said", k === cap.active && "is-on")}>
+              <span key={i} className={clsx("studio-word", kw <= cap.active && "is-said", kw === cap.active && "is-on")}>
                 {w.replace(/[.,:;]+$/, "")}
               </span>
             );
@@ -871,7 +931,7 @@ function Captions({ show, now, hidden }: { show: StudioShow; now: () => number; 
  * dell'ospite in basso, sotto di lui, appena si siede (sopra c'è il maxischermo con i suoi numeri).
  * Nelle puntate senza apertura i conduttori hanno la targa in alto al loro primo primo piano.
  */
-function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
+function LowerThird({ show, now, guestPlate }: { show: StudioShow; now: () => number; guestPlate: React.RefObject<HTMLDivElement | null> }) {
   const [on, setOn] = useState<"apertura" | "ospite" | "lui" | "lei" | null>(null);
   useEffect(() => {
     const opening = show.opening ?? 0;
@@ -902,14 +962,25 @@ function LowerThird({ show, now }: { show: StudioShow; now: () => number }) {
       </>
     );
   if (on === "ospite" && show.guest)
-    return <Plate key="ospite" name={show.guest.name} role="Ospite in studio" style={{ left: "50%", top: "71%", maxWidth: "70%", translate: "-50% 0" }} out={3.85} />;
+    return (
+      <Plate
+        key="ospite"
+        boxRef={guestPlate}
+        name={show.guest.name}
+        role="Ospite in studio"
+        // Subito sotto la scrivania (i sottotitoli scendono sotto di lei).
+        style={{ left: "50%", top: "var(--studio-plate-y, calc(var(--studio-desk-y, 71%) + 10px))", maxWidth: "70%", translate: "-50% 0" }}
+        out={3.85}
+      />
+    );
   return <Plate key={on} name={show.hosts[on as StudioHost]} role={on === "lei" ? "Conduttrice" : "Conduttore"} style={{ left: 20, top: "18%", maxWidth: "calc(100% - 40px)" }} out={3.25} />;
 }
 
 /** Una targa: vetro blu senza bordi, il badge dello Studio in giallo, il ruolo sopra il nome. */
-function Plate({ name, role, style, out, small, right }: { name: string; role: string; style: CSSProperties; out: number; small?: boolean; right?: boolean }) {
+function Plate({ name, role, style, out, small, right, boxRef }: { name: string; role: string; style: CSSProperties; out: number; small?: boolean; right?: boolean; boxRef?: React.RefObject<HTMLDivElement | null> }) {
   return (
     <div
+      ref={boxRef}
       className={clsx("studio-plate pointer-events-none absolute z-10 flex items-center text-white", small ? "gap-2.5 rounded-[18px] py-2 pl-3 pr-4" : "gap-3 rounded-[24px] py-2.5 pl-2.5 pr-5", right && (small ? "flex-row-reverse pl-4 pr-3 text-right" : "flex-row-reverse pl-5 pr-2.5 text-right"))}
       style={{ ...style, ["--plate-out" as string]: `${out}s` }}
     >
