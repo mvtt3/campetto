@@ -522,8 +522,8 @@ export function HomeScreen() {
                       className={clsx(
                         "absolute bottom-full right-2 mb-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[10.5px] font-semibold",
                         delta > 0
-                          ? "bg-volt text-volt-ink"
-                          : "bg-white/20 text-white",
+                          ? "bg-ok text-white"
+                          : "bg-danger text-white",
                       )}
                     >
                       {delta > 0 ? (
