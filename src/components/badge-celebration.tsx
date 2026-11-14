@@ -1,6 +1,5 @@
 "use client";
 
-import clsx from "clsx";
 
 import { IconCrown } from "@tabler/icons-react";
 import { motion } from "motion/react";
@@ -17,7 +16,7 @@ import {
   previewProposal,
   type PregameTarget,
 } from "@/lib/stats/pregame";
-import { PregameBody } from "./pregame-preview";
+import { PregameSheet } from "./pregame-preview";
 import { StudioShowLoader } from "./studio/studio-show";
 import {
   setStudioSeen,
@@ -326,6 +325,24 @@ export function BadgeCelebration() {
   };
   const more = queue.length > 1;
 
+  if (current.kind === "preview")
+    return (
+      <>
+        {player}
+        <PregameSheet
+          key={current.id}
+          open
+          proposal={current.proposal}
+          targets={current.targets}
+          onClose={next}
+          onBoards={() => {
+            next();
+            router.push("/classifiche");
+          }}
+        />
+      </>
+    );
+
   return (
     <>
     {player}
@@ -333,52 +350,23 @@ export function BadgeCelebration() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="party-title"
-      className={clsx(
-        "fade-in fixed inset-0 z-[70] grid place-items-center px-8",
-        // L'anteprima: la pagina dietro resta visibile, sfocata, sotto una scheda di vetro.
-        current.kind === "preview" ? "preview-backdrop" : "bg-[#1d1a16]/75",
-      )}
+      className="fade-in fixed inset-0 z-[70] grid place-items-center bg-[#1d1a16]/75 px-8"
       onClick={next}
     >
       <motion.div
         key={current.id}
-        initial={current.kind === "preview" ? { opacity: 0, scale: 0.9, y: 70, rotateX: 30 } : { opacity: 0, scale: 0.88, y: 24 }}
-        animate={current.kind === "preview" ? { opacity: 1, scale: 1, y: 0, rotateX: 0 } : { opacity: 1, scale: 1, y: 0 }}
-        transition={current.kind === "preview" ? { type: "spring", stiffness: 140, damping: 18 } : { type: "spring", stiffness: 200, damping: 22 }}
-        style={current.kind === "preview" ? { transformPerspective: 900, perspective: 900 } : undefined}
-        className={
-          current.kind === "preview"
-            ? // L'anteprima è la più alta: sui telefoni piccolissimi scorre invece di uscire dallo schermo.
-              "preview-glass relative flex max-h-[calc(100dvh-24px)] w-full max-w-xs flex-col items-center overflow-y-auto overscroll-contain rounded-[32px] px-6 pb-6 pt-7 text-center"
-            : "court relative flex w-full max-w-xs flex-col items-center overflow-hidden rounded-[32px] px-6 pb-6 pt-7 text-center"
-        }
+        initial={{ opacity: 0, scale: 0.88, y: 24 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 22 }}
+        className="court relative flex w-full max-w-xs flex-col items-center overflow-hidden rounded-[32px] px-6 pb-6 pt-7 text-center"
         // Il tocco sulla scheda resta qui: avanzano solo i pulsanti o il tocco fuori (prima saltava una festa).
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Nell'anteprima, più alta, il campo resta in alto attorno al numero. */}
-        <CourtLines
-          arcOnly={current.kind === "preview"}
-          className={
-            current.kind === "preview"
-              ? "absolute inset-x-0 top-0 h-[250px] w-full"
-              : "absolute inset-0 h-full w-full"
-          }
-        />
+        <CourtLines className="absolute inset-0 h-full w-full" />
         {current.kind === "result" && <ResultBody item={current} />}
         {current.kind === "badge" && <BadgeBody unlock={current.unlock} />}
         {current.kind === "character" && <CharacterBody id={current.id} />}
         {current.kind === "news" && <NewsBody post={current.post} />}
-        {current.kind === "preview" && (
-          <>
-            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]" aria-hidden>
-              <span className="preview-light -left-16 -top-14 h-48 w-48 bg-[radial-gradient(circle,rgb(255_197_49/0.42),transparent_68%)]" aria-hidden />
-              <span className="preview-light -bottom-20 -right-16 h-56 w-56 bg-[radial-gradient(circle,rgb(242_106_27/0.36),transparent_70%)] [animation-delay:-4s]" aria-hidden />
-            </span>
-            <div className="preview-float relative w-full">
-              <PregameBody proposal={current.proposal} targets={current.targets} />
-            </div>
-          </>
-        )}
         {current.kind === "studio" && <StudioBody latest={current.latest} />}
         {current.kind === "studio" ? (
           <div className="relative mt-5 flex w-full gap-2">
@@ -396,27 +384,6 @@ export function BadgeCelebration() {
               }}
             >
               Guarda ora
-            </Button>
-          </div>
-        ) : current.kind === "preview" ? (
-          <div className="relative mt-5 flex w-full gap-2">
-            <Button
-              variant="light"
-              className="flex-1 text-court"
-              onClick={() => {
-                next();
-                router.push("/classifiche");
-              }}
-            >
-              Classifiche
-            </Button>
-            <Button
-              variant="primary"
-              className="flex-1"
-              data-testid="anteprima-ok"
-              onClick={next}
-            >
-              Ci provo
             </Button>
           </div>
         ) : current.kind === "news" ? (
