@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { memo, useId } from "react";
 
 const INK = "#1D1A16";
@@ -14,9 +15,9 @@ const CREAM = "#FFF8EA";
  * la frangia, occhiali sottili dorati, tunica
  * indiana (kurta) verde petrolio con il collo alla coreana e i ricami dorati.
  *
- * Si muovono con poche variabili CSS che il player aggiorna a ogni fotogramma, senza
- * ridisegnare niente: --mouth (0-1, quanto è aperta la bocca), --look (-1 sinistra, 1 destra),
- * --blink (1 aperti, 0 chiusi), --arm (0-1, alza il foglio), --breath (respiro), --nod (cenno).
+ * Tre livelli uno sopra l'altro: il busto (respira), la testa (annuisce e si gira) e il viso
+ * (guarda dove serve). Il player li sposta come blocchi interi, senza ridisegnarli; dentro il viso
+ * si muovono solo occhi, bocca e sopracciglia (pochi pezzi piccoli).
  */
 const HOODIE = "#4B5263";
 const HOODIE_DARK = "#363C4A";
@@ -31,23 +32,10 @@ export const Presenter = memo(function Presenter({ who, className }: { who: "lui
   const lei = who === "lei";
 
   return (
-    <svg
-      viewBox="0 0 200 230"
-      className={className}
-      aria-hidden
-      style={{ overflow: "visible" }}
-    >
-      <defs>
-        <pattern id={`dots-${uid}`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
-          <circle cx="2.5" cy="2.5" r="1.05" fill={BALL_DARK} />
-        </pattern>
-        <clipPath id={`ball-${uid}`}>
-          <circle cx="100" cy="82" r="50" />
-        </clipPath>
-      </defs>
-
-      {/* Il busto respira appena: tutto sale e scende di un pelo. */}
-      <g className="studio-breath">
+    <span className={clsx("relative block w-full", className)} style={{ aspectRatio: "200 / 230" }} aria-hidden>
+      {/* Il busto respira appena: tutto sale e scende di un pelo (testa compresa). */}
+      <span className="studio-breath absolute inset-0 block">
+        <svg viewBox="0 0 200 230" className="absolute inset-0 h-full w-full" style={{ overflow: "visible" }}>
         {lei ? (
           <>
             {/* La tunica (kurta): collo alla coreana, abbottonatura e ricami dorati. */}
@@ -77,8 +65,18 @@ export const Presenter = memo(function Presenter({ who, className }: { who: "lui
           </>
         )}
 
+        </svg>
         {/* La testa annuisce e si gira verso chi parla. */}
-        <g className="studio-head">
+        <span className="studio-head absolute inset-0 block">
+        <svg viewBox="0 0 200 230" className="absolute inset-0 h-full w-full" style={{ overflow: "visible" }}>
+          <defs>
+            <pattern id={`dots-${uid}`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+              <circle cx="2.5" cy="2.5" r="1.05" fill={BALL_DARK} />
+            </pattern>
+            <clipPath id={`ball-${uid}`}>
+              <circle cx="100" cy="82" r="50" />
+            </clipPath>
+          </defs>
           {lei && (
             // Il caschetto ramato dietro la testa (come quello di prima).
             <path d="M44 92 Q40 30 100 26 Q160 30 156 92 Q158 122 146 130 L132 118 L68 118 L54 130 Q42 122 44 92 Z" fill={HAIR} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
@@ -114,8 +112,16 @@ export const Presenter = memo(function Presenter({ who, className }: { who: "lui
             </>
           )}
 
+          {lei && (
+            <>
+              <circle cx="49" cy="96" r="3.6" fill={GOLD} stroke={INK} strokeWidth="1.6" />
+              <circle cx="151" cy="96" r="3.6" fill={GOLD} stroke={INK} strokeWidth="1.6" />
+            </>
+          )}
+        </svg>
           {/* Il viso guarda dove serve: sinistra, destra o in camera. */}
-          <g className="studio-face">
+          <span className="studio-face absolute inset-0 block">
+          <svg viewBox="0 0 200 230" className="absolute inset-0 h-full w-full" style={{ overflow: "visible" }}>
             <g className="studio-brows">
               <path d={lei ? "M70 60 Q80 54 90 59" : "M69 61 Q79 55 90 59"} stroke={INK} strokeWidth="3.6" fill="none" strokeLinecap="round" />
               <path d={lei ? "M110 59 Q120 54 130 60" : "M110 59 Q121 55 131 61"} stroke={INK} strokeWidth="3.6" fill="none" strokeLinecap="round" />
@@ -148,16 +154,11 @@ export const Presenter = memo(function Presenter({ who, className }: { who: "lui
               </g>
               <path className="studio-mouth-shut" d="M-11 -1 Q0 7 11 -1" fill="none" stroke={lei ? "#C2183B" : INK} strokeWidth="3.4" strokeLinecap="round" />
             </g>
-          </g>
-          {lei && (
-            <>
-              <circle cx="49" cy="96" r="3.6" fill={GOLD} stroke={INK} strokeWidth="1.6" />
-              <circle cx="151" cy="96" r="3.6" fill={GOLD} stroke={INK} strokeWidth="1.6" />
-            </>
-          )}
-        </g>
-      </g>
-    </svg>
+          </svg>
+          </span>
+        </span>
+      </span>
+    </span>
   );
 });
 

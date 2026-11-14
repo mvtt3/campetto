@@ -2674,41 +2674,60 @@ html[data-shot="3"] .intro-ball-x {
    I presentatori si muovono con variabili CSS aggiornate dal player (niente ridisegni).
    Le grafiche sul maxischermo usano animazioni CSS con un ritardo negativo (--el): così
    si possono mettere in pausa e riprendere da qualsiasi punto, come un video. */
-.studio-breath {
-  transform: translateY(calc(var(--breath, 0) * 1.8px));
-}
+/* I pezzi che si muovono ricevono il loro transform dal player (solo loro, solo quando cambia):
+   qui solo i punti di rotazione e la bocca chiusa di partenza. */
 .studio-head {
-  transform-box: view-box;
-  transform-origin: 100px 140px;
-  transform: rotate(calc(var(--look, 0) * 4deg)) translateY(calc(var(--nod, 0) * 2.5px));
+  /* Il collo (100, 140 nel disegno 200×230). */
+  transform-origin: 50% 60.87%;
 }
-.studio-face {
-  transform: translateX(calc(var(--look, 0) * 7px));
+/* Nello show busto, testa e viso sono livelli a sé: il telefono li sposta senza ridisegnarli. */
+.studio-shell .studio-breath,
+.studio-shell .studio-head,
+.studio-shell .studio-face {
+  will-change: transform;
 }
-.studio-pupil {
-  transform: translateX(calc(var(--look, 0) * 3px));
+/* Nello show la mascotte dei loghi non sbatte le palpebre: costava un ricalcolo a ogni fotogramma. */
+.studio-shell .mascot .mascot-eyes {
+  animation: none;
 }
 .studio-eye {
   transform-box: fill-box;
   transform-origin: center;
-  transform: scaleY(var(--blink, 1));
 }
 .studio-mouth-open {
   transform-box: fill-box;
   transform-origin: 50% 30%;
-  transform: scale(calc(0.7 + var(--mouth, 0) * 0.3), var(--mouth, 0));
-  opacity: calc(var(--mouth, 0) * 8);
-}
-.studio-mouth-shut {
-  opacity: calc(1 - var(--mouth, 0) * 8);
-}
-.studio-brows {
-  transform: translateY(calc(var(--mouth, 0) * -2.5px));
+  transform: scale(0.7, 0);
+  opacity: 0;
 }
 .studio-arm {
   transform-box: view-box;
   transform-origin: 170px 60px;
-  transform: rotate(calc(var(--arm, 0) * -24deg)) translateY(calc(var(--arm, 0) * -14px));
+}
+
+/* La grafica a tutto schermo: quando non serve è nascosta del tutto (non solo trasparente). */
+.studio-full {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+.studio-full.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 200ms ease;
+}
+
+/* Mentre si guarda una puntata, la schermata dell'app sotto non si disegna e le sue animazioni
+   restano ferme: tutto il telefono lavora per lo show. */
+html[data-studio="1"] body > :not(.studio-shell) {
+  visibility: hidden;
+}
+html[data-studio="1"] body > :not(.studio-shell) *,
+html[data-studio="1"] body > :not(.studio-shell) *::before,
+html[data-studio="1"] body > :not(.studio-shell) *::after {
+  animation-play-state: paused !important;
 }
 
 .studio-in {
@@ -3009,7 +3028,7 @@ html[data-shot="3"] .intro-ball-x {
   display: none;
 }
 .studio-guest-mouth {
-  transform: scaleY(var(--mouth, 0));
+  transform: scaleY(0);
   transform-box: fill-box;
   transform-origin: center;
 }

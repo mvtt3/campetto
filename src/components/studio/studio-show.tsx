@@ -11,7 +11,7 @@ import {
   IconVolumeOff,
   IconX,
 } from "@tabler/icons-react";
-import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   armAt,
@@ -51,6 +51,37 @@ const easeOut = (u: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, u)), 3);
 const setVar = (el: HTMLElement, name: string, value: string) => {
   if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
 };
+/** Scrive una proprietà di stile solo se cambia (meno ricalcoli e ridisegni sui telefoni economici). */
+const put = (el: Element | null | undefined, prop: "transform" | "opacity", value: string) => {
+  const st = (el as HTMLElement | SVGElement | null)?.style;
+  if (st && st[prop] !== value) st[prop] = value;
+};
+/** I pezzi di un conduttore che si muovono: trovati una volta, poi si scrive solo su di loro. */
+interface Rig {
+  /** Quanti px è un'unità del disegno (200×230) alla misura in cui è mostrato. */
+  u: number;
+  breath: Element | null;
+  head: Element | null;
+  face: Element | null;
+  brows: Element | null;
+  eyes: Element[];
+  pupils: Element[];
+  open: Element | null;
+  shut: Element | null;
+  arm: Element | null;
+}
+const rigOf = (box: HTMLElement, notes: HTMLElement | null): Rig => ({
+  u: (box.clientWidth || 170) / 200,
+  breath: box.querySelector(".studio-breath"),
+  head: box.querySelector(".studio-head"),
+  face: box.querySelector(".studio-face"),
+  brows: box.querySelector(".studio-brows"),
+  eyes: Array.from(box.querySelectorAll(".studio-eye")),
+  pupils: Array.from(box.querySelectorAll(".studio-pupil")),
+  open: box.querySelector(".studio-mouth-open"),
+  shut: box.querySelector(".studio-mouth-shut"),
+  arm: notes?.querySelector(".studio-arm") ?? null,
+});
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const el = (s: number): CSSProperties => ({ ["--el" as string]: `${-s}s` });
 const at = (d: number): CSSProperties => ({ ["--d" as string]: `${d}s` });
@@ -68,10 +99,23 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
     if (closingRef.current) return;
     closingRef.current = true;
     shell.current?.querySelectorAll("audio, video").forEach((m) => (m as HTMLMediaElement).pause());
+    // L'app sotto torna visibile subito: la puntata esce sfumando sopra di lei.
+    delete document.documentElement.dataset.studio;
     setClosing(true);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.setTimeout(onClose, reduce ? 0 : 280);
   }, [onClose]);
+  useEffect(() => {
+    // Finita l'entrata, la schermata dell'app sotto (Home o Partite) si spegne: niente animazioni
+    // né disegni nascosti mentre si guarda la puntata (sui telefoni economici facevano scattare tutto).
+    const h = window.setTimeout(() => {
+      if (!closingRef.current) document.documentElement.dataset.studio = "1";
+    }, 380);
+    return () => {
+      window.clearTimeout(h);
+      delete document.documentElement.dataset.studio;
+    };
+  }, []);
   useEffect(() => {
     let alive = true;
     fetch(studioUrl(id), { cache: "no-store" })
@@ -140,6 +184,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const chromeTimer = useRef(0);
   const clock = useRef({ t: startAt, at: 0, running: false, audioOk: true });
   const smooth = useRef({ lui: { mouth: 0, look: 0 }, lei: { mouth: 0, look: 0 }, ospite: { mouth: 0, look: 0 } });
+  const rigs = useRef<{ lui?: Rig; lei?: Rig }>({});
 
   const [playing, setPlaying] = useState(false);
   const [needsTap, setNeedsTap] = useState(false);
@@ -299,6 +344,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     let tickN = 0;
     let frame = 0;
     let counters: HTMLElement[] = [];
+    let countersFor = "";
+    let recheck = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
@@ -329,22 +376,33 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         sm.look += (lookAt(line, who, t, g.on && g.seat > 0.5) - sm.look) * 0.14;
         // Con l'ospite i conduttori si spostano un po' ai lati per fargli posto.
         const dx = `translateX(${((who === "lui" ? 1 : -1) * GUEST_SPREAD * g.apart).toFixed(2)}px)`;
-        box.style.transform = dx;
         const listening = line && line.who !== who;
-        // Si scrive solo quello che cambia davvero (a passi piccoli ma visibili): meno ricalcoli
-        // degli stili a ogni fotogramma sui telefoni economici.
-        setVar(box, "--mouth", sm.mouth.toFixed(2));
-        setVar(box, "--look", sm.look.toFixed(2));
-        setVar(box, "--blink", blinkAt(who, t).toFixed(1));
-        setVar(box, "--breath", Math.sin(t * 1.5 + (who === "lui" ? 0 : 1.7)).toFixed(2));
-        setVar(box, "--nod", listening ? (Math.max(0, Math.sin(t * 2.4)) ** 3).toFixed(2) : (sm.mouth * 0.45).toFixed(2));
-        const arm = armAt(show, who, t).toFixed(2);
-        setVar(box, "--arm", arm);
+        // Si scrive solo sui pezzi che si muovono, e solo quando cambiano (a passi piccoli ma
+        // visibili): così il telefono ricalcola e ridisegna pochissimo a ogni fotogramma.
         const notes = (who === "lui" ? luiNotes : leiNotes).current;
-        if (notes) {
-          notes.style.setProperty("--arm", arm);
-          notes.style.transform = who === "lui" ? `${dx} scaleX(-1)` : dx;
-        }
+        let rig = rigs.current[who];
+        if (!rig || !rig.head?.isConnected) rig = rigs.current[who] = rigOf(box, notes);
+        const mouth = sm.mouth;
+        const nod = listening ? Math.max(0, Math.sin(t * 2.4)) ** 3 : mouth * 0.45;
+        // Busto, testa e viso sono livelli a sé (si spostano senza ridisegnare): qui anche a passi fini.
+        const u = rig.u;
+        put(rig.breath, "transform", `translate3d(0, ${(Math.sin(t * 1.5 + (who === "lui" ? 0 : 1.7)) * 1.8 * u).toFixed(2)}px, 0)`);
+        put(rig.head, "transform", `rotate(${(sm.look * 4).toFixed(2)}deg) translate3d(0, ${(nod * 2.5 * u).toFixed(2)}px, 0)`);
+        put(rig.face, "transform", `translate3d(${(sm.look * 7 * u).toFixed(2)}px, 0, 0)`);
+        // Le pupille a mezzo punto per volta: si vedono uguali e si ridisegnano molto meno.
+        const pupil = `translateX(${(Math.round(sm.look * 6) / 2).toFixed(1)}px)`;
+        for (const p of rig.pupils) put(p, "transform", pupil);
+        const blink = `scaleY(${blinkAt(who, t).toFixed(1)})`;
+        for (const e of rig.eyes) put(e, "transform", blink);
+        const mo = Number(mouth.toFixed(2));
+        put(rig.open, "transform", `scale(${(0.7 + mo * 0.3).toFixed(2)}, ${mo})`);
+        put(rig.open, "opacity", String(Math.min(1, mo * 8)));
+        put(rig.shut, "opacity", String(Math.max(0, 1 - mo * 8)));
+        put(rig.brows, "transform", `translateY(${(mo * -2.5).toFixed(1)}px)`);
+        const arm = armAt(show, who, t);
+        put(rig.arm, "transform", `rotate(${(arm * -24).toFixed(1)}deg) translateY(${(arm * -14).toFixed(1)}px)`);
+        put(box, "transform", dx);
+        if (notes) put(notes, "transform", who === "lui" ? `${dx} scaleX(-1)` : dx);
       }
       // L'ospite: entra camminando con la sua sedia, si siede al centro, parla, saluta ed esce.
       const gb = guestBox.current;
@@ -354,9 +412,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         const bob = g.walk ? -Math.abs(Math.sin(g.walk * Math.PI)) * 7 : 0;
         const tilt = g.walk ? Math.sin(g.walk * Math.PI) * 2.5 : 0;
         const talk = line?.who === "ospite" ? Math.sin(t * 9) * 0.6 : 0;
-        gb.style.visibility = g.on ? "visible" : "hidden";
+        if (gb.style.visibility !== (g.on ? "visible" : "hidden")) gb.style.visibility = g.on ? "visible" : "hidden";
         gb.style.transform = `translate3d(${g.x.toFixed(1)}px, ${((1 - g.seat) * -30 + bob + talk).toFixed(1)}px, 0) rotate(${tilt.toFixed(2)}deg)`;
-        gb.style.setProperty("--mouth", gs.mouth.toFixed(3));
+        put(gb.querySelector(".studio-guest-mouth"), "transform", `scaleY(${gs.mouth.toFixed(2)})`);
         gb.dataset.walk = g.walk ? "1" : "0";
         gb.dataset.seat = g.seat > 0.5 ? "1" : "0";
         const gm = guestMic.current;
@@ -400,7 +458,17 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       // I numeri delle grafiche contano col tempo della puntata (nello studio e a tutto schermo).
       // L'elenco dei numeri si rilegge ogni tanto (non a ogni fotogramma) e si scrive solo quando
       // il numero cambia: meno lavoro per i telefoni economici.
-      if (frame++ % 15 === 0 || counters.length === 0) counters = Array.from(root.current?.querySelectorAll<HTMLElement>("[data-to]") ?? []);
+      // (Quando cambia grafica i nuovi numeri arrivano al disegno successivo: si ricontrolla per
+      // qualche fotogramma.)
+      const ck = `${s.index}:${f ? 1 : 0}`;
+      if (ck !== countersFor) {
+        countersFor = ck;
+        recheck = 10;
+      }
+      if (recheck > 0 || frame++ % 30 === 0) {
+        if (recheck > 0) recheck--;
+        counters = Array.from(root.current?.querySelectorAll<HTMLElement>("[data-to]") ?? []);
+      }
       for (const n of counters) {
         const to = Number(n.dataset.to);
         const u = easeOut((t - s.since - Number(n.dataset.at)) / 1.0);
@@ -555,7 +623,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       />
 
       {/* Lo studio, disegnato a 390×844 e adattato allo schermo. */}
-      <div className="absolute left-1/2 top-1/2 overflow-hidden" style={{ width: STAGE.w, height: STAGE.h, transform: `translate(-50%, -50%) scale(${k})` }}>
+      <div className="pointer-events-none absolute left-1/2 top-1/2 overflow-hidden" style={{ width: STAGE.w, height: STAGE.h, transform: `translate(-50%, -50%) scale(${k})` }}>
         {/* Quando la grafica copre tutto, o c'è il replay, lo studio sotto non si disegna (meno lavoro). */}
         <div
           ref={world}
@@ -612,7 +680,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
           {show.guest && <DeskMic boxRef={guestMic} tilt={-14} style={{ left: 195 + 52 - MIC_W / 2, top: MIC_BASE - MIC_H, visibility: "hidden", transform: "scale(0)" }} />}
         </div>
         {/* A zoom finito la grafica prende il posto dello studio: stesso punto, stessa misura. */}
-        <div className={clsx("absolute inset-0 transition-opacity duration-200", full && screen?.kind !== "replay" ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={!full}>
+        <div className={clsx("studio-full absolute inset-0", full && screen?.kind !== "replay" ? "is-on" : "pointer-events-none")} aria-hidden={!full}>
           <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, #3D6AF0 0%, var(--court) 45%, var(--court-deep) 100%)" }}>
             <span className="blob -left-24 top-0 h-80 w-80 bg-[radial-gradient(circle,rgb(255_197_49/0.38),transparent_68%)]" />
             <span className="blob -bottom-20 -right-24 h-80 w-80 bg-[radial-gradient(circle,rgb(242_106_27/0.3),transparent_70%)]" />
@@ -851,14 +919,32 @@ function Captions({
   const box = useRef<HTMLDivElement>(null);
   const line = useRef<HTMLParagraphElement>(null);
   const sab = useRef<HTMLSpanElement>(null);
-  const live = useRef({ k, chrome });
-  useEffect(() => {
-    live.current = { k, chrome };
-  }, [k, chrome]);
+  // Le misure (altezza della riga, della targa, dove iniziano i comandi, la barra di sistema) si
+  // prendono solo quando cambiano, mai a ogni fotogramma: leggerle lì costringe il telefono a
+  // ricalcolare la pagina 60 volte al secondo.
+  const live = useRef({ k, floor: 0, capH: 38 });
+  useLayoutEffect(() => {
+    const measure = () => {
+      const { h } = view.current;
+      const safe = Math.max(20, (sab.current?.offsetHeight ?? 0) + 12);
+      const cb = chromeBox.current;
+      live.current = { ...live.current, k, floor: chrome && cb ? cb.offsetTop + 40 - 6 : h - safe };
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [k, chrome, view, chromeBox]);
+  useLayoutEffect(() => {
+    live.current.capH = line.current?.offsetHeight ?? 38;
+  }, [cap]);
   useEffect(() => {
     let raf = 0;
     let last = "";
     let lastY = "";
+    let lastDesk = "";
+    let lastPlate = "";
+    let plateEl: HTMLDivElement | null = null;
+    let plateH = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
@@ -871,25 +957,33 @@ function Captions({
       const el = box.current;
       if (!el) return;
       const { h } = view.current;
-      const { k: kk, chrome: on } = live.current;
-      const capH = line.current?.offsetHeight ?? 38;
+      // Il fondo utile (sopra la barra di sistema e, se ci sono, sopra i comandi) e l'altezza della riga.
+      const { k: kk, floor, capH } = live.current;
       const z = captionZoneAt(show, t);
-      // Il fondo utile: sopra la barra di sistema e, se ci sono, sopra i comandi.
-      const safe = Math.max(20, (sab.current?.offsetHeight ?? 0) + 12);
-      const cb = chromeBox.current;
-      const floor = on && cb ? cb.offsetTop + 40 - 6 : h - safe;
       let y: number;
       if (z === "studio") {
         const cam = cameraAt(show, t);
         const desk = (h - STAGE.h * kk) / 2 + (cam.y + DESK_BOTTOM * cam.s) * kk;
-        el.parentElement?.style.setProperty("--studio-desk-y", `${desk.toFixed(1)}px`);
+        const dk = `${desk.toFixed(1)}px`;
+        if (dk !== lastDesk) {
+          lastDesk = dk;
+          el.parentElement?.style.setProperty("--studio-desk-y", dk);
+        }
         const plate = guestPlate.current;
+        if (plate !== plateEl) {
+          plateEl = plate;
+          plateH = plate ? plate.offsetHeight : 0;
+        }
         if (plate) {
           // La targa subito sotto la scrivania e i sottotitoli sotto di lei; se lo spazio non basta
           // (comandi aperti) salgono insieme, senza sovrapporsi.
-          const ph = plate.offsetHeight;
+          const ph = plateH;
           const top = Math.min(desk + 10, floor - capH - 8 - ph);
-          el.parentElement?.style.setProperty("--studio-plate-y", `${top.toFixed(1)}px`);
+          const pt = `${top.toFixed(1)}px`;
+          if (pt !== lastPlate) {
+            lastPlate = pt;
+            el.parentElement?.style.setProperty("--studio-plate-y", pt);
+          }
           y = top + ph + 8;
         } else {
           y = Math.min(desk + 10, floor - capH);
