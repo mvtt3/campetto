@@ -509,11 +509,12 @@ async def main():
     t = plan.get("intro", 4.5)
     lines, shots, props, cues = [], [], [], []
     # Dopo la sigla: l'inquadratura larga sullo studio col logo sul maxischermo e le targhe dei due
-    # conduttori; si comincia a parlare dopo (le presentazioni sono fatte).
-    opening = plan.get("apertura", 3.4)
+    # conduttori. Il "Buonasera" arriva subito, sulla stessa inquadratura e mentre le targhe sono
+    # ancora lì (come al telegiornale): niente secondi fermi ad aspettare le presentazioni.
+    opening = plan.get("apertura", 3.4)  # quanto restano le targhe
     if opening:
         shots.append({"t": round(t, 3), "cam": "ampio", "screen": 0})
-        t += opening
+        t += plan.get("attacco", 1.0)  # dalla fine della sigla al "Buonasera"
     voice_track = []
     music_marks = []
     screens = []
@@ -533,6 +534,9 @@ async def main():
             lines_in[0]["cam"] = lines_in[0]["who"] if lines_in[0]["who"] in ("lui", "lei") else "trio"
             lines_in[0]["camDur"] = INTRO_CUT
         # Finché la telecamera non va sul maxischermo resta la grafica di prima.
+        if si == 0 and opening and lines_in:
+            # La prima battuta resta sull'inquadratura larga dell'apertura (con le targhe).
+            lines_in[0]["cam"] = "ampio"
         first_cam = lines_in[0].get("cam", seg["cam"]) if lines_in else seg["cam"]
         hold = seg["cam"] == "schermo" and first_cam != "schermo" and si > 0
         scr_now = shown_screen if hold else si
@@ -696,11 +700,16 @@ async def main():
     last_voice = lines[-1]["t"] + lines[-1]["d"]
     end_move = plan.get("allargata", 2.4)
     if end_move:
-        # Finiti i saluti la telecamera si allarga piano fino all'inquadratura dell'apertura (il logo
-        # sul maxischermo), poi la sigla di chiusura.
-        shots.append({"t": round(last_voice + 0.35, 3), "cam": "ampio", "screen": shots[-1]["screen"], "move": end_move})
-        last_voice += 0.35 + end_move + 0.5
-    outro_t = round(last_voice + 0.4, 3)
+        # Lo zoom indietro parte con la firma ("Un saluto da…") e, piano piano mentre salutano,
+        # arriva all'inquadratura dell'apertura (il logo sul maxischermo) subito dopo l'ultima
+        # parola; poi la sigla di chiusura. Niente secondi fermi a guardare il nulla.
+        sign = next((l for l in lines if "Un saluto da" in l["text"]), None)
+        start = sign["t"] if sign else last_voice + 0.2
+        move = max(end_move, last_voice + 0.5 - start)
+        shots = [sh for sh in shots if sh["t"] < start - 0.01]
+        shots.append({"t": round(start, 3), "cam": "ampio", "screen": shots[-1]["screen"], "move": round(move, 2)})
+        last_voice = start + move
+    outro_t = round(last_voice + 0.35, 3)
     duration = round(outro_t + plan.get("outro", 5.0), 2)
     shots.append({"t": outro_t, "cam": "fine", "screen": len(screens) - 1})
     cues.append({"t": outro_t, "kind": "whoosh"})
