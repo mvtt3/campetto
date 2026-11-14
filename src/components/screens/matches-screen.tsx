@@ -63,7 +63,6 @@ const MatchRow = memo(function MatchRow({
     );
   const names = (t: "A" | "B") => {
     const line = m.players.filter((p) => p.team === t);
-    // Gli ospiti restano "ospite"; gli extra (senza app) col loro nome.
     const guests = (m.guests ?? [])
       .filter((p) => p.team === t)
       .map((l) => {

@@ -146,7 +146,6 @@ function NewMatchInner() {
   const [maxDate] = useState(() => new Date());
   // Gli ospiti di questa partita: quelli nuovi hanno un id provvisorio finché non si salva.
   const [guests, setGuests] = useState<Player[]>([]);
-  // Il gruppo, gli extra (senza app) e gli ospiti di questa partita.
   const allPlayers = useMemo(
     () => [...data.players, ...(data.extras ?? []), ...guests],
     [data.players, data.extras, guests],
@@ -193,7 +192,6 @@ function NewMatchInner() {
     if (editing) {
       // Gli ospiti tornano nella partita, con il loro tabellino.
       const lines = [...editing.players, ...(editing.guests ?? [])];
-      // (gli extra no: sono già tra i giocatori da scegliere)
       setGuests(
         (data.guests ?? []).filter(
           (g) => !g.extra && editing.guests?.some((l) => l.playerId === g.id),

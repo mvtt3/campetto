@@ -24,13 +24,9 @@ function loadLatest(): Promise<StudioLatest | null> {
   return cached;
 }
 
-/**
- * Chi vede lo Studio per ora: solo l'amministratore, per provarlo; mai nella demo pubblica.
- * Con i dati finti (prove e test) solo se si chiede con ?studio=1.
- */
 export function useStudioEnabled(): boolean {
   const { me, backend } = useData();
-  if (!me?.isAdmin || process.env.NEXT_PUBLIC_DEMO === "1") return false;
+  if (!me?.isAdmin) return false;
   if (backend.kind !== "mock") return true;
   return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("studio") === "1";
 }

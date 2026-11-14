@@ -288,7 +288,6 @@ export function createSupabaseBackend(): Backend {
             player_id: playerId,
             response,
             added_by: meId,
-            // Non ha l'app: niente avvisi per lui.
             notified: true,
             updated_at: new Date().toISOString(),
           })

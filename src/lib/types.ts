@@ -184,12 +184,7 @@ export interface Player {
   createdAt: string;
   /** Ospite di una partita (uno trovato al campetto): gioca, ma non conta per il gruppo. */
   guest?: boolean;
-  /**
-   * Extra: gioca con il gruppo ma non ha l'app (es. Leo). Ha un nome fisso, si segna nel
-   * calendario e nelle squadre e ha il suo tabellino; fuori da classifiche, record, MVP e badge.
-   */
   extra?: boolean;
-  /** Chi l'ha portato la prima volta (solo per gli extra). */
   extraBy?: string | null;
   /** Quello che indossa in Campetto Star (si vede anche nell'app): parte → oggetto. */
   outfit?: Partial<Record<string, string>>;
@@ -312,7 +307,6 @@ export interface ProposalResponse {
   updatedAt: string;
   /** Controproposta di chi ha detto sì: stesso giorno, un altro orario e/o un altro campetto. */
   altStartsAt?: string | null;
-  /** Per gli extra: chi l'ha segnato. */
   addedBy?: string | null;
   altPlace?: Place | null;
 }
@@ -340,7 +334,6 @@ export interface Dataset {
   players: Player[];
   /** Gli ospiti delle partite: servono solo per i nomi nel tabellino. */
   guests?: Player[];
-  /** Gli extra (senza app): per il calendario e le squadre. Nelle statistiche non entrano. */
   extras?: Player[];
   matches: Match[];
   proposals: Proposal[];

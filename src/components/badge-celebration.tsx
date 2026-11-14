@@ -248,18 +248,12 @@ export function BadgeCelebration() {
         );
     }
 
-    // 4. L'anteprima della prossima partita: cosa è alla portata, per chi ha detto "Ci sono".
-    //    La vedono tutti (non nella demo pubblica). Per l'amministratore, ?anteprima=1 la
-    //    mostra subito, senza aspettare la sera prima.
     const previewOn = process.env.NEXT_PUBLIC_DEMO !== "1";
     const force =
-      previewOn &&
       me.isAdmin &&
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("anteprima") === "1";
-    const prop = !previewOn
-      ? null
-      : force
+    const prop = force
       ? (data.proposals
           .filter(
             (p) =>
@@ -268,7 +262,9 @@ export function BadgeCelebration() {
               p.responses.some((r) => r.playerId === me.id && r.response === "si"),
           )
           .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null)
-      : previewProposal(data.proposals, me.id, new Date());
+      : previewOn
+      ? previewProposal(data.proposals, me.id, new Date())
+      : null;
     if (prop && (force || !previewSeen(me.id, prop.id))) {
       const targets = pregameTargets({
         meId: me.id,
@@ -374,9 +370,10 @@ export function BadgeCelebration() {
         {current.kind === "news" && <NewsBody post={current.post} />}
         {current.kind === "preview" && (
           <>
-            {/* Luci gialle e arancio che si spostano piano dietro al vetro. */}
-            <span className="preview-light -left-16 -top-14 h-48 w-48 bg-[radial-gradient(circle,rgb(255_197_49/0.42),transparent_68%)]" aria-hidden />
-            <span className="preview-light -bottom-20 -right-16 h-56 w-56 bg-[radial-gradient(circle,rgb(242_106_27/0.36),transparent_70%)] [animation-delay:-4s]" aria-hidden />
+            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]" aria-hidden>
+              <span className="preview-light -left-16 -top-14 h-48 w-48 bg-[radial-gradient(circle,rgb(255_197_49/0.42),transparent_68%)]" aria-hidden />
+              <span className="preview-light -bottom-20 -right-16 h-56 w-56 bg-[radial-gradient(circle,rgb(242_106_27/0.36),transparent_70%)] [animation-delay:-4s]" aria-hidden />
+            </span>
             <div className="preview-float relative w-full">
               <PregameBody proposal={current.proposal} targets={current.targets} />
             </div>
