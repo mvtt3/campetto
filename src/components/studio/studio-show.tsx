@@ -42,6 +42,7 @@ import { Character, characterOf } from "../character";
 import { Logo } from "../mascot";
 import { CourtLines } from "../ui/basics";
 import { CoatRack, MilkCarton, SpicePlaque } from "./easter-eggs";
+import { DeskMic, MIC_H, MIC_W } from "./desk-mic";
 import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
 
@@ -130,6 +131,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
+  // Il terzo microfono: compare quando l'ospite si siede e sparisce quando si alza.
+  const guestMic = useRef<HTMLDivElement>(null);
   const top = useRef<HTMLDivElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const chromeTimer = useRef(0);
@@ -354,6 +357,16 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         gb.style.setProperty("--mouth", gs.mouth.toFixed(3));
         gb.dataset.walk = g.walk ? "1" : "0";
         gb.dataset.seat = g.seat > 0.5 ? "1" : "0";
+        const gm = guestMic.current;
+        if (gm) {
+          // Spunta dal tavolo con un piccolo rimbalzo mentre si siede; si ritira quando si alza.
+          const u = g.on ? Math.min(1, Math.max(0, (g.seat - 0.25) / 0.75)) : 0;
+          const pop = u <= 0 ? 0 : 1 + 2.2 * Math.pow(u - 1, 3) + 1.2 * Math.pow(u - 1, 2);
+          const tr = `scale(${pop.toFixed(3)})`;
+          if (gm.style.transform !== tr) gm.style.transform = tr;
+          const vis = pop > 0.01 ? "visible" : "hidden";
+          if (gm.style.visibility !== vis) gm.style.visibility = vis;
+        }
         // La sedia: la tira dietro di sé entrando e la riporta via uscendo.
         const ch = guestChair.current;
         if (ch) {
@@ -586,11 +599,15 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
           </div>
           <div ref={leiNotes} className="absolute" style={{ left: 27, top: 556, width: 170 }}>
             <Notes who="lei" />
+            {/* Il microfono, sul tavolo dal lato esterno, inclinato verso la bocca (per lui è specchiato). */}
+            <DeskMic tilt={14} style={{ left: MIC_X - MIC_W / 2, top: MIC_BASE - 556 - MIC_H }} />
           </div>
           <div ref={luiNotes} className="absolute" style={{ left: 193, top: 556, width: 170, transform: "scaleX(-1)" }}>
             <Notes who="lui" />
+            <DeskMic tilt={14} style={{ left: MIC_X - MIC_W / 2, top: MIC_BASE - 556 - MIC_H }} />
           </div>
           <Desk />
+          {show.guest && <DeskMic boxRef={guestMic} tilt={-14} style={{ left: 195 + 52 - MIC_W / 2, top: MIC_BASE - MIC_H, visibility: "hidden", transform: "scale(0)" }} />}
         </div>
         {/* A zoom finito la grafica prende il posto dello studio: stesso punto, stessa misura. */}
         <div className={clsx("absolute inset-0 transition-opacity duration-200", full && screen?.kind !== "replay" ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={!full}>
@@ -923,6 +940,9 @@ const MOUTH: Partial<Record<string, [number, number]>> = {
 };
 /** Alto 288 px nello studio: la testa grande come quella dei conduttori. */
 const GUEST_H = 288;
+/** I microfoni: dove poggiano sul tavolo (y dello studio) e, per i conduttori, a che x del loro riquadro. */
+const MIC_BASE = 594;
+const MIC_X = 38;
 
 /**
  * L'ospite: il personaggio del giocatore, come nell'app, con la sua sedia. Il player lo muove
