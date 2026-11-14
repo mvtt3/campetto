@@ -2,16 +2,12 @@
 
 import clsx from "clsx";
 import { useState } from "react";
-import {
-  IconCheck,
-  IconChevronDown,
-  IconPlus,
-  IconUserPlus,
-} from "@tabler/icons-react";
+import { IconChevronDown, IconPlus } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Avatar, AvatarStack } from "./ui/avatar";
 import { Button, Segmented } from "./ui/basics";
 import { TimeField } from "./ui/pickers";
+import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
 import { useData } from "@/lib/data/provider";
 import {
@@ -245,6 +241,7 @@ function BringExtra({ proposal }: { proposal: Proposal }) {
     );
     if (same) {
       setName("");
+      setOpen(false);
       if (!inIds.has(same.id)) void toggle(same);
       return;
     }
@@ -272,6 +269,7 @@ function BringExtra({ proposal }: { proposal: Proposal }) {
       };
       await setIn(id, true, p);
       setName("");
+      setOpen(false);
       toast(`${n} c'è`, "ok");
       void refresh();
     } catch (e) {
@@ -281,97 +279,94 @@ function BringExtra({ proposal }: { proposal: Proposal }) {
     }
   };
 
+  const clean = name.trim().replace(/\s+/g, " ");
+
   return (
-    <div className="pt-1">
+    <>
       <button
         type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="press inline-flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5 text-[12.5px] font-semibold"
+        onClick={() => setOpen(true)}
+        className="press -mx-1 flex w-[calc(100%+0.5rem)] items-center gap-2 rounded-full px-1 py-0.5 text-left text-[12.5px] font-semibold text-muted"
         data-testid="porta-extra"
       >
-        <IconUserPlus size={15} aria-hidden />
-        Porta un extra
+        <span className="flex w-[100px] shrink-0 items-center gap-2">
+          <IconPlus size={12} strokeWidth={3} aria-hidden />
+          Extra
+        </span>
+        <span className="truncate">Porta chi gioca senza l&apos;app</span>
       </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-            className="overflow-hidden"
+      <Sheet
+        open={open}
+        onOpenChange={setOpen}
+        title="Porta un extra"
+        description="Gioca e ha il suo tabellino, ma non entra in classifiche e record"
+        footer={
+          <Button
+            block
+            variant="primary"
+            disabled={!clean || busy}
+            onClick={() => void create()}
           >
-            <div className="mt-2 rounded-[18px] bg-raised p-3">
-              <p className="text-[13.5px] font-semibold">
-                Chi viene senza l&apos;app?
+            {clean ? `Porta ${clean}` : "Scrivi il suo nome"}
+          </Button>
+        }
+      >
+        <form
+          className="flex flex-col gap-4 pb-1 pt-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void create();
+          }}
+        >
+          <input
+            aria-label="Nome dell'extra"
+            value={name}
+            maxLength={24}
+            autoCapitalize="words"
+            autoComplete="off"
+            enterKeyHint="done"
+            placeholder="Il suo nome"
+            onChange={(e) => setName(e.target.value)}
+            className="sticker-sm h-14 w-full rounded-[18px] bg-surface px-4 text-center text-[20px] font-semibold outline-none placeholder:text-faint focus-visible:ring-4 focus-visible:ring-court/30"
+          />
+          {extras.length > 0 && (
+            <section aria-label="Già venuti">
+              <p className="mb-2 text-[13px] font-semibold text-muted">
+                Già venuti
               </p>
-              <p className="mt-0.5 text-[12px] leading-snug text-muted">
-                Gioca e ha il suo tabellino, ma classifiche e record restano del
-                gruppo.
-              </p>
-              {extras.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {extras.map((p) => {
-                    const on = inIds.has(p.id);
-                    return (
+              <ul className="flex flex-col gap-2">
+                {extras.map((p) => {
+                  const on = inIds.has(p.id);
+                  return (
+                    <li key={p.id}>
                       <button
-                        key={p.id}
                         type="button"
                         aria-pressed={on}
                         onClick={() => void toggle(p)}
-                        className={clsx(
-                          "press flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2.5 text-[13px] font-semibold",
-                          on ? "bg-text text-bg" : "bg-surface",
-                        )}
+                        className="press sticker-sm flex h-14 w-full items-center gap-3 rounded-[18px] bg-surface px-2.5 text-left"
                       >
-                        <Avatar player={p} size={22} href={false} ring="none" />
-                        {shortName(p)}
-                        {on ? (
-                          <IconCheck size={13} strokeWidth={2.6} aria-hidden />
-                        ) : (
-                          <IconPlus
-                            size={13}
-                            className="text-muted"
-                            aria-hidden
-                          />
-                        )}
+                        <Avatar player={p} size={36} href={false} ring="none" />
+                        <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+                          {shortName(p)}
+                        </span>
+                        <span
+                          className={clsx(
+                            "rounded-full px-3 py-1 text-[13px] font-bold",
+                            on ? "bg-text text-bg" : "bg-raised text-muted",
+                          )}
+                        >
+                          {on ? "C'è" : "Porta"}
+                        </span>
                       </button>
-                    );
-                  })}
-                </div>
-              )}
-              <form
-                className="mt-2.5 flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void create();
-                }}
-              >
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value.slice(0, 24))}
-                  placeholder={
-                    extras.length ? "Oppure un nome nuovo" : "Il suo nome"
-                  }
-                  aria-label="Nome dell'extra"
-                  className="h-10 min-w-0 flex-1 rounded-full bg-surface px-3.5 text-[14px] outline-none focus:ring-2 focus:ring-ball/40"
-                  autoComplete="off"
-                />
-                <Button
-                  variant="primary"
-                  className="h-10 shrink-0 px-4"
-                  disabled={!name.trim() || busy}
-                  type="submit"
-                >
-                  Aggiungi
-                </Button>
-              </form>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+        </form>
+      </Sheet>
+    </>
   );
 }
 
