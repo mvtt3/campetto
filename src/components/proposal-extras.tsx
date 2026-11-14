@@ -2,9 +2,8 @@
 
 import clsx from "clsx";
 import { useState } from "react";
-import { IconChevronDown, IconPlus } from "@tabler/icons-react";
-import { AnimatePresence, motion } from "motion/react";
-import { Avatar, AvatarStack } from "./ui/avatar";
+import { IconPlus } from "@tabler/icons-react";
+import { Avatar } from "./ui/avatar";
 import { Button, Segmented } from "./ui/basics";
 import { TimeField } from "./ui/pickers";
 import { Sheet } from "./ui/sheet";
@@ -35,123 +34,62 @@ export function RosterPanel({ proposal }: { proposal: Proposal }) {
   const waiting = data.players.filter(
     (p) => !p.archived && !answered.has(p.id),
   );
-  const groups: {
-    title: string;
-    short: string;
-    players: Player[];
-    tone: string;
-  }[] = [
-    {
-      title: "Ci sono",
-      short: "Ci sono",
-      players: by("si"),
-      tone: "bg-volt",
-    },
-    {
-      title: "Forse",
-      short: "Forse",
-      players: by("forse"),
-      tone: "bg-ball",
-    },
-    {
-      title: "Non ci sono",
-      short: "No",
-      players: by("no"),
-      tone: "bg-danger",
-    },
-    {
-      title: "Non hanno ancora risposto",
-      short: "In attesa",
-      players: waiting,
-      tone: "bg-line-strong",
-    },
-  ];
+  const groups = [
+    { key: "si", label: "Ci sono", players: by("si") },
+    { key: "forse", label: "Forse", players: by("forse") },
+    { key: "no", label: "No", players: by("no") },
+    { key: "attesa", label: "Attesa", players: waiting },
+  ] as const;
+  type Key = (typeof groups)[number]["key"];
   const name = (p: Player) =>
     p.id === me?.id ? "Tu" : shortName(p, data.players);
-  const [open, setOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<Key>("si");
   const now = useNow();
   const canBring =
     !!me &&
     proposal.status === "aperta" &&
     new Date(proposal.startsAt).getTime() > now.getTime() - 3 * 3600e3;
+  const current = groups.find((g) => g.key === tab)!;
   return (
-    <div className="flex flex-col gap-1.5" aria-label="Chi c'è" role="group">
-      {groups
-        .filter((g) => g.players.length)
-        .map((g) => {
-          const isOpen = open === g.title;
-          return (
-            <section key={g.title} aria-label={g.title} className="min-w-0">
-              <button
-                type="button"
-                aria-expanded={isOpen}
-                onClick={() => setOpen(isOpen ? null : g.title)}
-                className="press -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-2 rounded-full px-1 py-0.5 text-left"
-              >
-                <span className="flex w-[100px] shrink-0 items-center gap-2 whitespace-nowrap text-[12.5px] font-semibold">
-                  <span
-                    className={clsx("h-2 w-2 shrink-0 rounded-full", g.tone)}
-                  />
-                  {g.short}
-                  <span className="tnum ml-auto pr-1 text-muted">
-                    {g.players.length}
-                  </span>
-                </span>
-                <AvatarStack players={g.players} size={22} max={4} />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">
-                  {g.players.map((p, i) => (
-                    <span key={p.id}>
-                      {i > 0 && ", "}
-                      <span
-                        className={clsx(
-                          "font-semibold",
-                          p.id === me?.id ? "text-ball" : "text-text",
-                        )}
-                      >
-                        {name(p)}
-                      </span>
-                    </span>
-                  ))}
-                </span>
-                <IconChevronDown
-                  size={15}
-                  className={clsx(
-                    "shrink-0 text-faint transition-transform duration-200",
-                    isOpen && "rotate-180",
-                  )}
-                  aria-hidden
-                />
-              </button>
-              <AnimatePresence initial={false}>
-                {isOpen && (
-                  <motion.ul
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-                    className="flex flex-wrap gap-1.5 overflow-hidden pl-1 pt-1.5"
-                  >
-                    {g.players.map((p) => (
-                      <li
-                        key={p.id}
-                        className={clsx(
-                          "flex items-center gap-1.5 rounded-full py-[3px] pl-[3px] pr-3 text-[13px] font-semibold",
-                          p.id === me?.id ? "bg-text text-bg" : "bg-raised",
-                        )}
-                      >
-                        <Avatar player={p} size={24} href={false} ring="none" />
-                        {name(p)}
-                        {p.extra && <ExtraTag />}
-                      </li>
-                    ))}
-                  </motion.ul>
-                )}
-              </AnimatePresence>
-            </section>
-          );
-        })}
-      {canBring && <BringExtra proposal={proposal} />}
-    </div>
+    <section className="flex flex-col gap-2.5" aria-label="Chi c'è">
+      <Segmented
+        size="sm"
+        value={tab}
+        onChange={setTab}
+        options={groups.map((g) => ({
+          value: g.key,
+          label: (
+            <>
+              {g.label}{" "}
+              <span className="tnum opacity-60">{g.players.length}</span>
+            </>
+          ),
+        }))}
+      />
+      <ul className="flex flex-wrap gap-1.5">
+        {current.players.map((p) => (
+          <li
+            key={p.id}
+            className={clsx(
+              "flex items-center gap-1.5 rounded-full py-[3px] pl-[3px] pr-3 text-[13px] font-semibold",
+              p.id === me?.id ? "bg-text text-bg" : "bg-raised",
+            )}
+          >
+            <Avatar player={p} size={24} href={false} ring="none" />
+            {name(p)}
+            {p.extra && <ExtraTag />}
+          </li>
+        ))}
+        {tab === "si" && canBring && (
+          <li>
+            <BringExtra proposal={proposal} />
+          </li>
+        )}
+        {!current.players.length && !(tab === "si" && canBring) && (
+          <li className="py-1 text-[13px] text-muted">Nessuno</li>
+        )}
+      </ul>
+    </section>
   );
 }
 
@@ -270,14 +208,13 @@ function BringExtra({ proposal }: { proposal: Proposal }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="press -mx-1 flex w-[calc(100%+0.5rem)] items-center gap-2 rounded-full px-1 py-0.5 text-left text-[12.5px] font-semibold text-muted"
+        className="press flex items-center gap-1.5 rounded-full bg-raised py-[3px] pl-[3px] pr-3 text-[13px] font-semibold text-muted"
         data-testid="porta-extra"
       >
-        <span className="flex w-[100px] shrink-0 items-center gap-2">
-          <IconPlus size={12} strokeWidth={3} aria-hidden />
-          Extra
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-surface">
+          <IconPlus size={13} strokeWidth={2.6} aria-hidden />
         </span>
-        <span className="truncate">Porta chi gioca senza l&apos;app</span>
+        Extra
       </button>
       <Sheet
         open={open}
