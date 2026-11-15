@@ -772,7 +772,8 @@ async def main():
 
     # Musica: tagliati i bassi pesanti, dinamica più uniforme.
     mus_file = os.path.join(out, "musica.wav")
-    run(["ffmpeg", "-v", "error", "-y", "-i", music_path, "-t", str(duration + 1), "-af",
+    # Il brano è un loop corto: si ripete finché serve, così non sparisce a metà puntata.
+    run(["ffmpeg", "-v", "error", "-y", "-stream_loop", "-1", "-i", music_path, "-t", str(duration + 1), "-af",
          "highpass=f=110,equalizer=f=220:t=q:w=1:g=-4,equalizer=f=3000:t=q:w=1.5:g=-3,"
          "acompressor=threshold=-18dB:ratio=2.5:attack=20:release=250",
          "-ac", "2", "-ar", str(SR), mus_file])
@@ -791,8 +792,8 @@ async def main():
     for i in range(len(speaking)):
         prev = sm[i - 1] if i else 0
         sm[i] = prev + (speaking[i] - prev) * (0.35 if speaking[i] > prev else 0.025)
-    base = np.full(len(sm), 0.32, dtype=np.float32)       # tra una battuta e l'altra
-    duck = 0.13                                            # mentre parlano
+    base = np.full(len(sm), 0.38, dtype=np.float32)       # tra una battuta e l'altra
+    duck = 0.15                                            # mentre parlano
     intro_end = plan.get("intro", 4.5)
     first = lines[0]["t"]
     for i in range(len(base)):
@@ -800,13 +801,13 @@ async def main():
         if ts < intro_end - 0.3:
             base[i] = 0.9
         elif ts < first:
-            base[i] = 0.9 + (0.32 - 0.9) * min(1, (ts - (intro_end - 0.3)) / max(0.3, first - intro_end + 0.3))
+            base[i] = 0.9 + (0.38 - 0.9) * min(1, (ts - (intro_end - 0.3)) / max(0.3, first - intro_end + 0.3))
         for a0, b0, v in music_marks:
             if a0 - 0.5 <= ts <= b0 + 0.5:
                 u = min(1, (ts - (a0 - 0.5)) / 0.5, (b0 + 0.5 - ts) / 0.5)
-                base[i] = max(base[i], 0.32 + (v - 0.32) * u)
+                base[i] = max(base[i], 0.38 + (v - 0.38) * u)
         if ts >= outro_t - 0.2:
-            base[i] = max(base[i], 0.32 + (0.8 - 0.32) * min(1, (ts - outro_t + 0.2) / 0.6))
+            base[i] = max(base[i], 0.38 + (0.85 - 0.38) * min(1, (ts - outro_t + 0.2) / 0.6))
         if ts > duration - 1.6:
             base[i] *= max(0, (duration - ts) / 1.6)
     gain = base * (1 - sm) + np.minimum(base, duck) * sm
