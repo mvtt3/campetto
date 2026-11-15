@@ -561,6 +561,7 @@ async def main():
     voice_track = []
     music_marks = []
     screens = []
+    same_scr = []
     top_items, votes = [], []
     guest = None
     cur = "coppia"
@@ -568,6 +569,10 @@ async def main():
     for si, seg in enumerate(plan["segments"]):
         screen = dict(seg["screen"])
         screens.append(screen)
+        # Stessa grafica del pezzo prima (l'annuncio e poi le azioni, per dire): sul maxischermo continua
+        # quella, senza ripartire da capo.
+        eff = same_scr[-1] if si and seg["screen"] == plan["segments"][si - 1]["screen"] else si
+        same_scr.append(eff)
         if si:
             t += SEG_GAP - GAP
         seg_start = t
@@ -583,18 +588,18 @@ async def main():
             lines_in[0]["cam"] = "ampio"
         first_cam = lines_in[0].get("cam", seg["cam"]) if lines_in else seg["cam"]
         hold = seg["cam"] == "schermo" and first_cam != "schermo" and si > 0
-        scr_now = shown_screen if hold else si
+        scr_now = shown_screen if hold else eff
         cur = first_cam
         shots.append({"t": round(seg_start, 3), "cam": cur, "screen": scr_now})
-        if not hold and screen["kind"] != "sigla":
+        if not hold and screen["kind"] != "sigla" and eff == si:
             cues.append({"t": round(seg_start, 3), "kind": "whoosh"})
         shown_screen = scr_now
         # Da quando la grafica di questo pezzo è davvero a tutto schermo (None = non ancora).
-        scr_on = seg_start if (cur == "schermo" and scr_now == si) else None
+        scr_on = seg_start if (cur == "schermo" and scr_now == eff) else None
         is_top = seg["cam"] == "top"
         if is_top:
             # I migliori della giornata: a tutto schermo da subito, un'azione per battuta.
-            shots[-1] = {"t": round(seg_start, 3), "cam": "top", "screen": si}
+            shots[-1] = {"t": round(seg_start, 3), "cam": "top", "screen": eff}
             cues.append({"t": round(seg_start, 3), "kind": "whoosh"})
             cur = "top"
             top_cursor = seg_start + 0.6  # un attimo di video prima della prima parola

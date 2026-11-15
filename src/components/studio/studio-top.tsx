@@ -16,11 +16,14 @@ export const TopStage = memo(function TopStage({
   show,
   videoRef,
   on,
+  live,
   src,
 }: {
   show: StudioShow;
   videoRef: RefObject<HTMLVideoElement | null>;
   on: boolean;
+  /** Il video è pronto e in onda: solo allora la sezione compare (in dissolvenza). */
+  live: boolean;
   /** Da dove si legge il video: già scaricato per intero (di solito) o dalla rete; null = non ancora. */
   src: string | null;
 }) {
@@ -29,13 +32,13 @@ export const TopStage = memo(function TopStage({
   // Lo sfondo: la prima locandina, sfocata e scura (come i reel coi video non a tutto schermo).
   const bg = items[0]?.poster;
   return (
-    <div className={clsx("absolute inset-0 overflow-hidden transition-opacity duration-200", on ? "opacity-100" : "pointer-events-none opacity-0")} aria-hidden={!on}>
+    <div className={clsx("studio-top-stage absolute inset-0 overflow-hidden", live && "is-live", !on && "pointer-events-none")} aria-hidden={!on}>
       <div className="absolute inset-0 bg-[#0c1736]">
         {bg && <span aria-hidden className="absolute inset-0 bg-cover bg-center opacity-35 blur-2xl" style={{ backgroundImage: `url(${bg})`, transform: "scale(1.3)" }} />}
         <span className="absolute inset-0 bg-gradient-to-b from-[#0c1736]/70 via-[#0c1736]/20 to-[#0c1736]/80" />
       </div>
       {/* Il video, 3:4, largo quanto lo schermo. */}
-      <div className="absolute inset-x-0 overflow-hidden" style={{ top: `${TOP_VIDEO.top * 100}%`, aspectRatio: "3 / 4" }}>
+      <div className="studio-top-frame absolute inset-x-0 overflow-hidden" style={{ top: `${TOP_VIDEO.top * 100}%`, aspectRatio: "3 / 4" }}>
         <video ref={videoRef} src={src ?? undefined} muted playsInline preload="auto" disablePictureInPicture className="h-full w-full bg-[#0c1736] object-cover" style={{ opacity: 0 }} />
       </div>
     </div>

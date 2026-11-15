@@ -2747,6 +2747,28 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
     opacity: 0.55;
   }
 }
+/* Le azioni a tutto schermo: entrano in dissolvenza quando il video è pronto, arrivando da un po'
+   più vicino (continua lo zoom dello studio sul maxischermo), ed escono allo stesso modo. */
+.studio-top-stage {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.studio-top-stage.is-live {
+  opacity: 1;
+  transition: opacity 320ms ease;
+}
+/* Mentre la sezione esce il video resta sul suo ultimo fotogramma: così sfuma l'azione sullo
+   studio, non un riquadro scuro. */
+.studio-top-stage:not(.is-live) video {
+  opacity: 1 !important;
+}
+.studio-top-frame {
+  transform: scale(1.16);
+  transition: transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.studio-top-stage.is-live .studio-top-frame {
+  transform: scale(1);
+}
 /* Infortunio: il battito si disegna da sinistra, e dalla croce partono due onde. */
 .studio-inf-beat {
   stroke-dasharray: 1;

@@ -222,6 +222,13 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   // paio di minuti): così a tutto schermo non si ferma e non resta al buio anche con poca rete.
   // Se quando serve non è ancora arrivato, si legge dalla rete come un video qualsiasi.
   const [topSrc, setTopSrc] = useState<string | null>(null);
+  // L'ingresso nelle azioni: lo studio si avvicina al maxischermo e il video entra in dissolvenza solo
+  // quando è davvero pronto (mai uno stacco secco, mai un attimo di buio).
+  const push = useRef<HTMLDivElement | null>(null);
+  const topLiveRef = useRef(false);
+  const topWas = useRef(false);
+  const topOut = useRef<number | null>(null);
+  const [topLive, setTopLive] = useState(false);
   const topSrcRef = useRef<string | null>(null);
   useEffect(() => {
     const url = show.top?.src;
@@ -667,7 +674,26 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           topSrcRef.current = show.top.src;
           setTopSrc(show.top.src);
         }
-        syncVideo(tv, t - show.top.t0, c.running, inTop);
+        const live = syncVideo(tv, t - show.top.t0, c.running, inTop) && inTop;
+        // Fuori dalle azioni il video resta visibile sul suo fotogramma (la sezione intera è trasparente):
+        // all'uscita sfuma l'azione sullo studio, senza un fotogramma scuro in mezzo.
+        if (!inTop && tv.style.opacity !== "1") tv.style.opacity = "1";
+        if (live !== topLiveRef.current) {
+          topLiveRef.current = live;
+          setTopLive(live);
+        }
+        if (push.current) {
+          // All'uscita si torna indietro allo stesso modo: lo studio si riallontana in mezzo secondo.
+          if (inTop) topOut.current = null;
+          else if (topWas.current) topOut.current = t;
+          topWas.current = inTop;
+          const back = topOut.current !== null && t >= topOut.current && t - topOut.current < 0.55 ? 1 - (t - topOut.current) / 0.55 : 0;
+          const soon = topStarts.find((s0) => s0 > t && s0 - t < 0.7);
+          const u = inTop ? 1 : soon !== undefined ? 1 - (soon - t) / 0.7 : back;
+          const e = u * u * (3 - 2 * u);
+          const tr = e > 0.001 ? `scale(${(1 + 0.7 * e).toFixed(4)})` : "";
+          if (push.current.style.transform !== tr) push.current.style.transform = tr;
+        }
         if (!inTop) {
           // Poco prima che tocchi alle azioni il video va già al punto giusto: quando entra è pronto,
           // senza il buio del salto (prima dei canestri e, dopo lo stacco in studio, prima degli assist).
@@ -855,10 +881,17 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       {/* Lo studio, disegnato a 390×844 e adattato allo schermo. */}
       <div className="pointer-events-none absolute left-1/2 top-1/2 overflow-hidden" style={{ width: STAGE.w, height: STAGE.h, transform: `translate(-50%, -50%) scale(${k})` }}>
         {/* Quando la grafica copre tutto, o c'è il replay, lo studio sotto non si disegna (meno lavoro). */}
+        <div ref={push} className="absolute inset-0 will-change-transform" style={{ transformOrigin: `${SCREEN.x + SCREEN.w / 2}px ${SCREEN.y + SCREEN.h / 2}px` }}>
         <div
           ref={world}
           className="absolute left-0 top-0 origin-top-left will-change-transform"
-          style={{ width: STAGE.w, height: STAGE.h, visibility: (full && screen?.kind !== "replay" && fullSettled) || mode === "replay" || mode === "top" || mode === "fine" ? "hidden" : "visible" }}
+          style={{
+            width: STAGE.w,
+            height: STAGE.h,
+            visibility: (full && screen?.kind !== "replay" && fullSettled) || mode === "replay" || (mode === "top" && topLive) || mode === "fine" ? "hidden" : "visible",
+            // Sotto il video lo studio sparisce solo a dissolvenza finita.
+            transition: mode === "top" && topLive ? "visibility 0s linear 0.35s" : undefined,
+          }}
         >
           <StudioSet day={show.day} />
           {/* Il maxischermo. */}
@@ -908,6 +941,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           </div>
           <Desk />
           {show.guest && <DeskMic boxRef={guestMic} tilt={-14} style={{ left: 195 + 52 - MIC_W / 2, top: MIC_BASE - MIC_H, visibility: "hidden", transform: "scale(0)" }} />}
+        </div>
         </div>
         {/* A zoom finito la grafica prende il posto dello studio: stesso punto, stessa misura. */}
         <div className={clsx("studio-full absolute inset-0", full && screen?.kind !== "replay" ? "is-on" : "pointer-events-none")} aria-hidden={!full}>
@@ -986,7 +1020,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       )}
 
-      {show.top && <TopStage show={show} videoRef={topVideo} on={mode === "top"} src={topSrc} />}
+      {show.top && <TopStage show={show} videoRef={topVideo} on={mode === "top"} live={topLive} src={topSrc} />}
 
       {/* La sigla: il badge dell'app con le scritte dello show, poi si apre sullo studio. */}
       {mode === "sigla" && <Sigla key={`s${nonce}`} show={show} at={modeEl} />}
