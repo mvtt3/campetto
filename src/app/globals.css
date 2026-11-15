@@ -3305,6 +3305,11 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
 .studio-paused * {
   animation-play-state: paused !important;
 }
+/* Il voto si apre a show fermo: le sue animazioni devono andare lo stesso. */
+.studio-paused .studio-vote,
+.studio-paused .studio-vote * {
+  animation-play-state: running !important;
+}
 @media (prefers-reduced-motion: reduce) {
   .studio-sweep,
   .studio-pulse {

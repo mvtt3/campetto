@@ -75,7 +75,10 @@ export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted
   const [pending, setPending] = useState<number | null>(null);
   const [votedHere, setVotedHere] = useState(false);
   const alive = useRef(true);
-  useEffect(() => () => void (alive.current = false), []);
+  useEffect(() => {
+    alive.current = true;
+    return () => void (alive.current = false);
+  }, []);
 
   const fetchState = useCallback(
     () =>
@@ -166,7 +169,7 @@ export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted
             )}
           </div>
         ) : (
-          <div key={kind} className="studio-vote-grid mt-5 grid flex-1 content-start gap-3" style={{ gridTemplateColumns: options.length === 1 ? "1fr" : "1fr 1fr" }}>
+          <div key={kind} className="studio-vote-grid mt-5 grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overscroll-contain pb-2" style={{ gridTemplateColumns: options.length === 1 ? "1fr" : "1fr 1fr" }}>
             {options.map((idx, i) => {
               const it = items[idx];
               if (!it) return null;
@@ -187,7 +190,7 @@ export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted
                     isPending && "is-pending",
                     results && !isMine && "is-other",
                   )}
-                  style={{ ["--i" as string]: i, aspectRatio: "3 / 3.6" }}
+                  style={{ ["--i" as string]: i, aspectRatio: options.length > 4 ? "3 / 2.75" : "3 / 3.6" }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- locandina statica della puntata */}
                   <img src={it.poster} alt="" className="absolute inset-0 h-full w-full object-cover" draggable={false} />

@@ -202,6 +202,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const voteArmed = useRef(true);
   const [voteOpen, setVoteOpen] = useState(false);
   const [voteDone, setVoteDone] = useState(false);
+  const voteDoneRef = useRef(false);
+  // L'ultimo tempo visto dal motore: il voto scatta solo attraversando il suo momento mentre si
+  // guarda, non aprendo o saltando oltre (chi arriva dopo lo trova col bottone "Vai al voto").
+  const lastTick = useRef(startAt);
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
@@ -342,6 +346,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       const t = Math.max(0, Math.min(show.duration - 0.05, to));
       c.t = t;
       c.at = performance.now();
+      lastTick.current = t;
+      if (show.vote) voteArmed.current = t < show.vote.t;
       if (audio.current) audio.current.currentTime = t;
       const s = screenAt(show, t);
       setScr({ ...s, el: t - s.since });
@@ -386,7 +392,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       const t = now();
       const c = clock.current;
       // Il voto: arrivati al momento, lo show si ferma e si apre la scelta (una volta per visione).
-      if (show.vote && voteArmed.current && c.running && t >= show.vote.t) {
+      const prev = lastTick.current;
+      lastTick.current = t;
+      if (show.vote && voteArmed.current && !voteDoneRef.current && c.running && prev < show.vote.t && t >= show.vote.t && t - prev < 1.5) {
         voteArmed.current = false;
         pause();
         setVoteOpen(true);
@@ -615,7 +623,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const closeVote = useCallback(
     (voted: boolean) => {
       setVoteOpen(false);
-      if (voted) setVoteDone(true);
+      if (voted) {
+        setVoteDone(true);
+        voteDoneRef.current = true;
+      }
       void start();
     },
     [start],
@@ -829,7 +840,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
 
       {/* Sopra lo studio: barra, titolo, sottotitoli e comandi (non zoomano). */}
-      <div ref={top} data-on={chrome && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
+      <div ref={top} data-on={chrome && !voteOpen && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
         <div className="flex items-center gap-2">
           <Logo size={30} top="STUDIO" bottom="★ CAMPETTO ★" text={false} />
           <span className="min-w-0 flex-1">
@@ -844,9 +855,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
 
       <LowerThird show={show} now={now} guestPlate={guestPlate} />
 
-      <Captions show={show} now={now} hidden={mode === "sigla"} view={view} k={k} chrome={chrome} chromeBox={bottom} guestPlate={guestPlate} />
+      <Captions show={show} now={now} hidden={mode === "sigla" || voteOpen} view={view} k={k} chrome={chrome} chromeBox={bottom} guestPlate={guestPlate} />
 
-      <div ref={bottom} data-on={chrome ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
+      <div ref={bottom} data-on={chrome && !voteOpen ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
         <div
           ref={bar}

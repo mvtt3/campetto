@@ -815,7 +815,9 @@ function Body({ screen }: { screen: StudioScreen }) {
 
     case "top": {
       // La locandina dei migliori della giornata: i candidati in fila, con il numero del voto.
+      // Fino a quattro sono schede con la figura; di più, una lista a due colonne che resta leggibile.
       const n = screen.items.length;
+      const list = n > 4;
       return (
         <>
           <CourtBg />
@@ -826,17 +828,29 @@ function Body({ screen }: { screen: StudioScreen }) {
             <p className="studio-in display mt-2 text-[26px] leading-[1.02]" style={at(0.15)}>
               {screen.title}
             </p>
-            <div className={clsx("mt-3 grid flex-1 gap-2", n > 4 ? "grid-cols-3" : "grid-cols-2")}>
-              {screen.items.map((id, i) => (
-                <div key={i} className="studio-in relative flex items-end overflow-hidden rounded-[16px] border border-white/15 bg-white/12 p-2" style={at(0.3 + i * 0.12)}>
-                  <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-volt text-[12px] font-black text-volt-ink">{i + 1}</span>
-                  <span className="absolute right-1 top-1 opacity-90">
-                    <Figure player={player(id)} height={n > 4 ? 54 : 70} d={0.4 + i * 0.12} />
-                  </span>
-                  <span className="relative truncate text-[12.5px] font-bold">{name(id)}</span>
-                </div>
-              ))}
-            </div>
+            {list ? (
+              <div className="mt-3 grid flex-1 grid-cols-2 content-start gap-x-2 gap-y-1.5">
+                {screen.items.map((id, i) => (
+                  <div key={i} className="studio-in flex min-w-0 items-center gap-1.5 rounded-full bg-white/12 py-1 pl-1 pr-2" style={at(0.3 + i * 0.07)}>
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-volt text-[12px] font-black text-volt-ink">{i + 1}</span>
+                    <Avatar player={player(id)} size={24} href={false} ring="none" />
+                    <span className="min-w-0 truncate text-[12.5px] font-bold">{name(id)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 grid flex-1 grid-cols-2 gap-2">
+                {screen.items.map((id, i) => (
+                  <div key={i} className="studio-in relative flex items-end overflow-hidden rounded-[16px] border border-white/15 bg-white/12 p-2" style={at(0.3 + i * 0.12)}>
+                    <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-volt text-[12px] font-black text-volt-ink">{i + 1}</span>
+                    <span className="absolute right-1 top-1 opacity-90">
+                      <Figure player={player(id)} height={70} d={0.4 + i * 0.12} />
+                    </span>
+                    <span className="relative truncate text-[12.5px] font-bold">{name(id)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(0.9)}>
               Si vota a fine puntata
             </p>
