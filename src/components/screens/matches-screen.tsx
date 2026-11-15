@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import { MatchSheet } from "@/components/match-sheet";
+import { MatchesNotice } from "@/components/matches-notice";
 import { NightHighlightsButton } from "@/components/highlights/entry";
 import {
   StudioDateBadge,
@@ -468,6 +469,7 @@ function MatchesInner() {
         </div>
       </PullToRefresh>
       <MatchSheet match={open} onClose={closeMatch} />
+      <MatchesNotice active={path === "/partite" && !open} />
     </>
   );
 }

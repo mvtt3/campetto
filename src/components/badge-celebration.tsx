@@ -41,6 +41,7 @@ import { Character3D } from "./character-card";
 import { useIntroDone } from "./intro";
 import { isNewcomer } from "./rewards";
 import { Mascot } from "./mascot";
+import { isMatchesNotice } from "./matches-notice";
 import { Button, CourtLines } from "./ui/basics";
 import { useToast } from "./ui/toast";
 
@@ -154,7 +155,7 @@ export function BadgeCelebration() {
     //    Finché non hai risposto alla proposta e non è scaduto, ricompaiono a ogni apertura.
     const nowIso = new Date().toISOString();
     for (const post of data.news ?? []) {
-      if (!post.popup || (post.until && post.until <= nowIso) || later(post.id)) continue;
+      if (!post.popup || (post.until && post.until <= nowIso) || later(post.id) || isMatchesNotice(post)) continue;
       if (post.proposalId) {
         const prop = data.proposals.find((x) => x.id === post.proposalId);
         if (!prop || prop.status !== "aperta") continue;
