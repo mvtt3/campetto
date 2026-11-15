@@ -14,12 +14,11 @@ import type {
   Team,
 } from "../types";
 import type { BoardRow, GameAward, MiniGame } from "../game/types";
+import type { StudioDuelState } from "../studio";
 
 export type StudioVoteCategory = "canestro" | "assist";
 /** Per ogni categoria: i voti per ogni scelta (nell'ordine delle opzioni) e la mia (null se non ho votato). */
 export type StudioVoteState = Record<StudioVoteCategory, { counts: number[]; mine: number | null }>;
-/** I voti da 1 a 5 delle azioni di una puntata, una voce per azione: quanti 1, 2, 3, 4, 5 e il mio. */
-export type StudioRateState = { counts: number[]; mine: number | null }[];
 
 export interface SaveMatchInput {
   id?: string;
@@ -169,10 +168,10 @@ export interface Backend {
   studioVoteState(episode: string, options: number): Promise<StudioVoteState>;
   /** Il mio voto: uno per categoria, definitivo. Se c'era già, torna lo stato com'è (senza cambiarlo). */
   studioVote(episode: string, category: StudioVoteCategory, choice: number, options: number): Promise<StudioVoteState>;
-  /** I voti da 1 a 5 delle azioni (items = quante azioni ha la puntata): com'è messo e cosa ho votato io. */
-  studioRateState(episode: string, items: number): Promise<StudioRateState>;
-  /** Il mio voto (1-5) a un'azione: uno solo, definitivo. Se c'era già, torna lo stato com'è. */
-  studioRate(episode: string, item: number, score: number, items: number): Promise<StudioRateState>;
+  /** Il voto a sfide dello Studio: le mie scelte, i conteggi per coppia, l'ultima scelta di ognuno. */
+  studioDuelState(episode: string): Promise<StudioDuelState>;
+  /** La mia scelta in una sfida (a = la preferita di prima, b = l'azione appena vista): una sola, definitiva. */
+  studioDuel(episode: string, category: StudioVoteCategory, round: number, a: number, b: number, choice: number): Promise<StudioDuelState>;
 
   /** Like e commenti degli highlights indicati (si chiedono solo quando si apre il feed). */
   loadHighlightSocial(highlightIds: string[]): Promise<HighlightSocial>;

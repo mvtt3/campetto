@@ -47,8 +47,8 @@ import { CoatRack, MilkCarton, SpicePlaque } from "./easter-eggs";
 import { DeskMic, MIC_H, MIC_W } from "./desk-mic";
 import { TopStage, TOP_VIDEO, syncVideo } from "./studio-top";
 import { VoteOverlay } from "./studio-vote";
-import { RateSheet } from "./studio-rate";
-import type { StudioRateState } from "@/lib/data/backend";
+import { DuelSheet } from "./studio-duel";
+import { duelFavorite, duelMine, type StudioDuelPoint, type StudioDuelState } from "@/lib/studio";
 import { IconChevronRight } from "@tabler/icons-react";
 import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
@@ -211,47 +211,46 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   // L'ultimo tempo visto dal motore: il voto scatta solo attraversando il suo momento mentre si
   // guarda, non aprendo o saltando oltre (chi arriva dopo lo trova col bottone "Vai al voto").
   const lastTick = useRef(startAt);
-  // Il voto da 1 a 5 di ogni azione dei migliori: finita l'azione lo show si ferma, se non l'ho
-  // ancora votata (chi l'ha già votata la rivede senza fermarsi, con il suo voto sulla scheda).
+  // Il voto a sfide: dalla seconda azione di ogni categoria, finita l'azione lo show si ferma e si
+  // sceglie tra questa e la preferita di prima (se quella sfida non l'ho già fatta).
   const { backend } = useData();
-  const rates = useMemo(() => show.rate ?? [], [show]);
-  const nItems = show.top?.items.length ?? 0;
-  const rateArmed = useRef(rates.map(() => true));
-  const [rateOpen, setRateOpen] = useState<number | null>(null);
-  const [rstate, setRstate] = useState<StudioRateState | null>(null);
-  const rstateRef = useRef<StudioRateState | null>(null);
-  const [rateFailed, setRateFailed] = useState(false);
-  // Un voto aperto (quello vecchio o quello delle azioni): niente comandi, sottotitoli e tasti.
-  const overlay = voteOpen !== null || rateOpen !== null;
-  const rateAlive = useRef(true);
+  const duels = useMemo(() => show.duels ?? [], [show]);
+  const duelArmed = useRef(duels.map(() => true));
+  const [duelOpen, setDuelOpen] = useState<number | null>(null);
+  const [dstate, setDstate] = useState<StudioDuelState | null>(null);
+  const dstateRef = useRef<StudioDuelState | null>(null);
+  const [duelFailed, setDuelFailed] = useState(false);
+  // Un voto aperto (quello vecchio o la sfida): niente comandi, sottotitoli e tasti.
+  const overlay = voteOpen !== null || duelOpen !== null;
+  const duelAlive = useRef(true);
   useEffect(() => {
-    rateAlive.current = true;
-    return () => void (rateAlive.current = false);
+    duelAlive.current = true;
+    return () => void (duelAlive.current = false);
   }, []);
-  const loadRates = useCallback(() => {
-    if (!rates.length || !nItems) return;
-    setRateFailed(false);
+  const loadDuels = useCallback(() => {
+    if (!duels.length) return;
+    setDuelFailed(false);
     backend
-      .studioRateState(show.id, nItems)
+      .studioDuelState(show.id)
       .then((st) => {
-        if (!rateAlive.current) return;
-        rstateRef.current = st;
-        setRstate(st);
+        if (!duelAlive.current) return;
+        dstateRef.current = st;
+        setDstate(st);
       })
-      .catch(() => rateAlive.current && setRateFailed(true));
-  }, [backend, show.id, rates.length, nItems]);
+      .catch(() => duelAlive.current && setDuelFailed(true));
+  }, [backend, show.id, duels.length]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadRates();
-  }, [loadRates]);
-  const rateItem = useCallback(
-    async (item: number, score: number) => {
-      const st = await backend.studioRate(show.id, item, score, nItems);
-      if (!rateAlive.current) return;
-      rstateRef.current = st;
-      setRstate(st);
+    loadDuels();
+  }, [loadDuels]);
+  const pickDuel = useCallback(
+    async (d: StudioDuelPoint, a: number, b: number, choice: number) => {
+      const st = await backend.studioDuel(show.id, d.kind, d.round, a, b, choice);
+      if (!duelAlive.current) return;
+      dstateRef.current = st;
+      setDstate(st);
     },
-    [backend, show.id, nItems],
+    [backend, show.id],
   );
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
@@ -395,7 +394,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       c.at = performance.now();
       lastTick.current = t;
       voteArmed.current = votes.map((v) => t < v.t);
-      rateArmed.current = rates.map((r) => t < r.t);
+      duelArmed.current = duels.map((d) => t < d.t);
       if (audio.current) audio.current.currentTime = t;
       const s = screenAt(show, t);
       setScr({ ...s, el: t - s.since });
@@ -406,7 +405,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       setNonce((n) => n + 1);
       setEnded(false);
     },
-    [show, votes, rates],
+    [show, votes, duels],
   );
 
   useEffect(() => {
@@ -449,13 +448,13 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           pause();
           setVoteOpen(vi);
         }
-        // Finita un'azione da votare: ci si ferma (solo se non l'ho già votata).
-        const ri = vi >= 0 ? -1 : rates.findIndex((r, i) => rateArmed.current[i] && prev < r.t && t >= r.t);
-        if (ri >= 0) {
-          rateArmed.current[ri] = false;
-          if ((rstateRef.current?.[rates[ri].item]?.mine ?? null) === null) {
+        // Finita un'azione che sfida la preferita: ci si ferma (solo se quella sfida non l'ho già fatta).
+        const di = vi >= 0 ? -1 : duels.findIndex((d, i) => duelArmed.current[i] && prev < d.t && t >= d.t);
+        if (di >= 0) {
+          duelArmed.current[di] = false;
+          if (duelMine(dstateRef.current, duels[di].kind, duels[di].round) === null) {
             pause();
-            setRateOpen(ri);
+            setDuelOpen(di);
           }
         }
       }
@@ -677,7 +676,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [show, now, pause, votes, rates]);
+  }, [show, now, pause, votes, duels]);
 
   // Finito il voto (o saltato) lo show riparte da dove si era fermato.
   const closeVote = useCallback(
@@ -692,22 +691,24 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     },
     [start, voteOpen],
   );
-  // Votata (o saltata) l'azione, lo show riparte con quella dopo.
-  const closeRate = useCallback(() => {
-    setRateOpen(null);
+  // Scelto (o saltato), lo show riparte con l'azione dopo.
+  const closeDuel = useCallback(() => {
+    setDuelOpen(null);
     void start();
   }, [start]);
-  // Le azioni ancora da votare (si sa solo dopo aver caricato i voti).
-  const rateLeft = rates.filter((r) => rstate !== null && (rstate[r.item]?.mine ?? null) === null);
+  // Le sfide ancora da fare (si sa solo dopo aver caricato lo stato).
+  const duelLeft = duels.filter((d) => dstate !== null && duelMine(dstate, d.kind, d.round) === null);
+  // La mia preferita di adesso per categoria: sulla scheda dell'azione in onda c'è il segno.
+  const favs = useMemo(() => (duels.length ? ([duelFavorite(dstate, "canestro"), duelFavorite(dstate, "assist")].filter((x) => x !== null) as number[]) : []), [duels.length, dstate]);
   // "Vai al voto": dalla seconda apertura, salta dritto al primo momento del voto ancora da fare.
   const goVote = useCallback(() => {
-    if (rates.length) {
-      // Si riguarda l'azione da votare dall'inizio, poi lo show si ferma per il voto.
-      const ri = rates.findIndex((r) => (rstateRef.current?.[r.item]?.mine ?? null) === null);
-      const it = ri >= 0 ? show.top?.items[rates[ri].item] : undefined;
+    if (duels.length) {
+      // Si riguarda l'azione che sfida la preferita dall'inizio, poi lo show si ferma per la scelta.
+      const di = duels.findIndex((d) => duelMine(dstateRef.current, d.kind, d.round) === null);
+      const it = di >= 0 ? show.top?.items[duels[di].item] : undefined;
       if (!it) return;
       seek(it.t + 0.05);
-      rateArmed.current[ri] = true;
+      duelArmed.current[di] = true;
       void start();
       return;
     }
@@ -717,7 +718,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     seek(v.t - 0.25);
     voteArmed.current[vi] = true;
     void start();
-  }, [votes, rates, show, seek, start]);
+  }, [votes, duels, show, seek, start]);
 
   // Tocco: uno mostra i comandi, due a sinistra o a destra saltano di 10 secondi.
   const taps = useRef<{ at: number; x: number; timer: number }>({ at: 0, x: 0, timer: 0 });
@@ -913,7 +914,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       )}
 
-      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} ratings={rates.length ? rstate : null} />}
+      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} favs={favs} />}
 
       {/* La sigla: il badge dell'app con le scritte dello show, poi si apre sullo studio. */}
       {mode === "sigla" && <Sigla key={`s${nonce}`} show={show} at={modeEl} />}
@@ -978,7 +979,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       </div>
 
-      {((votes.length > 0 && !voteDone) || rateLeft.length > 0) && seenBefore && !overlay && mode !== "sigla" && !ended && (
+      {((votes.length > 0 && !voteDone) || duelLeft.length > 0) && seenBefore && !overlay && mode !== "sigla" && !ended && (
         <button
           type="button"
           className="studio-govote press absolute right-4 z-20 inline-flex items-center gap-1 rounded-full bg-white/16 py-2 pl-3.5 pr-2.5 text-[13px] font-semibold text-white backdrop-blur-md"
@@ -990,19 +991,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       )}
 
       {voteOpen !== null && votes[voteOpen] && <VoteOverlay show={show} vote={votes[voteOpen]} onDone={closeVote} />}
-      {rateOpen !== null && rates[rateOpen] && (
-        <RateSheet
-          key={rateOpen}
-          show={show}
-          item={rates[rateOpen].item}
-          state={rstate}
-          failed={rateFailed}
-          last={rates.slice(rateOpen + 1).every((r) => rstate !== null && (rstate[r.item]?.mine ?? null) !== null)}
-          onRate={rateItem}
-          onRetry={loadRates}
-          onDone={closeRate}
-        />
-      )}
+      {duelOpen !== null && duels[duelOpen] && <DuelSheet key={duelOpen} show={show} point={duels[duelOpen]} state={dstate} failed={duelFailed} onPick={pickDuel} onRetry={loadDuels} onDone={closeDuel} />}
 
       {flash && (
         <span key={flash.n} className="studio-flash pointer-events-none absolute top-[45%] grid h-20 w-20 place-items-center rounded-full bg-black/40" style={{ left: flash.kind === "back" ? "12%" : flash.kind === "fwd" ? "calc(88% - 80px)" : "calc(50% - 40px)" }}>

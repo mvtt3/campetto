@@ -3192,61 +3192,94 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
       0 10px 24px -12px rgb(0 0 0 / 0.6);
   }
 }
-/* Il voto di un'azione: il foglio sale dal basso, i numeri arrivano uno dopo l'altro, poi le
-   colonne dei risultati crescono dal basso. */
-.studio-rate {
-  animation: studio-vote-in 300ms ease both;
+/* La sfida a due: il foglio sale dal basso, le due locandine entrano dai lati, la scelta si
+   accende e l'altra si spegne; poi le percentuali e il tempo che scorre sul bottone. */
+.studio-duel {
+  animation: studio-vote-in 280ms ease both;
 }
-.studio-rate-sheet {
-  animation: studio-rate-sheet 420ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+.studio-duel-sheet {
+  animation: studio-duel-sheet 420ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
-@keyframes studio-rate-sheet {
+@keyframes studio-duel-sheet {
   from {
     opacity: 0;
     transform: translateY(40px);
   }
 }
-.studio-rate-btn {
-  animation: studio-vote-up 380ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
-  animation-delay: calc(90ms + var(--i, 0) * 45ms);
+.studio-duel-in {
+  animation: studio-vote-up 340ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.studio-duel-card {
+  background: #16306f;
+  animation: studio-duel-card 460ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(100ms + var(--i, 0) * 80ms);
+  --from: -18px;
   transition:
-    transform 180ms cubic-bezier(0.2, 0.9, 0.25, 1),
-    background-color 180ms ease,
-    color 180ms ease,
-    opacity 220ms ease;
+    transform 240ms cubic-bezier(0.2, 0.9, 0.25, 1),
+    opacity 260ms ease,
+    box-shadow 240ms ease;
   -webkit-tap-highlight-color: transparent;
 }
-.studio-rate-btn:disabled {
-  cursor: default;
+.studio-duel-card:nth-child(2) {
+  --from: 18px;
 }
-.studio-rate-btn.is-pending {
-  transform: scale(1.08);
-  box-shadow: 0 0 0 6px rgb(255 197 49 / 0.25);
-}
-.studio-rate-col {
-  animation: studio-vote-up 360ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
-  animation-delay: calc(var(--i, 0) * 50ms);
-}
-.studio-rate-fill {
-  animation: studio-rate-grow 760ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
-  animation-delay: calc(120ms + var(--i, 0) * 50ms);
-}
-@keyframes studio-rate-grow {
+@keyframes studio-duel-card {
   from {
-    transform: scaleY(0);
+    opacity: 0;
+    transform: translateX(var(--from)) scale(0.96);
   }
 }
-.studio-rate-in {
-  animation: studio-vote-up 360ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+.studio-duel-card:disabled {
+  cursor: default;
 }
-.studio-rate-mine {
-  animation: studio-vote-pop 420ms cubic-bezier(0.2, 1.4, 0.3, 1) 200ms both;
+.studio-duel-card.is-pending {
+  transform: scale(0.97);
 }
-.studio-rate-next {
-  animation: studio-vote-up 400ms cubic-bezier(0.2, 0.9, 0.25, 1) 320ms both;
-  box-shadow: 0 14px 30px -14px rgb(0 0 0 / 0.6);
+.studio-duel-card.is-chosen {
+  box-shadow:
+    inset 0 0 0 3px #ffc531,
+    0 0 0 4px rgb(255 197 49 / 0.22),
+    0 18px 36px -16px rgb(255 197 49 / 0.55);
 }
-.studio-rate-err {
+.studio-duel-card.is-out {
+  opacity: 0.55;
+  transform: scale(0.97);
+}
+.studio-duel-vs {
+  animation: studio-duel-vs 420ms cubic-bezier(0.2, 1.4, 0.3, 1) 260ms both;
+}
+@keyframes studio-duel-vs {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+}
+.studio-duel-check {
+  animation: studio-vote-pop 420ms cubic-bezier(0.2, 1.4, 0.3, 1) both;
+}
+.studio-duel-res {
+  animation: studio-vote-up 320ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.studio-duel-fill {
+  animation: studio-duel-grow 700ms cubic-bezier(0.2, 0.9, 0.25, 1) 120ms both;
+}
+@keyframes studio-duel-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.studio-duel-next {
+  animation: studio-vote-up 360ms cubic-bezier(0.2, 0.9, 0.25, 1) 200ms both;
+}
+.studio-duel-timer {
+  animation: studio-duel-timer linear both;
+}
+@keyframes studio-duel-timer {
+  from {
+    transform: scaleX(0);
+  }
+}
+.studio-duel-err {
   animation: studio-vote-up 300ms ease both;
 }
 .studio-top-rated {
@@ -3254,14 +3287,15 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .studio-rate,
-  .studio-rate-sheet,
-  .studio-rate-btn,
-  .studio-rate-col,
-  .studio-rate-fill,
-  .studio-rate-in,
-  .studio-rate-mine,
-  .studio-rate-next,
+  .studio-duel,
+  .studio-duel-sheet,
+  .studio-duel-in,
+  .studio-duel-card,
+  .studio-duel-vs,
+  .studio-duel-check,
+  .studio-duel-res,
+  .studio-duel-fill,
+  .studio-duel-next,
   .studio-top-rated,
   .studio-vote,
   .studio-vote-head,
@@ -3378,8 +3412,8 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
 /* Il voto si apre a show fermo: le sue animazioni devono andare lo stesso. */
 .studio-paused .studio-vote,
 .studio-paused .studio-vote *,
-.studio-paused .studio-rate,
-.studio-paused .studio-rate * {
+.studio-paused .studio-duel,
+.studio-paused .studio-duel * {
   animation-play-state: running !important;
 }
 @media (prefers-reduced-motion: reduce) {

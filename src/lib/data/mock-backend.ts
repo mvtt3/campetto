@@ -3,6 +3,7 @@
 import { BOX_KEYS, IERI } from "./mock-ieri";
 import { fromExport, LOCAL_DATA_URL } from "./mock-dati";
 import { splitGuests } from "../guests";
+import type { StudioDuelState } from "../studio";
 import {
   DEFAULT_NOTIFY_PREFS,
   emptyBox,
@@ -24,7 +25,6 @@ import type {
   PendingUser,
   PlayerPrivate,
   StudioVoteState,
-  StudioRateState,
 } from "./backend";
 import type { BoardRow } from "../game/types";
 import { APP_START, sortChrono } from "../periods";
@@ -1040,19 +1040,19 @@ export function createMockBackend(): Backend {
       return mockVoteState(episode, options);
     },
 
-    // I voti da 1 a 5 delle azioni nei dati finti: qualche voto degli altri già dentro, il mio nel browser.
-    async studioRateState(episode, items) {
+    // Il voto a sfide nei dati finti: le scelte degli altri fisse, le mie nel browser.
+    async studioDuelState(episode) {
       await mockDelay();
       if (failing("voti")) throw new Error("Spicchio non riesce a caricare i voti");
-      return mockRateState(episode, items);
+      return mockDuelState(episode);
     },
-    async studioRate(episode, item, score, items) {
+    async studioDuel(episode, category, round, a, b, choice) {
       await mockDelay();
       if (failing("voto")) throw new Error("Spicchio non riesce a mandare il voto");
-      if (!(item >= 0 && item < items) || !(score >= 1 && score <= 5)) throw new Error("Voto non valido");
-      const k = `campetto:mock:voto-azione:${episode}:${item}`;
-      if (localStorage.getItem(k) === null) localStorage.setItem(k, String(score));
-      return mockRateState(episode, items);
+      if (a === b || (choice !== a && choice !== b) || round < 1) throw new Error("Sfida non valida");
+      const k = `campetto:mock:sfida:${episode}:${category}:${round}`;
+      if (localStorage.getItem(k) === null) localStorage.setItem(k, JSON.stringify({ a, b, x: choice }));
+      return mockDuelState(episode);
     },
 
     async loadHighlightSocial(ids) {
@@ -1297,16 +1297,33 @@ function mockVoteState(episode: string, options: number): StudioVoteState {
   return out;
 }
 
-/** I voti finti delle azioni: quelli degli altri fissi (dipendono da puntata e azione), il mio dal browser. */
-function mockRateState(episode: string, items: number): StudioRateState {
+/** Le sfide finte: le scelte degli altri fisse (dipendono dalla puntata e dalla coppia), le mie dal browser. */
+function mockDuelState(episode: string): StudioDuelState {
   const seed = Array.from(episode).reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
-  return Array.from({ length: items }, (_, item) => {
-    const s = (seed + item * 131) % 997;
-    // Una forma credibile: pochi 1 e 2, il grosso tra 3 e 5, ogni azione un po' diversa.
-    const counts = [s % 2, (s >> 1) % 2, 1 + ((s >> 2) % 3), 1 + ((s >> 3) % 4), (s >> 4) % 5];
-    const raw = localStorage.getItem(`campetto:mock:voto-azione:${episode}:${item}`);
-    const mine = raw === null ? null : Number(raw);
-    if (mine !== null && mine >= 1 && mine <= 5) counts[mine - 1] += 1;
-    return { counts, mine: mine !== null && mine >= 1 && mine <= 5 ? mine : null };
-  });
+  const out: StudioDuelState = { mine: [], counts: [], champs: [] };
+  for (const [ci, c] of (["canestro", "assist"] as const).entries()) {
+    for (let a = 0; a < 12; a++)
+      for (let b = a + 1; b < 12; b++) {
+        const s = (seed + a * 37 + b * 101 + ci * 13) % 997;
+        out.counts.push({ c, a, b, x: a, n: 1 + (s % 4) });
+        out.counts.push({ c, a, b, x: b, n: 1 + ((s >> 2) % 4) });
+      }
+    let last: { r: number; x: number } | null = null;
+    for (let r = 1; r <= 20; r++) {
+      const raw = localStorage.getItem(`campetto:mock:sfida:${episode}:${c}:${r}`);
+      if (raw === null) continue;
+      try {
+        const m = JSON.parse(raw) as { a: number; b: number; x: number };
+        out.mine.push({ c, r, a: m.a, b: m.b, x: m.x });
+        const row = out.counts.find((k) => k.c === c && k.a === m.a && k.b === m.b && k.x === m.x);
+        if (row) row.n += 1;
+        else out.counts.push({ c, a: m.a, b: m.b, x: m.x, n: 1 });
+        last = { r, x: m.x };
+      } catch {
+        /* voce rovinata: come non votata */
+      }
+    }
+    if (last) out.champs.push({ c, item: last.x, n: 1 });
+  }
+  return out;
 }

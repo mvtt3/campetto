@@ -264,51 +264,77 @@ export interface StudioShow {
   vote?: StudioVote;
   votes?: StudioVote[];
   /**
-   * Il voto da 1 a 5 di ogni azione dei migliori: a t (finita l'azione) lo show si ferma e chi
-   * non l'ha ancora votata dà il suo voto. item = indice in top.items.
+   * Il voto a sfide: dalla seconda azione di ogni categoria, a t (finita l'azione) lo show si
+   * ferma e si sceglie tra questa (item, indice in top.items) e la preferita di prima.
    */
-  rate?: StudioRatePoint[];
+  duels?: StudioDuelPoint[];
 }
 
-export interface StudioRatePoint {
+export interface StudioDuelPoint {
   t: number;
+  kind: StudioVoteKind;
+  /** La sfida numero: 1 = prima contro seconda azione della categoria. */
+  round: number;
   item: number;
 }
 
-/** Media e numero dei voti da 1 a 5 (counts = quanti 1, 2, 3, 4, 5). */
-export function rateStats(counts: readonly number[]): { n: number; sum: number; avg: number | null } {
-  let n = 0;
-  let sum = 0;
-  counts.slice(0, 5).forEach((c, i) => {
-    const k = Math.max(0, Math.floor(c || 0));
-    n += k;
-    sum += k * (i + 1);
-  });
-  return { n, sum, avg: n ? sum / n : null };
+/** Lo stato delle sfide: le mie scelte, i conteggi per coppia e l'ultima scelta di ognuno. */
+export interface StudioDuelState {
+  mine: { c: StudioVoteKind; r: number; a: number; b: number; x: number }[];
+  counts: { c: StudioVoteKind; a: number; b: number; x: number; n: number }[];
+  champs: { c: StudioVoteKind; item: number; n: number }[];
 }
 
-/** La media come si legge: una cifra dopo la virgola, alla italiana ("4,2"). */
-export function fmtAvg(avg: number | null): string {
-  return avg === null ? "–" : (Math.round(avg * 10) / 10).toFixed(1).replace(".", ",");
+/** Le azioni di una categoria, nell'ordine in cui si vedono (indici in top.items). */
+export function itemsOfKind(show: Pick<StudioShow, "top">, kind: StudioVoteKind): number[] {
+  return (show.top?.items ?? []).map((it, i) => (it.kind === kind ? i : -1)).filter((i) => i >= 0);
+}
+
+/** La mia scelta in una sfida, se l'ho già fatta. */
+export function duelMine(state: StudioDuelState | null | undefined, kind: StudioVoteKind, round: number): number | null {
+  return state?.mine.find((m) => m.c === kind && m.r === round)?.x ?? null;
 }
 
 /**
- * Chi vince tra le azioni indicate: la media più alta. A pari media vince chi ha preso più 5, poi
- * chi ha più voti; se è pari anche così vincono insieme (pari merito). Senza voti non si vince.
+ * La mia preferita prima della sfida "round": l'ultima scelta fatta nelle sfide precedenti (una
+ * sfida saltata non cambia niente) oppure, se non ho ancora scelto, la prima azione della categoria.
  */
-export function rateWinners(items: readonly number[], state: readonly { counts: number[] }[] | null | undefined): number[] {
-  const scored = items
-    .map((item) => {
-      const counts = state?.[item]?.counts ?? [];
-      const st = rateStats(counts);
-      return { item, ...st, fives: Math.max(0, Math.floor(counts[4] || 0)) };
-    })
-    .filter((x) => x.n > 0);
-  if (!scored.length) return [];
-  // Confronto senza virgole: a/b contro c/d diventa a·d contro c·b.
-  const cmp = (x: (typeof scored)[number], y: (typeof scored)[number]) => y.sum * x.n - x.sum * y.n || y.fives - x.fives || y.n - x.n;
-  scored.sort(cmp);
-  return scored.filter((x) => cmp(x, scored[0]) === 0).map((x) => x.item);
+export function duelChampion(show: Pick<StudioShow, "top">, state: StudioDuelState | null | undefined, kind: StudioVoteKind, round: number): number | null {
+  const prev = (state?.mine ?? []).filter((m) => m.c === kind && m.r < round).sort((x, y) => y.r - x.r)[0];
+  if (prev) return prev.x;
+  return itemsOfKind(show, kind)[0] ?? null;
+}
+
+/** La mia preferita di adesso in una categoria (null se non ho ancora scelto niente). */
+export function duelFavorite(state: StudioDuelState | null | undefined, kind: StudioVoteKind): number | null {
+  const last = (state?.mine ?? []).filter((m) => m.c === kind).sort((x, y) => y.r - x.r)[0];
+  return last ? last.x : null;
+}
+
+/** Quanti hanno scelto l'una o l'altra in una sfida tra queste due azioni, e le percentuali (sommano a 100). */
+export function duelPair(state: StudioDuelState | null | undefined, kind: StudioVoteKind, a: number, b: number): { na: number; nb: number; pa: number; pb: number } {
+  let na = 0;
+  let nb = 0;
+  for (const c of state?.counts ?? []) {
+    if (c.c !== kind || c.a !== a || c.b !== b) continue;
+    if (c.x === a) na += c.n;
+    else if (c.x === b) nb += c.n;
+  }
+  const tot = na + nb;
+  const pa = tot ? Math.round((na * 100) / tot) : 0;
+  return { na, nb, pa, pb: tot ? 100 - pa : 0 };
+}
+
+/**
+ * Chi vince una categoria: l'azione che più persone hanno portato fino in fondo. A parità, quella
+ * che ha vinto più sfide in tutto; se è pari anche così, vincono insieme. Senza scelte, nessuno.
+ */
+export function duelWinners(state: StudioDuelState | null | undefined, kind: StudioVoteKind): number[] {
+  const champs = (state?.champs ?? []).filter((c) => c.c === kind && c.n > 0);
+  if (!champs.length) return [];
+  const wins = (item: number) => (state?.counts ?? []).filter((c) => c.c === kind && c.x === item).reduce((s, c) => s + c.n, 0);
+  const scored = champs.map((c) => ({ item: c.item, n: c.n, w: wins(c.item) })).sort((x, y) => y.n - x.n || y.w - x.w || x.item - y.item);
+  return scored.filter((x) => x.n === scored[0].n && x.w === scored[0].w).map((x) => x.item);
 }
 
 /** La puntata più recente: /studio/ultima.json dice quale. */

@@ -18,10 +18,10 @@ import type {
   PendingUser,
   PlayerPrivate,
   StudioVoteState,
-  StudioRateState,
 } from "./backend";
 import { say } from "../voice";
 import { splitGuests } from "../guests";
+import type { StudioDuelState } from "../studio";
 
 function fail(error: { message: string } | null): void {
   if (error) throw new Error(friendly(error.message));
@@ -522,16 +522,16 @@ export function createSupabaseBackend(): Backend {
       return data as StudioVoteState;
     },
 
-    async studioRateState(episode, items) {
-      const { data, error } = await sb.rpc("studio_rating_state", { p_episode: episode, p_items: items });
+    async studioDuelState(episode) {
+      const { data, error } = await sb.rpc("studio_duel_state", { p_episode: episode });
       fail(error);
-      return data as StudioRateState;
+      return data as StudioDuelState;
     },
 
-    async studioRate(episode, item, score, items) {
-      const { data, error } = await sb.rpc("studio_rate", { p_episode: episode, p_item: item, p_score: score, p_items: items });
+    async studioDuel(episode, category, round, a, b, choice) {
+      const { data, error } = await sb.rpc("studio_duel", { p_episode: episode, p_category: category, p_round: round, p_a: a, p_b: b, p_choice: choice });
       fail(error);
-      return data as StudioRateState;
+      return data as StudioDuelState;
     },
 
     async loadHighlightSocial(ids) {

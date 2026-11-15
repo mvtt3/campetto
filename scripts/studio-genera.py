@@ -41,10 +41,10 @@ SEG_GAP = 0.45    # quando cambia la grafica
 DEFAULT_RATE = "+10%"
 WALK_IN = 3.4     # quanto ci mette l'ospite a entrare e sedersi
 WALK_OUT = 2.6    # e ad alzarsi e uscire
-INTRO_CUT = 1.7   # tra due grafiche: stacco su chi parla, poi zoom sulla nuova
+INTRO_CUT = 1.2   # tra due grafiche: stacco su chi parla, poi zoom sulla nuova
 TOP_POST = 2.2    # nei migliori della giornata: secondi di video dopo il rilascio (la palla entra)
 HOST_BATCH = 60  # battute dei conduttori per richiesta: tutte insieme, così la voce non cambia a metà
-MIN_SCREEN = 6.5  # ogni grafica resta a tutto schermo almeno tanto: il tempo di leggerla
+MIN_SCREEN = 4.6  # ogni grafica resta a tutto schermo almeno tanto: il tempo di leggerla
 TOP_MIN = 5.0     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
 
 src, out, music_path = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -888,9 +888,16 @@ async def main():
         show = json.load(open(os.path.join(out, f"{plan['id']}.json")))
         for it in show["top"]["items"]:
             it["release"] = round(it["t"] + it["d"] - TOP_POST, 3)
-        if plan.get("rate"):
-            # Il voto da 1 a 5 di ogni azione: lo show si ferma sull'ultimo fotogramma dell'azione.
-            show["rate"] = [{"t": round(it["t"] + it["d"] - 0.12, 3), "item": i} for i, it in enumerate(show["top"]["items"])]
+        if plan.get("duel"):
+            # La sfida a due: dalla seconda azione di ogni categoria lo show si ferma sull'ultimo
+            # fotogramma e si sceglie tra questa e la preferita di prima (round 1 = seconda azione).
+            seen = {}
+            show["duels"] = []
+            for i, it in enumerate(show["top"]["items"]):
+                r = seen.get(it["kind"], 0)
+                seen[it["kind"]] = r + 1
+                if r:
+                    show["duels"].append({"t": round(it["t"] + it["d"] - 0.12, 3), "kind": it["kind"], "round": r, "item": i})
         json.dump(show, open(os.path.join(out, f"{plan['id']}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
     # Le azioni sul maxischermo: un solo video piccolo con il misuratore di tiro già dentro.
     if not any(sh.get("cam") == "replay" for sh in shots) and any(sc.get("kind") == "replay" for sc in screens):

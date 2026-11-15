@@ -859,7 +859,7 @@ function Body({ screen }: { screen: StudioScreen }) {
               </div>
             )}
             <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(0.9)}>
-              Si vota a fine puntata
+              Due alla volta: tocca il tuo preferito
             </p>
           </div>
         </>
