@@ -352,6 +352,9 @@ def gemini_jobs():
                 guest_lines.append((si, li, "ospite", say))
             else:
                 hosts.append((si, li, line["who"], say))
+    # "ttsAt" su un pezzo: il suo posto nel copione mandato alle voci, quando non è quello in scaletta
+    # (un pezzo spostato dopo aver registrato: le voci restano le stesse, senza rifarle).
+    hosts.sort(key=lambda h: (plan["segments"][h[0]].get("ttsAt", h[0]), h[1]))
     for k in range(0, len(hosts), HOST_BATCH):
         part = hosts[k:k + HOST_BATCH]
         chunks.append({"coro": False, "lines": part, "who": sorted({w for _, _, w, _ in part}, key=["lui", "lei"].index)})
