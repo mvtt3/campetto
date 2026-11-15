@@ -331,6 +331,20 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     const id = window.setTimeout(() => setFullSettled(true), 260);
     return () => window.clearTimeout(id);
   }, [full]);
+  // E quando esce resta montata per il tempo della dissolvenza: sfuma la grafica sullo studio, non
+  // la parete vuota.
+  const [fullLinger, setFullLinger] = useState(full);
+  const [fullLast, setFullLast] = useState<{ screen: StudioShow["screens"][number]; keyId: string; el: number } | null>(null);
+  useEffect(() => {
+    if (full) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFullLinger(true);
+      setFullLast({ screen: show.screens[scr.index], keyId: `${scr.index}-${nonce}`, el: fullEl });
+      return;
+    }
+    const id = window.setTimeout(() => setFullLinger(false), 260);
+    return () => window.clearTimeout(id);
+  }, [full, show, scr.index, nonce, fullEl]);
   const [flash, setFlash] = useState<{ kind: "play" | "pause" | "back" | "fwd"; n: number } | null>(null);
 
   const [k, setK] = useState(1);
@@ -889,8 +903,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
             width: STAGE.w,
             height: STAGE.h,
             visibility: (full && screen?.kind !== "replay" && fullSettled) || mode === "replay" || (mode === "top" && topLive) || mode === "fine" ? "hidden" : "visible",
-            // Sotto il video lo studio sparisce solo a dissolvenza finita.
-            transition: mode === "top" && topLive ? "visibility 0s linear 0.35s" : undefined,
+            // Sotto il video (e sotto il saluto finale) lo studio sparisce solo a dissolvenza finita.
+            transition: (mode === "top" && topLive) || mode === "fine" ? "visibility 0s linear 0.5s" : undefined,
           }}
         >
           <StudioSet day={show.day} />
@@ -957,7 +971,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           </div>
           {/* Si monta solo quando serve (a zoom quasi finito): così il cambio di grafica non fa
               tutto il lavoro nello stesso istante. Le animazioni restano a tempo (--el). */}
-          {full && <FullCard screen={screen} keyId={`${scr.index}-${nonce}`} el={fullEl} />}
+          {full ? <FullCard screen={screen} keyId={`${scr.index}-${nonce}`} el={fullEl} /> : fullLinger && fullLast ? <FullCard screen={fullLast.screen} keyId={fullLast.keyId} el={fullLast.el} /> : null}
         </div>
       </div>
 
