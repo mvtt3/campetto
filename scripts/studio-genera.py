@@ -44,6 +44,8 @@ WALK_OUT = 2.6    # e ad alzarsi e uscire
 INTRO_CUT = 1.2   # tra due grafiche: stacco su chi parla, poi zoom sulla nuova
 TOP_POST = 2.2    # nei migliori della giornata: secondi di video dopo il rilascio (la palla entra)
 HOST_BATCH = 60  # battute dei conduttori per richiesta: tutte insieme, così la voce non cambia a metà
+PAUSE_MAX = 0.6   # il silenzio più lungo ammesso dentro una battuta
+PAUSE_KEEP = 0.32 # e a quanto si accorcia
 MIN_SCREEN = 4.6  # ogni grafica resta a tutto schermo almeno tanto: il tempo di leggerla
 TOP_MIN = 5.0     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
 
@@ -630,6 +632,35 @@ async def main():
                         continue
                     w = disp[k]
                 ws.append([w, a0, a1])
+            # Niente pause morte dentro una battuta: un silenzio più lungo di PAUSE_MAX si accorcia
+            # (le voci a volte si fermano un secondo e mezzo tra due frasi, e in studio cala il gelo).
+            hop = int(0.02 * SR)
+            quiet = np.abs(a[: len(a) // hop * hop]).reshape(-1, hop).max(1) < 0.012
+            cuts = []  # (inizio del taglio in secondi, secondi tolti), dal fondo verso l'inizio
+            qi = len(quiet)
+            while qi > 0:
+                if not quiet[qi - 1]:
+                    qi -= 1
+                    continue
+                qj = qi
+                while qi > 0 and quiet[qi - 1]:
+                    qi -= 1
+                sil = (qj - qi) * hop / SR
+                if sil > PAUSE_MAX and qi > 0 and qj < len(quiet):
+                    keep = int(PAUSE_KEEP * SR)
+                    c0 = qi * hop + keep // 2
+                    c1 = qj * hop - (keep - keep // 2)
+                    a = np.concatenate([a[:c0], a[c1:]])
+                    cuts.append((c0 / SR, (c1 - c0) / SR))
+            for c0, cut in cuts:
+                for w in ws:
+                    if w[1] >= c0 + cut / 2:
+                        w[1] = round(w[1] - cut, 3)
+                        w[2] = round(w[2] - cut, 3)
+                    elif w[2] > c0:
+                        w[2] = round(max(w[1] + 0.05, min(w[2], c0)), 3)
+            if cuts:
+                d = len(a) / SR
             cam = line.get("cam", seg["cam"])
             if is_top:
                 cam = "top"

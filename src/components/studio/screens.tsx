@@ -859,7 +859,7 @@ function Body({ screen }: { screen: StudioScreen }) {
               </div>
             )}
             <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(0.9)}>
-              Due alla volta: tocca il tuo preferito
+              A schermo pieno, una dopo l'altra
             </p>
           </div>
         </>
