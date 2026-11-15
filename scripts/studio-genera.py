@@ -44,6 +44,7 @@ WALK_OUT = 2.6    # e ad alzarsi e uscire
 INTRO_CUT = 1.7   # tra due grafiche: stacco su chi parla, poi zoom sulla nuova
 TOP_POST = 2.2    # nei migliori della giornata: secondi di video dopo il rilascio (la palla entra)
 HOST_BATCH = 60  # battute dei conduttori per richiesta: tutte insieme, così la voce non cambia a metà
+MIN_SCREEN = 6.5  # ogni grafica resta a tutto schermo almeno tanto: il tempo di leggerla
 TOP_MIN = 5.0     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
 
 src, out, music_path = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -551,6 +552,8 @@ async def main():
         if not hold and screen["kind"] != "sigla":
             cues.append({"t": round(seg_start, 3), "kind": "whoosh"})
         shown_screen = scr_now
+        # Da quando la grafica di questo pezzo è davvero a tutto schermo (None = non ancora).
+        scr_on = seg_start if (cur == "schermo" and scr_now == si) else None
         is_top = seg["cam"] == "top"
         if is_top:
             # I migliori della giornata: a tutto schermo da subito, un'azione per battuta.
@@ -638,6 +641,8 @@ async def main():
                     cues.append({"t": round(ts, 3), "kind": "whoosh"})
                 shots.append({"t": round(ts, 3), "cam": cam, "screen": shown_screen})
                 cur = cam
+                if cam == "schermo" and shown_screen == si and scr_on is None:
+                    scr_on = ts
             out_line = {"who": line["who"], "t": round(t, 3), "d": round(d, 3), "text": text, "mouth": mouth(a), "words": ws}
             if line.get("with"):
                 out_line["with"] = line["with"]  # il coro: si muove la bocca a tutti
@@ -653,6 +658,8 @@ async def main():
                     cues.append({"t": round(t + line["camDur"], 3), "kind": "whoosh"})
                 shots.append({"t": round(t + line["camDur"], 3), "cam": back, "screen": shown_screen})
                 cur = back
+                if back == "schermo" and shown_screen == si and scr_on is None:
+                    scr_on = t + line["camDur"]
             if line.get("voteAfter"):
                 # Finito l'invito, lo show si ferma e il pubblico vota: la categoria indicata
                 # ("canestro" o "assist"), oppure tutte (true, come nelle prime puntate).
@@ -674,6 +681,12 @@ async def main():
                 # La musica sale un attimo per l'ingresso, poi torna sotto le voci.
                 music_marks.append((guest["enter"] - 0.1, guest["enter"] + 2.4, 0.5))
             t += d + line.get("gap", GAP)
+        if seg["cam"] == "schermo" and scr_on is not None and screen["kind"] != "sigla":
+            # La grafica non sparisce appena finita la frase: resta il tempo di leggerla (sale un po' la musica).
+            need = scr_on + float(plan.get("minScreen", MIN_SCREEN))
+            if t - GAP < need:
+                music_marks.append((t - GAP, need, 0.5))
+                t = need + GAP
         if is_top:
             music_marks.append((seg_start, top_cursor, 0.5))
             t = top_cursor + 0.2
