@@ -190,8 +190,13 @@ function Body({ screen }: { screen: StudioScreen }) {
       return (
         <div className="mvp-hero absolute inset-0 text-volt-ink">
           <span className="mvp-rays absolute -left-28 -top-16 h-96 w-96" aria-hidden />
-          <span className="mvp-word display pointer-events-none absolute -bottom-6 -right-2 text-[120px] leading-none" aria-hidden>
-            MVP
+          {/* La parola gigante: "MVP" a tutta grandezza, una parola più lunga un po' più piccola, così resta nell'angolo. */}
+          <span
+            className="mvp-word display pointer-events-none absolute -bottom-6 -right-2 leading-none"
+            style={{ fontSize: (screen.word ?? "MVP").length > 3 ? 76 : 120 }}
+            aria-hidden
+          >
+            {screen.word ?? "MVP"}
           </span>
           <div className="relative flex h-full flex-col px-4 pb-4 pt-4">
             <Chip tone="ink" icon={IconFlame}>
@@ -379,7 +384,7 @@ function Body({ screen }: { screen: StudioScreen }) {
             {screen.kicker}
           </Chip>
           <p className="studio-in mt-2 text-[13px] font-semibold text-[#1d1a16]/60" style={at(0.1)}>
-            Tiri segnati sui tentati, tutta la serata
+            Tiri segnati sui tentati, tutta la giornata
           </p>
           <ul className="mt-2 flex flex-1 flex-col justify-around">
             {screen.rows.map((r, i) => {
@@ -410,7 +415,7 @@ function Body({ screen }: { screen: StudioScreen }) {
           {three && (
             <div className="studio-in mt-2 rounded-[16px] bg-[#F2E8D5] px-3 py-2" style={at(1.3)}>
               <p className="text-[12.5px] font-bold leading-tight">
-                Da tre: {three.att} dei {three.total} tiri della serata sono di {name(three.playerId)}
+                Da tre: {three.att} dei {three.total} tentativi della giornata sono di {name(three.playerId)}, {three.made} a segno
               </p>
               {/* La barra di tutti i tiri da tre: la parte sua, poi gli altri. */}
               <div className="mt-1.5 flex h-2.5 gap-0.5 overflow-hidden rounded-full">
@@ -432,7 +437,7 @@ function Body({ screen }: { screen: StudioScreen }) {
             {screen.kicker}
           </Chip>
           <p className="studio-in mt-2 text-[13px] font-semibold text-[#1d1a16]/60" style={at(0.1)}>
-            I primi tre dopo la serata
+            I primi tre dopo la giornata
           </p>
           <ul className="relative mt-3 flex flex-col gap-2">
             {rows.map((r, i) => {

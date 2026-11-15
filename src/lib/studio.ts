@@ -36,6 +36,8 @@ export type StudioScreen =
       kind: "quota";
       playerId: Id;
       kicker: string;
+      /** La parola gigante sullo sfondo (se manca, "MVP"). */
+      word?: string;
       value: number;
       total: number;
       unit: string;

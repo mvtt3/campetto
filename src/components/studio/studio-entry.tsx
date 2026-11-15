@@ -192,7 +192,7 @@ export function StudioNightCard({ latest }: { latest: StudioLatest }) {
         </motion.span>
         <span className="relative min-w-0 flex-1">
           <span className="block text-[12px] font-semibold text-volt">Studio Campetto</span>
-          <span className="block truncate text-[15px] font-semibold leading-snug">La puntata della serata</span>
+          <span className="block truncate text-[15px] font-semibold leading-snug">La puntata della giornata</span>
           <span className="block truncate text-[12.5px] text-white/75">Risultati, MVP e canestri</span>
         </span>
         <span className="studio-night-play relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-court-deep">
