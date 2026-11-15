@@ -50,10 +50,13 @@ const ADDRESS_KEY = "campetto:via-indoor";
 function NewProposalSheet({
   open,
   onClose,
+  onCreated,
   initialDay,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Il giorno (aaaa-mm-gg) della proposta appena fatta: il calendario si sposta lì. */
+  onCreated: (day: string) => void;
   initialDay: Date;
 }) {
   const { backend, refresh, mutate, me } = useData();
@@ -157,6 +160,7 @@ function NewProposalSheet({
       }
       void refresh();
       toast("Fatto, ho avvisato tutti");
+      onCreated(day);
       onClose();
     } catch (e) {
       toast(say(e), "error");
@@ -275,6 +279,8 @@ function OrganizeInner() {
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(selected ?? new Date()),
   );
+  /** Vero appena il calendario l'hai mosso tu (o è arrivato già su un giorno): da lì non si sposta da solo. */
+  const moved = useRef(selected !== null);
   const creating = params.get("nuova") === "1";
   const respond = useRespond();
   const handled = useRef(false);
@@ -339,6 +345,21 @@ function OrganizeInner() {
     })
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
+  // Settimana ormai vuota (la domenica sera, per dire) ma c'è una partita più avanti: il calendario
+  // si apre su quella, una volta sola e solo se non l'hai già spostato tu.
+  const nextStart =
+    thisWeek && !selected && list.length === 0
+      ? open
+          .map((p) => p.startsAt)
+          .filter((t) => new Date(t) >= weekEnd)
+          .sort()[0]
+      : undefined;
+  useEffect(() => {
+    if (moved.current || !nextStart) return;
+    moved.current = true;
+    setWeekStart(startOfWeek(new Date(nextStart)));
+  }, [nextStart]);
+
   return (
     <>
       <h1 className="sr-only">Calendario</h1>
@@ -348,6 +369,7 @@ function OrganizeInner() {
             aria-label="Settimana precedente"
             disabled={thisWeek}
             onClick={() => {
+              moved.current = true;
               setSelected(null);
               setWeekStart(
                 new Date(
@@ -369,6 +391,7 @@ function OrganizeInner() {
           <button
             aria-label="Settimana successiva"
             onClick={() => {
+              moved.current = true;
               setSelected(null);
               setWeekStart(weekEnd);
             }}
@@ -389,7 +412,10 @@ function OrganizeInner() {
             return (
               <button
                 key={d.toISOString()}
-                onClick={() => setSelected(isSel ? null : d)}
+                onClick={() => {
+                  moved.current = true;
+                  setSelected(isSel ? null : d);
+                }}
                 aria-pressed={Boolean(isSel)}
                 className={clsx(
                   "press flex h-[64px] flex-col items-center justify-center rounded-[18px] transition-colors",
@@ -490,6 +516,14 @@ function OrganizeInner() {
         <NewProposalSheet
           open
           onClose={() => router.replace("/organizza")}
+          onCreated={(iso) => {
+            // La proposta può cadere in un'altra settimana: il calendario la segue, così la vedi subito.
+            const [y, m, d] = iso.split("-").map(Number);
+            const when = new Date(y, m - 1, d);
+            moved.current = true;
+            setWeekStart(startOfWeek(when));
+            setSelected((s) => (s && !sameDay(s, when) ? null : s));
+          }}
           initialDay={selected ?? today}
         />
       )}

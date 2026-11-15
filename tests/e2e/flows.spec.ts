@@ -325,13 +325,13 @@ test("proposta: campetto, chi c'è, controproposta e spostamento", async ({
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
   await expect(card).toContainText("Decathlon");
   // Chi c'è: tutti i nomi sotto la proposta, senza aprire niente.
-  const roster = card.getByRole("group", { name: "Chi c'è" });
-  await expect(roster.getByRole("region", { name: "Ci sono" })).toContainText(
-    "Tu",
+  const roster = card.getByRole("region", { name: "Chi c'è" });
+  await expect(roster.getByRole("tab", { name: /Ci sono/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
   );
-  await expect(
-    roster.getByRole("region", { name: "Non hanno ancora risposto" }),
-  ).toBeVisible();
+  await expect(roster.getByRole("list")).toContainText("Tu");
+  await expect(roster.getByRole("tab", { name: /Attesa/ })).toBeVisible();
   const alts = card.getByRole("list", { name: "Controproposte" });
   const niche = alts.getByRole("button", { name: /Niche/ });
   const current = alts.getByRole("button", { name: /attuale/ });
@@ -401,23 +401,22 @@ test("partita confermata e poi in corso, nel calendario e nella Home", async ({
   await expect(
     page
       .getByRole("status")
-      .filter({ hasText: "Sto preparando le statistiche" }),
+      .filter({ hasText: "Calcolo statistiche in corso" }),
   ).toBeVisible();
 });
 
-test("chi c'è: un tocco sulla riga apre tutti i nomi", async ({ page }) => {
+test("chi c'è: un tocco su Attesa mostra chi non ha ancora risposto", async ({
+  page,
+}) => {
   await openApp(page, "demo", "light", "p4");
   await page.goto("/organizza");
   const card = page.locator('[data-testid="proposal-card"]:visible').first();
-  const waiting = card.getByRole("region", {
-    name: "Non hanno ancora risposto",
-  });
-  await waiting.getByRole("button").click();
-  await expect(waiting.getByRole("button")).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
-  await expect(waiting.getByRole("listitem")).toHaveCount(5);
+  const roster = card.getByRole("region", { name: "Chi c'è" });
+  const waiting = roster.getByRole("tab", { name: /Attesa/ });
+  await waiting.click();
+  await expect(waiting).toHaveAttribute("aria-selected", "true");
+  await expect(waiting).toContainText("5");
+  await expect(roster.getByRole("list").getByRole("listitem")).toHaveCount(5);
 });
 
 test("importa statistiche da testo", async ({ page }) => {

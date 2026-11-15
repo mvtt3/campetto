@@ -7,9 +7,12 @@ export async function skipTour(page: Page) {
     try {
       // Anche la guida della prima volta negli highlights (c'è una prova apposta).
       localStorage.setItem("campetto:highlights-guida", "1");
-      for (let i = 1; i <= 7; i++)
+      // p1..p7 sono i dati di prova; a1 e a2 quelli dell'esportazione finta (?mock=dati).
+      const ids = ["a1", "a2"];
+      for (let i = 1; i <= 7; i++) ids.push(`p${i}`);
+      for (const id of ids)
         localStorage.setItem(
-          `campetto:tour:p${i}`,
+          `campetto:tour:${id}`,
           JSON.stringify({
             version: 1,
             status: "dismissed",
