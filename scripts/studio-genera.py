@@ -47,7 +47,7 @@ HOST_BATCH = 60  # battute dei conduttori per richiesta: tutte insieme, così la
 PAUSE_MAX = 0.6   # il silenzio più lungo ammesso dentro una battuta
 PAUSE_KEEP = 0.32 # e a quanto si accorcia
 MIN_SCREEN = 4.6  # ogni grafica resta a tutto schermo almeno tanto: il tempo di leggerla
-TOP_MIN = 5.0     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
+TOP_MIN = 4.4     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
 
 src, out, music_path = sys.argv[1], sys.argv[2], sys.argv[3]
 public_dir = sys.argv[4] if len(sys.argv) > 4 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public")
@@ -715,7 +715,7 @@ async def main():
             if is_top and li < len(top_seg):
                 it = top_seg[li]
                 it["t"] = round(top_cursor, 3)
-                it["d"] = round(max(TOP_MIN, (t + d + 0.9) - top_cursor, TOP_POST + 3.0), 2)
+                it["d"] = round(max(TOP_MIN, (t + d + 0.9) - top_cursor, TOP_POST + 2.2), 2)
                 top_cursor = round(top_cursor + it["d"], 3)
                 top_items.append(it)
                 t = top_cursor

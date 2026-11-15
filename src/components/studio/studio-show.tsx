@@ -13,6 +13,7 @@ import {
 } from "@tabler/icons-react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
   armAt,
   blinkAt,
@@ -48,7 +49,7 @@ import { DeskMic, MIC_H, MIC_W } from "./desk-mic";
 import { TopStage, TOP_VIDEO, syncVideo } from "./studio-top";
 import { VoteOverlay } from "./studio-vote";
 import { DuelSheet } from "./studio-duel";
-import { duelFavorite, duelMine, type StudioDuelPoint, type StudioDuelState } from "@/lib/studio";
+import { duelMine, type StudioDuelPoint, type StudioDuelState } from "@/lib/studio";
 import { IconChevronRight } from "@tabler/icons-react";
 import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
@@ -744,8 +745,6 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   }, [start]);
   // Le sfide ancora da fare (si sa solo dopo aver caricato lo stato).
   const duelLeft = duels.filter((d) => dstate !== null && duelMine(dstate, d.kind, d.round) === null);
-  // La mia preferita di adesso per categoria: sulla scheda dell'azione in onda c'è il segno.
-  const favs = useMemo(() => (duels.length ? ([duelFavorite(dstate, "canestro"), duelFavorite(dstate, "assist")].filter((x) => x !== null) as number[]) : []), [duels.length, dstate]);
   // "Vai al voto": dalla seconda apertura, salta dritto al primo momento del voto ancora da fare.
   const goVote = useCallback(() => {
     if (duels.length) {
@@ -810,10 +809,25 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, pause, start, seek, now, overlay]);
 
-  // Finita la puntata si richiude da sola e lascia dove si era (Home, Partite...).
+  // La prossima partita aperta nel calendario: a fine puntata la scheda finale resta ferma lì,
+  // da toccare per andare a rispondere. Se non c'è, la puntata si richiude da sola come sempre.
+  const { data: liveData } = useData();
+  const router = useRouter();
+  const nextOpen = useMemo(() => {
+    const nowIso = new Date().toISOString();
+    return liveData.proposals.filter((p) => p.status === "aperta" && p.startsAt > nowIso).sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null;
+  }, [liveData.proposals]);
+  const hasNext = nextOpen !== null;
+  const goNext = useCallback(() => {
+    if (!nextOpen) return;
+    // Il giorno della partita visto da qui (Italia), come nei link delle notifiche.
+    const day = new Date(nextOpen.startsAt).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+    onClose();
+    router.push(`/organizza?giorno=${day}&p=${nextOpen.id}`);
+  }, [nextOpen, onClose, router]);
   useEffect(() => {
-    if (ended) onClose();
-  }, [ended, onClose]);
+    if (ended && !hasNext) onClose();
+  }, [ended, hasNext, onClose]);
 
   const screen = show.screens[scr.index];
   // Il replay a tutto schermo c'è solo nelle vecchie puntate (con l'inquadratura "replay"): nelle
@@ -844,7 +858,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           {/* Il maxischermo. */}
           <div
             className="absolute overflow-hidden rounded-[16px] ring-[3px] ring-white/90 will-change-transform"
-            style={{ left: SCREEN.x, top: SCREEN.y, width: SCREEN.w, height: SCREEN.h, boxShadow: "0 18px 40px -12px rgb(10 20 60 / 0.6)" }}
+            style={{ left: SCREEN.x, top: SCREEN.y, width: SCREEN.w, height: SCREEN.h, boxShadow: "0 0 0 6px #0b1026, 0 0 0 7px rgb(255 255 255 / 0.22), 0 0 46px 8px rgb(61 106 240 / 0.5), 0 22px 44px -10px rgb(0 0 0 / 0.75)" }}
           >
             <div ref={screenBox} className="origin-top-left" style={{ transform: `scale(${SCREEN.w / SCREEN.nativeW})` }}>
               <div key={`${scr.index}-${nonce}`} style={el(scr.el)} className="studio-screen-in">
@@ -960,11 +974,11 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       )}
 
-      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} favs={favs} src={topSrc} />}
+      {show.top && <TopStage show={show} videoRef={topVideo} on={mode === "top"} src={topSrc} />}
 
       {/* La sigla: il badge dell'app con le scritte dello show, poi si apre sullo studio. */}
       {mode === "sigla" && <Sigla key={`s${nonce}`} show={show} at={modeEl} />}
-      {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
+      {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} ended={ended} onGo={hasNext ? goNext : undefined} onClose={onClose} />}
 
       {/* Sopra lo studio: barra, titolo, sottotitoli e comandi (non zoomano). */}
       <div ref={top} data-on={chrome && !overlay && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
@@ -1408,7 +1422,7 @@ function Sigla({ show, at: t0 }: { show: StudioShow; at: number }) {
 }
 
 /** La chiusura: grazie, la prossima partita, i crediti della musica. */
-function Fine({ show, at: t0 }: { show: StudioShow; at: number }) {
+function Fine({ show, at: t0, ended, onGo, onClose }: { show: StudioShow; at: number; ended: boolean; onGo?: () => void; onClose: () => void }) {
   const { data } = useData();
   // La prossima partita: quella annunciata nella puntata, o la prossima aperta nel calendario.
   const nowIso = new Date().toISOString();
@@ -1435,17 +1449,43 @@ function Fine({ show, at: t0 }: { show: StudioShow; at: number }) {
       <p className="studio-in display relative mt-5 text-[40px] leading-none" style={at(0.35)}>
         Alla prossima!
       </p>
-      {when && (
+      {when && onGo && live ? (
+        // La partita è nel calendario: la scheda si tocca e porta lì, a dire se ci sei.
+        <button
+          type="button"
+          className="studio-next press studio-in relative mt-6 flex w-full max-w-[320px] items-center gap-3 rounded-[22px] bg-[#FFFAF0] px-4 py-3 text-left text-[#1d1a16] shadow-[0_14px_30px_-10px_rgb(0_0_0/0.45)]"
+          style={at(0.6)}
+          aria-label={`Prossima partita: ${when}. Apri nel calendario per rispondere`}
+          onClick={onGo}
+        >
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-volt">
+            <IconCalendarEvent size={22} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12px] font-semibold text-[#1d1a16]/60">Prossima partita</span>
+            <span className="block text-[15.5px] font-bold leading-tight first-letter:uppercase">{when}</span>
+            {next?.place && <span className="block text-[13px] font-medium text-[#1d1a16]/70">{next.place}</span>}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-court py-1.5 pl-3 pr-2 text-[13px] font-bold text-white">
+            Ci sei? <IconChevronRight size={15} stroke={2.6} aria-hidden />
+          </span>
+        </button>
+      ) : when ? (
         <div className="studio-in relative mt-6 flex w-full max-w-[320px] items-center gap-3 rounded-[22px] bg-[#FFFAF0] px-4 py-3 text-left text-[#1d1a16] shadow-[0_14px_30px_-10px_rgb(0_0_0/0.45)]" style={at(0.6)}>
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-volt">
             <IconCalendarEvent size={22} aria-hidden />
           </span>
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1">
             <span className="block text-[12px] font-semibold text-[#1d1a16]/60">Prossima partita</span>
             <span className="block text-[15.5px] font-bold leading-tight first-letter:uppercase">{when}</span>
             {next?.place && <span className="block text-[13px] font-medium text-[#1d1a16]/70">{next.place}</span>}
           </span>
         </div>
+      ) : null}
+      {ended && (
+        <button type="button" className="studio-fine-close press studio-in relative mt-4 rounded-full bg-white/16 px-5 py-2.5 text-[14px] font-semibold text-white backdrop-blur-md" onClick={onClose}>
+          Chiudi
+        </button>
       )}
       <p className="studio-in relative mt-8 max-w-[300px] text-[11.5px] leading-snug text-white/65" style={at(0.9)}>
         {show.credits}
@@ -1463,18 +1503,33 @@ const StudioSet = memo(function StudioSet({ day }: { day: string }) {
   const mon = d.toLocaleDateString("it-IT", { month: "short" }).replace(".", "");
   return (
     <div className="absolute inset-0" aria-hidden>
-      {/* La parete: va oltre i bordi, così quando la telecamera si allarga non si vede il vuoto. */}
-      <div className="absolute -inset-x-40 -top-40 bottom-[260px]" style={{ background: "linear-gradient(160deg, #3D6AF0 0%, var(--court) 45%, var(--court-deep) 100%)" }} />
-      <span className="blob left-[-90px] top-[40px] h-[320px] w-[320px] bg-[radial-gradient(circle,rgb(255_197_49/0.42),transparent_68%)]" />
-      <span className="blob right-[-110px] top-[260px] h-[340px] w-[340px] bg-[radial-gradient(circle,rgb(242_106_27/0.32),transparent_70%)]" />
-      <CourtLines className="absolute inset-x-[-40px] top-[60px] h-[520px] w-[470px] opacity-60" />
+      {/* La parete in fondo: blu notte, neutra e più scura del maxischermo, che così si legge subito
+          come uno schermo acceso. Va oltre i bordi: quando la telecamera si allarga non si vede il vuoto. */}
+      <div className="absolute -inset-x-40 -top-40 bottom-[260px]" style={{ background: "linear-gradient(180deg, #26336b 0%, #1b2655 48%, #131b3d 100%)" }} />
+      {/* Le doghe dei pannelli: righe sottili che danno ritmo e fanno sentire la parete lontana. */}
+      <div
+        className="absolute -inset-x-40 -top-40 bottom-[260px]"
+        style={{ backgroundImage: "repeating-linear-gradient(90deg, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 25px, rgb(4 8 24 / 0.22) 25px 26px, transparent 26px 50px)" }}
+      />
+      {/* La luce del maxischermo sulla parete, dietro di lui. */}
+      <span
+        className="blob"
+        style={{ left: SCREEN.x - 90, top: SCREEN.y - 80, width: SCREEN.w + 180, height: SCREEN.h + 170, background: "radial-gradient(closest-side, rgb(61 106 240 / 0.62), rgb(61 106 240 / 0.18) 60%, transparent)" }}
+      />
+      {/* Due luci calde basse, ai lati: i colori dell'app, appena accennati. */}
+      <span className="blob left-[-120px] top-[330px] h-[300px] w-[300px] bg-[radial-gradient(circle,rgb(255_197_49/0.2),transparent_68%)]" />
+      <span className="blob right-[-130px] top-[340px] h-[320px] w-[320px] bg-[radial-gradient(circle,rgb(242_106_27/0.18),transparent_70%)]" />
+      {/* I bordi più scuri: lo sguardo va al centro e lo studio prende profondità. */}
+      <div className="absolute -inset-x-40 -top-40 bottom-[260px]" style={{ background: "radial-gradient(115% 85% at 50% 60%, transparent 42%, rgb(6 10 28 / 0.6) 100%)" }} />
+      {/* La striscia di luce dove la parete incontra il pavimento. */}
+      <div className="absolute -inset-x-40 top-[580px] h-[4px]" style={{ background: "linear-gradient(90deg, transparent 8%, #FFC531 30%, #F26A1B 70%, transparent 92%)", boxShadow: "0 0 22px 5px rgb(255 197 49 / 0.32)" }} />
       {/* Pannelli vetro ai lati del maxischermo: il giorno a sinistra, il logo a destra. */}
-      <div className="absolute left-[14px] top-[128px] flex h-[148px] w-[66px] flex-col items-center justify-center rounded-[18px] border border-white/25 bg-white/15">
+      <div className="absolute left-[14px] top-[128px] flex h-[148px] w-[66px] flex-col items-center justify-center rounded-[18px] bg-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_14px_28px_-14px_rgb(0_0_0/0.6)]">
         <span className="text-[12px] font-bold uppercase text-white/75">{wd}</span>
         <span className="score text-[40px] text-volt">{num}</span>
         <span className="text-[12px] font-bold uppercase text-white/75">{mon}</span>
       </div>
-      <div className="absolute right-[14px] top-[128px] flex h-[148px] w-[66px] flex-col items-center justify-center gap-3 rounded-[18px] border border-white/25 bg-white/15">
+      <div className="absolute right-[14px] top-[128px] flex h-[148px] w-[66px] flex-col items-center justify-center gap-3 rounded-[18px] bg-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_14px_28px_-14px_rgb(0_0_0/0.6)]">
         <Logo size={52} text={false} />
         <span className="text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-white/80">
           Studio

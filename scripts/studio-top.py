@@ -17,7 +17,7 @@ il JSON con src/poster.
 """
 import importlib.util, json, math, os, subprocess, sys
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location("muro", os.path.join(HERE, "studio-muro.py"))
@@ -77,6 +77,28 @@ def build(show_path):
         clip = {"shot": {"t": lead, "x": it["shot"]["x"], "y": it["shot"]["y"]}, "hoop": it.get("hoop")}
         n = int(round(d * FPS))
         path = muro.center_path(clip, n, crop_w)
+        # "wide" (gli assist): inquadratura ferma e più larga, da x0 a x1 del fotogramma, così si vedono
+        # chi passa e chi tira. Più larga del 3:4: il video sta al centro e dietro c'è lo stesso
+        # fotogramma sfocato e scurito (come i reel con i video orizzontali).
+        # "pan" (gli assist): l'inquadratura parte su chi passa (x = dov'è, before = quanti secondi prima
+        # del rilascio parte il passaggio) e segue la palla fino a chi tira, così si vede tutta l'azione.
+        pan = it.get("pan")
+        if pan:
+            half = crop_w / 2 / SRC_W
+            px = min(max(pan["x"], half), 1 - half)
+            tp = lead - pan["before"]
+            span = max(0.45, pan["before"] - 0.15)
+            path = np.array(path, dtype=float)
+            for fi in range(len(path)):
+                u = min(1.0, max(0.0, (fi / FPS - tp) / span))
+                u = u * u * (3 - 2 * u)
+                path[fi] = px + (path[fi] - px) * u
+        wide = it.get("wide")
+        if wide:
+            wx0, wx1 = wide[0] * SRC_W, wide[1] * SRC_W
+            wk = W / (wx1 - wx0)
+            wh = min(H, int(round(SRC_H * wk / 2)) * 2)
+            wy = (H - wh) // 2
         # Il video parte al fotogramma giusto anche se le azioni non sono perfettamente contigue.
         want_start = int(round((it["t"] - t0) * FPS))
         while written < want_start:
@@ -88,12 +110,27 @@ def build(show_path):
                 break
             local = fi / FPS
             x0 = path[min(fi, len(path) - 1)] * SRC_W - crop_w / 2
-            img = Image.fromarray(fr).resize((W, H), Image.BILINEAR, box=(x0, 0, x0 + crop_w, SRC_H))
+            if wide:
+                src = Image.fromarray(fr)
+                strip = src.resize((W, wh), Image.BILINEAR, box=(wx0, 0, wx1, SRC_H))
+                if wh < H:
+                    cx = min(max((wx0 + wx1) / 2, crop_w / 2), SRC_W - crop_w / 2)
+                    bg = src.resize((W // 8, H // 8), Image.BILINEAR, box=(cx - crop_w / 2, 0, cx + crop_w / 2, SRC_H))
+                    bg = ImageEnhance.Brightness(bg.filter(ImageFilter.GaussianBlur(3))).enhance(0.42).resize((W, H), Image.BILINEAR)
+                    bg.paste(strip, (0, wy))
+                    img = bg
+                else:
+                    img = strip
+            else:
+                img = Image.fromarray(fr).resize((W, H), Image.BILINEAR, box=(x0, 0, x0 + crop_w, SRC_H))
             st, fill, fade, since = muro.meter_state(clip["shot"], local)
             if st != "off":
                 m, pad = muro.draw_meter(st, fill, fade, since)
                 sx = (clip["shot"]["x"] * SRC_W - x0) * k
                 sy = clip["shot"]["y"] * SRC_H * k
+                if wide:
+                    sx = (clip["shot"]["x"] * SRC_W - wx0) * wk
+                    sy = clip["shot"]["y"] * SRC_H * wk + wy
                 x = sx + 13 * muro.PX
                 y = min(H - 50 * muro.PX, max(8 * muro.PX, sy - 44 * muro.PX))
                 img.paste(m.convert("RGB"), (int(round(x - pad)), int(round(y - pad))), m.getchannel("A"))
@@ -110,6 +147,8 @@ def build(show_path):
         it["poster"] = f"/studio/{name}"
         it.pop("video", None)
         it.pop("norot", None)
+        it.pop("wide", None)
+        it.pop("pan", None)
         print(f"top {i + 1}: {it['kind']} {it['label']} — {d:.1f} s, rilascio a +{lead:.2f} s")
     enc.stdin.close()
     enc.wait()

@@ -1,39 +1,26 @@
 "use client";
 
 import clsx from "clsx";
-import { IconBallBasketball, IconHandMove } from "@tabler/icons-react";
 import { memo, useEffect, useRef, type RefObject } from "react";
-import { useData } from "@/lib/data/provider";
-import type { StudioShow, StudioTopItem } from "@/lib/studio";
-import { shortName } from "@/lib/types";
-import { Avatar } from "../ui/avatar";
+import type { StudioShow } from "@/lib/studio";
 
-const NO_FAVS: number[] = [];
-
-/** Il riquadro del video (3:4) nello schermo del telefono: in alto resta spazio per la scheda, sotto per i sottotitoli. */
-export const TOP_VIDEO = { top: 0.14, ratio: 3 / 4 };
+/** Il riquadro del video (3:4) nello schermo del telefono: in alto solo un po' d'aria, sotto lo spazio dei sottotitoli. */
+export const TOP_VIDEO = { top: 0.09, ratio: 3 / 4 };
 
 /**
  * La sezione "i migliori della giornata" a tutto schermo: un solo video montato (le azioni una dopo
  * l'altra, col misuratore di tiro dentro), tenuto a tempo con l'audio dal player, e sopra la
- * scheda dell'azione in onda: che cos'è, chi, in che partita, e a che punto siamo.
+ * niente: solo l'azione, pulita. Chi e che cosa lo dicono i conduttori, con i sottotitoli sotto.
  */
 export const TopStage = memo(function TopStage({
   show,
   videoRef,
-  cardRef,
-  dotsRef,
   on,
-  favs = NO_FAVS,
   src,
 }: {
   show: StudioShow;
   videoRef: RefObject<HTMLVideoElement | null>;
-  cardRef: RefObject<HTMLDivElement | null>;
-  dotsRef: RefObject<HTMLDivElement | null>;
   on: boolean;
-  /** Le mie preferite di adesso nelle sfide (indici in top.items): sulla scheda c'è il segno. */
-  favs?: number[];
   /** Da dove si legge il video: già scaricato per intero (di solito) o dalla rete; null = non ancora. */
   src: string | null;
 }) {
@@ -50,55 +37,10 @@ export const TopStage = memo(function TopStage({
       {/* Il video, 3:4, largo quanto lo schermo. */}
       <div className="absolute inset-x-0 overflow-hidden" style={{ top: `${TOP_VIDEO.top * 100}%`, aspectRatio: "3 / 4" }}>
         <video ref={videoRef} src={src ?? undefined} muted playsInline preload="auto" disablePictureInPicture className="h-full w-full bg-[#0c1736] object-cover" style={{ opacity: 0 }} />
-        {/* I puntini: quale azione è in onda. */}
-        <div ref={dotsRef} className="absolute left-3 top-3 flex gap-1.5" data-i="-1">
-          {items.map((it, i) => (
-            <span key={i} data-k={it.kind} className="studio-top-dot h-1.5 w-1.5 rounded-full bg-white/45" />
-          ))}
-        </div>
-      </div>
-      {/* La scheda dell'azione in onda (la riempie il player quando cambia azione). */}
-      <div ref={cardRef} className="studio-top-cards absolute inset-x-0 top-0 h-24 px-4 pt-[max(56px,calc(var(--sat)+46px))]">
-        {items.map((it, i) => (
-          <TopCard key={i} item={it} i={i} nKind={items.filter((x) => x.kind === it.kind).length} kIndex={items.slice(0, i + 1).filter((x) => x.kind === it.kind).length} fav={favs.includes(i)} />
-        ))}
       </div>
     </div>
   );
 });
-
-function TopCard({ item, i, nKind, kIndex, fav }: { item: StudioTopItem; i: number; nKind: number; kIndex: number; fav: boolean }) {
-  const { data } = useData();
-  const find = (id?: string) => (id ? (data.players.find((p) => p.id === id) ?? data.guests?.find((p) => p.id === id)) : undefined);
-  const scorer = find(item.playerId);
-  const passer = item.kind === "assist" ? find(item.assistId) : undefined;
-  const main = passer ?? scorer;
-  const assist = item.kind === "assist";
-  return (
-    <div className="studio-top-card absolute inset-x-4 flex items-center gap-3" data-i={i}>
-      <div className="relative">
-        <Avatar player={main} size={46} href={false} ring="none" />
-        <span className={clsx("absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full text-[#1d1a16] shadow", assist ? "bg-[#4dff9f]" : "bg-volt")}>
-          {assist ? <IconHandMove size={14} stroke={2.4} /> : <IconBallBasketball size={14} stroke={2.4} />}
-        </span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-volt">
-          {assist ? "Assist" : "Canestro"} · {kIndex} di {nKind}
-        </p>
-        <p className="truncate text-[20px] font-extrabold leading-tight text-white">
-          {shortName(main, data.players)}
-          {passer && <span className="font-semibold text-white/70"> per {shortName(scorer, data.players)}</span>}
-        </p>
-        <p className="truncate text-[12.5px] text-white/70">
-          Partita {item.game} · {item.label}
-        </p>
-      </div>
-      {/* La mia preferita nelle sfide, quando ripassa. */}
-      {fav && <span className="studio-top-rated shrink-0 rounded-full bg-volt px-2.5 py-1 text-[11.5px] font-bold text-volt-ink">Il tuo preferito</span>}
-    </div>
-  );
-}
 
 /** Tiene sincronizzato un video con il tempo della puntata: salti grandi a scatti, piccoli con la velocità. */
 export function syncVideo(v: HTMLVideoElement, want: number, running: boolean, visible: boolean): boolean {
