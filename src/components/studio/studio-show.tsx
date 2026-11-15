@@ -35,6 +35,7 @@ import {
   type StudioHost,
   type StudioShow,
   captionZoneAt,
+  topAt,
 } from "@/lib/studio";
 import { KIT } from "@/components/avatar-presets";
 import { useData } from "@/lib/data/provider";
@@ -43,6 +44,9 @@ import { Logo } from "../mascot";
 import { CourtLines } from "../ui/basics";
 import { CoatRack, MilkCarton, SpicePlaque } from "./easter-eggs";
 import { DeskMic, MIC_H, MIC_W } from "./desk-mic";
+import { TopStage, TOP_VIDEO, syncVideo } from "./studio-top";
+import { VoteOverlay } from "./studio-vote";
+import { IconChevronRight } from "@tabler/icons-react";
 import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
 
@@ -88,8 +92,26 @@ const at = (d: number): CSSProperties => ({ ["--d" as string]: `${d}s` });
 const longDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
 
 /** Carica la puntata e la apre a tutto schermo. */
+const opensKey = (id: string) => `campetto:studio:aperture:${id}`;
+/** Quante volte è stata aperta una puntata su questo telefono (0 la prima volta). */
+function openedBefore(id: string): number {
+  try {
+    return Number(localStorage.getItem(opensKey(id)) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onClose: () => void; startAt?: number }) {
   const [show, setShow] = useState<StudioShow | null>(null);
+  const [opened] = useState(() => openedBefore(id));
+  useEffect(() => {
+    try {
+      localStorage.setItem(opensKey(id), String(opened + 1));
+    } catch {
+      /* niente memoria: pazienza */
+    }
+  }, [id, opened]);
   const [error, setError] = useState(false);
   // Chiudere (a mano o a fine puntata) fa uscire la puntata come è entrata, poi la toglie.
   const shell = useRef<HTMLDivElement>(null);
@@ -130,7 +152,7 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
   return createPortal(
     <div ref={shell} className={clsx("studio-shell fixed inset-0 z-[90]", closing && "is-closing")}>
     {show ? (
-      <StudioShowPlayer show={show} onClose={close} startAt={startAt} />
+      <StudioShowPlayer show={show} onClose={close} startAt={startAt} seenBefore={opened > 0} />
     ) : (
       <div className="fixed inset-0 z-[90] grid place-items-center bg-[#FFC531] text-[#1d1a16]" role="dialog" aria-modal="true" aria-label="Studio Campetto">
         {error ? (
@@ -156,7 +178,7 @@ export function StudioShowLoader({ id, onClose, startAt = 0 }: { id: string; onC
  * 10 secondi indietro o avanti, barra in alto per saltare. L'audio è l'orologio: telecamera,
  * presentatori, grafiche, sottotitoli e replay si calcolano tutti dal suo tempo.
  */
-export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioShow; onClose: () => void; startAt?: number }) {
+export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = false }: { show: StudioShow; onClose: () => void; startAt?: number; seenBefore?: boolean }) {
   const audio = useRef<HTMLAudioElement>(null);
   const world = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -172,6 +194,14 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   // di tiro già dentro i fotogrammi. Si vede solo quando ha davvero il fotogramma giusto.
   const wall = useRef<HTMLVideoElement>(null);
   const wallChip = useRef<HTMLSpanElement>(null);
+  // La sezione "i migliori della giornata": il video a tutto schermo, la scheda e i puntini.
+  const topVideo = useRef<HTMLVideoElement>(null);
+  const topCards = useRef<HTMLDivElement>(null);
+  const topDots = useRef<HTMLDivElement>(null);
+  // Il voto: si apre una volta arrivati al momento giusto (poi non più in questa visione, salvo "Vai al voto").
+  const voteArmed = useRef(true);
+  const [voteOpen, setVoteOpen] = useState(false);
+  const [voteDone, setVoteDone] = useState(false);
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
@@ -274,6 +304,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       // Dentro il tocco: così il telefono lo lascia partire anche dopo; il motore poi lo mette a tempo.
       void w.play().then(() => clock.current.t < (show.muro?.t0 ?? 0) - 1 && w.pause()).catch(() => {});
     }
+    const tv = topVideo.current;
+    if (tv && tv.paused && show.top) {
+      void tv.play().then(() => Math.abs(clock.current.t - show.top!.t0) > 1 && tv.pause()).catch(() => {});
+    }
     if (a && c.audioOk) {
       try {
         if (Math.abs(a.currentTime - c.t) > 0.05) a.currentTime = c.t;
@@ -287,7 +321,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         } else c.audioOk = false;
       }
     }
-  }, [show.muro]);
+  }, [show.muro, show.top]);
 
   const pause = useCallback(() => {
     const c = clock.current;
@@ -295,6 +329,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     c.running = false;
     audio.current?.pause();
     videos.current.forEach((v) => v?.pause());
+    topVideo.current?.pause();
     setPlaying(false);
     root.current?.classList.add("studio-paused");
     setChrome(true);
@@ -350,6 +385,12 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
       raf = requestAnimationFrame(tick);
       const t = now();
       const c = clock.current;
+      // Il voto: arrivati al momento, lo show si ferma e si apre la scelta (una volta per visione).
+      if (show.vote && voteArmed.current && c.running && t >= show.vote.t) {
+        voteArmed.current = false;
+        pause();
+        setVoteOpen(true);
+      }
       if (t >= show.duration - 0.02 && c.running) {
         c.t = show.duration;
         c.running = false;
@@ -511,6 +552,19 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         if (w.style.opacity !== op) w.style.opacity = op;
         if (wallChip.current && wallChip.current.style.opacity !== op) wallChip.current.style.opacity = op;
       }
+      // La sezione dei migliori: un solo video a tempo con l'audio, e la scheda dell'azione in onda.
+      const tv = topVideo.current;
+      if (tv && show.top) {
+        const inTop = m === "top";
+        syncVideo(tv, t - show.top.t0, c.running, inTop);
+        const cur = inTop ? (topAt(show, t)?.index ?? -1) : -1;
+        const cards = topCards.current;
+        if (cards && cards.dataset.i !== String(cur)) {
+          cards.dataset.i = String(cur);
+          cards.querySelectorAll<HTMLElement>(".studio-top-card").forEach((el) => el.classList.toggle("is-on", el.dataset.i === String(cur)));
+          topDots.current?.querySelectorAll<HTMLElement>(".studio-top-dot").forEach((el, i) => el.classList.toggle("is-on", i === cur));
+        }
+      }
       if (scrR?.kind === "replay") {
         const on = m === "replay" && r ? r.clip : -1;
         if (on !== lastClip) {
@@ -555,12 +609,29 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [show, now]);
+  }, [show, now, pause]);
+
+  // Finito il voto (o saltato) lo show riparte da dove si era fermato.
+  const closeVote = useCallback(
+    (voted: boolean) => {
+      setVoteOpen(false);
+      if (voted) setVoteDone(true);
+      void start();
+    },
+    [start],
+  );
+  // "Vai al voto": dalla seconda apertura, salta dritto al momento della scelta.
+  const goVote = useCallback(() => {
+    if (!show.vote) return;
+    voteArmed.current = true;
+    seek(show.vote.t - 0.25);
+    void start();
+  }, [show.vote, seek, start]);
 
   // Tocco: uno mostra i comandi, due a sinistra o a destra saltano di 10 secondi.
   const taps = useRef<{ at: number; x: number; timer: number }>({ at: 0, x: 0, timer: 0 });
   const onTap = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (ended || needsTap) return;
+    if (ended || needsTap || voteOpen) return;
     if ((e.target as HTMLElement).closest("button, [role=slider]")) return;
     const x = e.clientX / window.innerWidth;
     const tp = taps.current;
@@ -588,6 +659,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (voteOpen) return;
       if (e.key === " ") {
         e.preventDefault();
         if (clock.current.running) pause();
@@ -598,7 +670,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, pause, start, seek, now]);
+  }, [onClose, pause, start, seek, now, voteOpen]);
 
   // Finita la puntata si richiude da sola e lascia dove si era (Home, Partite...).
   useEffect(() => {
@@ -628,7 +700,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         <div
           ref={world}
           className="absolute left-0 top-0 origin-top-left will-change-transform"
-          style={{ width: STAGE.w, height: STAGE.h, visibility: (full && screen?.kind !== "replay" && fullSettled) || mode === "replay" || mode === "fine" ? "hidden" : "visible" }}
+          style={{ width: STAGE.w, height: STAGE.h, visibility: (full && screen?.kind !== "replay" && fullSettled) || mode === "replay" || mode === "top" || mode === "fine" ? "hidden" : "visible" }}
         >
           <StudioSet day={show.day} />
           {/* Il maxischermo. */}
@@ -750,6 +822,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
         </div>
       )}
 
+      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} />}
+
       {/* La sigla: il badge dell'app con le scritte dello show, poi si apre sullo studio. */}
       {mode === "sigla" && <Sigla key={`s${nonce}`} show={show} at={modeEl} />}
       {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
@@ -812,6 +886,19 @@ export function StudioShowPlayer({ show, onClose, startAt = 0 }: { show: StudioS
           </div>
         </div>
       </div>
+
+      {show.vote && seenBefore && !voteOpen && !voteDone && mode !== "sigla" && !ended && (
+        <button
+          type="button"
+          className="studio-govote press absolute right-4 z-20 inline-flex items-center gap-1 rounded-full bg-white/16 py-2 pl-3.5 pr-2.5 text-[13px] font-semibold text-white backdrop-blur-md"
+          style={{ bottom: chrome ? "calc(var(--sab) + 118px)" : "calc(var(--sab) + 22px)" }}
+          onClick={goVote}
+        >
+          Vai al voto <IconChevronRight size={16} stroke={2.5} />
+        </button>
+      )}
+
+      {voteOpen && <VoteOverlay show={show} onDone={closeVote} />}
 
       {flash && (
         <span key={flash.n} className="studio-flash pointer-events-none absolute top-[45%] grid h-20 w-20 place-items-center rounded-full bg-black/40" style={{ left: flash.kind === "back" ? "12%" : flash.kind === "fwd" ? "calc(88% - 80px)" : "calc(50% - 40px)" }}>
@@ -988,6 +1075,10 @@ function Captions({
         } else {
           y = Math.min(desk + 10, floor - capH);
         }
+      } else if (z === "top") {
+        // Sotto il video 3:4 della sezione dei migliori.
+        const { w } = view.current;
+        y = Math.min(h * TOP_VIDEO.top + w / TOP_VIDEO.ratio + 14, floor - capH);
       } else {
         y = Math.min((h * CAP_ZONE[z]) / 100 - capH / 2, floor - capH);
       }

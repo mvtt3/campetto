@@ -8,7 +8,7 @@
  * avanti di 10 secondi come un reel.
  */
 
-export type StudioCam = "ampio" | "coppia" | "trio" | "lui" | "lei" | "ospite" | "schermo" | "replay" | "fine";
+export type StudioCam = "ampio" | "coppia" | "trio" | "lui" | "lei" | "ospite" | "schermo" | "replay" | "top" | "fine";
 /** I due conduttori. */
 export type StudioHost = "lui" | "lei";
 /** Chi parla: i conduttori o l'ospite della puntata. */
@@ -153,7 +153,40 @@ export type StudioScreen =
       playerId: Id;
       avg: number;
       rows: { playerId: Id; w: number; g: number }[];
-    };
+    }
+  /**
+   * I migliori della giornata (canestri e assist): sul maxischermo la locandina con i candidati;
+   * a tutto schermo (inquadratura "top") le azioni vere, una alla volta, dal video show.top.
+   */
+  | { kind: "top"; kicker: string; title: string; items: Id[] };
+
+/** Un'azione della sezione "i migliori della giornata". */
+export interface StudioTopItem {
+  /** canestro o assist. */
+  kind: "canestro" | "assist";
+  /** Quando parte e quanto dura, nella puntata. */
+  t: number;
+  d: number;
+  /** Il momento del rilascio (il verde del misuratore), nella puntata. */
+  release: number;
+  /** Chi segna e, per gli assist, chi serve il passaggio. */
+  playerId: Id;
+  assistId?: Id;
+  /** La partita (1-based) e due parole sull'azione. */
+  game: number;
+  label: string;
+  /** Il fotogramma del rilascio (per le schede del voto). */
+  poster: string;
+}
+
+export type StudioVoteKind = "canestro" | "assist";
+/** Il voto del pubblico: dopo la sezione dei migliori, lo show si ferma e si sceglie. */
+export interface StudioVote {
+  /** Quando lo show si ferma per far votare (subito dopo l'invito dei conduttori). */
+  t: number;
+  /** Le scelte, nell'ordine in cui si sono viste: indici in show.top.items. */
+  options: Record<StudioVoteKind, number[]>;
+}
 
 export interface StudioLine {
   who: StudioWho;
@@ -215,6 +248,12 @@ export interface StudioShow {
    * secondo t0 della puntata e va avanti insieme all'audio.
    */
   muro?: { src: string; t0: number };
+  /**
+   * La sezione "i migliori della giornata": un solo video a tutto schermo (3:4), già montato con
+   * il misuratore di tiro dentro i fotogrammi, che parte al secondo t0 e va a tempo con l'audio.
+   */
+  top?: { src: string; t0: number; items: StudioTopItem[] };
+  vote?: StudioVote;
 }
 
 /** La puntata più recente: /studio/ultima.json dice quale. */
@@ -268,7 +307,7 @@ export function guestAt(show: Pick<StudioShow, "guest">, t: number): { on: boole
 /** Dove punta la telecamera: un punto dello studio che va al centro, e quanto zoom. */
 // vy: dove cade il punto nello schermo del telefono. Tutto sta tra la parte alta (~80)
 // e i sottotitoli in basso (~600), così niente finisce sotto le scritte.
-type WorldCam = Exclude<StudioCam, "replay" | "fine">;
+type WorldCam = Exclude<StudioCam, "replay" | "top" | "fine">;
 const CAMS: Record<WorldCam, { fx: number; fy: number; s: number; vy: number }> = {
   ampio: { fx: 195, fy: 440, s: 0.92, vy: 360 },
   coppia: { fx: 195, fy: 470, s: 1.0, vy: 410 },
@@ -289,7 +328,7 @@ const camOf = (c: WorldCam, apart = 0): Cam => {
   const fx = k.fx + (c === "lei" ? -GUEST_SPREAD : c === "lui" ? GUEST_SPREAD : 0) * apart;
   return { s: k.s, x: STAGE.w / 2 - fx * k.s, y: k.vy - k.fy * k.s };
 };
-const isWorld = (c: StudioCam): c is WorldCam => c !== "replay" && c !== "fine";
+const isWorld = (c: StudioCam): c is WorldCam => c !== "replay" && c !== "top" && c !== "fine";
 
 /** L'inquadratura dello studio in ogni momento (durante replay e chiusura resta l'ultima). */
 function worldShot(show: Pick<StudioShow, "shots">, t: number): { i: number; cam: WorldCam } {
@@ -345,10 +384,10 @@ export function screenRect(): { x: number; y: number; w: number; h: number } {
  * la telecamera va sul maxischermo (così non ci finiscono sopra durante lo zoom), sotto l'azione
  * nei replay, altrimenti subito sotto le facce.
  */
-export function captionZoneAt(show: Pick<StudioShow, "shots">, t: number): "studio" | "grafica" | "replay" {
+export function captionZoneAt(show: Pick<StudioShow, "shots">, t: number): "studio" | "grafica" | "replay" | "top" {
   let cam: StudioCam | null = null;
   for (const s of show.shots) if (s.t <= t) cam = s.cam;
-  return cam === "replay" ? "replay" : cam === "schermo" ? "grafica" : "studio";
+  return cam === "replay" ? "replay" : cam === "top" ? "top" : cam === "schermo" ? "grafica" : "studio";
 }
 
 export function fullScreenAt(show: Pick<StudioShow, "shots">, t: number): boolean {
@@ -364,12 +403,23 @@ export function fullScreenAt(show: Pick<StudioShow, "shots">, t: number): boolea
 }
 
 /** In che modalità è il player: sigla, studio, replay a tutto schermo o scheda finale. */
-export function modeAt(show: Pick<StudioShow, "shots" | "intro" | "outro">, t: number): "sigla" | "studio" | "replay" | "fine" {
+export function modeAt(show: Pick<StudioShow, "shots" | "intro" | "outro">, t: number): "sigla" | "studio" | "replay" | "top" | "fine" {
   if (t < show.intro) return "sigla";
   if (t >= show.outro.t) return "fine";
   let cam: StudioCam = "ampio";
   for (const s of show.shots) if (s.t <= t) cam = s.cam;
-  return cam === "replay" ? "replay" : "studio";
+  return cam === "replay" ? "replay" : cam === "top" ? "top" : "studio";
+}
+
+/** L'azione dei "migliori della giornata" in onda al tempo t (e a che punto è), o null. */
+export function topAt(show: Pick<StudioShow, "top">, t: number): { index: number; local: number; item: StudioTopItem } | null {
+  const top = show.top;
+  if (!top) return null;
+  for (let i = top.items.length - 1; i >= 0; i--) {
+    const it = top.items[i];
+    if (t >= it.t && t < it.t + it.d) return { index: i, local: t - it.t, item: it };
+  }
+  return null;
 }
 
 /** Il canestro in onda durante il replay: quale clip e a che punto. */

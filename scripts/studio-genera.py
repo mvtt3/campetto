@@ -42,6 +42,8 @@ DEFAULT_RATE = "+10%"
 WALK_IN = 3.4     # quanto ci mette l'ospite a entrare e sedersi
 WALK_OUT = 2.6    # e ad alzarsi e uscire
 INTRO_CUT = 1.7   # tra due grafiche: stacco su chi parla, poi zoom sulla nuova
+TOP_POST = 2.2    # nei migliori della giornata: secondi di video dopo il rilascio (la palla entra)
+TOP_MIN = 5.0     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
 
 src, out, music_path = sys.argv[1], sys.argv[2], sys.argv[3]
 public_dir = sys.argv[4] if len(sys.argv) > 4 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public")
@@ -130,6 +132,8 @@ def balance_check():
                 seen.update(x for x in (r.get("playerId"), r.get("a"), r.get("b")) if x)
         for g in scr.get("games", []):
             seen.update(g.get("a", []) + g.get("b", []))
+        if scr.get("kind") == "top":
+            seen.update(scr.get("items", []))
     names = plan.get("names", {})
     problems = [f"troppo spazio a {names.get(p, p[:8])}: {n} grafiche tutte sue" for p, n in focus.items() if n > 1]
     problems += [f"{names.get(p, p[:8])} non compare in nessuna grafica" for p in played if p not in seen]
@@ -518,6 +522,7 @@ async def main():
     voice_track = []
     music_marks = []
     screens = []
+    top_items, vote_t = [], None
     guest = None
     cur = "coppia"
     shown_screen = 0
@@ -545,6 +550,14 @@ async def main():
         if not hold and screen["kind"] != "sigla":
             cues.append({"t": round(seg_start, 3), "kind": "whoosh"})
         shown_screen = scr_now
+        is_top = seg["cam"] == "top"
+        if is_top:
+            # I migliori della giornata: a tutto schermo da subito, un'azione per battuta.
+            shots[-1] = {"t": round(seg_start, 3), "cam": "top", "screen": si}
+            cues.append({"t": round(seg_start, 3), "kind": "whoosh"})
+            cur = "top"
+            top_cursor = seg_start + 0.6  # un attimo di video prima della prima parola
+            top_seg = [dict(x) for x in seg["top"]]
         entering = seg.get("guest") in ("enter", "both")
         if entering:
             g = plan["guest"]
@@ -555,6 +568,8 @@ async def main():
             say = pronounce(line.get("say") or text)
             if line["who"] == "ospite" and guest and t < guest["sit"] + 0.15:
                 t = guest["sit"] + 0.15  # parla da seduto
+            if is_top and li < len(top_seg):
+                t = top_cursor + 0.45  # la battuta parte quando l'azione è già in onda
             if TTS == "gemini":
                 mp3, words = gemini_line(si, li)
                 tempo = float(plan.get("tempo", 1.0))
@@ -612,6 +627,8 @@ async def main():
                     w = disp[k]
                 ws.append([w, a0, a1])
             cam = line.get("cam", seg["cam"])
+            if is_top:
+                cam = "top"
             if cam != cur:
                 # camDelay: lo stacco arriva a battuta già iniziata (la grafica resta un po' di più).
                 ts = t + line.get("camDelay", 0)
@@ -635,6 +652,17 @@ async def main():
                     cues.append({"t": round(t + line["camDur"], 3), "kind": "whoosh"})
                 shots.append({"t": round(t + line["camDur"], 3), "cam": back, "screen": shown_screen})
                 cur = back
+            if line.get("voteAfter"):
+                # Finito l'invito, lo show si ferma e il pubblico vota.
+                vote_t = round(t + d + 0.15, 3)
+            if is_top and li < len(top_seg):
+                it = top_seg[li]
+                it["t"] = round(top_cursor, 3)
+                it["d"] = round(max(TOP_MIN, (t + d + 0.9) - top_cursor, TOP_POST + 3.0), 2)
+                top_cursor = round(top_cursor + it["d"], 3)
+                top_items.append(it)
+                t = top_cursor
+                continue
             if entering and li == 0:
                 # L'ospite arriva mentre lo presentano: si siede appena detto il suo nome.
                 guest["enter"] = round(max(seg_start, t + d + 0.25 - WALK_IN), 3)
@@ -642,6 +670,9 @@ async def main():
                 # La musica sale un attimo per l'ingresso, poi torna sotto le voci.
                 music_marks.append((guest["enter"] - 0.1, guest["enter"] + 2.4, 0.5))
             t += d + line.get("gap", GAP)
+        if is_top:
+            music_marks.append((seg_start, top_cursor, 0.5))
+            t = top_cursor + 0.2
         if seg.get("guest") in ("exit", "both") and guest:
             # Saluti fatti: si alza, riprende la sedia ed esce; intanto la puntata va avanti.
             guest["rise"] = round(t - GAP + 0.25, 3)
@@ -821,7 +852,21 @@ async def main():
         "props": props,
         "guest": guest,
     }
+    if top_items:
+        for it in top_items:
+            it["release"] = it["release"]  # nel video sorgente; nella puntata cade a t + d - TOP_POST
+        show["top"] = {"src": "", "t0": top_items[0]["t"], "items": top_items}
+    if vote_t is not None and plan.get("vote"):
+        show["vote"] = {"t": vote_t, "options": plan["vote"]}
     json.dump(show, open(os.path.join(out, f"{plan['id']}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
+    if top_items:
+        # Il video dei migliori: un solo file 3:4 con il misuratore dentro, più le locandine per il voto.
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "studio-top.py"),
+                        os.path.join(out, f"{plan['id']}.json")], check=True)
+        show = json.load(open(os.path.join(out, f"{plan['id']}.json")))
+        for it in show["top"]["items"]:
+            it["release"] = round(it["t"] + it["d"] - TOP_POST, 3)
+        json.dump(show, open(os.path.join(out, f"{plan['id']}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
     # Le azioni sul maxischermo: un solo video piccolo con il misuratore di tiro già dentro.
     if not any(sh.get("cam") == "replay" for sh in shots) and any(sc.get("kind") == "replay" for sc in screens):
         subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "studio-muro.py"),

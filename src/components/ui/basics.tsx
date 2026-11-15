@@ -16,7 +16,7 @@ import {
 } from "react";
 import { Mascot, type MascotPose } from "../mascot";
 
-export function haptic(ms = 8) {
+export function haptic(ms: number | number[] = 8) {
   try {
     navigator.vibrate?.(ms);
   } catch {

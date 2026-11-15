@@ -23,6 +23,7 @@ import type {
   GameKing,
   PendingUser,
   PlayerPrivate,
+  StudioVoteState,
 } from "./backend";
 import type { BoardRow } from "../game/types";
 import { APP_START, sortChrono } from "../periods";
@@ -1024,6 +1025,20 @@ export function createMockBackend(): Backend {
       localStorage.setItem("campetto:mock:seen", new Date().toISOString());
     },
 
+    // Il voto dello Studio nei dati finti: nel browser, con qualche voto degli altri già dentro
+    // (così le percentuali hanno un senso) e lo stesso errore vero se si prova a votare due volte.
+    async studioVoteState(episode, options) {
+      await mockDelay();
+      return mockVoteState(episode, options);
+    },
+    async studioVote(episode, category, choice, options) {
+      await mockDelay();
+      if (failing("voto")) throw new Error("Spicchio non riesce a mandare il voto");
+      const k = `campetto:mock:voto:${episode}:${category}`;
+      if (localStorage.getItem(k) === null) localStorage.setItem(k, String(choice));
+      return mockVoteState(episode, options);
+    },
+
     async loadHighlightSocial(ids) {
       await mockDelay();
       if (failing("social"))
@@ -1250,4 +1265,18 @@ export function mockAllowed(): boolean {
   return (
     local && (q !== null || localStorage.getItem("campetto:use-mock") === "1")
   );
+}
+
+/** Lo stato del voto finto: i voti degli altri sono fissi (dipendono dalla puntata), il mio dal browser. */
+function mockVoteState(episode: string, options: number): StudioVoteState {
+  const seed = Array.from(episode).reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+  const out = {} as StudioVoteState;
+  for (const [ci, category] of (["canestro", "assist"] as const).entries()) {
+    const counts = Array.from({ length: options }, (_, i) => ((seed >> (i + ci * 3)) % 3) + (i === (seed + ci) % options ? 2 : 0));
+    const mine = localStorage.getItem(`campetto:mock:voto:${episode}:${category}`);
+    const my = mine === null ? null : Number(mine);
+    if (my !== null && my >= 0 && my < options) counts[my] += 1;
+    out[category] = { counts, mine: my };
+  }
+  return out;
 }

@@ -17,6 +17,7 @@ import type {
   NotifyBody,
   PendingUser,
   PlayerPrivate,
+  StudioVoteState,
 } from "./backend";
 import { say } from "../voice";
 import { splitGuests } from "../guests";
@@ -506,6 +507,18 @@ export function createSupabaseBackend(): Backend {
 
     async touchSeen() {
       await sb.rpc("touch_seen");
+    },
+
+    async studioVoteState(episode, options) {
+      const { data, error } = await sb.rpc("studio_vote_state", { p_episode: episode, p_options: options });
+      fail(error);
+      return data as StudioVoteState;
+    },
+
+    async studioVote(episode, category, choice, options) {
+      const { data, error } = await sb.rpc("studio_vote", { p_episode: episode, p_category: category, p_choice: choice, p_options: options });
+      fail(error);
+      return data as StudioVoteState;
     },
 
     async loadHighlightSocial(ids) {

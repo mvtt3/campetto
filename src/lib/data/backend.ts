@@ -15,6 +15,10 @@ import type {
 } from "../types";
 import type { BoardRow, GameAward, MiniGame } from "../game/types";
 
+export type StudioVoteCategory = "canestro" | "assist";
+/** Per ogni categoria: i voti per ogni scelta (nell'ordine delle opzioni) e la mia (null se non ho votato). */
+export type StudioVoteState = Record<StudioVoteCategory, { counts: number[]; mine: number | null }>;
+
 export interface SaveMatchInput {
   id?: string;
   playedAt: string;
@@ -158,6 +162,11 @@ export interface Backend {
   sendFeedback(input: FeedbackInput): Promise<void>;
   /** "Sono passato di qui": serve al promemoria settimanale per chi non apre l'app da giorni. */
   touchSeen(): Promise<void>;
+
+  /** Il voto dello Studio (canestro e assist della giornata): com'è messo e cosa ho votato io. */
+  studioVoteState(episode: string, options: number): Promise<StudioVoteState>;
+  /** Il mio voto: uno per categoria, definitivo. Se c'era già, torna lo stato com'è (senza cambiarlo). */
+  studioVote(episode: string, category: StudioVoteCategory, choice: number, options: number): Promise<StudioVoteState>;
 
   /** Like e commenti degli highlights indicati (si chiedono solo quando si apre il feed). */
   loadHighlightSocial(highlightIds: string[]): Promise<HighlightSocial>;

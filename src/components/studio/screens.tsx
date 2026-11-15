@@ -812,6 +812,38 @@ function Body({ screen }: { screen: StudioScreen }) {
     case "replay":
       // I canestri vanno a tutto schermo: li mostra il player.
       return <CourtBg />;
+
+    case "top": {
+      // La locandina dei migliori della giornata: i candidati in fila, con il numero del voto.
+      const n = screen.items.length;
+      return (
+        <>
+          <CourtBg />
+          <div className="relative flex h-full flex-col px-4 pb-4 pt-4">
+            <Chip tone="volt" icon={IconFlame}>
+              {screen.kicker}
+            </Chip>
+            <p className="studio-in display mt-2 text-[26px] leading-[1.02]" style={at(0.15)}>
+              {screen.title}
+            </p>
+            <div className={clsx("mt-3 grid flex-1 gap-2", n > 4 ? "grid-cols-3" : "grid-cols-2")}>
+              {screen.items.map((id, i) => (
+                <div key={i} className="studio-in relative flex items-end overflow-hidden rounded-[16px] border border-white/15 bg-white/12 p-2" style={at(0.3 + i * 0.12)}>
+                  <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-volt text-[12px] font-black text-volt-ink">{i + 1}</span>
+                  <span className="absolute right-1 top-1 opacity-90">
+                    <Figure player={player(id)} height={n > 4 ? 54 : 70} d={0.4 + i * 0.12} />
+                  </span>
+                  <span className="relative truncate text-[12.5px] font-bold">{name(id)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(0.9)}>
+              Si vota a fine puntata
+            </p>
+          </div>
+        </>
+      );
+    }
   }
 }
 

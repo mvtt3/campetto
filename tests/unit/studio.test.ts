@@ -5,17 +5,19 @@ import {
   cameraAt,
   captionAt,
   captionPages,
+  captionZoneAt,
   chapters,
+  fullScreenAt,
   guestAt,
-  replayFrame,
   lineAt,
   lookAt,
   modeAt,
   mouthAt,
   replayAt,
+  replayFrame,
   screenAt,
+  topAt,
   type StudioShow,
-  captionZoneAt,
 } from "@/lib/studio";
 
 const show: StudioShow = {
@@ -197,5 +199,29 @@ describe("cameraAt con un movimento morbido", () => {
     expect(mid.s).toBeLessThan(a.s);
     expect(mid.s).toBeGreaterThan(end.s);
     expect(cameraAt(show, 20)).toEqual(end);
+  });
+});
+
+describe("la sezione dei migliori della giornata (top)", () => {
+  const shots = [
+    { t: 0, cam: "coppia" as const, screen: 0 },
+    { t: 10, cam: "top" as const, screen: 1 },
+    { t: 30, cam: "lei" as const, screen: 1 },
+  ];
+  const item = (t: number, d: number, kind: "canestro" | "assist") => ({ kind, t, d, release: t + d - 2.2, playerId: "p", game: 1, label: "x", poster: "" });
+  const top = { src: "/studio/x-top.mp4", t0: 10, items: [item(10, 6, "canestro"), item(16, 7, "assist"), item(23, 7, "canestro")] };
+  it("è un modo a sé (tutto schermo) con i sottotitoli sotto il video", () => {
+    expect(modeAt({ shots, intro: 0, outro: { t: 100 } }, 12)).toBe("top");
+    expect(modeAt({ shots, intro: 0, outro: { t: 100 } }, 31)).toBe("studio");
+    expect(captionZoneAt({ shots }, 12)).toBe("top");
+    expect(fullScreenAt({ shots }, 12)).toBe(false);
+  });
+  it("sa quale azione è in onda e a che punto", () => {
+    expect(topAt({ top }, 9.9)).toBeNull();
+    expect(topAt({ top }, 10)?.index).toBe(0);
+    expect(topAt({ top }, 17.5)).toMatchObject({ index: 1, local: 1.5 });
+    expect(topAt({ top }, 29.99)?.index).toBe(2);
+    expect(topAt({ top }, 30)).toBeNull();
+    expect(topAt({ top: undefined }, 12)).toBeNull();
   });
 });
