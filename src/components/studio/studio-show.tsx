@@ -712,7 +712,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           // Poco prima che tocchi alle azioni il video va già al punto giusto: quando entra è pronto,
           // senza il buio del salto (prima dei canestri e, dopo lo stacco in studio, prima degli assist).
           const next = topStarts.find((s0) => s0 > t && s0 - t < 8);
-          if (next !== undefined) {
+          // Appena usciti dalle azioni si aspetta che la dissolvenza sia finita: se no nell'ultimo
+          // attimo si vedrebbe già il fotogramma del blocco dopo.
+          const fading = topOut.current !== null && t >= topOut.current && t - topOut.current < 0.45;
+          if (next !== undefined && !fading) {
             const want = Math.max(0, next - show.top.t0);
             if (tv.readyState >= 1 && !tv.seeking && Math.abs(tv.currentTime - want) > 0.25) tv.currentTime = want;
           }

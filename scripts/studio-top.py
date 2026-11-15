@@ -101,7 +101,11 @@ def build(show_path):
             wy = (H - wh) // 2
         # Il video parte al fotogramma giusto anche se le azioni non sono perfettamente contigue.
         want_start = int(round((it["t"] - t0) * FPS))
-        while written < want_start:
+        # Lo spazio prima di un'azione (l'attimo tra il rientro dallo studio e la prima battuta) si
+        # riempie con l'azione stessa che parte un po' prima: mai un fotogramma nero o quello fermo
+        # dell'azione precedente.
+        pre = min(max(0, want_start - written), int(FPS * 1.5), int(src_from * FPS))
+        while written < want_start - pre:
             enc.stdin.write(last.tobytes() if written else np.zeros((H, W, 3), np.uint8).tobytes())
             written += 1
         poster = None
@@ -109,11 +113,12 @@ def build(show_path):
         # battuta e il ritorno in studio il video va avanti, invece di fermarsi sull'ultimo fotogramma.
         nxt = top["items"][i + 1]["t"] if i + 1 < len(top["items"]) else None
         tail = int(FPS * 1.0) if nxt is None or nxt - (it["t"] + d) > 1.2 else 0
-        for fi, fr in enumerate(frames(it["video"], src_from, d + tail / FPS, it.get("norot", False))):
+        for fj, fr in enumerate(frames(it["video"], src_from - pre / FPS, d + (pre + tail) / FPS, it.get("norot", False))):
+            fi = fj - pre
             if fi >= n + tail:
                 break
             local = fi / FPS
-            x0 = path[min(fi, len(path) - 1)] * SRC_W - crop_w / 2
+            x0 = path[min(max(fi, 0), len(path) - 1)] * SRC_W - crop_w / 2
             if wide:
                 src = Image.fromarray(fr)
                 strip = src.resize((W, wh), Image.BILINEAR, box=(wx0, 0, wx1, SRC_H))
