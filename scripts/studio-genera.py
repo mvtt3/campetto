@@ -573,6 +573,8 @@ async def main():
             guest = {"playerId": g["playerId"], "name": g["name"], "enter": round(seg_start, 3), "sit": round(seg_start + WALK_IN, 3)}
             t = seg_start + 0.35
         for li, line in enumerate(lines_in):
+            if line.get("skip"):
+                continue  # registrata ma tolta dalla puntata (le voci non si rifanno)
             text = line["text"]
             say = pronounce(line.get("say") or text)
             if line["who"] == "ospite" and guest and t < guest["sit"] + 0.15:
@@ -585,6 +587,16 @@ async def main():
                 if tempo != 1:
                     words = [[w, w0 / tempo, w1 / tempo] for w, w0, w1 in words]
                 a = clean_voice(mp3, tempo)
+                ncut = int(line.get("cutWords", 0))
+                if ncut and ncut < len(words):
+                    # Via le prime parole di una battuta già registrata ("say" resta quella intera,
+                    # "text" è quello che si sente adesso): si taglia l'audio dove comincia il resto.
+                    tc = max(0.0, words[ncut][1] - 0.05)
+                    a = a[int(tc * SR):].copy()
+                    fade = min(len(a), int(0.02 * SR))
+                    a[:fade] *= np.linspace(0, 1, fade, dtype=np.float32)
+                    words = [[w, w0 - tc, w1 - tc] for w, w0, w1 in words[ncut:]]
+                    say = " ".join(say.split()[ncut:])
             else:
                 mp3, words = await tts(*voice_of(line["who"], line), say)
                 a = clean_voice(mp3)

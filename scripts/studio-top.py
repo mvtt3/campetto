@@ -63,7 +63,7 @@ def build(show_path):
     out_dir = os.path.dirname(os.path.abspath(show_path))
     out_mp4 = os.path.join(out_dir, f"{sid}-top.mp4")
     enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-                            "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-profile:v", "main", "-pix_fmt", "yuv420p",
+                            "-c:v", "libx264", "-preset", "slow", "-crf", "27", "-profile:v", "main", "-pix_fmt", "yuv420p",
                             "-g", str(FPS), "-movflags", "+faststart", "-an", out_mp4], stdin=subprocess.PIPE)
     crop_w = SRC_H * W / H
     k = W / crop_w

@@ -859,7 +859,7 @@ function Body({ screen }: { screen: StudioScreen }) {
               </div>
             )}
             <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(0.9)}>
-              A schermo pieno, una dopo l'altra
+              A schermo pieno, una dopo l&apos;altra
             </p>
           </div>
         </>

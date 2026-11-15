@@ -214,6 +214,38 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   // Il voto a sfide: dalla seconda azione di ogni categoria, finita l'azione lo show si ferma e si
   // sceglie tra questa e la preferita di prima (se quella sfida non l'ho già fatta).
   const { backend } = useData();
+  // Quando la puntata passa alle azioni a tutto schermo (una volta per i canestri, una per gli assist).
+  const topStarts = useMemo(() => show.shots.filter((sh, i) => sh.cam === "top" && show.shots[i - 1]?.cam !== "top").map((sh) => sh.t), [show]);
+  // Il video delle azioni si scarica per intero mentre la puntata va (le azioni arrivano dopo un
+  // paio di minuti): così a tutto schermo non si ferma e non resta al buio anche con poca rete.
+  // Se quando serve non è ancora arrivato, si legge dalla rete come un video qualsiasi.
+  const [topSrc, setTopSrc] = useState<string | null>(null);
+  const topSrcRef = useRef<string | null>(null);
+  useEffect(() => {
+    const url = show.top?.src;
+    if (!url) return;
+    let alive = true;
+    let blobUrl: string | null = null;
+    const ctrl = new AbortController();
+    fetch(url, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+      .then((b) => {
+        if (!alive || topSrcRef.current !== null) return;
+        blobUrl = URL.createObjectURL(b);
+        topSrcRef.current = blobUrl;
+        setTopSrc(blobUrl);
+      })
+      .catch(() => {
+        if (!alive || topSrcRef.current !== null) return;
+        topSrcRef.current = url;
+        setTopSrc(url);
+      });
+    return () => {
+      alive = false;
+      ctrl.abort();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [show.top?.src]);
   const duels = useMemo(() => show.duels ?? [], [show]);
   const duelArmed = useRef(duels.map(() => true));
   const [duelOpen, setDuelOpen] = useState<number | null>(null);
@@ -623,7 +655,21 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       const tv = topVideo.current;
       if (tv && show.top) {
         const inTop = m === "top";
+        // Tra poco tocca alle azioni e il video intero non è ancora arrivato: si passa alla rete.
+        if (topSrcRef.current === null && (inTop || topStarts.some((s0) => s0 > t && s0 - t < 8))) {
+          topSrcRef.current = show.top.src;
+          setTopSrc(show.top.src);
+        }
         syncVideo(tv, t - show.top.t0, c.running, inTop);
+        if (!inTop) {
+          // Poco prima che tocchi alle azioni il video va già al punto giusto: quando entra è pronto,
+          // senza il buio del salto (prima dei canestri e, dopo lo stacco in studio, prima degli assist).
+          const next = topStarts.find((s0) => s0 > t && s0 - t < 8);
+          if (next !== undefined) {
+            const want = Math.max(0, next - show.top.t0);
+            if (tv.readyState >= 1 && !tv.seeking && Math.abs(tv.currentTime - want) > 0.25) tv.currentTime = want;
+          }
+        }
         const cur = inTop ? (topAt(show, t)?.index ?? -1) : -1;
         const cards = topCards.current;
         if (cards && cards.dataset.i !== String(cur)) {
@@ -676,7 +722,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [show, now, pause, votes, duels]);
+  }, [show, now, pause, votes, duels, topStarts]);
 
   // Finito il voto (o saltato) lo show riparte da dove si era fermato.
   const closeVote = useCallback(
@@ -914,7 +960,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       )}
 
-      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} favs={favs} />}
+      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} favs={favs} src={topSrc} />}
 
       {/* La sigla: il badge dell'app con le scritte dello show, poi si apre sullo studio. */}
       {mode === "sigla" && <Sigla key={`s${nonce}`} show={show} at={modeEl} />}

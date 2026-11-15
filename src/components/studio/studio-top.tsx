@@ -25,6 +25,7 @@ export const TopStage = memo(function TopStage({
   dotsRef,
   on,
   favs = NO_FAVS,
+  src,
 }: {
   show: StudioShow;
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -33,6 +34,8 @@ export const TopStage = memo(function TopStage({
   on: boolean;
   /** Le mie preferite di adesso nelle sfide (indici in top.items): sulla scheda c'è il segno. */
   favs?: number[];
+  /** Da dove si legge il video: già scaricato per intero (di solito) o dalla rete; null = non ancora. */
+  src: string | null;
 }) {
   const top = show.top!;
   const items = top.items;
@@ -46,7 +49,7 @@ export const TopStage = memo(function TopStage({
       </div>
       {/* Il video, 3:4, largo quanto lo schermo. */}
       <div className="absolute inset-x-0 overflow-hidden" style={{ top: `${TOP_VIDEO.top * 100}%`, aspectRatio: "3 / 4" }}>
-        <video ref={videoRef} src={top.src} muted playsInline preload="auto" disablePictureInPicture className="h-full w-full bg-[#0c1736] object-cover" style={{ opacity: 0 }} />
+        <video ref={videoRef} src={src ?? undefined} muted playsInline preload="auto" disablePictureInPicture className="h-full w-full bg-[#0c1736] object-cover" style={{ opacity: 0 }} />
         {/* I puntini: quale azione è in onda. */}
         <div ref={dotsRef} className="absolute left-3 top-3 flex gap-1.5" data-i="-1">
           {items.map((it, i) => (
