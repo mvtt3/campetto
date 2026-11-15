@@ -905,9 +905,15 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
         {/* A zoom finito la grafica prende il posto dello studio: stesso punto, stessa misura. */}
         <div className={clsx("studio-full absolute inset-0", full && screen?.kind !== "replay" ? "is-on" : "pointer-events-none")} aria-hidden={!full}>
-          <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, #3D6AF0 0%, var(--court) 45%, var(--court-deep) 100%)" }}>
-            <span className="blob -left-24 top-0 h-80 w-80 bg-[radial-gradient(circle,rgb(255_197_49/0.38),transparent_68%)]" />
-            <span className="blob -bottom-20 -right-24 h-80 w-80 bg-[radial-gradient(circle,rgb(242_106_27/0.3),transparent_70%)]" />
+          {/* Dietro la grafica c'è la stessa parete dello studio (blu notte, doghe, la luce dello schermo):
+              zoomando sul maxischermo il colore intorno non cambia. */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, #26336b 0%, #1b2655 48%, #131b3d 100%)" }}>
+            <span
+              className="absolute inset-0"
+              style={{ backgroundImage: "repeating-linear-gradient(90deg, rgb(255 255 255 / 0.05) 0 2px, transparent 2px 46px, rgb(4 8 24 / 0.22) 46px 48px, transparent 48px 92px)" }}
+            />
+            <span className="blob left-[-10%] top-[14%] h-[62%] w-[120%] bg-[radial-gradient(closest-side,rgb(61_106_240/0.55),rgb(61_106_240/0.16)_60%,transparent)]" />
+            <span className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 50% 45%, transparent 45%, rgb(6 10 28 / 0.55) 100%)" }} />
           </div>
           {/* Si monta solo quando serve (a zoom quasi finito): così il cambio di grafica non fa
               tutto il lavoro nello stesso istante. Le animazioni restano a tempo (--el). */}

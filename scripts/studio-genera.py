@@ -355,8 +355,20 @@ def gemini_jobs():
     # "ttsAt" su un pezzo: il suo posto nel copione mandato alle voci, quando non è quello in scaletta
     # (un pezzo spostato dopo aver registrato: le voci restano le stesse, senza rifarle).
     hosts.sort(key=lambda h: (plan["segments"][h[0]].get("ttsAt", h[0]), h[1]))
-    for k in range(0, len(hosts), HOST_BATCH):
-        part = hosts[k:k + HOST_BATCH]
+    # "ttsBreak" su un pezzo: da lì comincia una registrazione nuova. In una registrazione troppo
+    # lunga (oltre un minuto e mezzo) la voce si consuma e le vocali si sporcano ("da sitto"): si
+    # spezza in un cambio di scena, dove un'altra presa non si nota.
+    groups, cur_g = [], []
+    for h in hosts:
+        if cur_g and h[1] == 0 and plan["segments"][h[0]].get("ttsBreak") and h[0] != cur_g[-1][0]:
+            groups.append(cur_g)
+            cur_g = []
+        cur_g.append(h)
+    if cur_g:
+        groups.append(cur_g)
+    for grp in groups:
+      for k in range(0, len(grp), HOST_BATCH):
+        part = grp[k:k + HOST_BATCH]
         chunks.append({"coro": False, "lines": part, "who": sorted({w for _, _, w, _ in part}, key=["lui", "lei"].index)})
     if guest_lines:
         chunks.append({"coro": False, "lines": guest_lines, "who": ["ospite"]})
@@ -440,20 +452,40 @@ def align_chunk(c):
             nxt = next((times[j][0] for j in range(i + 1, len(times)) if times[j]), prev + 0.3)
             times[i] = [prev, max(prev + 0.05, min(nxt, prev + 0.4))]
     total = len(a) / sr_in
-    spans = []
+    spans, first_end = [], []
     for k in range(len(c["lines"])):
         idx = [i for i, (kk, _) in enumerate(script) if kk == k]
         spans.append([times[idx[0]][0], times[idx[-1]][1]])
+        first_end.append(times[idx[0]][1])
+    # Dove tagliare tra una battuta e la successiva: nel punto più silenzioso tra la fine dell'una e
+    # l'inizio dell'altra, non a metà strada. I tempi delle parole finiscono spesso un po' prima del
+    # suono vero: tagliando a metà si mangiava la coda dell'ultima parola ("undi-", "da sot-").
+    mono = a if a.ndim == 1 else a.mean(1)
+    hop = max(1, int(0.01 * sr_in))
+    env = np.sqrt(np.convolve(mono.astype(np.float64) ** 2, np.ones(4 * hop) / (4 * hop), mode="same"))[::hop]
+    cuts = []
+    for k in range(len(spans) - 1):
+        # Si cerca dalla fine (riconosciuta) dell'ultima parola fin dentro la prima parola dopo: i
+        # tempi a volte attaccano le due battute, e la coda vera ("-ci", "-to" dopo la doppia) sta lì.
+        g0 = spans[k][1] - 0.03
+        g1 = max(first_end[k + 1] - 0.03, g0 + 0.06)
+        i0, i1 = int(g0 * sr_in / hop), min(len(env), int(g1 * sr_in / hop) + 1)
+        seg = env[i0:i1]
+        if len(seg) == 0:
+            cuts.append((g0 + g1) / 2)
+            continue
+        quiet = np.where(seg <= seg.min() + 0.008)[0]
+        # Il centro del tratto silenzioso più lungo (se il silenzio è lungo, la coda resta tutta di qua).
+        runs = np.split(quiet, np.where(np.diff(quiet) > 1)[0] + 1)
+        best = max(runs, key=len)
+        cuts.append((i0 + (best[0] + best[-1]) / 2) * hop / sr_in)
     res = []
     for k, (si, li, who, say) in enumerate(c["lines"]):
-        s0 = max(0.0, spans[k][0] - 0.08)
-        if k:
-            s0 = max(s0, (spans[k - 1][1] + spans[k][0]) / 2)
-        s1 = min(total, spans[k][1] + 0.18)
-        if k + 1 < len(spans):
-            s1 = min(s1, (spans[k][1] + spans[k + 1][0]) / 2)
+        s0 = max(0.0, spans[k][0] - 0.08) if k == 0 else cuts[k - 1]
+        s1 = min(total, spans[k][1] + 0.6) if k + 1 == len(spans) else cuts[k]
+        s1 = max(s1, s0 + 0.2)
         seg_a = a[int(s0 * sr_in):int(s1 * sr_in)]
-        words = [[w, round(times[i][0] - s0, 3), round(times[i][1] - s0, 3)] for i, (kk, w) in enumerate(script) if kk == k]
+        words = [[w, round(max(0.0, times[i][0] - s0), 3), round(max(0.05, times[i][1] - s0), 3)] for i, (kk, w) in enumerate(script) if kk == k]
         res.append((si, li, seg_a, sr_in, words))
     return res
 
