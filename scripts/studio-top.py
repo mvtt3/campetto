@@ -41,7 +41,7 @@ def frames(path, t0, dur, norot):
     rot = ["-noautorotate"] if norot else []
     p = subprocess.Popen(["ffmpeg", "-v", "error", *rot, "-ss", f"{t0:.3f}", "-i", path, "-t", f"{dur + 0.3:.3f}",
                           "-vf", f"fps={FPS},scale={SRC_W}:{SRC_H}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-                         stdout=subprocess.PIPE, bufsize=10 ** 7)
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=10 ** 7)  # si legge solo quanto serve: il resto del flusso si chiude senza lamenti
     size = SRC_W * SRC_H * 3
     while True:
         buf = p.stdout.read(size)
@@ -49,6 +49,7 @@ def frames(path, t0, dur, norot):
             break
         yield np.frombuffer(buf, dtype=np.uint8).reshape(SRC_H, SRC_W, 3)
     p.stdout.close()
+    p.terminate()
     p.wait()
 
 

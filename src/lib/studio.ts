@@ -184,8 +184,13 @@ export type StudioVoteKind = "canestro" | "assist";
 export interface StudioVote {
   /** Quando lo show si ferma per far votare (subito dopo l'invito dei conduttori). */
   t: number;
-  /** Le scelte, nell'ordine in cui si sono viste: indici in show.top.items. */
-  options: Record<StudioVoteKind, number[]>;
+  /** Le scelte, nell'ordine in cui si sono viste: indici in show.top.items (una o due categorie). */
+  options: Partial<Record<StudioVoteKind, number[]>>;
+}
+
+/** I momenti del voto di una puntata: uno per categoria (prima i canestri, poi gli assist) o uno solo. */
+export function votesOf(show: Pick<StudioShow, "vote" | "votes">): StudioVote[] {
+  return show.votes ?? (show.vote ? [show.vote] : []);
 }
 
 export interface StudioLine {
@@ -253,7 +258,9 @@ export interface StudioShow {
    * il misuratore di tiro dentro i fotogrammi, che parte al secondo t0 e va a tempo con l'audio.
    */
   top?: { src: string; t0: number; items: StudioTopItem[] };
+  /** Il voto in un momento solo (puntate vecchie) o uno per categoria. */
   vote?: StudioVote;
+  votes?: StudioVote[];
 }
 
 /** La puntata più recente: /studio/ultima.json dice quale. */

@@ -43,6 +43,7 @@ WALK_IN = 3.4     # quanto ci mette l'ospite a entrare e sedersi
 WALK_OUT = 2.6    # e ad alzarsi e uscire
 INTRO_CUT = 1.7   # tra due grafiche: stacco su chi parla, poi zoom sulla nuova
 TOP_POST = 2.2    # nei migliori della giornata: secondi di video dopo il rilascio (la palla entra)
+HOST_BATCH = 60  # battute dei conduttori per richiesta: tutte insieme, così la voce non cambia a metà
 TOP_MIN = 5.0     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
 
 src, out, music_path = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -348,8 +349,8 @@ def gemini_jobs():
                 guest_lines.append((si, li, "ospite", say))
             else:
                 hosts.append((si, li, line["who"], say))
-    for k in range(0, len(hosts), 24):
-        part = hosts[k:k + 24]
+    for k in range(0, len(hosts), HOST_BATCH):
+        part = hosts[k:k + HOST_BATCH]
         chunks.append({"coro": False, "lines": part, "who": sorted({w for _, _, w, _ in part}, key=["lui", "lei"].index)})
     if guest_lines:
         chunks.append({"coro": False, "lines": guest_lines, "who": ["ospite"]})
@@ -522,7 +523,7 @@ async def main():
     voice_track = []
     music_marks = []
     screens = []
-    top_items, vote_t = [], None
+    top_items, votes = [], []
     guest = None
     cur = "coppia"
     shown_screen = 0
@@ -653,8 +654,11 @@ async def main():
                 shots.append({"t": round(t + line["camDur"], 3), "cam": back, "screen": shown_screen})
                 cur = back
             if line.get("voteAfter"):
-                # Finito l'invito, lo show si ferma e il pubblico vota.
-                vote_t = round(t + d + 0.15, 3)
+                # Finito l'invito, lo show si ferma e il pubblico vota: la categoria indicata
+                # ("canestro" o "assist"), oppure tutte (true, come nelle prime puntate).
+                va = line["voteAfter"]
+                kinds = [va] if isinstance(va, str) else list(plan.get("vote", {}).keys())
+                votes.append({"t": round(t + d + 0.15, 3), "options": {k: plan["vote"][k] for k in kinds}})
             if is_top and li < len(top_seg):
                 it = top_seg[li]
                 it["t"] = round(top_cursor, 3)
@@ -781,6 +785,10 @@ async def main():
     if len(m) < total:
         m = np.concatenate([m, np.zeros((total - len(m), 2), dtype=np.float32)])
     m = m[:total]
+    # Il brano arriva a un livello suo: lo si porta a un volume di riferimento, così "piena" in sigla
+    # e in chiusura si sente davvero e sotto le voci resta un tappeto.
+    m_rms = float(np.sqrt(np.mean(m ** 2))) or 1.0
+    m = m * min(4.0, 0.2 / m_rms)
 
     # Volume della musica nel tempo: piena in sigla e nei replay, bassa sotto le voci (-20 dB circa),
     # e in più si abbassa da sola quando qualcuno parla (ducking dall'inviluppo della voce).
@@ -857,8 +865,8 @@ async def main():
         for it in top_items:
             it["release"] = it["release"]  # nel video sorgente; nella puntata cade a t + d - TOP_POST
         show["top"] = {"src": "", "t0": top_items[0]["t"], "items": top_items}
-    if vote_t is not None and plan.get("vote"):
-        show["vote"] = {"t": vote_t, "options": plan["vote"]}
+    if votes and plan.get("vote"):
+        show["votes"] = votes
     json.dump(show, open(os.path.join(out, f"{plan['id']}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
     if top_items:
         # Il video dei migliori: un solo file 3:4 con il misuratore dentro, più le locandine per il voto.

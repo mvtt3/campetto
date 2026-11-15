@@ -5,7 +5,7 @@ import { IconCheck, IconChevronRight, IconPlayerPlayFilled, IconRefresh } from "
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "@/lib/data/provider";
 import type { StudioVoteState } from "@/lib/data/backend";
-import type { StudioShow, StudioTopItem, StudioVoteKind } from "@/lib/studio";
+import { votesOf, type StudioShow, type StudioTopItem, type StudioVote, type StudioVoteKind } from "@/lib/studio";
 import { shortName } from "@/lib/types";
 import { Avatar } from "../ui/avatar";
 import { haptic } from "../ui/basics";
@@ -64,11 +64,13 @@ function useCountUp(target: number, ms = 700): number {
  * proprio voto segnato. Chi aveva già votato vede subito le percentuali e non può toccare. "Salta"
  * lascia perdere e fa ripartire lo show.
  */
-export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted: boolean) => void }) {
+export function VoteOverlay({ show, vote, onDone }: { show: StudioShow; vote: StudioVote; onDone: (voted: boolean) => void }) {
   const { data, me: meP, backend } = useData();
-  const vote = show.vote!;
   const items = show.top?.items ?? [];
-  const nOptions = Math.max(1, ...KINDS.map((k) => vote.options[k].length));
+  // Le categorie di questo momento del voto (di solito una: prima i canestri, poi gli assist).
+  const steps = useMemo(() => KINDS.filter((k) => (vote.options[k]?.length ?? 0) > 0), [vote.options]);
+  // Il database conta le scelte su un numero fisso di opzioni: il massimo tra tutte le categorie della puntata.
+  const nOptions = Math.max(1, ...votesOf(show).flatMap((v) => KINDS.map((k) => v.options[k]?.length ?? 0)));
   const [state, setState] = useState<StudioVoteState | null>(null);
   const [failed, setFailed] = useState<null | "load" | "vote">(null);
   const [step, setStep] = useState(0);
@@ -96,8 +98,8 @@ export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted
     void fetchState();
   };
 
-  const kind = KINDS[step];
-  const options = useMemo(() => (kind ? vote.options[kind] : []), [kind, vote.options]);
+  const kind = steps[step];
+  const options = useMemo(() => (kind ? (vote.options[kind] ?? []) : []), [kind, vote.options]);
   const cat = state && kind ? state[kind] : null;
   const mine = cat?.mine ?? null;
   const counts = useMemo(() => (cat ? options.map((_, i) => cat.counts[i] ?? 0) : options.map(() => 0)), [cat, options]);
@@ -125,10 +127,12 @@ export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted
         setFailed("vote");
       });
   };
+  // "Fatto" per il player: ho votato adesso, oppure avevo già votato tutte le categorie di questo momento.
+  const done = () => votedHere || steps.every((k) => (state?.[k]?.mine ?? null) !== null);
   const next = () => {
     haptic(6);
-    if (step + 1 < KINDS.length) setStep(step + 1);
-    else onDone(votedHere);
+    if (step + 1 < steps.length) setStep(step + 1);
+    else onDone(done());
   };
 
   const me = meP?.id;
@@ -139,9 +143,9 @@ export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted
         <div className="studio-vote-head flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1 text-[12px] font-semibold text-white/90">
             <span className="h-1.5 w-1.5 rounded-full bg-volt" />
-            Il voto del pubblico · {step + 1} di {KINDS.length}
+            Il voto del pubblico{steps.length > 1 ? ` · ${step + 1} di ${steps.length}` : kind === "assist" ? " · Assist" : " · Canestro"}
           </span>
-          <button type="button" className="press rounded-full px-3 py-1.5 text-[13px] font-semibold text-white/80" onClick={() => onDone(votedHere)}>
+          <button type="button" className="press rounded-full px-3 py-1.5 text-[13px] font-semibold text-white/80" onClick={() => onDone(done())}>
             Salta
           </button>
         </div>
@@ -228,7 +232,7 @@ export function VoteOverlay({ show, onDone }: { show: StudioShow; onDone: (voted
           <span className="text-[12.5px] text-white/60">{results ? `${total} ${total === 1 ? "voto" : "voti"} finora` : "Un voto solo, e vale per sempre."}</span>
           {results && (
             <button type="button" className="studio-vote-next press inline-flex items-center gap-1.5 rounded-full bg-white py-3 pl-5 pr-4 text-[15px] font-bold text-[#1f45b8]" onClick={next}>
-              {step + 1 < KINDS.length ? (
+              {step + 1 < steps.length ? (
                 <>
                   Avanti <IconChevronRight size={18} stroke={2.5} />
                 </>
@@ -279,11 +283,11 @@ function Bar({ pct, n, lead }: { pct: number; n: number; lead: boolean }) {
   return (
     <span className="mt-2 block">
       <span className="flex items-end justify-between">
-        <span className={clsx("tnum text-[22px] font-black leading-none", lead ? "text-volt" : "text-white")}>{v}%</span>
+        <span className={clsx("tnum text-[22px] font-black leading-none", lead ? "text-[#4dff9f]" : "text-white")}>{v}%</span>
         <span className="tnum text-[11px] text-white/65">{n}</span>
       </span>
       <span className="mt-1.5 block h-[5px] overflow-hidden rounded-full bg-white/22">
-        <span className={clsx("studio-vote-fill block h-full origin-left rounded-full", lead ? "bg-volt" : "bg-white/85")} style={{ transform: `scaleX(${pct / 100})` }} />
+        <span className={clsx("studio-vote-fill block h-full origin-left rounded-full", lead ? "bg-[#4dff9f]" : "bg-white/85")} style={{ transform: `scaleX(${pct / 100})` }} />
       </span>
     </span>
   );

@@ -11,7 +11,7 @@ import {
   IconVolumeOff,
   IconX,
 } from "@tabler/icons-react";
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   armAt,
@@ -36,6 +36,7 @@ import {
   type StudioShow,
   captionZoneAt,
   topAt,
+  votesOf,
 } from "@/lib/studio";
 import { KIT } from "@/components/avatar-presets";
 import { useData } from "@/lib/data/provider";
@@ -199,10 +200,12 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const topCards = useRef<HTMLDivElement>(null);
   const topDots = useRef<HTMLDivElement>(null);
   // Il voto: si apre una volta arrivati al momento giusto (poi non più in questa visione, salvo "Vai al voto").
-  const voteArmed = useRef(true);
-  const [voteOpen, setVoteOpen] = useState(false);
+  // I momenti del voto (uno per categoria): ognuno scatta una volta per visione, attraversandolo.
+  const votes = useMemo(() => votesOf(show), [show]);
+  const voteArmed = useRef(votes.map(() => true));
+  const [voteOpen, setVoteOpen] = useState<number | null>(null);
   const [voteDone, setVoteDone] = useState(false);
-  const voteDoneRef = useRef(false);
+  const voteDoneRef = useRef(votes.map(() => false));
   // L'ultimo tempo visto dal motore: il voto scatta solo attraversando il suo momento mentre si
   // guarda, non aprendo o saltando oltre (chi arriva dopo lo trova col bottone "Vai al voto").
   const lastTick = useRef(startAt);
@@ -347,7 +350,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       c.t = t;
       c.at = performance.now();
       lastTick.current = t;
-      if (show.vote) voteArmed.current = t < show.vote.t;
+      voteArmed.current = votes.map((v) => t < v.t);
       if (audio.current) audio.current.currentTime = t;
       const s = screenAt(show, t);
       setScr({ ...s, el: t - s.since });
@@ -358,7 +361,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       setNonce((n) => n + 1);
       setEnded(false);
     },
-    [show],
+    [show, votes],
   );
 
   useEffect(() => {
@@ -394,10 +397,13 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       // Il voto: arrivati al momento, lo show si ferma e si apre la scelta (una volta per visione).
       const prev = lastTick.current;
       lastTick.current = t;
-      if (show.vote && voteArmed.current && !voteDoneRef.current && c.running && prev < show.vote.t && t >= show.vote.t && t - prev < 1.5) {
-        voteArmed.current = false;
-        pause();
-        setVoteOpen(true);
+      if (c.running && t - prev < 1.5) {
+        const vi = votes.findIndex((v, i) => voteArmed.current[i] && !voteDoneRef.current[i] && prev < v.t && t >= v.t);
+        if (vi >= 0) {
+          voteArmed.current[vi] = false;
+          pause();
+          setVoteOpen(vi);
+        }
       }
       if (t >= show.duration - 0.02 && c.running) {
         c.t = show.duration;
@@ -617,32 +623,35 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [show, now, pause]);
+  }, [show, now, pause, votes]);
 
   // Finito il voto (o saltato) lo show riparte da dove si era fermato.
   const closeVote = useCallback(
     (voted: boolean) => {
-      setVoteOpen(false);
-      if (voted) {
-        setVoteDone(true);
-        voteDoneRef.current = true;
+      const vi = voteOpen;
+      setVoteOpen(null);
+      if (voted && vi !== null) {
+        voteDoneRef.current[vi] = true;
+        if (voteDoneRef.current.every(Boolean)) setVoteDone(true);
       }
       void start();
     },
-    [start],
+    [start, voteOpen],
   );
-  // "Vai al voto": dalla seconda apertura, salta dritto al momento della scelta.
+  // "Vai al voto": dalla seconda apertura, salta dritto al primo momento del voto ancora da fare.
   const goVote = useCallback(() => {
-    if (!show.vote) return;
-    voteArmed.current = true;
-    seek(show.vote.t - 0.25);
+    const vi = Math.max(0, voteDoneRef.current.findIndex((d) => !d));
+    const v = votes[vi];
+    if (!v) return;
+    seek(v.t - 0.25);
+    voteArmed.current[vi] = true;
     void start();
-  }, [show.vote, seek, start]);
+  }, [votes, seek, start]);
 
   // Tocco: uno mostra i comandi, due a sinistra o a destra saltano di 10 secondi.
   const taps = useRef<{ at: number; x: number; timer: number }>({ at: 0, x: 0, timer: 0 });
   const onTap = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (ended || needsTap || voteOpen) return;
+    if (ended || needsTap || voteOpen !== null) return;
     if ((e.target as HTMLElement).closest("button, [role=slider]")) return;
     const x = e.clientX / window.innerWidth;
     const tp = taps.current;
@@ -670,7 +679,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (voteOpen) return;
+      if (voteOpen !== null) return;
       if (e.key === " ") {
         e.preventDefault();
         if (clock.current.running) pause();
@@ -840,7 +849,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
 
       {/* Sopra lo studio: barra, titolo, sottotitoli e comandi (non zoomano). */}
-      <div ref={top} data-on={chrome && !voteOpen && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
+      <div ref={top} data-on={chrome && voteOpen === null && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
         <div className="flex items-center gap-2">
           <Logo size={30} top="STUDIO" bottom="★ CAMPETTO ★" text={false} />
           <span className="min-w-0 flex-1">
@@ -855,9 +864,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
 
       <LowerThird show={show} now={now} guestPlate={guestPlate} />
 
-      <Captions show={show} now={now} hidden={mode === "sigla" || voteOpen} view={view} k={k} chrome={chrome} chromeBox={bottom} guestPlate={guestPlate} />
+      <Captions show={show} now={now} hidden={mode === "sigla" || voteOpen !== null} view={view} k={k} chrome={chrome} chromeBox={bottom} guestPlate={guestPlate} />
 
-      <div ref={bottom} data-on={chrome && !voteOpen ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
+      <div ref={bottom} data-on={chrome && voteOpen === null ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
         <div
           ref={bar}
@@ -898,7 +907,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       </div>
 
-      {show.vote && seenBefore && !voteOpen && !voteDone && mode !== "sigla" && !ended && (
+      {votes.length > 0 && seenBefore && voteOpen === null && !voteDone && mode !== "sigla" && !ended && (
         <button
           type="button"
           className="studio-govote press absolute right-4 z-20 inline-flex items-center gap-1 rounded-full bg-white/16 py-2 pl-3.5 pr-2.5 text-[13px] font-semibold text-white backdrop-blur-md"
@@ -909,7 +918,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </button>
       )}
 
-      {voteOpen && <VoteOverlay show={show} onDone={closeVote} />}
+      {voteOpen !== null && votes[voteOpen] && <VoteOverlay show={show} vote={votes[voteOpen]} onDone={closeVote} />}
 
       {flash && (
         <span key={flash.n} className="studio-flash pointer-events-none absolute top-[45%] grid h-20 w-20 place-items-center rounded-full bg-black/40" style={{ left: flash.kind === "back" ? "12%" : flash.kind === "fwd" ? "calc(88% - 80px)" : "calc(50% - 40px)" }}>
