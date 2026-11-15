@@ -747,7 +747,7 @@ async def main():
             if is_top and li < len(top_seg):
                 it = top_seg[li]
                 it["t"] = round(top_cursor, 3)
-                it["d"] = round(max(TOP_MIN, (t + d + 0.9) - top_cursor, TOP_POST + 2.2), 2)
+                it["d"] = round(max(TOP_MIN, (t + d + 0.9) - top_cursor, it.get("post", TOP_POST) + 2.2), 2)
                 top_cursor = round(top_cursor + it["d"], 3)
                 top_items.append(it)
                 t = top_cursor
@@ -965,7 +965,7 @@ async def main():
                         os.path.join(out, f"{plan['id']}.json")], check=True)
         show = json.load(open(os.path.join(out, f"{plan['id']}.json")))
         for it in show["top"]["items"]:
-            it["release"] = round(it["t"] + it["d"] - TOP_POST, 3)
+            it["release"] = round(it["t"] + it["d"] - it.pop("post", TOP_POST), 3)
         if plan.get("duel"):
             # La sfida a due: dalla seconda azione di ogni categoria lo show si ferma sull'ultimo
             # fotogramma e si sceglie tra questa e la preferita di prima (round 1 = seconda azione).

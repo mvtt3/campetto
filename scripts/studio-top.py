@@ -71,7 +71,7 @@ def build(show_path):
     written = 0
     for i, it in enumerate(top["items"]):
         d = it["d"]
-        lead = d - POST
+        lead = d - it.get("post", POST)   # "post": secondi dopo il momento chiave (se servono più dei soliti)
         src_from = it["release"] - lead
         # Per la regia e il misuratore l'azione è una "clip" come quelle del maxischermo.
         clip = {"shot": {"t": lead, "x": it["shot"]["x"], "y": it["shot"]["y"]}, "hoop": it.get("hoop")}
@@ -121,9 +121,22 @@ def build(show_path):
                     img = bg
                 else:
                     img = strip
+            elif it.get("zoom"):
+                # "zoom" (un momento che non è un tiro): l'inquadratura si stringe piano sul punto x,y
+                # fino a k volte, partendo "before" secondi prima del momento chiave.
+                zm = it["zoom"]
+                u = min(1.0, max(0.0, (local - (lead - zm.get("before", 1.5))) / zm.get("span", 1.5)))
+                u = u * u * (3 - 2 * u)
+                z = 1 + (zm["k"] - 1) * u
+                cw, ch = crop_w / z, SRC_H / z
+                cx = (x0 + crop_w / 2) + (zm["x"] * SRC_W - (x0 + crop_w / 2)) * u
+                cy = SRC_H / 2 + (zm["y"] * SRC_H - SRC_H / 2) * u
+                cx = min(max(cx, cw / 2), SRC_W - cw / 2)
+                cy = min(max(cy, ch / 2), SRC_H - ch / 2)
+                img = Image.fromarray(fr).resize((W, H), Image.BICUBIC, box=(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2))
             else:
                 img = Image.fromarray(fr).resize((W, H), Image.BILINEAR, box=(x0, 0, x0 + crop_w, SRC_H))
-            st, fill, fade, since = muro.meter_state(clip["shot"], local)
+            st, fill, fade, since = muro.meter_state(clip["shot"], local) if it.get("meter", True) else ("off", 0, 0, 0)
             if st != "off":
                 m, pad = muro.draw_meter(st, fill, fade, since)
                 sx = (clip["shot"]["x"] * SRC_W - x0) * k
@@ -149,6 +162,8 @@ def build(show_path):
         it.pop("norot", None)
         it.pop("wide", None)
         it.pop("pan", None)
+        it.pop("meter", None)
+        it.pop("zoom", None)
         print(f"top {i + 1}: {it['kind']} {it['label']} — {d:.1f} s, rilascio a +{lead:.2f} s")
     enc.stdin.close()
     enc.wait()

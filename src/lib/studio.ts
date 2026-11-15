@@ -160,12 +160,12 @@ export type StudioScreen =
    * I migliori della giornata (canestri e assist): sul maxischermo la locandina con i candidati;
    * a tutto schermo (inquadratura "top") le azioni vere, una alla volta, dal video show.top.
    */
-  | { kind: "top"; kicker: string; title: string; items: Id[] };
+  | { kind: "top"; kicker: string; title: string; items: Id[]; /** La riga in fondo, se non è la solita ("" la toglie). */ note?: string };
 
 /** Un'azione della sezione "i migliori della giornata". */
 export interface StudioTopItem {
-  /** canestro o assist. */
-  kind: "canestro" | "assist";
+  /** canestro o assist; "momento" è un fatto della giornata che non è una giocata (un infortunio, per dire). */
+  kind: "canestro" | "assist" | "momento";
   /** Quando parte e quanto dura, nella puntata. */
   t: number;
   d: number;

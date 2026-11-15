@@ -848,19 +848,21 @@ function Body({ screen }: { screen: StudioScreen }) {
             ) : (
               <div className="mt-3 grid flex-1 grid-cols-2 gap-2">
                 {screen.items.map((id, i) => (
-                  <div key={i} className="studio-in relative flex items-end overflow-hidden rounded-[16px] border border-white/15 bg-white/12 p-2" style={at(0.3 + i * 0.12)}>
-                    <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-volt text-[12px] font-black text-volt-ink">{i + 1}</span>
-                    <span className="absolute right-1 top-1 opacity-90">
-                      <Figure player={player(id)} height={70} d={0.4 + i * 0.12} />
+                  <div key={i} className={clsx("studio-in relative flex items-end overflow-hidden rounded-[16px] border border-white/15 bg-white/12 p-2", n === 1 && "col-span-2")} style={at(0.3 + i * 0.12)}>
+                    {n > 1 && <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-volt text-[12px] font-black text-volt-ink">{i + 1}</span>}
+                    <span className={clsx("absolute opacity-90", n === 1 ? "inset-x-0 top-2 flex justify-center" : "right-1 top-1")}>
+                      <Figure player={player(id)} height={n === 1 ? 104 : 70} d={0.4 + i * 0.12} />
                     </span>
-                    <span className="relative truncate text-[12.5px] font-bold">{name(id)}</span>
+                    <span className={clsx("relative truncate font-bold", n === 1 ? "w-full text-center text-[14px]" : "text-[12.5px]")}>{name(id)}</span>
                   </div>
                 ))}
               </div>
             )}
-            <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(0.9)}>
-              A schermo pieno, una dopo l&apos;altra
-            </p>
+            {screen.note !== "" && (
+              <p className="studio-in mt-2 text-[12px] font-semibold text-white/80" style={at(0.9)}>
+                {screen.note ?? "A schermo pieno, una dopo l'altra"}
+              </p>
+            )}
           </div>
         </>
       );
