@@ -875,6 +875,9 @@ async def main():
         show = json.load(open(os.path.join(out, f"{plan['id']}.json")))
         for it in show["top"]["items"]:
             it["release"] = round(it["t"] + it["d"] - TOP_POST, 3)
+        if plan.get("rate"):
+            # Il voto da 1 a 5 di ogni azione: lo show si ferma sull'ultimo fotogramma dell'azione.
+            show["rate"] = [{"t": round(it["t"] + it["d"] - 0.12, 3), "item": i} for i, it in enumerate(show["top"]["items"])]
         json.dump(show, open(os.path.join(out, f"{plan['id']}.json"), "w"), ensure_ascii=False, separators=(",", ":"))
     # Le azioni sul maxischermo: un solo video piccolo con il misuratore di tiro già dentro.
     if not any(sh.get("cam") == "replay" for sh in shots) and any(sc.get("kind") == "replay" for sc in screens):

@@ -4,7 +4,8 @@ import clsx from "clsx";
 import { IconBallBasketball, IconHandMove } from "@tabler/icons-react";
 import { memo, useEffect, useRef, type RefObject } from "react";
 import { useData } from "@/lib/data/provider";
-import type { StudioShow, StudioTopItem } from "@/lib/studio";
+import type { StudioRateState } from "@/lib/data/backend";
+import { fmtAvg, rateStats, type StudioShow, type StudioTopItem } from "@/lib/studio";
 import { shortName } from "@/lib/types";
 import { Avatar } from "../ui/avatar";
 
@@ -22,12 +23,15 @@ export const TopStage = memo(function TopStage({
   cardRef,
   dotsRef,
   on,
+  ratings = null,
 }: {
   show: StudioShow;
   videoRef: RefObject<HTMLVideoElement | null>;
   cardRef: RefObject<HTMLDivElement | null>;
   dotsRef: RefObject<HTMLDivElement | null>;
   on: boolean;
+  /** I voti da 1 a 5 delle azioni: chi ha già votato vede il suo voto e la media sulla scheda. */
+  ratings?: StudioRateState | null;
 }) {
   const top = show.top!;
   const items = top.items;
@@ -52,14 +56,14 @@ export const TopStage = memo(function TopStage({
       {/* La scheda dell'azione in onda (la riempie il player quando cambia azione). */}
       <div ref={cardRef} className="studio-top-cards absolute inset-x-0 top-0 h-24 px-4 pt-[max(56px,calc(var(--sat)+46px))]">
         {items.map((it, i) => (
-          <TopCard key={i} item={it} i={i} nKind={items.filter((x) => x.kind === it.kind).length} kIndex={items.slice(0, i + 1).filter((x) => x.kind === it.kind).length} />
+          <TopCard key={i} item={it} i={i} nKind={items.filter((x) => x.kind === it.kind).length} kIndex={items.slice(0, i + 1).filter((x) => x.kind === it.kind).length} rating={ratings?.[i]} />
         ))}
       </div>
     </div>
   );
 });
 
-function TopCard({ item, i, nKind, kIndex }: { item: StudioTopItem; i: number; nKind: number; kIndex: number }) {
+function TopCard({ item, i, nKind, kIndex, rating }: { item: StudioTopItem; i: number; nKind: number; kIndex: number; rating?: { counts: number[]; mine: number | null } }) {
   const { data } = useData();
   const find = (id?: string) => (id ? (data.players.find((p) => p.id === id) ?? data.guests?.find((p) => p.id === id)) : undefined);
   const scorer = find(item.playerId);
@@ -86,6 +90,13 @@ function TopCard({ item, i, nKind, kIndex }: { item: StudioTopItem; i: number; n
           Partita {item.game} · {item.label}
         </p>
       </div>
+      {/* Già votata: il mio voto e la media, senza fermare lo show. */}
+      {rating && rating.mine !== null && (
+        <div className="studio-top-rated shrink-0 rounded-[18px] bg-white/14 px-3 py-1.5 text-center backdrop-blur-md">
+          <p className="tnum text-[18px] font-black leading-none text-white">{fmtAvg(rateStats(rating.counts).avg)}</p>
+          <p className="mt-0.5 text-[10.5px] font-semibold leading-none text-white/70">media · tu {rating.mine}</p>
+        </div>
+      )}
     </div>
   );
 }

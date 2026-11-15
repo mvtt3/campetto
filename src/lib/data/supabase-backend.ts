@@ -18,6 +18,7 @@ import type {
   PendingUser,
   PlayerPrivate,
   StudioVoteState,
+  StudioRateState,
 } from "./backend";
 import { say } from "../voice";
 import { splitGuests } from "../guests";
@@ -519,6 +520,18 @@ export function createSupabaseBackend(): Backend {
       const { data, error } = await sb.rpc("studio_vote", { p_episode: episode, p_category: category, p_choice: choice, p_options: options });
       fail(error);
       return data as StudioVoteState;
+    },
+
+    async studioRateState(episode, items) {
+      const { data, error } = await sb.rpc("studio_rating_state", { p_episode: episode, p_items: items });
+      fail(error);
+      return data as StudioRateState;
+    },
+
+    async studioRate(episode, item, score, items) {
+      const { data, error } = await sb.rpc("studio_rate", { p_episode: episode, p_item: item, p_score: score, p_items: items });
+      fail(error);
+      return data as StudioRateState;
     },
 
     async loadHighlightSocial(ids) {

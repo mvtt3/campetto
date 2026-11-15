@@ -3192,7 +3192,77 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
       0 10px 24px -12px rgb(0 0 0 / 0.6);
   }
 }
+/* Il voto di un'azione: il foglio sale dal basso, i numeri arrivano uno dopo l'altro, poi le
+   colonne dei risultati crescono dal basso. */
+.studio-rate {
+  animation: studio-vote-in 300ms ease both;
+}
+.studio-rate-sheet {
+  animation: studio-rate-sheet 420ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes studio-rate-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+}
+.studio-rate-btn {
+  animation: studio-vote-up 380ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(90ms + var(--i, 0) * 45ms);
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.9, 0.25, 1),
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 220ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.studio-rate-btn:disabled {
+  cursor: default;
+}
+.studio-rate-btn.is-pending {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 6px rgb(255 197 49 / 0.25);
+}
+.studio-rate-col {
+  animation: studio-vote-up 360ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+.studio-rate-fill {
+  animation: studio-rate-grow 760ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(120ms + var(--i, 0) * 50ms);
+}
+@keyframes studio-rate-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+.studio-rate-in {
+  animation: studio-vote-up 360ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.studio-rate-mine {
+  animation: studio-vote-pop 420ms cubic-bezier(0.2, 1.4, 0.3, 1) 200ms both;
+}
+.studio-rate-next {
+  animation: studio-vote-up 400ms cubic-bezier(0.2, 0.9, 0.25, 1) 320ms both;
+  box-shadow: 0 14px 30px -14px rgb(0 0 0 / 0.6);
+}
+.studio-rate-err {
+  animation: studio-vote-up 300ms ease both;
+}
+.studio-top-rated {
+  animation: studio-vote-pop 380ms cubic-bezier(0.2, 1.4, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .studio-rate,
+  .studio-rate-sheet,
+  .studio-rate-btn,
+  .studio-rate-col,
+  .studio-rate-fill,
+  .studio-rate-in,
+  .studio-rate-mine,
+  .studio-rate-next,
+  .studio-top-rated,
   .studio-vote,
   .studio-vote-head,
   .studio-vote-title,
@@ -3307,7 +3377,9 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
 }
 /* Il voto si apre a show fermo: le sue animazioni devono andare lo stesso. */
 .studio-paused .studio-vote,
-.studio-paused .studio-vote * {
+.studio-paused .studio-vote *,
+.studio-paused .studio-rate,
+.studio-paused .studio-rate * {
   animation-play-state: running !important;
 }
 @media (prefers-reduced-motion: reduce) {

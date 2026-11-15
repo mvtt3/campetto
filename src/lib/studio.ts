@@ -263,6 +263,52 @@ export interface StudioShow {
   /** Il voto in un momento solo (puntate vecchie) o uno per categoria. */
   vote?: StudioVote;
   votes?: StudioVote[];
+  /**
+   * Il voto da 1 a 5 di ogni azione dei migliori: a t (finita l'azione) lo show si ferma e chi
+   * non l'ha ancora votata dà il suo voto. item = indice in top.items.
+   */
+  rate?: StudioRatePoint[];
+}
+
+export interface StudioRatePoint {
+  t: number;
+  item: number;
+}
+
+/** Media e numero dei voti da 1 a 5 (counts = quanti 1, 2, 3, 4, 5). */
+export function rateStats(counts: readonly number[]): { n: number; sum: number; avg: number | null } {
+  let n = 0;
+  let sum = 0;
+  counts.slice(0, 5).forEach((c, i) => {
+    const k = Math.max(0, Math.floor(c || 0));
+    n += k;
+    sum += k * (i + 1);
+  });
+  return { n, sum, avg: n ? sum / n : null };
+}
+
+/** La media come si legge: una cifra dopo la virgola, alla italiana ("4,2"). */
+export function fmtAvg(avg: number | null): string {
+  return avg === null ? "–" : (Math.round(avg * 10) / 10).toFixed(1).replace(".", ",");
+}
+
+/**
+ * Chi vince tra le azioni indicate: la media più alta. A pari media vince chi ha preso più 5, poi
+ * chi ha più voti; se è pari anche così vincono insieme (pari merito). Senza voti non si vince.
+ */
+export function rateWinners(items: readonly number[], state: readonly { counts: number[] }[] | null | undefined): number[] {
+  const scored = items
+    .map((item) => {
+      const counts = state?.[item]?.counts ?? [];
+      const st = rateStats(counts);
+      return { item, ...st, fives: Math.max(0, Math.floor(counts[4] || 0)) };
+    })
+    .filter((x) => x.n > 0);
+  if (!scored.length) return [];
+  // Confronto senza virgole: a/b contro c/d diventa a·d contro c·b.
+  const cmp = (x: (typeof scored)[number], y: (typeof scored)[number]) => y.sum * x.n - x.sum * y.n || y.fives - x.fives || y.n - x.n;
+  scored.sort(cmp);
+  return scored.filter((x) => cmp(x, scored[0]) === 0).map((x) => x.item);
 }
 
 /** La puntata più recente: /studio/ultima.json dice quale. */

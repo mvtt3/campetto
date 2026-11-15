@@ -13,7 +13,7 @@ import {
   IconTrophy,
   IconUsersGroup,
 } from "@tabler/icons-react";
-import { memo, type CSSProperties, type ReactNode } from "react";
+import { Fragment, memo, type CSSProperties, type ReactNode } from "react";
 import { useData } from "@/lib/data/provider";
 import type { StudioScreen, StudioTile } from "@/lib/studio";
 import { shortName, type Player } from "@/lib/types";
@@ -152,9 +152,11 @@ function Body({ screen }: { screen: StudioScreen }) {
       return (
         <div className="absolute inset-0 flex flex-col bg-[#FFFAF0] px-4 pb-4 pt-4 text-[#1d1a16]">
           <Chip tone="ink">I risultati</Chip>
-          <ol className="mt-3 flex flex-1 flex-col justify-between">
+          {/* Con tante partite i nomi vanno di fila (a capo dove serve), così ogni riquadro resta staccato dagli altri. */}
+          <ol className="mt-3 flex min-h-0 flex-1 flex-col justify-around gap-1.5">
             {screen.games.map((g, i) => {
               const aWon = g.sa > g.sb;
+              const dense = screen.games.length > 4;
               return (
                 <li key={i}>
                   {screen.turn === i && (
@@ -166,13 +168,13 @@ function Body({ screen }: { screen: StudioScreen }) {
                   )}
                   <div className="studio-in flex items-center gap-2 rounded-[16px] bg-[#F2E8D5]/70 px-2.5 py-1.5" style={at(0.3 + i * 0.18)}>
                     <span className="tnum w-3.5 shrink-0 text-[12px] font-bold text-[#1d1a16]/45">{i + 1}</span>
-                    <Team ids={g.a} won={aWon} name={name} />
+                    <Team ids={g.a} won={aWon} name={name} dense={dense} />
                     <span className="score shrink-0 text-[21px]">
                       <span className={aWon ? "text-[#1d1a16]" : "text-[#1d1a16]/35"}>{g.sa}</span>
                       <span className="text-[#1d1a16]/30">–</span>
                       <span className={!aWon ? "text-[#1d1a16]" : "text-[#1d1a16]/35"}>{g.sb}</span>
                     </span>
-                    <Team ids={g.b} won={!aWon} name={name} right />
+                    <Team ids={g.b} won={!aWon} name={name} right dense={dense} />
                   </div>
                 </li>
               );
@@ -866,7 +868,20 @@ function Body({ screen }: { screen: StudioScreen }) {
   }
 }
 
-function Team({ ids, won, name, right }: { ids: string[]; won: boolean; name: (id: string) => string; right?: boolean }) {
+function Team({ ids, won, name, right, dense }: { ids: string[]; won: boolean; name: (id: string) => string; right?: boolean; dense?: boolean }) {
+  if (dense)
+    return (
+      <span className={clsx("min-w-0 flex-1 text-[11px] leading-[1.22]", right && "text-right", won ? "font-bold" : "font-medium text-[#1d1a16]/50")} style={{ textWrap: "balance" }}>
+        {ids.map((id, i) => (
+          <Fragment key={id}>
+            <span className="whitespace-nowrap">
+              {name(id)}
+              {i < ids.length - 1 ? "," : ""}
+            </span>{" "}
+          </Fragment>
+        ))}
+      </span>
+    );
   return (
     <span className={clsx("flex min-w-0 flex-1 flex-col text-[13px] leading-tight", right ? "items-end text-right" : "items-start", won ? "font-bold" : "font-medium text-[#1d1a16]/50")}>
       {ids.map((id) => (

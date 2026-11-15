@@ -47,6 +47,8 @@ import { CoatRack, MilkCarton, SpicePlaque } from "./easter-eggs";
 import { DeskMic, MIC_H, MIC_W } from "./desk-mic";
 import { TopStage, TOP_VIDEO, syncVideo } from "./studio-top";
 import { VoteOverlay } from "./studio-vote";
+import { RateSheet } from "./studio-rate";
+import type { StudioRateState } from "@/lib/data/backend";
 import { IconChevronRight } from "@tabler/icons-react";
 import { Notes, Presenter } from "./presenter";
 import { StudioScreenView } from "./screens";
@@ -209,6 +211,48 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   // L'ultimo tempo visto dal motore: il voto scatta solo attraversando il suo momento mentre si
   // guarda, non aprendo o saltando oltre (chi arriva dopo lo trova col bottone "Vai al voto").
   const lastTick = useRef(startAt);
+  // Il voto da 1 a 5 di ogni azione dei migliori: finita l'azione lo show si ferma, se non l'ho
+  // ancora votata (chi l'ha già votata la rivede senza fermarsi, con il suo voto sulla scheda).
+  const { backend } = useData();
+  const rates = useMemo(() => show.rate ?? [], [show]);
+  const nItems = show.top?.items.length ?? 0;
+  const rateArmed = useRef(rates.map(() => true));
+  const [rateOpen, setRateOpen] = useState<number | null>(null);
+  const [rstate, setRstate] = useState<StudioRateState | null>(null);
+  const rstateRef = useRef<StudioRateState | null>(null);
+  const [rateFailed, setRateFailed] = useState(false);
+  // Un voto aperto (quello vecchio o quello delle azioni): niente comandi, sottotitoli e tasti.
+  const overlay = voteOpen !== null || rateOpen !== null;
+  const rateAlive = useRef(true);
+  useEffect(() => {
+    rateAlive.current = true;
+    return () => void (rateAlive.current = false);
+  }, []);
+  const loadRates = useCallback(() => {
+    if (!rates.length || !nItems) return;
+    setRateFailed(false);
+    backend
+      .studioRateState(show.id, nItems)
+      .then((st) => {
+        if (!rateAlive.current) return;
+        rstateRef.current = st;
+        setRstate(st);
+      })
+      .catch(() => rateAlive.current && setRateFailed(true));
+  }, [backend, show.id, rates.length, nItems]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRates();
+  }, [loadRates]);
+  const rateItem = useCallback(
+    async (item: number, score: number) => {
+      const st = await backend.studioRate(show.id, item, score, nItems);
+      if (!rateAlive.current) return;
+      rstateRef.current = st;
+      setRstate(st);
+    },
+    [backend, show.id, nItems],
+  );
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
@@ -351,6 +395,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       c.at = performance.now();
       lastTick.current = t;
       voteArmed.current = votes.map((v) => t < v.t);
+      rateArmed.current = rates.map((r) => t < r.t);
       if (audio.current) audio.current.currentTime = t;
       const s = screenAt(show, t);
       setScr({ ...s, el: t - s.since });
@@ -361,7 +406,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       setNonce((n) => n + 1);
       setEnded(false);
     },
-    [show, votes],
+    [show, votes, rates],
   );
 
   useEffect(() => {
@@ -403,6 +448,15 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           voteArmed.current[vi] = false;
           pause();
           setVoteOpen(vi);
+        }
+        // Finita un'azione da votare: ci si ferma (solo se non l'ho già votata).
+        const ri = vi >= 0 ? -1 : rates.findIndex((r, i) => rateArmed.current[i] && prev < r.t && t >= r.t);
+        if (ri >= 0) {
+          rateArmed.current[ri] = false;
+          if ((rstateRef.current?.[rates[ri].item]?.mine ?? null) === null) {
+            pause();
+            setRateOpen(ri);
+          }
         }
       }
       if (t >= show.duration - 0.02 && c.running) {
@@ -623,7 +677,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [show, now, pause, votes]);
+  }, [show, now, pause, votes, rates]);
 
   // Finito il voto (o saltato) lo show riparte da dove si era fermato.
   const closeVote = useCallback(
@@ -638,20 +692,37 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     },
     [start, voteOpen],
   );
+  // Votata (o saltata) l'azione, lo show riparte con quella dopo.
+  const closeRate = useCallback(() => {
+    setRateOpen(null);
+    void start();
+  }, [start]);
+  // Le azioni ancora da votare (si sa solo dopo aver caricato i voti).
+  const rateLeft = rates.filter((r) => rstate !== null && (rstate[r.item]?.mine ?? null) === null);
   // "Vai al voto": dalla seconda apertura, salta dritto al primo momento del voto ancora da fare.
   const goVote = useCallback(() => {
+    if (rates.length) {
+      // Si riguarda l'azione da votare dall'inizio, poi lo show si ferma per il voto.
+      const ri = rates.findIndex((r) => (rstateRef.current?.[r.item]?.mine ?? null) === null);
+      const it = ri >= 0 ? show.top?.items[rates[ri].item] : undefined;
+      if (!it) return;
+      seek(it.t + 0.05);
+      rateArmed.current[ri] = true;
+      void start();
+      return;
+    }
     const vi = Math.max(0, voteDoneRef.current.findIndex((d) => !d));
     const v = votes[vi];
     if (!v) return;
     seek(v.t - 0.25);
     voteArmed.current[vi] = true;
     void start();
-  }, [votes, seek, start]);
+  }, [votes, rates, show, seek, start]);
 
   // Tocco: uno mostra i comandi, due a sinistra o a destra saltano di 10 secondi.
   const taps = useRef<{ at: number; x: number; timer: number }>({ at: 0, x: 0, timer: 0 });
   const onTap = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (ended || needsTap || voteOpen !== null) return;
+    if (ended || needsTap || overlay) return;
     if ((e.target as HTMLElement).closest("button, [role=slider]")) return;
     const x = e.clientX / window.innerWidth;
     const tp = taps.current;
@@ -679,7 +750,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (voteOpen !== null) return;
+      if (overlay) return;
       if (e.key === " ") {
         e.preventDefault();
         if (clock.current.running) pause();
@@ -690,7 +761,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, pause, start, seek, now, voteOpen]);
+  }, [onClose, pause, start, seek, now, overlay]);
 
   // Finita la puntata si richiude da sola e lascia dove si era (Home, Partite...).
   useEffect(() => {
@@ -842,14 +913,14 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       )}
 
-      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} />}
+      {show.top && <TopStage show={show} videoRef={topVideo} cardRef={topCards} dotsRef={topDots} on={mode === "top"} ratings={rates.length ? rstate : null} />}
 
       {/* La sigla: il badge dell'app con le scritte dello show, poi si apre sullo studio. */}
       {mode === "sigla" && <Sigla key={`s${nonce}`} show={show} at={modeEl} />}
       {mode === "fine" && <Fine key={`f${nonce}`} show={show} at={modeEl} />}
 
       {/* Sopra lo studio: barra, titolo, sottotitoli e comandi (non zoomano). */}
-      <div ref={top} data-on={chrome && voteOpen === null && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
+      <div ref={top} data-on={chrome && !overlay && mode !== "sigla" ? "1" : "0"} className="studio-chrome is-top pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-4 pb-8 pt-[max(14px,var(--sat))]">
         <div className="flex items-center gap-2">
           <Logo size={30} top="STUDIO" bottom="★ CAMPETTO ★" text={false} />
           <span className="min-w-0 flex-1">
@@ -864,9 +935,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
 
       <LowerThird show={show} now={now} guestPlate={guestPlate} />
 
-      <Captions show={show} now={now} hidden={mode === "sigla" || voteOpen !== null} view={view} k={k} chrome={chrome} chromeBox={bottom} guestPlate={guestPlate} />
+      <Captions show={show} now={now} hidden={mode === "sigla" || overlay} view={view} k={k} chrome={chrome} chromeBox={bottom} guestPlate={guestPlate} />
 
-      <div ref={bottom} data-on={chrome && voteOpen === null ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
+      <div ref={bottom} data-on={chrome && !overlay ? "1" : "0"} className="studio-chrome is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[max(22px,calc(var(--sab)+14px))] pt-10">
         {/* Una sola linea continua, come nei reel: niente tacche. */}
         <div
           ref={bar}
@@ -907,7 +978,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         </div>
       </div>
 
-      {votes.length > 0 && seenBefore && voteOpen === null && !voteDone && mode !== "sigla" && !ended && (
+      {((votes.length > 0 && !voteDone) || rateLeft.length > 0) && seenBefore && !overlay && mode !== "sigla" && !ended && (
         <button
           type="button"
           className="studio-govote press absolute right-4 z-20 inline-flex items-center gap-1 rounded-full bg-white/16 py-2 pl-3.5 pr-2.5 text-[13px] font-semibold text-white backdrop-blur-md"
@@ -919,6 +990,19 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       )}
 
       {voteOpen !== null && votes[voteOpen] && <VoteOverlay show={show} vote={votes[voteOpen]} onDone={closeVote} />}
+      {rateOpen !== null && rates[rateOpen] && (
+        <RateSheet
+          key={rateOpen}
+          show={show}
+          item={rates[rateOpen].item}
+          state={rstate}
+          failed={rateFailed}
+          last={rates.slice(rateOpen + 1).every((r) => rstate !== null && (rstate[r.item]?.mine ?? null) !== null)}
+          onRate={rateItem}
+          onRetry={loadRates}
+          onDone={closeRate}
+        />
+      )}
 
       {flash && (
         <span key={flash.n} className="studio-flash pointer-events-none absolute top-[45%] grid h-20 w-20 place-items-center rounded-full bg-black/40" style={{ left: flash.kind === "back" ? "12%" : flash.kind === "fwd" ? "calc(88% - 80px)" : "calc(50% - 40px)" }}>
