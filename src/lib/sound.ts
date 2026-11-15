@@ -78,7 +78,7 @@ function engine(): AudioContext | null {
     const session = (
       navigator as unknown as { audioSession?: { type: string } }
     ).audioSession;
-    if (session) session.type = "ambient";
+    if (session && media.size === 0) session.type = "ambient";
   } catch {
     /* non supportato */
   }
@@ -118,6 +118,24 @@ function wire(c: BaseAudioContext) {
 }
 
 /** Da chiamare all'avvio: il primo tocco sblocca l'audio (regola dei browser). */
+/**
+ * Su iPhone i suoni dell'app sono "ambiente": col tasto laterale sul silenzioso tacciono, ed è
+ * giusto per fischi e rimbalzi. Ma così tacevano anche lo Studio e gli highlights, che uno apre
+ * apposta per guardarli e sentirli. Mentre uno dei due è aperto l'audio diventa "da riproduzione"
+ * (come un video qualsiasi: si sente anche in silenzioso); chiuso, torna "ambiente".
+ */
+const media = new Set<string>();
+export function setMediaAudio(who: string, on: boolean) {
+  if (on) media.add(who);
+  else media.delete(who);
+  try {
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = media.size > 0 ? "playback" : "ambient";
+  } catch {
+    /* non supportato */
+  }
+}
+
 export function primeAudio() {
   if (typeof window === "undefined") return;
   const unlock = () => {

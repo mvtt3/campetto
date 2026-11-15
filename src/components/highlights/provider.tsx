@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import { useData } from "@/lib/data/provider";
 import { feedOrder } from "@/lib/highlights";
 import type { Highlight } from "@/lib/types";
+import { setMediaAudio } from "@/lib/sound";
 
 // Il feed si scarica solo quando serve: chi non apre gli highlights non lo paga.
 const Feed = dynamic(() => import("./feed"), { ssr: false });
@@ -133,6 +134,8 @@ export function HighlightsProvider({ children }: { children: ReactNode }) {
   const startMusic = useCallback(
     (fromStart: boolean) => {
       const a = audioEl();
+      // Su iPhone: la musica degli highlights si sente anche col tasto del silenzioso.
+      setMediaAudio("highlights", true);
       stopFade.current?.();
       if (fromStart) {
         try {
@@ -253,7 +256,10 @@ export function HighlightsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const finishClose = useCallback(() => setView(null), []);
+  const finishClose = useCallback(() => {
+    setMediaAudio("highlights", false);
+    setView(null);
+  }, []);
 
   // Il feed si chiude: la musica sfuma (solo allora: all'apertura non si tocca).
   const closing = view?.closing === true;

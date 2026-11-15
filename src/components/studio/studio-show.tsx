@@ -14,6 +14,7 @@ import {
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { setMediaAudio } from "@/lib/sound";
 import {
   armAt,
   blinkAt,
@@ -377,6 +378,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const start = useCallback(async () => {
     const c = clock.current;
     const a = audio.current;
+    // Su iPhone: da qui l'audio è quello di un video, si sente anche col silenzioso.
+    setMediaAudio("studio", true);
     c.at = performance.now();
     c.running = true;
     setPlaying(true);
@@ -445,7 +448,10 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     const a = audio.current;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void start();
-    return () => a?.pause();
+    return () => {
+      a?.pause();
+      setMediaAudio("studio", false);
+    };
   }, [start]);
 
   useEffect(() => {
