@@ -133,7 +133,7 @@ export function BadgeCelebration() {
   );
   // Prima finisce l'apertura con Spicchio, poi la festa (e il suo suono).
   const introDone = useIntroDone();
-  // Lo Studio Campetto: per ora solo l'amministratore, per provarlo.
+  // Lo Studio Campetto: la puntata nuova si annuncia a tutti, una volta.
   const studio = useStudioLatest(useStudioEnabled());
   const [studioOpen, setStudioOpen] = useState<string | null>(null);
   const [studioFrom, setStudioFrom] = useState(0);
@@ -370,12 +370,12 @@ export function BadgeCelebration() {
         {current.kind === "studio" && <StudioBody latest={current.latest} />}
         {current.kind === "studio" ? (
           <div className="relative mt-5 flex w-full gap-2">
-            <Button variant="light" className="flex-1 text-court" onClick={next}>
-              Dopo
+            <Button variant="light" className="flex-[1.35] whitespace-nowrap text-court" data-testid="studio-dopo" onClick={next}>
+              Forse più tardi
             </Button>
             <Button
               variant="primary"
-              className="flex-[1.6] whitespace-nowrap"
+              className="flex-1 whitespace-nowrap"
               data-testid="studio-guarda"
               onClick={() => {
                 const id = current.latest.id;
@@ -383,7 +383,7 @@ export function BadgeCelebration() {
                 setStudioOpen(id);
               }}
             >
-              Guarda ora
+              Guarda
             </Button>
           </div>
         ) : current.kind === "news" ? (
@@ -466,7 +466,7 @@ function StudioBody({ latest }: { latest: StudioLatest }) {
         Studio Campetto
       </h2>
       <p className="relative mt-2 text-[14.5px] leading-snug text-white/90">
-        La serata di {studioDay(latest.day)} raccontata in studio: risultati, record e i canestri più belli.
+        Le partite di {studioDay(latest.day)} raccontate in studio: risultati, MVP e le giocate più belle.
       </p>
     </>
   );

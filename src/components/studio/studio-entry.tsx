@@ -24,11 +24,13 @@ function loadLatest(): Promise<StudioLatest | null> {
   return cached;
 }
 
+/** Lo Studio è per tutti quelli del gruppo. Nei dati di prova si accende con ?studio=1 (o =popup, senza aprirlo subito). */
 export function useStudioEnabled(): boolean {
   const { me, backend } = useData();
-  if (!me?.isAdmin) return false;
+  if (!me) return false;
   if (backend.kind !== "mock") return true;
-  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("studio") === "1";
+  const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("studio") : null;
+  return q === "1" || q === "popup";
 }
 
 export function useStudioLatest(enabled: boolean): StudioLatest | null {
@@ -145,7 +147,7 @@ export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
         <span className="min-w-0 flex-1">
           <span className="block text-[12px] font-semibold text-volt">Studio Campetto</span>
           <span className="block text-[14.5px] font-semibold leading-snug">La puntata di {studioDay(latest.day)}</span>
-          <span className="block text-[12.5px] text-white/70">Risultati, record, MVP e canestri</span>
+          <span className="block text-[12.5px] text-white/70">Risultati, MVP e le giocate più belle</span>
         </span>
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[#0C1736]">
           <IconPlayerPlayFilled size={18} aria-hidden />

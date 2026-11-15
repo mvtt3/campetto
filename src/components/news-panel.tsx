@@ -301,7 +301,7 @@ export function NewsPanel({
 }) {
   const now = useNow();
   const before = now < SEASONS_START;
-  // Lo Studio Campetto in cima alle notizie: per ora solo l'amministratore.
+  // Lo Studio Campetto in cima alle notizie.
   const studio = useStudioLatest(useStudioEnabled());
   return (
     <Drawer.Root
