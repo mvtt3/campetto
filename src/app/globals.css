@@ -2747,6 +2747,34 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
     opacity: 0.55;
   }
 }
+/* Infortunio: il battito si disegna da sinistra, e dalla croce partono due onde. */
+.studio-inf-beat {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: studio-inf-beat 1.5s cubic-bezier(0.3, 0.1, 0.2, 1) both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+  filter: drop-shadow(0 0 6px rgb(255 107 94 / 0.7));
+}
+@keyframes studio-inf-beat {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.studio-inf-wave {
+  opacity: 0;
+  animation: studio-inf-wave 1.6s ease-out 3 both;
+  animation-delay: calc(var(--el, 0s) + var(--d, 0s));
+}
+@keyframes studio-inf-wave {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
 /* Cambio di grafica sul maxischermo: una tendina di luce. */
 .studio-screen-in {
   animation: studio-wipe 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;

@@ -128,7 +128,7 @@ def balance_check():
         scr = seg["screen"]
         pid = scr.get("playerId")
         if pid:
-            if scr.get("kind") != "mvp":  # il premio della serata non toglie spazio agli altri
+            if scr.get("kind") not in ("mvp", "infortunio"):  # il premio e un infortunio non tolgono spazio agli altri
                 focus[pid] = focus.get(pid, 0) + 1
             seen.add(pid)
         for key in ("slices", "rows"):

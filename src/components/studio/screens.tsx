@@ -7,7 +7,10 @@ import {
   IconBolt,
   IconChartPie,
   IconCrown,
+  IconFirstAidKit,
   IconFlame,
+  IconHeartFilled,
+  IconMedicalCrossFilled,
   IconTarget,
   IconTrendingUp,
   IconTrophy,
@@ -819,6 +822,61 @@ function Body({ screen }: { screen: StudioScreen }) {
     case "replay":
       // I canestri vanno a tutto schermo: li mostra il player.
       return <CourtBg />;
+
+    case "infortunio": {
+      // Si capisce al volo: la croce bianca su rosso (come nelle app della salute), il battito che
+      // scorre dietro al giocatore e, in fondo, l'augurio.
+      const p = player(screen.playerId);
+      return (
+        <>
+          <div aria-hidden className="absolute inset-0 overflow-hidden bg-[linear-gradient(165deg,#1b2a63,#0c1433_70%)]">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_55%_at_50%_58%,rgb(240_68_56/0.42),transparent_70%)]" />
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(115deg,rgb(255_255_255/0.05)_0_2px,transparent_2px_14px)]" />
+          </div>
+          {/* Il battito: una linea che si disegna da sinistra a destra, dietro al personaggio. */}
+          <svg aria-hidden viewBox="0 0 330 90" className="absolute inset-x-0 top-[168px] h-[90px] w-full">
+            <path
+              className="studio-inf-beat"
+              style={at(0.5)}
+              d="M0 50 H78 l10 -8 l9 8 h16 l10 -38 l13 70 l11 -44 l8 12 h22 l9 -7 l9 7 H330"
+              fill="none"
+              stroke="#FF6B5E"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              pathLength={1}
+            />
+          </svg>
+          <span className="absolute inset-x-0 top-[104px] flex justify-center" aria-hidden>
+            <Figure player={p} height={176} d={0.25} />
+          </span>
+          {/* La croce: bianca su rosso, con due onde che si allargano. */}
+          <span className="absolute right-[58px] top-[98px] grid h-[58px] w-[58px] place-items-center" aria-hidden>
+            <span className="studio-inf-wave absolute inset-0 rounded-[18px] bg-[#F04438]" style={at(0.9)} />
+            <span className="studio-inf-wave absolute inset-0 rounded-[18px] bg-[#F04438]" style={at(1.7)} />
+            <span className="studio-pop relative grid h-full w-full place-items-center rounded-[18px] bg-[#F04438] text-white shadow-[0_10px_24px_rgb(240_68_56/0.55)]" style={at(0.75)}>
+              <IconMedicalCrossFilled size={34} aria-hidden />
+            </span>
+          </span>
+          <div className="relative flex h-full flex-col px-4 pb-4 pt-4">
+            <p className="studio-in inline-flex w-fit items-center gap-1.5 rounded-full bg-[#F04438] px-3 py-1 text-[13px] font-semibold text-white" style={at(0)}>
+              <IconFirstAidKit size={15} stroke={2.2} aria-hidden />
+              {screen.kicker}
+            </p>
+            <p className="studio-in display mt-2 text-[28px] leading-none" style={at(0.15)}>
+              {name(screen.playerId)}
+            </p>
+            <p className="studio-in mt-1 text-[13.5px] font-semibold text-white/80" style={at(0.3)}>
+              {screen.when}
+            </p>
+            <p className="studio-in mt-auto flex items-center justify-center gap-2 rounded-[18px] bg-white/14 px-3 py-2.5 text-center text-[14.5px] font-bold backdrop-blur-sm" style={at(1.3)}>
+              <IconHeartFilled size={17} className="shrink-0 text-[#FF6B5E]" aria-hidden />
+              {screen.wish}
+            </p>
+          </div>
+        </>
+      );
+    }
 
     case "top": {
       // La locandina dei migliori della giornata: i candidati in fila, con il numero del voto.

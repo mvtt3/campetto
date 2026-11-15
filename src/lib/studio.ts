@@ -160,6 +160,8 @@ export type StudioScreen =
    * I migliori della giornata (canestri e assist): sul maxischermo la locandina con i candidati;
    * a tutto schermo (inquadratura "top") le azioni vere, una alla volta, dal video show.top.
    */
+  /** Un infortunio durante la giornata: il giocatore, il segno del pronto soccorso e un augurio. */
+  | { kind: "infortunio"; playerId: Id; kicker: string; when: string; wish: string }
   | { kind: "top"; kicker: string; title: string; items: Id[]; /** La riga in fondo, se non è la solita ("" la toglie). */ note?: string };
 
 /** Un'azione della sezione "i migliori della giornata". */
