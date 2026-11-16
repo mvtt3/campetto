@@ -8,7 +8,7 @@ import {
   NOTIFY_GROUPS,
   type NotifyPrefs,
 } from "@/lib/types";
-import { currentSubscription, disablePush, enablePush } from "./push-client";
+import { checkPush, currentSubscription, disablePush, enablePush } from "./push-client";
 
 /**
  * Notifiche su questo telefono: stato e interruttore, con i messaggi di Spicchio.
@@ -35,8 +35,14 @@ export function usePush() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void currentSubscription().then((s) => setOn(Boolean(s)));
-  }, []);
+    // Prima quello che dice il telefono, poi la conferma del server (che ripara se serve).
+    let alive = true;
+    void currentSubscription().then((s) => alive && setOn(Boolean(s)));
+    void checkPush(backend).then((ok) => alive && setOn(ok));
+    return () => {
+      alive = false;
+    };
+  }, [backend]);
 
   const toggle = async (want: boolean) => {
     setBusy(true);

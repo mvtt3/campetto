@@ -481,6 +481,13 @@ export function createSupabaseBackend(): Backend {
       );
     },
 
+    async hasPushSubscription(endpoint) {
+      // Le regole fanno vedere solo le proprie: se non torna nulla, il server non ce l'ha a nome mio.
+      const { data, error } = await sb.from("push_subscriptions").select("endpoint").eq("endpoint", endpoint).limit(1);
+      fail(error);
+      return (data?.length ?? 0) > 0;
+    },
+
     async removePushSubscription(endpoint) {
       fail(
         (await sb.from("push_subscriptions").delete().eq("endpoint", endpoint))

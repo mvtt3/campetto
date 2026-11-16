@@ -56,14 +56,51 @@ export async function enablePush(
     (await navigator.serviceWorker.getRegistration("/")) ??
     (await navigator.serviceWorker.register("/sw.js"));
   await navigator.serviceWorker.ready;
-  const sub =
-    (await reg.pushManager.getSubscription()) ??
-    (await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    }));
-  await backend.savePushSubscription(sub.toJSON());
+  await backend.savePushSubscription((await freshSubscription(reg)).toJSON());
+  pushChecked(true);
   return "ok";
+}
+
+/**
+ * Un'iscrizione nuova di zecca. Quella vecchia si butta: può essere scaduta (Apple e Google la
+ * rifiutano e il server la cancella) o fatta con una chiave vecchia, e riusarla vorrebbe dire
+ * "attive" sul telefono ma niente che arriva.
+ */
+async function freshSubscription(reg: ServiceWorkerRegistration): Promise<PushSubscription> {
+  const old = await reg.pushManager.getSubscription();
+  if (old) await old.unsubscribe().catch(() => false);
+  return reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+}
+
+let checked: Promise<boolean> | null = null;
+/**
+ * All'apertura: se il telefono ha le notifiche accese ma il server non ha più la sua iscrizione
+ * (scaduta, o mai salvata per un errore di rete), ne fa una nuova e la salva, senza chiedere nulla.
+ * Restituisce se le notifiche su questo telefono sono davvero attive. Una volta per apertura.
+ */
+export function checkPush(backend: Backend): Promise<boolean> {
+  checked ??= (async () => {
+    if (!pushSupported() || Notification.permission !== "granted") return false;
+    const reg = await navigator.serviceWorker.getRegistration("/");
+    const sub = await reg?.pushManager.getSubscription();
+    if (!reg || !sub) return false;
+    if (await backend.hasPushSubscription(sub.endpoint).catch(() => true)) return true;
+    try {
+      await backend.savePushSubscription((await freshSubscription(reg)).toJSON());
+      return true;
+    } catch {
+      return false; // l'interruttore torna spento: un tocco e si rifà da capo
+    }
+  })();
+  return checked;
+}
+
+/** Dopo un'accensione o uno spegnimento a mano il controllo all'apertura non serve più. */
+export function pushChecked(on: boolean) {
+  checked = Promise.resolve(on);
 }
 
 export async function disablePush(backend: Backend): Promise<void> {
@@ -71,4 +108,5 @@ export async function disablePush(backend: Backend): Promise<void> {
   if (!sub) return;
   await backend.removePushSubscription(sub.endpoint);
   await sub.unsubscribe();
+  pushChecked(false);
 }

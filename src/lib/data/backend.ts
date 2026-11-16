@@ -159,6 +159,8 @@ export interface Backend {
 
   savePushSubscription(sub: PushSubscriptionJSON): Promise<void>;
   removePushSubscription(endpoint: string): Promise<void>;
+  /** Il server ha ancora questa iscrizione, a nome mio? (Se è scaduta l'ha cancellata.) */
+  hasPushSubscription(endpoint: string): Promise<boolean>;
   notify(body: NotifyBody): Promise<void>;
   sendFeedback(input: FeedbackInput): Promise<void>;
   /** "Sono passato di qui": serve al promemoria settimanale per chi non apre l'app da giorni. */

@@ -1018,6 +1018,9 @@ export function createMockBackend(): Backend {
       save();
     },
     async removePushSubscription() {},
+    async hasPushSubscription() {
+      return true;
+    },
     async notify(body) {
       state.notifications.push(body);
       localStorage.setItem(KEY, JSON.stringify(state));
