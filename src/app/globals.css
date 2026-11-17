@@ -204,40 +204,6 @@ body {
 :root[data-theme="dark"] .storm {
   background: linear-gradient(160deg, #4a6388 0%, #2c3d5c 55%, #1e2b43 100%);
 }
-/* Risultati in ritardo: la barra fino all'ora promessa ha un riflesso che scorre; passata l'ora
-   pulsa piano ("ci siamo quasi"). Ferma per chi chiede meno movimento. */
-.stats-delay-fill {
-  position: relative;
-  overflow: hidden;
-  transition: width 600ms ease;
-}
-.stats-delay-fill::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
-  transform: translateX(-100%);
-  animation: stats-delay-shine 2.4s ease-in-out infinite;
-}
-.stats-delay-fill.is-late {
-  animation: stats-delay-pulse 1.6s ease-in-out infinite;
-}
-@keyframes stats-delay-shine {
-  to {
-    transform: translateX(100%);
-  }
-}
-@keyframes stats-delay-pulse {
-  50% {
-    opacity: 0.55;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .stats-delay-fill::after,
-  .stats-delay-fill.is-late {
-    animation: none;
-  }
-}
 /* Pioggia leggera: trattini in diagonale su una piastrella che si ripete; lo strato scende
    di due piastrelle esatte e ricomincia, senza scatti (solo transform). */
 .rain-fall {

@@ -1,12 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { IconClockExclamation, IconSparkles } from "@tabler/icons-react";
+import { IconClockExclamation, IconClockHour9, IconSparkles } from "@tabler/icons-react";
 import { Avatar } from "./ui/avatar";
 import { Mascot } from "./mascot";
 import { useData } from "@/lib/data/provider";
 import { neededPlayers } from "@/lib/notifications/grouping";
-import { awaitingStats, LIVE_HOURS } from "@/lib/proposals";
+import { awaitingStats } from "@/lib/proposals";
 import { delayVisibleUntil, statsDelayFor } from "@/lib/stats-delay";
 import { placeLabel, type Proposal } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
@@ -91,16 +91,11 @@ function whenLabel(eta: Date, now: Date): string {
   return `${d.charAt(0).toUpperCase()}${d.slice(1)} alle ${hm(eta)}`;
 }
 
-/** "tra 19 h", "tra 40 min". */
-function countdown(ms: number): string {
-  const min = Math.max(1, Math.round(ms / 60_000));
-  return min >= 90 ? `tra ${Math.round(min / 60)} h` : `tra ${min} min`;
-}
 
 /**
  * I risultati di una giornata in ritardo, al posto di "calcolo in corso": come gli avvisi di
  * ritardo delle app di consegne e trasporti, prima lo stato, poi cosa è successo in una riga e
- * soprattutto quando: l'ora precisa, il conto alla rovescia e una barra che si riempie fino a lì.
+ * soprattutto quando, con l'ora precisa.
  * Passata l'ora, se i risultati non ci sono ancora, diventa "in arrivo".
  */
 function StatsDelayed({
@@ -118,8 +113,6 @@ function StatsDelayed({
   const eta = new Date(etaIso);
   const left = eta.getTime() - now.getTime();
   const late = left <= 0;
-  const from = start.getTime() + LIVE_HOURS * 3_600_000;
-  const done = Math.min(1, Math.max(0.04, (now.getTime() - from) / Math.max(1, eta.getTime() - from)));
   const place = proposal.place ? placeLabel(proposal.place) : null;
   const when = whenLabel(eta, now);
 
@@ -167,32 +160,20 @@ function StatsDelayed({
         <p className="mt-2 text-[14px] leading-snug text-white/90">
           {late
             ? "Ultimi ritocchi: tra poco punteggi e statistiche sono qui."
-            : "Un intoppo tecnico ha bloccato il caricamento di punteggi e statistiche. Scusate l'attesa!"}
+            : "Un intoppo tecnico ha bloccato il caricamento di punteggi e statistiche. Grazie per la pazienza!"}
         </p>
       </div>
 
-      <div className="relative mt-4 rounded-2xl bg-white/12 p-3.5 backdrop-blur-sm">
-        <div className="flex items-end justify-between gap-3">
-          <span className="min-w-0">
-            <span className="block text-[12px] font-medium text-white/60">
-              {late ? "Previsti per le" : "Li trovi qui"}
-            </span>
-            <span className="tnum block truncate text-[18px] font-bold leading-tight">
-              {late ? hm(eta) : when}
-            </span>
+      <div className="relative mt-4 flex items-center gap-3 rounded-2xl bg-white/12 p-3.5 backdrop-blur-sm">
+        <IconClockHour9 size={24} stroke={2} className="shrink-0 text-volt" aria-hidden />
+        <span className="min-w-0">
+          <span className="block text-[12px] font-medium text-white/60">
+            {late ? "Previsti per le" : "Li trovi qui"}
           </span>
-          {!late && (
-            <span className="tnum shrink-0 rounded-full bg-white px-2.5 py-1 text-[12.5px] font-bold text-[#1d1a16]">
-              {countdown(left)}
-            </span>
-          )}
-        </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15" aria-hidden>
-          <div
-            className={clsx("stats-delay-fill h-full rounded-full bg-linear-to-r from-ball to-volt", late && "is-late")}
-            style={{ width: `${done * 100}%` }}
-          />
-        </div>
+          <span className="tnum block truncate text-[18px] font-bold leading-tight">
+            {late ? hm(eta) : when}
+          </span>
+        </span>
       </div>
     </div>
   );
