@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { IconClockExclamation, IconClockHour9, IconSparkles } from "@tabler/icons-react";
+import { IconClockExclamation, IconSparkles } from "@tabler/icons-react";
 import { Avatar } from "./ui/avatar";
 import { Mascot } from "./mascot";
 import { useData } from "@/lib/data/provider";
@@ -165,7 +165,7 @@ function StatsDelayed({
       </div>
 
       <div className="relative mt-4 flex items-center gap-3 rounded-2xl bg-white/12 p-3.5 backdrop-blur-sm">
-        <IconClockHour9 size={24} stroke={2} className="shrink-0 text-volt" aria-hidden />
+        <WaitClock />
         <span className="min-w-0">
           <span className="block text-[12px] font-medium text-white/60">
             {late ? "Previsti per le" : "Li trovi qui"}
@@ -176,5 +176,23 @@ function StatsDelayed({
         </span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Un orologio che va avanti piano: la lancetta lunga fa un giro in 12 secondi, la corta in un
+ * minuto e mezzo. Dice "si sta aspettando" senza fretta. Fermo con "riduci movimento".
+ */
+function WaitClock() {
+  return (
+    <svg viewBox="0 0 24 24" width={26} height={26} className="shrink-0 text-volt" aria-hidden>
+      <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" strokeWidth="2" />
+      {[0, 90, 180, 270].map((r) => (
+        <line key={r} x1="12" y1="4.6" x2="12" y2="5.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" transform={`rotate(${r} 12 12)`} />
+      ))}
+      <line className="wait-clock-hour" x1="12" y1="12" x2="12" y2="8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <line className="wait-clock-min" x1="12" y1="12" x2="12" y2="6.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+    </svg>
   );
 }
