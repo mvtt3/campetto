@@ -398,10 +398,11 @@ test("partita confermata e poi in corso, nel calendario e nella Home", async ({
   // Finita da mezz'ora: nello spazio sotto, le statistiche in arrivo.
   await page.goto("/?mock=demo&as=p4&partita=finita");
   await page.goto("/organizza");
+  // (Se quella giornata ha i risultati in ritardo, al posto del calcolo c'è l'avviso con l'ora.)
   await expect(
-    page
-      .getByRole("status")
-      .filter({ hasText: "Calcolo statistiche in corso" }),
+    page.getByRole("status").filter({
+      hasText: /Calcolo statistiche in corso|Risultati in (ritardo|arrivo)/,
+    }),
   ).toBeVisible();
 });
 
