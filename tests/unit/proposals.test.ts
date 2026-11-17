@@ -6,6 +6,7 @@ import {
   proposalPhase,
   rainedOutToday,
 } from "@/lib/proposals";
+import { delayVisibleUntil, statsDelayFor } from "@/lib/stats-delay";
 import type { Proposal } from "@/lib/types";
 
 const at = (h: number, m = 0) => new Date(2026, 10, 3, h, m).toISOString();
@@ -101,6 +102,19 @@ describe("statistiche in arrivo", () => {
       awaitingStats([p], [{ playedAt: h(1).toISOString() }], h(3), six),
     ).toBeNull();
     expect(awaitingStats([p], [], h(19), six)).toBeNull();
+  });
+  it("in ritardo: resta fino all'ora promessa e poco oltre", () => {
+    const delays = [{ day: "2026-11-03", eta: "2026-11-04T21:00:00+01:00" }];
+    const keep = (x: { startsAt: string }) => delayVisibleUntil(x.startsAt, delays);
+    expect(statsDelayFor(p.startsAt, delays)?.eta).toBe("2026-11-04T21:00:00+01:00");
+    expect(statsDelayFor(h(30).toISOString(), delays)).toBeNull();
+    expect(awaitingStats([p], [], h(19), six, keep)?.id).toBe("x");
+    // alle 19 italiane del 3 si parte; le 21 del 4 sono 26 ore dopo, più le 12 di margine
+    expect(awaitingStats([p], [], h(37), six, keep)?.id).toBe("x");
+    expect(awaitingStats([p], [], h(39), six, keep)).toBeNull();
+    expect(
+      awaitingStats([p], [{ playedAt: h(1).toISOString() }], h(20), six, keep),
+    ).toBeNull();
   });
   it("solo se era confermata", () => {
     const few = proposal([yes("p1"), yes("p2")]);

@@ -86,14 +86,16 @@ export function awaitingStats(
   matches: { playedAt: string }[],
   now: Date,
   neededOf: (p: Proposal) => number,
+  /** Per una partita coi risultati in ritardo: fino a quando la scheda resta (ms), oltre le solite 18 ore. */
+  keepUntil?: (p: Proposal) => number | null,
 ): Proposal | null {
   const t = now.getTime();
   const done = proposals
     .filter((p) => {
       if (p.status !== "aperta") return false;
       const start = new Date(p.startsAt).getTime();
-      if (t < start + LIVE_HOURS * 3_600_000 || t >= start + 18 * 3_600_000)
-        return false;
+      const end = Math.max(start + 18 * 3_600_000, keepUntil?.(p) ?? 0);
+      if (t < start + LIVE_HOURS * 3_600_000 || t >= end) return false;
       const yes = p.responses.filter((r) => r.response === "si").length;
       if (yes < Math.min(CONFIRM_MIN, neededOf(p))) return false;
       return !matches.some(

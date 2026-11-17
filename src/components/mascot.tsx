@@ -135,12 +135,15 @@ export function Mascot({
   className,
   animate = true,
   title,
+  cloud = true,
 }: {
   pose?: MascotPose;
   size?: number;
   className?: string;
   animate?: boolean;
   title?: string;
+  /** Nella posa triste, la nuvola di pioggia sopra la testa (via quando la tristezza non è il meteo). */
+  cloud?: boolean;
 }) {
   const uid = useId().replace(/:/g, "");
   const dots = `dots-${uid}`;
@@ -425,7 +428,7 @@ export function Mascot({
           />
         </g>
       )}
-      {sad && (
+      {sad && cloud && (
         // La nuvoletta sopra la testa, con la pioggia che cade (ferma per chi chiede meno movimento).
         <g className="mascot-cloud">
           <g className="mascot-drops" stroke={SKY} strokeWidth="3.4" strokeLinecap="round">

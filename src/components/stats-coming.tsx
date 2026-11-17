@@ -1,19 +1,29 @@
 "use client";
 
 import clsx from "clsx";
+import { IconClockExclamation, IconSparkles } from "@tabler/icons-react";
 import { Avatar } from "./ui/avatar";
+import { Mascot } from "./mascot";
 import { useData } from "@/lib/data/provider";
 import { neededPlayers } from "@/lib/notifications/grouping";
-import { awaitingStats } from "@/lib/proposals";
+import { awaitingStats, LIVE_HOURS } from "@/lib/proposals";
+import { delayVisibleUntil, statsDelayFor } from "@/lib/stats-delay";
+import { placeLabel, type Proposal } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 
 export function StatsComing({ first }: { first?: boolean }) {
   const { data } = useData();
   const now = useNow(60_000);
-  const p = awaitingStats(data.proposals, data.matches, now, (x) =>
-    neededPlayers(x.format),
+  const p = awaitingStats(
+    data.proposals,
+    data.matches,
+    now,
+    (x) => neededPlayers(x.format),
+    (x) => delayVisibleUntil(x.startsAt),
   );
   if (!p) return null;
+  const delay = statsDelayFor(p.startsAt);
+  if (delay) return <StatsDelayed proposal={p} eta={delay.eta} now={now} first={first} />;
   const time = new Date(p.startsAt).toLocaleTimeString("it-IT", {
     hour: "2-digit",
     minute: "2-digit",
@@ -59,6 +69,131 @@ export function StatsComing({ first }: { first?: boolean }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+const TZ = "Europe/Rome";
+const hm = (d: Date) =>
+  d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+const romeDay = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(d);
+/** "lun 16" */
+const shortDay = (d: Date) =>
+  d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: TZ }).replace(".", "");
+
+/** "Stasera alle 21:00", "Domani sera alle 21:00", "Mar 17 alle 21:00". */
+function whenLabel(eta: Date, now: Date): string {
+  const evening = Number(eta.toLocaleString("en-GB", { hour: "2-digit", hour12: false, timeZone: TZ })) >= 18;
+  const tomorrow = new Date(now.getTime() + 24 * 3_600_000);
+  if (romeDay(eta) === romeDay(now)) return `${evening ? "Stasera" : "Oggi"} alle ${hm(eta)}`;
+  if (romeDay(eta) === romeDay(tomorrow)) return `Domani${evening ? " sera" : ""} alle ${hm(eta)}`;
+  const d = shortDay(eta);
+  return `${d.charAt(0).toUpperCase()}${d.slice(1)} alle ${hm(eta)}`;
+}
+
+/** "tra 19 h", "tra 40 min". */
+function countdown(ms: number): string {
+  const min = Math.max(1, Math.round(ms / 60_000));
+  return min >= 90 ? `tra ${Math.round(min / 60)} h` : `tra ${min} min`;
+}
+
+/**
+ * I risultati di una giornata in ritardo, al posto di "calcolo in corso": come gli avvisi di
+ * ritardo delle app di consegne e trasporti, prima lo stato, poi cosa è successo in una riga e
+ * soprattutto quando: l'ora precisa, il conto alla rovescia e una barra che si riempie fino a lì.
+ * Passata l'ora, se i risultati non ci sono ancora, diventa "in arrivo".
+ */
+function StatsDelayed({
+  proposal,
+  eta: etaIso,
+  now,
+  first,
+}: {
+  proposal: Proposal;
+  eta: string;
+  now: Date;
+  first?: boolean;
+}) {
+  const start = new Date(proposal.startsAt);
+  const eta = new Date(etaIso);
+  const left = eta.getTime() - now.getTime();
+  const late = left <= 0;
+  const from = start.getTime() + LIVE_HOURS * 3_600_000;
+  const done = Math.min(1, Math.max(0.04, (now.getTime() - from) / Math.max(1, eta.getTime() - from)));
+  const place = proposal.place ? placeLabel(proposal.place) : null;
+  const when = whenLabel(eta, now);
+
+  return (
+    <div
+      role="status"
+      data-testid="stats-delayed"
+      aria-label={
+        late
+          ? `Risultati di ${shortDay(start)} in arrivo`
+          : `Risultati di ${shortDay(start)} in ritardo: ${when.toLowerCase()}`
+      }
+      className={clsx(
+        first ? "mb-3 mt-1" : "mt-4",
+        "relative overflow-hidden rounded-[26px] bg-linear-to-br from-[#1d1a16] via-[#2a2119] to-[#5a2f12] p-5 text-white shadow-[var(--shadow-pop)]",
+      )}
+    >
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+        <span className="blob hero-drift -right-14 -top-16 h-48 w-48 bg-[radial-gradient(circle,rgb(242_106_27/0.45),transparent_68%)]" />
+        <span className="blob hero-drift -bottom-20 -left-10 h-40 w-40 bg-[radial-gradient(circle,rgb(255_197_49/0.2),transparent_70%)] [animation-delay:-6s]" />
+      </div>
+
+      <span aria-hidden className="absolute right-3 top-3 drop-shadow-[0_10px_16px_rgb(0_0_0/0.35)]">
+        <Mascot pose={late ? "ciao" : "triste"} cloud={false} size={86} />
+      </span>
+
+      <div className="relative pr-[88px]">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-volt px-2.5 py-1 text-[12px] font-semibold text-volt-ink">
+          {late ? (
+            <IconSparkles size={14} stroke={2.2} aria-hidden />
+          ) : (
+            <IconClockExclamation size={14} stroke={2.2} aria-hidden />
+          )}
+          {late ? "Quasi pronti" : "In ritardo"}
+        </span>
+        <p className="title mt-2.5 text-[24px] leading-[1.1]">
+          {late ? "Risultati in arrivo" : "Risultati in ritardo"}
+        </p>
+        <p className="tnum mt-1.5 text-[13.5px] font-medium text-white/70">
+          <span className="capitalize">{shortDay(start)}</span>
+          {" · "}
+          {hm(start)}
+          {place && ` · ${place}`}
+        </p>
+        <p className="mt-2 text-[14px] leading-snug text-white/90">
+          {late
+            ? "Ultimi ritocchi: tra poco punteggi e statistiche sono qui."
+            : "Un intoppo tecnico ha bloccato il caricamento di punteggi e statistiche. Scusate l'attesa!"}
+        </p>
+      </div>
+
+      <div className="relative mt-4 rounded-2xl bg-white/12 p-3.5 backdrop-blur-sm">
+        <div className="flex items-end justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block text-[12px] font-medium text-white/60">
+              {late ? "Previsti per le" : "Li trovi qui"}
+            </span>
+            <span className="tnum block truncate text-[18px] font-bold leading-tight">
+              {late ? hm(eta) : when}
+            </span>
+          </span>
+          {!late && (
+            <span className="tnum shrink-0 rounded-full bg-white px-2.5 py-1 text-[12.5px] font-bold text-[#1d1a16]">
+              {countdown(left)}
+            </span>
+          )}
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15" aria-hidden>
+          <div
+            className={clsx("stats-delay-fill h-full rounded-full bg-linear-to-r from-ball to-volt", late && "is-late")}
+            style={{ width: `${done * 100}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
