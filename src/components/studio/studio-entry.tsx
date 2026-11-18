@@ -167,7 +167,7 @@ export function StudioNightCard({ latest }: { latest: StudioLatest }) {
     <>
       <button
         type="button"
-        className="press relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] bg-linear-to-br from-court to-court-deep py-2.5 pl-1 pr-3 text-left text-court-ink"
+        className="press relative flex w-full overflow-hidden rounded-[18px] bg-linear-to-br from-court to-court-deep p-3.5 text-left text-court-ink"
         data-testid="studio-night-card"
         onClick={() => {
           setStudioSeen(latest.id);
@@ -176,30 +176,28 @@ export function StudioNightCard({ latest }: { latest: StudioLatest }) {
         }}
       >
         <CourtLines className="pointer-events-none absolute inset-0 h-full w-full opacity-25" />
-        <span className="relative -mb-5 shrink-0">
-          <StudioHosts size={40} />
-        </span>
-        <span className="relative min-w-0 flex-1">
-          <span className="flex items-center gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-volt">
-              Studio Campetto
-            </span>
-            {!seen && (
-              <span className="rounded-full bg-volt px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.06em] text-volt-ink">
-                Nuova
-              </span>
-            )}
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[150px]">
+          <span className="absolute -bottom-7 right-[62px] w-[64px] -rotate-6">
+            <Presenter who="lei" />
           </span>
-          <span className="block truncate text-[15px] font-semibold leading-snug">
+          <span className="absolute -bottom-3 -right-2 w-[74px] rotate-[7deg]">
+            <Presenter who="lui" />
+          </span>
+        </span>
+        <span className="relative flex min-w-0 flex-1 flex-col items-start pr-[120px]">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-volt">
+            Studio Campetto
+          </span>
+          <span className="max-w-full truncate text-[15px] font-semibold leading-snug">
             La giornata raccontata in studio
           </span>
-          <span className="block truncate text-[12.5px] text-court-ink/75">
+          <span className="max-w-full truncate text-[12.5px] text-court-ink/75">
             Risultati, MVP e giocate · {minutes} min
           </span>
-        </span>
-        <span className="relative flex h-9 shrink-0 items-center gap-1 rounded-full bg-court-ink pl-2.5 pr-3 text-[13px] font-semibold text-court-deep">
-          <IconPlayerPlayFilled size={13} aria-hidden />
-          {seen ? "Rivedi" : "Guarda"}
+          <span className="mt-2 flex h-8 items-center gap-1 rounded-full bg-court-ink pl-2.5 pr-3 text-[13px] font-semibold text-court-deep">
+            <IconPlayerPlayFilled size={13} aria-hidden />
+            {seen ? "Rivedi" : "Guarda"}
+          </span>
         </span>
       </button>
       {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
