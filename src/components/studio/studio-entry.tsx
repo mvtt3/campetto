@@ -1,7 +1,6 @@
 "use client";
 
 import { IconDeviceTv, IconPlayerPlayFilled } from "@tabler/icons-react";
-import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { CourtLines } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
@@ -128,29 +127,31 @@ export function StudioHosts({ size = 92 }: { size?: number }) {
   );
 }
 
-/** In cima alle notizie: la puntata dello Studio Campetto, da aprire quando si vuole. */
 export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
-        className="press relative flex items-center gap-3 overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,#0C1736,#1C3576)] p-3 text-left text-white"
+        className="card press relative flex w-full items-center gap-3 p-3 text-left"
         onClick={() => {
           setStudioSeen(latest.id);
           setOpen(true);
         }}
       >
-        <span className="-mb-3 shrink-0">
-          <StudioHosts size={46} />
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-court-soft text-court">
+          <IconDeviceTv size={19} aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[12px] font-semibold text-volt">Studio Campetto</span>
-          <span className="block text-[14.5px] font-semibold leading-snug">La puntata di {studioDay(latest.day)}</span>
-          <span className="block text-[12.5px] text-white/70">Risultati, MVP e le giocate più belle</span>
+          <span className="block text-[14.5px] font-semibold leading-snug">
+            La puntata di {studioDay(latest.day)}
+          </span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-muted">
+            Studio Campetto: risultati, MVP e le giocate più belle
+          </span>
         </span>
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[#0C1736]">
-          <IconPlayerPlayFilled size={18} aria-hidden />
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-court text-court-ink">
+          <IconPlayerPlayFilled size={15} className="ml-px" aria-hidden />
         </span>
       </button>
       {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
@@ -158,49 +159,44 @@ export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
   );
 }
 
-
-/**
- * La puntata in cima a una serata aperta, in Partite: come la scheda del mese in Home (blu campo,
- * luci gialla e arancio, linee del campo), un po' trasparente. Quando la tendina si apre sale con
- * una molla, i due conduttori spuntano dal basso e un riflesso passa una volta sola.
- */
 export function StudioNightCard({ latest }: { latest: StudioLatest }) {
   const [open, setOpen] = useState(false);
+  const minutes = Math.max(1, Math.round(latest.duration / 60));
   return (
     <>
-      <motion.button
+      <button
         type="button"
-        initial={{ opacity: 0, y: 14, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.06 }}
-        className="studio-night-card press relative flex items-center gap-3 overflow-hidden rounded-[22px] py-3 pl-2 pr-3 text-left text-white"
+        className="press relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] bg-linear-to-br from-court to-court-deep px-3.5 py-3 text-left text-court-ink"
         data-testid="studio-night-card"
         onClick={() => {
           setStudioSeen(latest.id);
           setOpen(true);
         }}
       >
-        <span aria-hidden className="blob hero-drift -right-12 -top-16 h-40 w-40 bg-[radial-gradient(circle,rgb(255_197_49/0.5),transparent_68%)]" />
-        <span aria-hidden className="blob hero-drift -bottom-20 -left-12 h-40 w-40 bg-[radial-gradient(circle,rgb(242_106_27/0.36),transparent_70%)] [animation-delay:-6s]" />
-        <CourtLines className="pointer-events-none absolute inset-0 h-full w-full opacity-35" />
-        <span aria-hidden className="studio-night-shine pointer-events-none absolute inset-y-0 left-0 w-1/3" />
-        <motion.span
-          className="relative -mb-5 shrink-0"
-          initial={{ y: 26, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 220, damping: 18, delay: 0.2 }}
-        >
-          <StudioHosts size={44} />
-        </motion.span>
+        <CourtLines className="pointer-events-none absolute inset-0 h-full w-full opacity-25" />
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[200px] opacity-55">
+          <span className="absolute -bottom-5 right-[104px] w-[80px] -rotate-6">
+            <Presenter who="lei" />
+          </span>
+          <span className="absolute -bottom-7 right-[34px] w-[88px] rotate-[7deg]">
+            <Presenter who="lui" />
+          </span>
+        </span>
         <span className="relative min-w-0 flex-1">
-          <span className="block text-[12px] font-semibold text-volt">Studio Campetto</span>
-          <span className="block truncate text-[15px] font-semibold leading-snug">La puntata della giornata</span>
-          <span className="block truncate text-[12.5px] text-white/75">Risultati, MVP e canestri</span>
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-volt">
+            Studio Campetto
+          </span>
+          <span className="block truncate text-[15px] font-semibold leading-snug">
+            La giornata in studio
+          </span>
+          <span className="block truncate text-[12.5px] text-court-ink/75">
+            Risultati, MVP e giocate · {minutes} min
+          </span>
         </span>
-        <span className="studio-night-play relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-court-deep">
-          <IconPlayerPlayFilled size={18} aria-hidden />
+        <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-court-ink text-court-deep shadow-[0_4px_12px_-4px_rgb(0_0_0/0.35)]">
+          <IconPlayerPlayFilled size={16} className="ml-px" aria-hidden />
         </span>
-      </motion.button>
+      </button>
       {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
     </>
   );
