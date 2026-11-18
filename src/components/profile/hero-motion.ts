@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import { readTour, tourKey } from "@/components/tutorial/model";
 import { createShakeDetector, createTiltTracker } from "@/lib/motion";
 import { createWobble, type Wobble } from "./wobble";
 
@@ -12,11 +13,17 @@ type PermissionApi = { requestPermission?: () => Promise<"granted" | "denied"> }
  * - scuotendolo, il personaggio barcolla.
  * Tutto acceso solo mentre la testata si vede (le schede restano montate quando
  * cambi scheda) e mai con "riduci animazioni" del telefono.
+ *
+ * Con `onHint` (solo nel proprio profilo), la prima volta compare per un attimo il
+ * suggerimento "inclina o scuoti" e intanto la carta luccica da sola, per far vedere
+ * cosa succede. Solo se il telefono ha il sensore, mai durante la guida dell'app,
+ * e sparisce appena il telefono si muove davvero.
  */
 export function useHeroMotion(
   ref: RefObject<HTMLElement | null>,
   /** Cambia quando cambia la testata (un altro giocatore): si riaggancia. */
   key?: string,
+  onHint?: (show: boolean) => void,
 ) {
   useEffect(() => {
     const hero = ref.current;
@@ -33,6 +40,30 @@ export function useHeroMotion(
     let listening = false;
     let wobble: Wobble | null = null;
     let wobbleSvg: SVGSVGElement | null = null;
+    // Il suggerimento della prima volta e la "prova" che fa luccicare la carta da sola.
+    const hintKey = key ? `campetto:motion-hint:${key}` : null;
+    let hint: "off" | "waiting" | "showing" | "done" = "off";
+    let tease: number | null = null;
+    const timers: number[] = [];
+    let sensorSeen = false;
+    const seen = () => {
+      try {
+        if (hintKey) localStorage.setItem(hintKey, "1");
+      } catch {
+        /* ignora */
+      }
+    };
+    if (onHint && hintKey && key) {
+      let already = true;
+      try {
+        already = Boolean(localStorage.getItem(hintKey));
+      } catch {
+        /* senza memoria non si mostra */
+      }
+      const tour = readTour(tourKey(key)).status;
+      if (!already && (tour === "dismissed" || tour === "completed"))
+        hint = "waiting";
+    }
 
     const foil = hero.querySelector<HTMLElement>(".holo-foil > span");
     const glare = hero.querySelector<HTMLElement>(".holo-glare > span");
@@ -57,6 +88,17 @@ export function useHeroMotion(
     const frame = (now: number) => {
       const dt = Math.min(0.033, (now - prev) / 1000 || 0.016);
       prev = now;
+      if (tease !== null) {
+        // Due dondolii, a tempo col telefonino del suggerimento, poi torna dritta.
+        const k = (now - tease) / 1000;
+        if (k < 2) {
+          target.x = Math.sin(k * Math.PI * 2) * 0.6;
+          target.y = -Math.sin(k * Math.PI * 2) * 0.15;
+        } else {
+          tease = null;
+          target.x = target.y = 0;
+        }
+      }
       for (const [p, v] of [
         ["x", "vx"],
         ["y", "vy"],
@@ -71,12 +113,39 @@ export function useHeroMotion(
         Math.abs(cur.y - target.y) < 0.002 &&
         Math.abs(cur.vx) < 0.01 &&
         Math.abs(cur.vy) < 0.01;
-      raf = still ? 0 : requestAnimationFrame(frame);
+      raf = still && tease === null ? 0 : requestAnimationFrame(frame);
     };
     const wake = () => {
       if (raf) return;
       prev = performance.now();
       raf = requestAnimationFrame(frame);
+    };
+
+    const endHint = (moved: boolean) => {
+      if (hint !== "showing") return;
+      hint = "done";
+      timers.forEach((t) => window.clearTimeout(t));
+      if (moved) seen();
+      if (tease !== null) {
+        tease = null;
+        target.x = target.y = 0;
+        wake();
+      }
+      onHint?.(false);
+    };
+    const startHint = () => {
+      if (hint !== "waiting" || !visible || !sensorSeen) return;
+      hint = "showing";
+      timers.push(
+        window.setTimeout(() => {
+          if (hint !== "showing" || !visible) return void endHint(false);
+          seen();
+          onHint?.(true);
+          tease = performance.now();
+          wake();
+        }, 900),
+        window.setTimeout(() => endHint(false), 900 + 2700),
+      );
     };
 
     const onOrientation = (e: DeviceOrientationEvent) => {
@@ -85,6 +154,15 @@ export function useHeroMotion(
       const angle = window.screen?.orientation?.angle ?? 0;
       if (angle !== 0) return;
       const t = tilt.feed(e.beta, e.gamma, e.timeStamp || performance.now());
+      if (!sensorSeen) {
+        sensorSeen = true;
+        startHint();
+      }
+      // Durante il suggerimento la carta la muove la "prova", finché non muovi tu il telefono.
+      if (hint === "showing") {
+        if (Math.hypot(t.x, t.y) < 0.3) return;
+        endHint(true);
+      }
       target.x = t.x;
       target.y = t.y;
       wake();
@@ -99,6 +177,7 @@ export function useHeroMotion(
         raw === lin,
       );
       if (power === null) return;
+      endHint(true);
       const svg = hero.querySelector<SVGSVGElement>(".hero-wobble svg.character");
       if (!svg) return;
       // Il disegno cambia se cambi personaggio: si riaggancia a quello nuovo.
@@ -124,8 +203,11 @@ export function useHeroMotion(
         wake();
       }
     };
-    const update = () =>
+    const update = () => {
       listen(visible && document.visibilityState === "visible");
+      if (visible) startHint();
+      else endHint(false);
+    };
 
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
@@ -146,10 +228,20 @@ export function useHeroMotion(
       void O?.requestPermission?.().catch(() => undefined);
       void M?.requestPermission?.().catch(() => undefined);
     };
+    // Anche Chrome ha requestPermission, ma lì i sensori arrivano senza chiedere:
+    // il permesso serve solo su iPhone e iPad.
+    const ios =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const needsAsk =
-      typeof O?.requestPermission === "function" ||
-      typeof M?.requestPermission === "function";
-    if (needsAsk) hero.addEventListener("click", ask, { capture: true });
+      ios &&
+      (typeof O?.requestPermission === "function" ||
+        typeof M?.requestPermission === "function");
+    if (needsAsk) {
+      hero.addEventListener("click", ask, { capture: true });
+      // Su iPhone il sensore c'è sempre: il suggerimento serve proprio a farlo toccare.
+      sensorSeen = true;
+    }
 
     return () => {
       io.disconnect();
@@ -158,6 +250,8 @@ export function useHeroMotion(
       if (raf) cancelAnimationFrame(raf);
       wobble?.destroy();
       if (needsAsk) hero.removeEventListener("click", ask, { capture: true });
+      timers.forEach((t) => window.clearTimeout(t));
+      if (hint === "showing") onHint?.(false);
     };
-  }, [ref, key]);
+  }, [ref, key, onHint]);
 }

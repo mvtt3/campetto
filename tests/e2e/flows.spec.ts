@@ -1496,6 +1496,10 @@ test("notifiche: se il servizio del telefono non risponde, niente rotellina infi
 test("profilo: inclinando il telefono la carta si muove, scuotendolo il personaggio barcolla e poi si ferma", async ({
   page,
 }) => {
+  // Il suggerimento della prima volta qui non serve: lo prova un test a parte.
+  await page.addInitScript(() => {
+    for (let i = 1; i <= 7; i++) localStorage.setItem(`campetto:motion-hint:p${i}`, "1");
+  });
   await openApp(page, "demo");
   await page.goto("/profilo");
   const hero = page.locator('section[aria-label="Giocatore"]:visible');
@@ -1604,4 +1608,39 @@ test("badge: quello grande si trascina, gira come una moneta e si ferma su una f
   // Si chiude ancora trascinando giù o con il tasto Indietro: la scheda funziona come prima.
   await page.keyboard.press("Escape");
   await expect(medal).toHaveCount(0);
+});
+
+test("profilo: la prima volta compare per un attimo \"inclina o scuoti\", poi mai più", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo");
+  const hero = page.locator('section[aria-label="Giocatore"]:visible');
+  await expect(hero).toBeVisible();
+  const hint = hero.locator(".motion-hint");
+  // Senza sensore (computer) non compare.
+  await page.waitForTimeout(1500);
+  await expect(hint).not.toHaveClass(/motion-hint-on/);
+  // Il telefono ha il sensore: compare, la carta luccica da sola, poi sparisce.
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 40, gamma: 0 }),
+    ),
+  );
+  await expect(hint).toHaveClass(/motion-hint-on/, { timeout: 3000 });
+  await expect(hint).toContainText("Inclina o scuoti");
+  await expect
+    .poll(() => hero.locator(".holo-foil > span").evaluate((el) => Number(getComputedStyle(el).opacity)))
+    .toBeGreaterThan(0.15);
+  await expect(hint).not.toHaveClass(/motion-hint-on/, { timeout: 5000 });
+  // La volta dopo non c'è più.
+  await page.reload();
+  await expect(hero).toBeVisible();
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 40, gamma: 0 }),
+    ),
+  );
+  await page.waitForTimeout(2000);
+  await expect(hint).not.toHaveClass(/motion-hint-on/);
 });

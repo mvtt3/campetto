@@ -146,7 +146,9 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
   );
   // La testata: carta olografica inclinando il telefono, personaggio che barcolla scuotendolo.
   const heroRef = useRef<HTMLElement>(null);
-  useHeroMotion(heroRef, player?.id);
+  // Solo nel proprio profilo, la prima volta: "inclina o scuoti".
+  const [motionHint, setMotionHint] = useState(false);
+  useHeroMotion(heroRef, player?.id, mine ? setMotionHint : undefined);
 
   if (!player) {
     return (
@@ -238,6 +240,31 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
               <path d="M168 32c-30 30-30 106 0 136" />
             </svg>
           </span>
+          {mine && (
+            <span
+              role="status"
+              className={clsx("motion-hint", motionHint && "motion-hint-on")}
+              aria-hidden={!motionHint}
+            >
+              <svg
+                viewBox="0 0 28 24"
+                width="28"
+                height="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M3.5 8.5c-1.4 2-1.4 5 0 7M24.5 8.5c1.4 2 1.4 5 0 7" opacity="0.75" />
+                <g className="motion-hint-phone">
+                  <rect x="9" y="2.5" width="10" height="19" rx="2.6" />
+                  <path d="M12.8 18.3h2.4" />
+                </g>
+              </svg>
+              <span>{motionHint ? "Inclina o scuoti" : ""}</span>
+            </span>
+          )}
           <span aria-hidden className="holo-foil">
             <span />
           </span>
