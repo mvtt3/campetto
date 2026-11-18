@@ -1519,7 +1519,8 @@ test("profilo: inclinando il telefono la carta si muove, scuotendolo il personag
   await expect
     .poll(async () => Number(await foil.evaluate((el) => getComputedStyle(el).opacity)))
     .toBeGreaterThan(0.2);
-  // Scossone: tre colpi avanti e indietro.
+  // Scossone: il telefono fermo per un attimo (come il sensore vero, che manda dati di
+  // continuo), poi tre colpi avanti e indietro.
   await page.evaluate(async () => {
     const send = (x: number) =>
       window.dispatchEvent(
@@ -1529,6 +1530,10 @@ test("profilo: inclinando il telefono la carta si muove, scuotendolo il personag
           interval: 16,
         }),
       );
+    for (let i = 0; i < 20; i++) {
+      send(0);
+      await new Promise((r) => setTimeout(r, 16));
+    }
     for (const x of [26, 0, -26, 0, 26]) {
       send(x);
       await new Promise((r) => setTimeout(r, 110));
@@ -1622,17 +1627,29 @@ test("profilo: la prima volta compare per un attimo \"inclina o scuoti\", poi ma
   await page.waitForTimeout(1500);
   await expect(hint).not.toHaveClass(/motion-hint-on/);
   // Il telefono ha il sensore: compare, la carta luccica da sola, poi sparisce.
-  await page.evaluate(() =>
+  // Il riflesso si misura dentro la pagina a ogni fotogramma, così non sfugge.
+  await page.evaluate(() => {
+    const w = window as unknown as { __foilMax: number };
+    w.__foilMax = 0;
+    const el = document.querySelector<HTMLElement>(
+      'section[aria-label="Giocatore"] .holo-foil > span',
+    );
+    const t0 = performance.now();
+    const look = () => {
+      if (el) w.__foilMax = Math.max(w.__foilMax, Number(getComputedStyle(el).opacity));
+      if (performance.now() - t0 < 6000) requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
     window.dispatchEvent(
       new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 40, gamma: 0 }),
-    ),
-  );
+    );
+  });
   await expect(hint).toHaveClass(/motion-hint-on/, { timeout: 3000 });
   await expect(hint).toContainText("Inclina o scuoti");
-  await expect
-    .poll(() => hero.locator(".holo-foil > span").evaluate((el) => Number(getComputedStyle(el).opacity)))
-    .toBeGreaterThan(0.15);
   await expect(hint).not.toHaveClass(/motion-hint-on/, { timeout: 5000 });
+  expect(
+    await page.evaluate(() => (window as unknown as { __foilMax: number }).__foilMax),
+  ).toBeGreaterThan(0.15);
   // La volta dopo non c'è più.
   await page.reload();
   await expect(hero).toBeVisible();
@@ -1643,4 +1660,58 @@ test("profilo: la prima volta compare per un attimo \"inclina o scuoti\", poi ma
   );
   await page.waitForTimeout(2000);
   await expect(hint).not.toHaveClass(/motion-hint-on/);
+});
+
+test("profilo su un telefono senza giroscopio (Galaxy A05s): la carta si muove e lo scossone funziona", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    for (let i = 1; i <= 7; i++) localStorage.setItem(`campetto:motion-hint:p${i}`, "1");
+  });
+  await openApp(page, "demo");
+  await page.goto("/profilo");
+  const hero = page.locator('section[aria-label="Giocatore"]:visible');
+  await expect(hero).toBeVisible();
+  // Solo l'accelerometro con la gravità, come manda Chrome su quel telefono: niente
+  // "deviceorientation" e niente accelerazione senza gravità.
+  const foilMax = await page.evaluate(async () => {
+    const send = (x: number, y: number, z: number) =>
+      window.dispatchEvent(
+        new DeviceMotionEvent("devicemotion", {
+          accelerationIncludingGravity: { x, y, z },
+          interval: 16,
+        }),
+      );
+    const el = document.querySelector<HTMLElement>(
+      'section[aria-label="Giocatore"] .holo-foil > span',
+    )!;
+    let max = 0;
+    for (let i = 0; i < 50; i++) {
+      send(0, 9.8, 0);
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    // Inclinato verso destra.
+    for (let i = 0; i < 40; i++) {
+      send(-3.2, 9.25, 0);
+      max = Math.max(max, Number(getComputedStyle(el).opacity));
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    return max;
+  });
+  expect(foilMax).toBeGreaterThan(0.15);
+  // Scossone verso lo schermo, sempre solo con la gravità.
+  await page.evaluate(async () => {
+    for (const z of [0, 20, 0, -20, 0, 20, 0]) {
+      window.dispatchEvent(
+        new DeviceMotionEvent("devicemotion", {
+          accelerationIncludingGravity: { x: 0, y: 9.8, z },
+          interval: 16,
+        }),
+      );
+      await new Promise((r) => setTimeout(r, 60));
+    }
+  });
+  const svg = hero.locator(".hero-wobble svg.character");
+  await expect(svg).toHaveAttribute("data-wobbling", "");
+  await expect(svg).not.toHaveAttribute("data-wobbling", "", { timeout: 8000 });
 });

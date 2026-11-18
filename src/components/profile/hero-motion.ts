@@ -2,7 +2,11 @@
 
 import { useEffect, type RefObject } from "react";
 import { readTour, tourKey } from "@/components/tutorial/model";
-import { createShakeDetector, createTiltTracker } from "@/lib/motion";
+import {
+  createShakeDetector,
+  createTiltTracker,
+  gravityAngles,
+} from "@/lib/motion";
 import { createWobble, type Wobble } from "./wobble";
 
 type PermissionApi = { requestPermission?: () => Promise<"granted" | "denied"> };
@@ -148,12 +152,14 @@ export function useHeroMotion(
       );
     };
 
-    const onOrientation = (e: DeviceOrientationEvent) => {
-      if (e.beta == null || e.gamma == null) return;
-      // Solo in verticale: in orizzontale gli assi si scambiano e la carta impazzirebbe.
-      const angle = window.screen?.orientation?.angle ?? 0;
-      if (angle !== 0) return;
-      const t = tilt.feed(e.beta, e.gamma, e.timeStamp || performance.now());
+    // Telefoni senza giroscopio (Galaxy A05s): niente "deviceorientation", l'inclinazione
+    // si ricava dalla gravità dell'accelerometro, ammorbidita.
+    let orientationOk = false;
+    let grav: { x: number; y: number; z: number } | null = null;
+    let listenAt = 0;
+    const upright = () => (window.screen?.orientation?.angle ?? 0) === 0;
+    const applyTilt = (beta: number, gamma: number, ts: number) => {
+      const t = tilt.feed(beta, gamma, ts);
       if (!sensorSeen) {
         sensorSeen = true;
         startHint();
@@ -167,14 +173,40 @@ export function useHeroMotion(
       target.y = t.y;
       wake();
     };
+    const onOrientation = (e: DeviceOrientationEvent) => {
+      if (e.beta == null || e.gamma == null) return;
+      orientationOk = true;
+      // Solo in verticale: in orizzontale gli assi si scambiano e la carta impazzirebbe.
+      if (!upright()) return;
+      applyTilt(e.beta, e.gamma, e.timeStamp || performance.now());
+    };
     const onMotion = (e: DeviceMotionEvent) => {
+      const g = e.accelerationIncludingGravity;
+      if (!orientationOk && g && g.x != null && g.y != null && g.z != null) {
+        grav = grav
+          ? {
+              x: grav.x + (g.x - grav.x) * 0.2,
+              y: grav.y + (g.y - grav.y) * 0.2,
+              z: grav.z + (g.z - grav.z) * 0.2,
+            }
+          : { x: g.x, y: g.y, z: g.z };
+        // Si aspetta un attimo: se il telefono ha il giroscopio, arriva prima quello.
+        if (performance.now() - listenAt > 600 && upright()) {
+          const a = gravityAngles(grav);
+          applyTilt(a.beta, a.gamma, e.timeStamp || performance.now());
+        }
+      }
+      // Lo scossone si legge dall'accelerometro "grezzo" (con la gravità, tolta da noi):
+      // c'è su tutti i telefoni e si comporta uguale. Quello già filtrato da Chrome
+      // su alcuni economici arriva attenuato, o non arriva.
       const lin = e.acceleration;
-      const raw = lin && lin.x != null ? lin : e.accelerationIncludingGravity;
+      const useG = g && g.x != null && g.y != null && g.z != null;
+      const raw = useG ? g : lin;
       if (!raw || raw.x == null || raw.y == null || raw.z == null) return;
       const power = shakes.feed(
         { x: raw.x, y: raw.y, z: raw.z },
         e.timeStamp || performance.now(),
-        raw === lin,
+        !useG,
       );
       if (power === null) return;
       endHint(true);
@@ -193,6 +225,8 @@ export function useHeroMotion(
       if (on === listening) return;
       listening = on;
       if (on) {
+        listenAt = performance.now();
+        grav = null;
         window.addEventListener("deviceorientation", onOrientation);
         window.addEventListener("devicemotion", onMotion);
       } else {

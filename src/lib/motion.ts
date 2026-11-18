@@ -45,13 +45,29 @@ export function createTiltTracker({
 }
 
 /**
+ * L'inclinazione ricavata dalla gravità, per i telefoni senza giroscopio (come il
+ * Galaxy A05s), dove Chrome non manda "deviceorientation": stessi angoli e stessi
+ * versi di beta (avanti-indietro) e gamma (destra-sinistra).
+ */
+export function gravityAngles(g: { x: number; y: number; z: number }): {
+  beta: number;
+  gamma: number;
+} {
+  const deg = 180 / Math.PI;
+  return {
+    beta: Math.atan2(g.y, g.z) * deg,
+    gamma: Math.atan2(-g.x, Math.hypot(g.y, g.z)) * deg,
+  };
+}
+
+/**
  * Lo scossone: almeno tre colpi forti in meno di un secondo, con la direzione che
  * cambia. La gravità si toglie da sola, così inclinare o camminare non conta.
  */
 export function createShakeDetector({
-  threshold = 13,
+  threshold = 11,
   hits = 3,
-  windowMs = 900,
+  windowMs = 1000,
   cooldownMs = 1400,
 }: {
   threshold?: number;
@@ -59,6 +75,7 @@ export function createShakeDetector({
   windowMs?: number;
   cooldownMs?: number;
 } = {}) {
+  // Valori più bassi di così li fa anche chi cammina col telefono in mano.
   let g: [number, number, number] | null = null;
   let peaks: { t: number; sign: number }[] = [];
   let quietUntil = 0;
@@ -85,8 +102,9 @@ export function createShakeDetector({
       }
       const m = Math.hypot(x, y, z);
       if (t < quietUntil || m < threshold) return null;
-      // Il segno dell'asse più forte: un colpo vale solo se va dall'altra parte del precedente.
-      const axis = Math.abs(x) >= Math.abs(y) ? x : y;
+      // Il segno dell'asse più forte (anche verso lo schermo): un colpo vale solo se va
+      // dall'altra parte del precedente.
+      const axis = [x, y, z].reduce((a, b) => (Math.abs(b) > Math.abs(a) ? b : a));
       const sign = Math.sign(axis) || 1;
       peaks = peaks.filter((p) => t - p.t < windowMs);
       const prev = peaks[peaks.length - 1];

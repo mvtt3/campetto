@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createShakeDetector, createTiltTracker } from "@/lib/motion";
+import { createShakeDetector, createTiltTracker, gravityAngles } from "@/lib/motion";
 
 describe("inclinazione del telefono", () => {
   it("parte da dritta e si muove quando inclini", () => {
@@ -71,5 +71,26 @@ describe("scossone", () => {
     expect(hit(25)).not.toBeNull();
     expect(hit(-25)).toBeNull();
     expect(hit(25)).toBeNull();
+  });
+});
+
+describe("telefoni senza giroscopio: inclinazione dalla gravità", () => {
+  it("in piedi davanti a te è dritto, inclinato a destra dà gamma positivo", () => {
+    const up = gravityAngles({ x: 0, y: 9.8, z: 0 });
+    expect(up.beta).toBeCloseTo(90, 0);
+    expect(up.gamma).toBeCloseTo(0, 5);
+    // Lato destro più in basso: la gravità "letta" punta un po' verso sinistra (x negativa).
+    const right = gravityAngles({ x: -2.5, y: 9.5, z: 0 });
+    expect(right.gamma).toBeGreaterThan(10);
+    // Appoggiato sul tavolo: beta vicino a zero.
+    expect(gravityAngles({ x: 0, y: 0, z: 9.8 }).beta).toBeCloseTo(0, 5);
+  });
+
+  it("lo scossone si sente anche solo con l'accelerometro, verso lo schermo", () => {
+    const d = createShakeDetector();
+    let t = 0;
+    for (let i = 0; i < 10; i++) d.feed({ x: 0, y: 9.8, z: 0 }, (t += 16));
+    const out = [20, -20, 20].map((z, i) => d.feed({ x: 0, y: 9.8, z }, (t += 120 * (i + 1))));
+    expect(out[2]).not.toBeNull();
   });
 });
