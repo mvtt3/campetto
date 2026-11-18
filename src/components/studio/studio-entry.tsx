@@ -176,11 +176,11 @@ export function StudioNightCard({ latest }: { latest: StudioLatest }) {
         }}
       >
         <CourtLines className="pointer-events-none absolute inset-0 h-full w-full opacity-25" />
-        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[200px] opacity-60">
-          <span className="absolute -bottom-5 right-[74px] w-[80px] -rotate-6">
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[200px] opacity-55">
+          <span className="absolute -bottom-5 right-[104px] w-[80px] -rotate-6">
             <Presenter who="lei" />
           </span>
-          <span className="absolute -bottom-7 right-[4px] w-[88px] rotate-[7deg]">
+          <span className="absolute -bottom-7 right-[34px] w-[88px] rotate-[7deg]">
             <Presenter who="lui" />
           </span>
         </span>
