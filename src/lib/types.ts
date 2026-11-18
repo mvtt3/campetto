@@ -283,6 +283,11 @@ export interface Match {
    * classifiche, MVP, record e badge (in `players` ci sono solo quelli del gruppo).
    */
   guests?: MatchPlayer[];
+  /**
+   * L'MVP scelto dall'amministratore per questa partita, al posto di quello calcolato: vale
+   * ovunque (scheda, classifiche, badge), purché abbia giocato con il tabellino.
+   */
+  mvpId?: string | null;
 }
 
 export type ResponseKind = "si" | "forse" | "no";

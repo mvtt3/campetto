@@ -28,7 +28,8 @@ FPS = 30
 W, H = 720, 960                 # 3:4, largo quanto lo schermo di un telefono (390 pt × ~1,85)
 SRC_W, SRC_H = 1440, 810        # i fotogrammi si leggono a questa misura: il ritaglio 3:4 è largo 607 px
 POST = 2.2                      # secondi dopo il rilascio: la palla entra e si vede la retina
-CUT = 0.0                       # stacco netto tra un'azione e l'altra (le dissolvenze le fa la grafica sopra)
+CUT = 0.0                       # le azioni sono contigue: tra l'una e l'altra c'è la dissolvenza di XF fotogrammi
+XF = 8                          # fotogrammi di dissolvenza dall'azione di prima (~0,27 s)
 
 # Il misuratore si disegna con le funzioni del maxischermo, ma alla scala di questo video.
 muro.W, muro.H = W, H
@@ -104,11 +105,16 @@ def build(show_path):
         # Lo spazio prima di un'azione (l'attimo tra il rientro dallo studio e la prima battuta) si
         # riempie con l'azione stessa che parte un po' prima: mai un fotogramma nero o quello fermo
         # dell'azione precedente.
-        pre = min(max(0, want_start - written), int(FPS * 1.5), int(src_from * FPS))
+        gap = want_start - written
+        pre = min(max(0, gap), int(FPS * 1.5), int(src_from * FPS))
         while written < want_start - pre:
             enc.stdin.write(last.tobytes() if written else np.zeros((H, W, 3), np.uint8).tobytes())
             written += 1
         poster = None
+        # Dissolvenza dall'azione di prima (un quarto di secondo): mai uno stacco secco tra due video.
+        # Non all'inizio di un blocco (dopo lo stacco in studio): lì il video entra già in dissolvenza.
+        prev_last = last.astype(np.float32) if (i > 0 and written and gap <= 2) else None
+        blended = 0
         # L'ultima azione di un blocco continua per un secondo oltre la sua durata: tra la fine della
         # battuta e il ritorno in studio il video va avanti, invece di fermarsi sull'ultimo fotogramma.
         nxt = top["items"][i + 1]["t"] if i + 1 < len(top["items"]) else None
@@ -154,11 +160,16 @@ def build(show_path):
                     sx = (clip["shot"]["x"] * SRC_W - wx0) * wk
                     sy = clip["shot"]["y"] * SRC_H * wk + wy
                 x = sx + 13 * muro.PX
-                y = min(H - 50 * muro.PX, max(8 * muro.PX, sy - 44 * muro.PX))
+                y = min(H - 58 * muro.PX, max(8 * muro.PX, sy - 48 * muro.PX))
                 img.paste(m.convert("RGB"), (int(round(x - pad)), int(round(y - pad))), m.getchannel("A"))
                 if poster is None and st == "green" and since >= 0.12:
                     poster = img.copy()
             last = np.asarray(img, dtype=np.uint8)
+            if prev_last is not None and blended < XF:
+                u = (blended + 1) / (XF + 1)
+                u = u * u * (3 - 2 * u)
+                last = (prev_last * (1 - u) + last.astype(np.float32) * u).astype(np.uint8)
+                blended += 1
             enc.stdin.write(last.tobytes())
             written += 1
         while written < want_start + n:  # il sorgente finiva prima: tiene l'ultimo fotogramma

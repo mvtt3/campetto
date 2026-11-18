@@ -99,6 +99,7 @@ export function mapMatch(r: any): Match {
     createdAt: r.created_at,
     players,
     events,
+    mvpId: r.mvp_player_id ?? null,
   };
 }
 

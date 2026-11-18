@@ -823,6 +823,63 @@ function Body({ screen }: { screen: StudioScreen }) {
       // I canestri vanno a tutto schermo: li mostra il player.
       return <CourtBg />;
 
+    case "rimbalzi": {
+      const rows = [...screen.rows].sort((a, b) => b.off + b.def - (a.off + a.def) || b.off - a.off);
+      const max = Math.max(1, ...rows.map((r) => r.off + r.def));
+      return (
+        <div className="absolute inset-0 flex flex-col bg-[#FFFAF0] px-4 pb-4 pt-4 text-[#1d1a16]">
+          <Chip tone="ink" icon={IconBallBasketball}>
+            {screen.kicker}
+          </Chip>
+          <p className="studio-in display mt-2 text-[21px] leading-[1.1]" style={at(0.1)}>
+            {screen.title}
+          </p>
+          <div className="studio-in mt-2 flex items-center gap-3 text-[11.5px] font-semibold text-[#1d1a16]/60" style={at(0.2)}>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-volt ring-1 ring-[#1d1a16]/30" aria-hidden />
+              In attacco
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-court" aria-hidden />
+              In difesa
+            </span>
+          </div>
+          <ul className="mt-2 flex flex-1 flex-col justify-around">
+            {rows.map((r, i) => {
+              const tot = r.off + r.def;
+              const top = i === 0;
+              return (
+                <li key={r.playerId} className="studio-in" style={at(0.3 + i * 0.15)}>
+                  <div className="flex items-center gap-2">
+                    <Avatar player={player(r.playerId)} size={24} href={false} ring="none" />
+                    <span className="min-w-0 flex-1 truncate text-[14px] font-bold">{name(r.playerId)}</span>
+                    <span className="tnum text-[12px] font-medium text-[#1d1a16]/55">
+                      {r.off} + {r.def}
+                    </span>
+                    <span className={clsx("score w-10 text-right text-[20px]", top ? "text-ball" : "text-[#1d1a16]")}>
+                      <Count to={tot} d={0.45 + i * 0.15} />
+                    </span>
+                  </div>
+                  {/* La barra: prima i rimbalzi in attacco (giallo), poi quelli in difesa (blu). */}
+                  <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-[#F2E8D5]">
+                    <span className="studio-grow flex h-full" style={{ ...at(0.45 + i * 0.15), width: `${(tot / max) * 100}%` }}>
+                      <span className="block h-full bg-volt" style={{ flexGrow: r.off }} />
+                      <span className="block h-full bg-court" style={{ flexGrow: r.def }} />
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {screen.note && (
+            <p className="studio-in mt-2 text-[11.5px] font-medium text-[#1d1a16]/55" style={at(1.3)}>
+              {screen.note}
+            </p>
+          )}
+        </div>
+      );
+    }
+
     case "infortunio": {
       // Si capisce al volo: la croce bianca su rosso (come nelle app della salute), il battito che
       // scorre dietro al giocatore e, in fondo, l'augurio.

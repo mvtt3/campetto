@@ -12,8 +12,13 @@ export interface MatchMvp {
  * (punti, rimbalzi, assist, rubate, stoppate, meno tiri sbagliati e palle perse).
  * A pari valutazione chi ha segnato di più, poi chi ha perso meno palloni.
  * Serve il tabellino dei vincitori: senza numeri, niente MVP.
+ * Se l'amministratore ne ha scelto uno (mvpId) vale quello, purché abbia giocato con i numeri.
  */
 export function matchMvp(m: Match): MatchMvp | null {
+  if (m.mvpId) {
+    const chosen = m.players.find((p) => p.playerId === m.mvpId && p.hasStats);
+    if (chosen) return { playerId: chosen.playerId, eff: efficiency(normalizeBox(chosen.box)) };
+  }
   const w = winnerOf(m);
   if (!w) return null;
   const winners = m.players.filter((p) => p.team === w && p.hasStats);

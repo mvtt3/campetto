@@ -18,6 +18,7 @@ import { IconEye, IconWifiOff } from "@tabler/icons-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { BadgeCelebration } from "@/components/badge-celebration";
 import { Mascot } from "@/components/mascot";
+import { useIntroDone } from "@/components/intro";
 import { Onboarding } from "@/components/onboarding";
 import { HomeScreen } from "@/components/screens/home-screen";
 import { MatchesScreen } from "@/components/screens/matches-screen";
@@ -163,7 +164,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [path]);
   const appReady =
     auth.status === "ready" && !!me?.nickname && !(adminOnly && !me.isAdmin);
-  const [kept, ensureTabs] = useKeptTabs(activeTab, appReady);
+  // Le altre schede si preparano solo finita l'apertura: prima il telefono pensa solo a
+  // Spicchio che tira (sui telefoni economici l'animazione scattava mentre si costruivano).
+  const introDone = useIntroDone();
+  const [kept, ensureTabs] = useKeptTabs(activeTab, appReady && introDone);
   const pager = useRef<HTMLDivElement>(null);
   // Una scheda appena preparata in sottofondo si impagina subito, invisibile: la prima
   // volta che la apri resta solo da disegnarla.

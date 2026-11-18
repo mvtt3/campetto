@@ -42,7 +42,10 @@ export function fromExport(raw: any): LocalData {
   const admin = players.find((p) => p.isAdmin) ?? players[0];
   return {
     players,
-    matches: raw.matches.map(mapMatch),
+    // Come il backend vero (order played_at desc): l'esportazione le ha dalla più vecchia.
+    matches: raw.matches
+      .map(mapMatch)
+      .sort((a: Match, b: Match) => Date.parse(b.playedAt) - Date.parse(a.playedAt)),
     proposals: (raw.proposals ?? []).map(mapProposal),
     news: (raw.news ?? []).map((r: any) => ({
       id: r.id,

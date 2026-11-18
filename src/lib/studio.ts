@@ -8,7 +8,7 @@
  * avanti di 10 secondi come un reel.
  */
 
-export type StudioCam = "ampio" | "coppia" | "trio" | "lui" | "lei" | "ospite" | "schermo" | "replay" | "top" | "fine";
+export type StudioCam = "ampio" | "coppia" | "trio" | "lui" | "lei" | "ospite" | "visita" | "schermo" | "replay" | "top" | "fine";
 /** I due conduttori. */
 export type StudioHost = "lui" | "lei";
 /** Chi parla: i conduttori o l'ospite della puntata. */
@@ -160,6 +160,17 @@ export type StudioScreen =
    * I migliori della giornata (canestri e assist): sul maxischermo la locandina con i candidati;
    * a tutto schermo (inquadratura "top") le azioni vere, una alla volta, dal video show.top.
    */
+  /**
+   * I rimbalzi della giornata: una barra per giocatore, divisa tra quelli presi in attacco e
+   * quelli in difesa, dal più alto al più basso.
+   */
+  | {
+      kind: "rimbalzi";
+      kicker: string;
+      title: string;
+      note?: string;
+      rows: { playerId: Id; off: number; def: number }[];
+    }
   /** Un infortunio durante la giornata: il giocatore, il segno del pronto soccorso e un augurio. */
   | { kind: "infortunio"; playerId: Id; kicker: string; when: string; wish: string }
   | { kind: "top"; kicker: string; title: string; items: Id[]; /** La riga in fondo, se non è la solita ("" la toglie). */ note?: string };
@@ -227,6 +238,30 @@ export interface StudioGuest {
   exit: number;
 }
 
+/**
+ * Una comparsa: un giocatore entra in studio senza dire niente mentre c'è l'ospite, gli si mette
+ * accanto, gli porge qualcosa, se lo riprende e se ne va. Tutti lo guardano; il conduttore di
+ * destra si sposta per fargli posto.
+ */
+export interface StudioVisit {
+  playerId: Id;
+  /** Entra da destra; arriva accanto all'ospite. */
+  enter: number;
+  stop: number;
+  /** Allunga il braccio; lo ritira. */
+  offer: number;
+  back: number;
+  /** Si gira e va; è uscito. */
+  leave: number;
+  exit: number;
+  /** Quando l'ospite fa di no. */
+  refuse?: number;
+  /** Gli occhi: "sonno" = mezzi chiusi e arrossati. */
+  eyes?: "sonno";
+  /** Cosa tiene in mano. */
+  hand?: "rollata";
+}
+
 export interface StudioShow {
   v: 2;
   id: string;
@@ -251,6 +286,8 @@ export interface StudioShow {
   lines: StudioLine[];
   props: { t: number; who: StudioHost; act: "foglio" }[];
   guest?: StudioGuest | null;
+  /** Una comparsa che passa dallo studio mentre c'è l'ospite (vedi StudioVisit). */
+  visit?: StudioVisit | null;
   /**
    * Le azioni sul maxischermo mentre si parla: un solo video piccolo, già tagliato per lo schermo e
    * con il misuratore di tiro disegnato dentro i fotogrammi (scripts/studio-muro.py). Parte al
@@ -387,6 +424,43 @@ export function guestAt(show: Pick<StudioShow, "guest">, t: number): { on: boole
   return { on: true, x: GUEST_FROM * u * u, seat: 0, apart: ease(apart), walk: (t - g.rise) * 2.6, dir: 1 };
 }
 
+/** Dove si ferma la comparsa (centro, px dello studio), quanto sta più in alto (è in piedi) e da dove entra. */
+export const VISIT_X = 262;
+export const VISIT_UP = 50;
+const VISIT_FROM = 236;
+/**
+ * Per fargli posto: di quanto si sposta il conduttore di destra (a destra), l'ospite e la
+ * conduttrice (a sinistra), in px dello studio quando room = 1.
+ */
+export const VISIT_ROOM = { lui: 50, ospite: -26, lei: -12 };
+
+/**
+ * La comparsa al tempo t: x rispetto al suo posto (0 = accanto all'ospite, positivo = più a
+ * destra), walk la fase del passo, reach quanto ha allungato il braccio (0-1), room quanto si è
+ * spostato il conduttore di destra (0-1), shake di quanto scuote la testa l'ospite (gradi).
+ */
+export function visitAt(show: Pick<StudioShow, "visit">, t: number): { on: boolean; x: number; walk: number; reach: number; room: number; shake: number } {
+  const v = show.visit;
+  const off = { on: false, x: VISIT_FROM, walk: 0, reach: 0, room: 0, shake: 0 };
+  if (!v || t < v.enter || t > v.exit) return off;
+  let x = 0;
+  let walk = 0;
+  if (t < v.stop) {
+    const u = clamp01((t - v.enter) / (v.stop - v.enter));
+    x = VISIT_FROM * Math.pow(1 - u, 2);
+    walk = (t - v.enter) * 2.4;
+  } else if (t > v.leave) {
+    const u = clamp01((t - v.leave) / (v.exit - v.leave));
+    x = VISIT_FROM * u * u;
+    walk = (t - v.leave) * 2.4;
+  }
+  const reach = t < v.offer ? 0 : t < v.back ? ease(clamp01((t - v.offer) / 0.6)) : 1 - ease(clamp01((t - v.back) / 0.5));
+  const room = Math.min(ease(clamp01((t - (v.stop - 1.4)) / 1.1)), 1 - ease(clamp01((t - (v.leave + 0.4)) / 1.1)));
+  const r = v.refuse ?? -9;
+  const shake = t > r && t < r + 0.9 ? Math.sin((t - r) * 21) * 4 * (1 - (t - r) / 0.9) : 0;
+  return { on: true, x, walk, reach, room, shake };
+}
+
 /** Dove punta la telecamera: un punto dello studio che va al centro, e quanto zoom. */
 // vy: dove cade il punto nello schermo del telefono. Tutto sta tra la parte alta (~80)
 // e i sottotitoli in basso (~600), così niente finisce sotto le scritte.
@@ -398,6 +472,8 @@ const CAMS: Record<WorldCam, { fx: number; fy: number; s: number; vy: number }> 
   lei: { fx: 112, fy: 505, s: 1.55, vy: 340 },
   lui: { fx: 278, fy: 505, s: 1.55, vy: 340 },
   ospite: { fx: 195, fy: 505, s: 1.55, vy: 340 },
+  /** L'ospite e la comparsa insieme, da vicino (l'ospite si è spostato un po' a sinistra). */
+  visita: { fx: 220, fy: 515, s: 1.42, vy: 360 },
   schermo: {
     fx: SCREEN.x + SCREEN.w / 2,
     fy: SCREEN.y + SCREEN.h / 2,

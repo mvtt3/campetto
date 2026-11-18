@@ -116,7 +116,7 @@ SS = 4  # disegno a 4× e poi rimpicciolisco: bordi morbidi
 def draw_meter(state, fill, fade, since):
     """Il misuratore su un riquadro trasparente (a 1×), con il punto d'aggancio in alto a sinistra a (PAD, PAD)."""
     pad = 34
-    mw, mh = 10 * PX, 42 * PX
+    mw, mh = 12 * PX, 50 * PX  # un po' più grande: si deve vedere bene anche sul telefono
     cw, ch = int(mw + 2 * pad), int(mh + 2 * pad)
     big = Image.new("RGBA", (cw * SS, ch * SS), (0, 0, 0, 0))
     green = state == "green"

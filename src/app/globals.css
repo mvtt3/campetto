@@ -662,14 +662,17 @@ a,
   left: 50%;
   top: 46%;
   z-index: -1;
-  width: 220vmax;
-  height: 220vmax;
-  margin: -110vmax 0 0 -110vmax;
+  /* Solo quanto si vede (la maschera spegne i raggi a metà schermo): prima era un quadrato di
+     220vmax, quasi cinque volte più grande da disegnare e far girare, e sui telefoni economici
+     l'apertura scattava. */
+  width: 100vmax;
+  height: 100vmax;
+  margin: -50vmax 0 0 -50vmax;
   background: repeating-conic-gradient(
     rgb(255 250 240 / 0.2) 0deg 7deg,
     transparent 7deg 18deg
   );
-  mask-image: radial-gradient(circle, #000 0%, transparent 32%);
+  mask-image: radial-gradient(circle closest-side, #000 0%, transparent 100%);
   will-change: transform;
   animation:
     intro-fade 0.8s ease-out both,
@@ -704,15 +707,15 @@ a,
 html[data-intro="off"] .intro {
   display: none;
 }
+/* L'uscita: si dissolve allontanandosi (solo opacità e scala, che il telefono anima da sé anche
+   mentre l'app sotto si sta disegnando; il cerchio che si chiudeva lì scattava). */
 .intro-leave {
-  animation: intro-leave 0.42s cubic-bezier(0.6, 0, 0.8, 0.2) both;
+  animation: intro-leave 0.42s cubic-bezier(0.5, 0, 0.75, 0) both;
 }
 @keyframes intro-leave {
-  from {
-    clip-path: circle(120% at 50% 50%);
-  }
   to {
-    clip-path: circle(0% at 50% 50%);
+    opacity: 0;
+    transform: scale(1.12);
   }
 }
 .intro-title {
@@ -3504,3 +3507,45 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
   }
 }
 
+/* La comparsa dello studio: il braccio che porge gira attorno alla spalla (--reach 0-1). */
+/* Fumo e brace della comparsa: fermi finché non entra in scena. */
+.studio-visit:not([data-on="1"]) .studio-smoke,
+.studio-visit:not([data-on="1"]) .studio-ember {
+  animation: none;
+}
+.character-reach {
+  transform-box: view-box;
+  transform-origin: 26px 81px;
+  transform: rotate(calc(var(--reach, 0) * 43deg));
+}
+/* Il fumo sale sempre dritto: si toglie la rotazione del braccio. */
+.studio-smoke-up {
+  transform-box: view-box;
+  transform-origin: -8.9px 129.3px;
+  transform: rotate(calc(var(--reach, 0) * -43deg));
+}
+.studio-smoke {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: studio-smoke 2.7s ease-out infinite;
+}
+.studio-smoke-b {
+  animation-name: studio-smoke-b;
+}
+@keyframes studio-smoke {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  15% { opacity: 0.85; }
+  100% { transform: translate(-10px, -62px) scale(3.2); opacity: 0; }
+}
+@keyframes studio-smoke-b {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  15% { opacity: 0.8; }
+  100% { transform: translate(6px, -56px) scale(2.8); opacity: 0; }
+}
+.studio-ember {
+  animation: studio-ember 1.3s ease-in-out infinite;
+}
+@keyframes studio-ember {
+  50% { fill: #ff4d12; }
+}

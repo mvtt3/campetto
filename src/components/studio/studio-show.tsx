@@ -38,7 +38,12 @@ import {
   type StudioShow,
   captionZoneAt,
   topAt,
+  visitAt,
+  VISIT_ROOM,
+  VISIT_UP,
+  VISIT_X,
   votesOf,
+  type StudioVisit,
 } from "@/lib/studio";
 import { KIT } from "@/components/avatar-presets";
 import { useData } from "@/lib/data/provider";
@@ -295,6 +300,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   );
   const videoBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestBox = useRef<HTMLDivElement>(null);
+  const visitBox = useRef<HTMLDivElement>(null);
+  const visitSmoke = useRef<HTMLDivElement>(null);
   const guestChair = useRef<HTMLDivElement>(null);
   // Il terzo microfono: compare quando l'ospite si siede e sparisce quando si alza.
   const guestMic = useRef<HTMLDivElement>(null);
@@ -359,9 +366,11 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       view.current = { w, h };
       const r = root.current;
       if (r && vv) {
-        r.style.top = `${vv.offsetTop}px`;
-        r.style.height = `${h}px`;
-        r.style.bottom = "auto";
+        const top = `${vv.offsetTop}px`;
+        const hh = `${h}px`;
+        if (r.style.top !== top) r.style.top = top;
+        if (r.style.height !== hh) r.style.height = hh;
+        if (r.style.bottom !== "auto") r.style.bottom = "auto";
       }
       setK(Math.min(w / STAGE.w, h / STAGE.h) * 1.0001);
     };
@@ -389,10 +398,54 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     return () => window.clearTimeout(chromeTimer.current);
   }, []);
 
+  // L'orologio della puntata. L'audio comanda, ma il suo currentTime sul telefono avanza a scatti
+  // (lo stesso valore per più fotogrammi, poi un salto): usato così com'è, tutto andava a scatti.
+  // Qui il tempo scorre liscio con performance.now() e si riallinea all'audio piano piano a ogni suo
+  // nuovo valore; se l'audio salta (seek) ci si rimette subito, se si blocca (rete) ci si ferma con lui.
+  const sync = useRef({ ok: false, base: 0, at: 0, last: -1, lastAt: 0, out: 0 });
   const now = useCallback(() => {
     const c = clock.current;
     const a = audio.current;
-    if (a && c.audioOk && !a.paused && a.readyState >= 2) return a.currentTime;
+    const s = sync.current;
+    if (a && c.audioOk && !a.paused && a.readyState >= 2) {
+      const p = performance.now();
+      const at = a.currentTime;
+      if (!s.ok) {
+        s.ok = true;
+        s.base = at;
+        s.at = p;
+        s.last = at;
+        s.lastAt = p;
+        s.out = at;
+        return at;
+      }
+      let t = s.base + (p - s.at) / 1000;
+      if (at !== s.last) {
+        s.last = at;
+        s.lastAt = p;
+        const drift = at - t;
+        if (Math.abs(drift) > 0.25) {
+          s.base = at;
+          s.at = p;
+          s.out = at;
+          return at;
+        }
+        s.base += drift * 0.08;
+        t += drift * 0.08;
+      } else if (p - s.lastAt > 600) {
+        // L'audio è fermo (sta caricando): si aspetta lì.
+        s.base = at;
+        s.at = p;
+        t = at;
+        s.out = at;
+        return at;
+      }
+      // Mai indietro di un pelo per la correzione: si resta fermi un fotogramma, non si torna.
+      if (t < s.out && s.out - t < 0.05) t = s.out;
+      s.out = t;
+      return t;
+    }
+    s.ok = false;
     return c.running ? c.t + (performance.now() - c.at) / 1000 : c.t;
   }, []);
 
@@ -453,6 +506,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       voteArmed.current = votes.map((v) => t < v.t);
       duelArmed.current = duels.map((d) => t < d.t);
       if (audio.current) audio.current.currentTime = t;
+      sync.current.ok = false;
       const s = screenAt(show, t);
       setScr({ ...s, el: t - s.since });
       setFullEl(t - s.since);
@@ -533,6 +587,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
 
       const line = lineAt(show, t);
       const g = guestAt(show, t);
+      const v = visitAt(show, t);
       // Conduttori e ospite 30 volte al secondo (la bocca ha 30 valori al secondo): metà del
       // lavoro degli stili, a occhio non cambia niente.
       const odd = (tickN++ & 1) === 1;
@@ -541,9 +596,14 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         if (!box) continue;
         const sm = smooth.current[who];
         sm.mouth += (mouthAt(line, who, t) - sm.mouth) * 0.55;
-        sm.look += (lookAt(line, who, t, g.on && g.seat > 0.5) - sm.look) * 0.14;
-        // Con l'ospite i conduttori si spostano un po' ai lati per fargli posto.
-        const dx = `translateX(${((who === "lui" ? 1 : -1) * GUEST_SPREAD * g.apart).toFixed(2)}px)`;
+        // Con l'ospite i conduttori si spostano un po' ai lati per fargli posto; con la comparsa
+        // quello di destra si sposta ancora un po'.
+        const shift = (who === "lui" ? 1 : -1) * GUEST_SPREAD * g.apart + VISIT_ROOM[who] * v.room;
+        // Quando passa la comparsa la guardano tutti: la seguono con lo sguardo finché non esce.
+        const hostX = (who === "lui" ? 278 : 112) + shift;
+        const look = v.on ? Math.max(-1, Math.min(1, (VISIT_X + v.x - hostX) / 45)) : lookAt(line, who, t, g.on && g.seat > 0.5);
+        sm.look += (look - sm.look) * 0.14;
+        const dx = `translateX(${shift.toFixed(2)}px)`;
         const listening = line && line.who !== who;
         // Si scrive solo sui pezzi che si muovono, e solo quando cambiano (a passi piccoli ma
         // visibili): così il telefono ricalcola e ridisegna pochissimo a ogni fotogramma.
@@ -574,23 +634,34 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       }
       // L'ospite: entra camminando con la sua sedia, si siede al centro, parla, saluta ed esce.
       const gb = guestBox.current;
-      if (gb && odd) {
+      const gVis = g.on ? "visible" : "hidden";
+      if (gb && odd && gb.style.visibility !== gVis) {
+        gb.style.visibility = gVis;
+        const ch0 = guestChair.current;
+        if (ch0) ch0.style.visibility = gVis;
+        if (!g.on && guestMic.current) guestMic.current.style.visibility = "hidden";
+      }
+      if (gb && odd && g.on) {
         const gs = smooth.current.ospite;
         gs.mouth += (mouthAt(line, "ospite", t) - gs.mouth) * 0.55;
         const bob = g.walk ? -Math.abs(Math.sin(g.walk * Math.PI)) * 7 : 0;
-        const tilt = g.walk ? Math.sin(g.walk * Math.PI) * 2.5 : 0;
+        // Quando fa di no, scuote la testa (e un po' le spalle).
+        const tilt = (g.walk ? Math.sin(g.walk * Math.PI) * 2.5 : 0) + v.shake;
         const talk = line?.who === "ospite" ? Math.sin(t * 9) * 0.6 : 0;
-        if (gb.style.visibility !== (g.on ? "visible" : "hidden")) gb.style.visibility = g.on ? "visible" : "hidden";
-        gb.style.transform = `translate3d(${g.x.toFixed(1)}px, ${((1 - g.seat) * -30 + bob + talk).toFixed(1)}px, 0) rotate(${tilt.toFixed(2)}deg)`;
+        // Quando arriva la comparsa l'ospite si sposta un po' a sinistra (sedia e microfono con lui).
+        const gShift = VISIT_ROOM.ospite * v.room;
+        gb.style.transform = `translate3d(${(g.x + gShift).toFixed(1)}px, ${((1 - g.seat) * -30 + bob + talk).toFixed(1)}px, 0) rotate(${tilt.toFixed(2)}deg)`;
         put(gb.querySelector(".studio-guest-mouth"), "transform", `scaleY(${gs.mouth.toFixed(2)})`);
-        gb.dataset.walk = g.walk ? "1" : "0";
-        gb.dataset.seat = g.seat > 0.5 ? "1" : "0";
+        const gw = g.walk ? "1" : "0";
+        if (gb.dataset.walk !== gw) gb.dataset.walk = gw;
+        const gse = g.seat > 0.5 ? "1" : "0";
+        if (gb.dataset.seat !== gse) gb.dataset.seat = gse;
         const gm = guestMic.current;
         if (gm) {
           // Spunta dal tavolo con un piccolo rimbalzo mentre si siede; si ritira quando si alza.
           const u = g.on ? Math.min(1, Math.max(0, (g.seat - 0.25) / 0.75)) : 0;
           const pop = u <= 0 ? 0 : 1 + 2.2 * Math.pow(u - 1, 3) + 1.2 * Math.pow(u - 1, 2);
-          const tr = `scale(${pop.toFixed(3)})`;
+          const tr = `translateX(${gShift.toFixed(1)}px) scale(${pop.toFixed(3)})`;
           if (gm.style.transform !== tr) gm.style.transform = tr;
           const vis = pop > 0.01 ? "visible" : "hidden";
           if (gm.style.visibility !== vis) gm.style.visibility = vis;
@@ -600,8 +671,30 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         if (ch) {
           const trail = g.dir === -1 ? 70 : g.dir === 1 ? -70 : 0;
           const settle = g.dir === 0 && g.seat < 1 && t < (show.guest?.sit ?? 0) ? 70 * (1 - g.seat) : 0;
-          ch.style.visibility = g.on ? "visible" : "hidden";
-          ch.style.transform = `translate3d(${(g.x + trail + settle).toFixed(1)}px, 0, 0)`;
+          const chT = `translate3d(${(g.x + trail + settle + gShift).toFixed(1)}px, 0, 0)`;
+          if (ch.style.transform !== chT) ch.style.transform = chT;
+        }
+      }
+      // La comparsa: entra camminando, si ferma accanto all'ospite dondolando piano, allunga il
+      // braccio, lo ritira ed esce.
+      // Il fumo (dietro l'ospite) si muove esattamente come lei.
+      if (odd) {
+        const vis = v.on ? "visible" : "hidden";
+        const bob = v.walk ? -Math.abs(Math.sin(v.walk * Math.PI)) * 7 : 0;
+        const sway = v.walk ? Math.sin(v.walk * Math.PI) * 2.5 : Math.sin(t * 1.25) * 1.6;
+        const walking = v.walk ? "1" : "0";
+        for (const vb of [visitBox.current, visitSmoke.current]) {
+          if (!vb) continue;
+          if (vb.style.visibility !== vis) {
+            vb.style.visibility = vis;
+            // Fumo e brace si animano solo quando la comparsa è in scena (prima giravano tutta la puntata).
+            vb.dataset.on = v.on ? "1" : "0";
+          }
+          if (v.on) {
+            vb.style.transform = `translate3d(${v.x.toFixed(1)}px, ${bob.toFixed(1)}px, 0) rotate(${sway.toFixed(2)}deg)`;
+            setVar(vb, "--reach", v.reach.toFixed(3));
+            if (vb.dataset.walk !== walking) vb.dataset.walk = walking;
+          }
         }
       }
 
@@ -688,7 +781,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           topSrcRef.current = show.top.src;
           setTopSrc(show.top.src);
         }
-        const live = syncVideo(tv, t - show.top.t0, c.running, inTop) && inTop;
+        const live = syncVideo(tv, t - show.top.t0, c.running, inTop, !inTop) && inTop;
         // Fuori dalle azioni il video resta visibile sul suo fotogramma (la sezione intera è trasparente):
         // all'uscita sfuma l'azione sullo studio, senza un fotogramma scuro in mezzo.
         if (!inTop && tv.style.opacity !== "1") tv.style.opacity = "1";
@@ -940,7 +1033,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
               </>
             )}
           </div>
+          {show.visit && <VisitorSmoke visit={show.visit} boxRef={visitSmoke} />}
           {show.guest && <GuestInStudio playerId={show.guest.playerId} boxRef={guestBox} chairRef={guestChair} />}
+          {show.visit && <VisitorInStudio visit={show.visit} boxRef={visitBox} />}
           <div ref={lei} className="absolute will-change-transform" style={{ left: 27, top: 438, width: 170 }}>
             <Presenter who="lei" />
           </div>
@@ -1244,7 +1339,6 @@ function Captions({
     let raf = 0;
     let last = "";
     let lastY = "";
-    let lastDesk = "";
     let lastPlate = "";
     let plateEl: HTMLDivElement | null = null;
     let plateH = 0;
@@ -1267,15 +1361,14 @@ function Captions({
       if (z === "studio") {
         const cam = cameraAt(show, t);
         const desk = (h - STAGE.h * kk) / 2 + (cam.y + DESK_BOTTOM * cam.s) * kk;
-        const dk = `${desk.toFixed(1)}px`;
-        if (dk !== lastDesk) {
-          lastDesk = dk;
-          el.parentElement?.style.setProperty("--studio-desk-y", dk);
-        }
+        // La posizione della targa si scrive sulla targa sola. (Prima era una variabile sul
+        // contenitore di tutto lo show: a ogni movimento di camera il telefono ricalcolava
+        // lo stile di quasi mille elementi, fotogramma per fotogramma, e la puntata scattava.)
         const plate = guestPlate.current;
         if (plate !== plateEl) {
           plateEl = plate;
           plateH = plate ? plate.offsetHeight : 0;
+          lastPlate = "";
         }
         if (plate) {
           // La targa subito sotto la scrivania e i sottotitoli sotto di lei; se lo spazio non basta
@@ -1285,7 +1378,7 @@ function Captions({
           const pt = `${top.toFixed(1)}px`;
           if (pt !== lastPlate) {
             lastPlate = pt;
-            el.parentElement?.style.setProperty("--studio-plate-y", pt);
+            plate.style.setProperty("--studio-plate-y", pt);
           }
           y = top + ph + 8;
         } else {
@@ -1455,6 +1548,126 @@ const GuestInStudio = memo(function GuestInStudio({ playerId, boxRef, chairRef }
   );
 });
 
+/**
+ * La comparsa: il personaggio del giocatore in piedi, senza pallone, con il braccio che porge
+ * (--reach) e, se serve, gli occhi assonnati e qualcosa in mano.
+ */
+const VisitorInStudio = memo(function VisitorInStudio({ visit, boxRef }: { visit: StudioVisit; boxRef: React.RefObject<HTMLDivElement | null> }) {
+  const { data } = useData();
+  const player = data.players.find((p) => p.id === visit.playerId);
+  if (!player) return null;
+  const id = characterOf(player);
+  const vh = 185 + (KIT[id]?.legs ?? 0);
+  const w = (GUEST_H * 100) / vh;
+  const eyes = visit.eyes === "sonno" ? SLEEPY[id] : undefined;
+  return (
+    <div
+      ref={boxRef}
+      className="studio-guest studio-visit absolute will-change-transform"
+      data-walk="0"
+      style={{ left: VISIT_X - w / 2, top: 463 - VISIT_UP, width: w, visibility: "hidden", transformOrigin: "50% 100%" }}
+      aria-hidden
+    >
+      <Character id={id} outfit={player.outfit} number={player.jerseyNumber} height={GUEST_H} idle noBall pose="porge" hand={visit.hand === "rollata" ? <Rollata parts="mano" /> : null} />
+      {eyes && (
+        <svg className="character character-idle absolute inset-0" viewBox={`0 0 100 ${vh}`} width={w} height={GUEST_H} style={{ overflow: "visible" }}>
+          <g className="character-body">
+            {eyes.at.map(([x, y], i) => (
+              <SleepyEye key={i} x={x} y={y} s={eyes.s} lid={eyes.ball} />
+            ))}
+          </g>
+        </svg>
+      )}
+    </div>
+  );
+});
+
+/**
+ * Il fumo della comparsa, in un livello suo dietro l'ospite: sale dalla stessa mano (stessa figura,
+ * stesso braccio, mossi insieme fotogramma per fotogramma) ma passa dietro la testa dell'ospite
+ * invece di velargli la faccia.
+ */
+const VisitorSmoke = memo(function VisitorSmoke({ visit, boxRef }: { visit: StudioVisit; boxRef: React.RefObject<HTMLDivElement | null> }) {
+  const { data } = useData();
+  const player = data.players.find((p) => p.id === visit.playerId);
+  if (!player || visit.hand !== "rollata") return null;
+  const id = characterOf(player);
+  const vh = 185 + (KIT[id]?.legs ?? 0);
+  const w = (GUEST_H * 100) / vh;
+  return (
+    <div
+      ref={boxRef}
+      className="studio-guest studio-visit absolute will-change-transform"
+      data-walk="0"
+      style={{ left: VISIT_X - w / 2, top: 463 - VISIT_UP, width: w, visibility: "hidden", transformOrigin: "50% 100%" }}
+      aria-hidden
+    >
+      <svg className="character character-idle" viewBox={`0 0 100 ${vh}`} width={w} height={GUEST_H} style={{ overflow: "visible" }}>
+        <g className="character-body">
+          <g className="character-reach">
+            <Rollata parts="fumo" />
+          </g>
+        </g>
+      </svg>
+    </div>
+  );
+});
+
+/** Dove sono gli occhi delle figurine (per disegnarci sopra quelli assonnati) e il colore della testa. */
+const SLEEPY: Partial<Record<string, { at: [number, number][]; s: number; ball: string }>> = {
+  collana: { at: [[42, 44], [58, 44]], s: 1, ball: "#F26A1B" },
+};
+
+/** Un occhio arrossato: lo stesso occhio della figurina, rosso, con la palpebra appena un po' giù. */
+function SleepyEye({ x, y, s, lid }: { x: number; y: number; s: number; lid: string }) {
+  const clip = `sleepy-${x}-${y}`;
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <clipPath id={clip}>
+        <ellipse rx="5.6" ry="7.4" />
+      </clipPath>
+      <ellipse rx="5.6" ry="7.4" fill="#F4A094" />
+      <g clipPath={`url(#${clip})`}>
+        <g transform="translate(0 1.6)">
+          <ellipse rx="3" ry="4.5" fill="#1D1A16" />
+          <path d="M0 -0.6 L3 -3.2 L1.6 -4.6 Z" fill="#FFF8EA" />
+        </g>
+        <path d="M-7 -9 L7 -9 L7 -3.4 Q0 -1.2 -7 -3.4 Z" fill={lid} />
+      </g>
+      <ellipse rx="5.6" ry="7.4" fill="none" stroke="#1D1A16" strokeWidth="2" />
+      <path d="M-5.4 -3.1 Q0 -0.9 5.4 -3.1" fill="none" stroke="#1D1A16" strokeWidth="1.8" strokeLinecap="round" />
+    </g>
+  );
+}
+
+/**
+ * Una sigaretta fatta a mano, a cono, tenuta nella mano che porge (coordinate del personaggio,
+ * mano in 15.5, 120.5): la punta accesa e un filo di fumo che sale sempre dritto verso l'alto.
+ */
+function Rollata({ parts = "tutto" }: { parts?: "tutto" | "mano" | "fumo" }) {
+  return (
+    <g transform="translate(15.5 120.5) scale(1.6) translate(-15.5 -120.5)">
+      {parts !== "fumo" && (
+        <>
+      <path d="M11.1 120 L-10.1 126.1 L-7.8 132.5 L12.4 123.7 Z" fill="#FFFDF6" stroke="#1D1A16" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M11.1 120 L6.8 121.3 L8.3 125.5 L12.4 123.7 Z" fill="#E9C99A" stroke="#1D1A16" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M0.6 123.6 L2.3 128.3 M-4.4 125.1 L-2.6 130" stroke="#1D1A16" strokeWidth="0.6" opacity="0.3" />
+      <circle className="studio-ember" cx="-8.9" cy="129.3" r="3.5" fill="#FF7A1A" stroke="#1D1A16" strokeWidth="1.3" />
+      <circle cx="-8.9" cy="129.3" r="1.5" fill="#FFD84A" />
+        </>
+      )}
+      {/* Fuma tanto: sbuffi grossi e continui che salgono e si allargano. */}
+      {parts !== "mano" && (
+        <g className="studio-smoke-up">
+          {[0, 0.45, 0.9, 1.35, 1.8, 2.25].map((d, i) => (
+            <circle key={d} className={i % 2 ? "studio-smoke studio-smoke-b" : "studio-smoke"} cx="-8.9" cy="123.5" r="4.4" fill="#E4E0D8" style={{ animationDelay: `${d}s` }} />
+          ))}
+        </g>
+      )}
+    </g>
+  );
+}
+
 /** La sigla: sfondo giallo dell'app, raggi, il badge che entra girando, il nome dello show. */
 function Sigla({ show, at: t0 }: { show: StudioShow; at: number }) {
   return (
@@ -1465,8 +1678,8 @@ function Sigla({ show, at: t0 }: { show: StudioShow; at: number }) {
           {[0.55, 0.85].map((d) => (
             <span key={d} className="studio-wave absolute h-[210px] w-[210px] rounded-full border-[6px] border-[#1d1a16]/80" style={at(d)} aria-hidden />
           ))}
-          <span className="studio-logo-in drop-shadow-[0_18px_28px_rgb(29_26_22/0.35)]" style={at(0.1)}>
-            <span className="studio-float block">
+          <span className="studio-logo-in" style={at(0.1)}>
+            <span className="studio-float block drop-shadow-[0_18px_28px_rgb(29_26_22/0.35)]">
               <Logo size={210} top="STUDIO" bottom="★ CAMPETTO ★" />
             </span>
           </span>

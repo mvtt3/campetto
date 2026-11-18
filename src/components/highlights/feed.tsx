@@ -264,21 +264,28 @@ export default function HighlightsFeed({
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    let raf = 0;
+    // Il video nuovo si attiva quando lo scorrimento si è fermato sullo schermo, non a metà:
+    // il lavoro di cambiare video (montarlo, farlo partire) a metà gesto faceva scattare lo
+    // scorrimento sui telefoni economici. "scrollend" dove c'è, se no poco dopo l'ultimo movimento.
+    let settle = 0;
+    const pick = () => {
+      window.clearTimeout(settle);
+      const i = Math.min(
+        items.length - 1,
+        Math.max(0, Math.round(el.scrollTop / Math.max(1, el.clientHeight))),
+      );
+      if (i !== activeRef.current) setActive(i);
+    };
     const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const i = Math.min(
-          items.length - 1,
-          Math.max(0, Math.round(el.scrollTop / Math.max(1, el.clientHeight))),
-        );
-        if (i !== activeRef.current) setActive(i);
-      });
+      window.clearTimeout(settle);
+      settle = window.setTimeout(pick, 140);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("scrollend", pick);
     return () => {
       el.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
+      el.removeEventListener("scrollend", pick);
+      window.clearTimeout(settle);
     };
   }, [items.length]);
 

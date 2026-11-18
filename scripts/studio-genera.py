@@ -41,6 +41,8 @@ SEG_GAP = 0.45    # quando cambia la grafica
 DEFAULT_RATE = "+10%"
 WALK_IN = 3.4     # quanto ci mette l'ospite a entrare e sedersi
 WALK_OUT = 2.6    # e ad alzarsi e uscire
+VISIT_IN = 2.6    # quanto ci mette la comparsa ad arrivare accanto all'ospite
+VISIT_OUT = 2.6   # e ad andarsene
 INTRO_CUT = 1.2   # tra due grafiche: stacco su chi parla, poi zoom sulla nuova
 TOP_POST = 2.2    # nei migliori della giornata: secondi di video dopo il rilascio (la palla entra)
 HOST_BATCH = 60  # battute dei conduttori per richiesta: tutte insieme, così la voce non cambia a metà
@@ -564,6 +566,7 @@ async def main():
     same_scr = []
     top_items, votes = [], []
     guest = None
+    visit = None
     cur = "coppia"
     shown_screen = 0
     for si, seg in enumerate(plan["segments"]):
@@ -609,6 +612,31 @@ async def main():
             g = plan["guest"]
             guest = {"playerId": g["playerId"], "name": g["name"], "enter": round(seg_start, 3), "sit": round(seg_start + WALK_IN, 3)}
             t = seg_start + 0.35
+        # La comparsa (plan["visit"]): entra in silenzio, la musica sale, si ferma accanto all'ospite
+        # e gli porge qualcosa; la prima battuta del pezzo è la risposta dell'ospite, poi se ne va.
+        visiting = bool(seg.get("visit"))
+        if visiting:
+            pv = plan["visit"]
+            enter = seg_start + 0.3
+            visit = {"playerId": pv["playerId"], "enter": round(enter, 3), "stop": round(enter + VISIT_IN, 3)}
+            for k in ("eyes", "hand"):
+                if pv.get(k):
+                    visit[k] = pv[k]
+            # talk: tutto nell'inquadratura larga (si vedono i due conduttori e il maxischermo, che
+            # passa alla comparsa); un conduttore parla di lei mentre entra e porge, poi la risposta
+            # dell'ospite (la battuta numero `ri`) e se ne va. Senza talk: primo piano e silenzio.
+            talk = bool(pv.get("talk"))
+            ri = 1 if talk else 0
+            if talk:
+                t = enter + pv.get("talkAfter", 0.9)
+                music_marks.append((enter - 0.1, t - 0.1, 0.5))
+            else:
+                visit["offer"] = round(visit["stop"] + pv.get("pause", 0.8), 3)
+                music_marks.append((enter - 0.1, visit["offer"] + 1.0, 0.5))
+                t = visit["offer"] + pv.get("wait", 1.1)
+                # Entra nell'inquadratura larga; quando si ferma accanto all'ospite, primo piano su tutti e due.
+                shots.append({"t": round(visit["stop"] - 0.2, 3), "cam": "visita", "screen": shown_screen})
+                cur = "visita"
         for li, line in enumerate(lines_in):
             if line.get("skip"):
                 continue  # registrata ma tolta dalla puntata (le voci non si rifanno)
@@ -714,6 +742,8 @@ async def main():
             if cuts:
                 d = len(a) / SR
             cam = line.get("cam", seg["cam"])
+            if visiting and not talk and li == 0 and "cam" not in line:
+                cam = "visita"  # la risposta all'offerta: si resta sul primo piano dei due
             if is_top:
                 cam = "top"
             if cam != cur:
@@ -763,7 +793,24 @@ async def main():
                 guest["sit"] = round(guest["enter"] + WALK_IN, 3)
                 # La musica sale un attimo per l'ingresso, poi torna sotto le voci.
                 music_marks.append((guest["enter"] - 0.1, guest["enter"] + 2.4, 0.5))
+            if visiting and li == ri:
+                # La risposta dell'ospite: scuote la testa mentre parla, poi l'altro ritira il braccio e va.
+                visit["refuse"] = round(t + 0.05, 3)
+                visit["back"] = round(t + d + 0.35, 3)
+                visit["leave"] = round(visit["back"] + 0.75, 3)
+                visit["exit"] = round(visit["leave"] + VISIT_OUT, 3)
+                music_marks.append((visit["back"], visit["exit"], 0.45))
+                if cur != "ampio":
+                    # Se ne va: di nuovo larghi, così lo si vede uscire.
+                    shots.append({"t": round(visit["leave"] + 0.35, 3), "cam": "ampio", "screen": shown_screen})
+                    cur = "ampio"
             t += d + line.get("gap", GAP)
+            if visiting and talk and li == 0:
+                # Porge mentre il conduttore finisce di parlare; la risposta arriva dopo.
+                visit["offer"] = round(max(visit["stop"] + 0.4, t - GAP - pv.get("offerBefore", 1.4)), 3)
+                t = max(t, visit["offer"] + pv.get("wait", 0.9))
+            if visiting and li == ri:
+                t = max(t, visit["leave"] + seg.get("visitTalk", 1.2))
         if seg["cam"] == "schermo" and scr_on is not None and screen["kind"] != "sigla":
             # La grafica non sparisce appena finita la frase: resta il tempo di leggerla (sale un po' la musica).
             need = scr_on + float(plan.get("minScreen", MIN_SCREEN))
@@ -957,6 +1004,8 @@ async def main():
         "props": props,
         "guest": guest,
     }
+    if visit:
+        show["visit"] = visit
     if top_items:
         for it in top_items:
             it["release"] = it["release"]  # nel video sorgente; nella puntata cade a t + d - TOP_POST

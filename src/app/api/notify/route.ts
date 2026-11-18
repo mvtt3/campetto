@@ -720,6 +720,13 @@ interface Reminder {
 /** Chiamato ogni 10 minuti dal database: i promemoria un'ora prima della partita. */
 async function tick(req: Request) {
   const secret = req.headers.get("x-campetto-cron");
+  // {"type":"tick","force":true}: le notizie partono subito anche di notte (lo decide
+  // l'amministratore, per esempio quando escono le partite nuove la sera tardi).
+  const force = await req
+    .clone()
+    .json()
+    .then((b: { force?: unknown } | null) => b?.force === true)
+    .catch(() => false);
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!secret)
     return Response.json({ error: "Accesso richiesto" }, { status: 401 });
@@ -855,7 +862,7 @@ async function tick(req: Request) {
   // mezzanotte partono alle 8), a tutti quelli con le notifiche; chi le attiva dopo riceve
   // quelle degli ultimi 7 giorni. Una volta sola per telefono.
   let news = 0;
-  if (!night) {
+  if (!night || force) {
     const { data: due } = await sb.rpc("cron_due_news", { p_secret: secret });
     for (const r of (due as DueNews[] | null) ?? []) {
       try {

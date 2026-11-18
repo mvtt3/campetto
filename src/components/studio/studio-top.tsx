@@ -46,24 +46,29 @@ export const TopStage = memo(function TopStage({
 });
 
 /** Tiene sincronizzato un video con il tempo della puntata: salti grandi a scatti, piccoli con la velocità. */
-export function syncVideo(v: HTMLVideoElement, want: number, running: boolean, visible: boolean): boolean {
+export function syncVideo(v: HTMLVideoElement, want: number, running: boolean, visible: boolean, keep = false): boolean {
   const len = Number.isFinite(v.duration) ? v.duration : Infinity;
   const inside = want > -0.05 && want < len - 0.05;
   const lag = want - v.currentTime;
   if (inside && running && visible) {
-    if (Math.abs(lag) > 0.35) {
+    // Salto solo se è davvero fuori tempo (un salto ferma l'immagine per un attimo sul telefono);
+    // per gli scarti normali accelera o rallenta appena, senza che si veda.
+    if (Math.abs(lag) > 0.6) {
       if (v.readyState >= 1 && !v.seeking) v.currentTime = Math.max(0, want + 0.1);
     } else {
-      const rate = Math.abs(lag) < 0.04 ? 1 : Math.min(1.12, Math.max(0.88, 1 + lag * 0.8));
+      const rate = Math.abs(lag) < 0.04 ? 1 : Math.min(1.2, Math.max(0.85, 1 + lag * 0.7));
       if (Math.abs(v.playbackRate - rate) > 0.005) v.playbackRate = rate;
     }
     if (v.paused) void v.play().catch(() => {});
   } else if (!v.paused) v.pause();
   const was = v.style.opacity === "1";
   const off = Math.abs(lag);
-  const ok = visible && inside && !v.seeking && (was ? v.readyState >= 2 && off < 0.6 : v.readyState >= 3 && off < 0.4);
+  // Una volta in onda il video resta visibile anche mentre si rimette a tempo (si vede l'ultimo
+  // fotogramma per un attimo): mai lo sfondo vuoto, che sul telefono sembrava una schermata nera.
+  const ok = visible && inside && (was ? v.readyState >= 2 : !v.seeking && v.readyState >= 3 && off < 0.4);
+  // keep: l'opacità la decide chi chiama (fuori dalle azioni il video resta visibile, fermo).
   const op = ok ? "1" : "0";
-  if (v.style.opacity !== op) v.style.opacity = op;
+  if (!keep && v.style.opacity !== op) v.style.opacity = op;
   return ok;
 }
 

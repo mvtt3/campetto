@@ -16,6 +16,7 @@
 //   "statistiche": { "Valerio": { "pts": 9, "fg3m": 1, "ast": 3, "dreb": 4 } }
 // }]
 // "fonte" (facoltativa): tabellino, importata, video. "eventi": la cronaca, vedi sotto.
+// "mvp" (facoltativo): l'MVP della partita scelto dall'amministratore (serve la colonna mvp_player_id).
 // Le statistiche e i cambi ("cambiA", "cambiB": chi entrava a rotazione, al massimo due per squadra) sono facoltativi. Nomi: il nome scelto nell'app, nome e cognome, solo nome se unico, o cognome.
 // Date: dal 1° ottobre 2026 in poi (prima l'app non esisteva).
 
@@ -98,6 +99,8 @@ for (const m of matches) {
       JSON.stringify({ sub: admin.user_id, role: "authenticated" }),
     ]);
     const r = await c.query("select public.save_match($1::jsonb) as id", [JSON.stringify(payload)]);
+    // Facoltativo: "mvp", l'MVP scelto dall'amministratore (se no lo calcola l'app).
+    if (m.mvp) await c.query("update public.matches set mvp_player_id = $1 where id = $2", [find(m.mvp), r.rows[0].id]);
     await c.query("commit");
     console.log(`Salvata ${m.formato} ${m.punteggio.join("-")} del ${m.data}: ${r.rows[0].id}`);
   } catch (e) {

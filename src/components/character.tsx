@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { useContext, useId } from "react";
+import { useContext, useId, type ReactNode } from "react";
 import {
   AVATAR_PRESETS,
   Figure,
@@ -161,14 +161,37 @@ export function nextCharacter(
   return best;
 }
 
-export type Pose = "dribble" | "up" | "defend";
+/**
+ * dribble: palleggia; up: braccia in alto; defend: braccia larghe; porge: un braccio lungo il
+ * fianco e l'altro che si allunga verso sinistra (quanto lo decide la variabile CSS --reach, 0-1)
+ * con in mano quello che si passa in `hand`.
+ */
+export type Pose = "dribble" | "up" | "defend" | "porge";
 
-const POSE_ARMS: Record<Exclude<Pose, "dribble">, { l: string; lh: [number, number]; r: string; rh: [number, number] }> = {
+const POSE_ARMS: Record<Exclude<Pose, "dribble" | "porge">, { l: string; lh: [number, number]; r: string; rh: [number, number] }> = {
   up: { l: "M27 80 Q12 64 15 38", lh: [15, 34], r: "M73 80 Q88 64 85 38", rh: [85, 34] },
   defend: { l: "M26 81 Q10 86 4 73", lh: [3, 70], r: "M74 81 Q90 86 96 73", rh: [97, 70] },
 };
 
-function PoseArms({ pose, arm }: { pose: Exclude<Pose, "dribble">; arm: number }) {
+/**
+ * Il braccio che porge: lungo il fianco sinistro, gira attorno alla spalla fino a orizzontale
+ * (--reach da 0 a 1). Quello che ha in mano gira con lui.
+ */
+function ReachArms({ arm, hand }: { arm: number; hand?: ReactNode }) {
+  return (
+    <>
+      <path d="M74 81 Q87.5 100 84.5 118" fill="none" stroke={INK} strokeWidth={arm} strokeLinecap="round" />
+      <circle cx="84.5" cy="120.5" r="7.4" fill={CREAM} stroke={INK} strokeWidth="2.4" />
+      <g className="character-reach">
+        <path d="M26 81 Q12.5 100 15.5 118" fill="none" stroke={INK} strokeWidth={arm} strokeLinecap="round" />
+        {hand}
+        <circle cx="15.5" cy="120.5" r="7.4" fill={CREAM} stroke={INK} strokeWidth="2.4" />
+      </g>
+    </>
+  );
+}
+
+function PoseArms({ pose, arm }: { pose: Exclude<Pose, "dribble" | "porge">; arm: number }) {
   const a = POSE_ARMS[pose];
   return (
     <>
@@ -206,7 +229,10 @@ export function Character({
   outfit: outfitProp,
   pose = "dribble",
   kit: kitProp,
+  hand,
 }: {
+  /** Con pose "porge": quello che tiene nella mano che si allunga (disegnato attorno a 15.5, 120.5). */
+  hand?: ReactNode;
   /** dribble: palleggia; up: braccia in alto (tiro, stoppata, festa); defend: braccia larghe. */
   pose?: Pose;
   /** Un'altra divisa (compagni e avversari nelle azioni del gioco). */
@@ -423,6 +449,8 @@ export function Character({
               strokeWidth="2.4"
             />
             </>
+          ) : pose === "porge" ? (
+            <ReachArms arm={arm} hand={hand} />
           ) : (
             /* braccia in posa: in alto (tiro, stoppata, festa) o larghe (difesa) */
             <PoseArms pose={pose} arm={arm} />
