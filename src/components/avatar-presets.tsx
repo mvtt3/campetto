@@ -619,8 +619,10 @@ function Eye({
     <g transform={`translate(${x} ${y}) scale(${s})`}>
       <ellipse rx="5.6" ry="7.4" fill={CREAM} stroke={INK} strokeWidth="2" />
       <g transform={`translate(${look * 1.4} ${lid ? 2.2 : 1})`}>
-        <ellipse rx="3" ry="4.5" fill={INK} />
-        <path d="M0 -0.6 L3 -3.2 L1.6 -4.6 Z" fill={CREAM} />
+        <g className="character-pupil">
+          <ellipse rx="3" ry="4.5" fill={INK} />
+          <path d="M0 -0.6 L3 -3.2 L1.6 -4.6 Z" fill={CREAM} />
+        </g>
       </g>
       {lid && ball && (
         <path

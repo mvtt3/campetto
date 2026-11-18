@@ -30,6 +30,53 @@ export function setThemePref(pref: ThemePref) {
   applyTheme(pref);
 }
 
+/**
+ * Cambia tema con l'onda: il nuovo si allarga a cerchio dal punto toccato.
+ * Se il colore non cambia davvero, o il telefono non lo supporta, cambia e basta.
+ */
+export function switchThemeWithWave(
+  pref: ThemePref,
+  at?: { x: number; y: number },
+) {
+  const willDark =
+    pref === "dark" ||
+    (pref === "system" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark = document.documentElement.dataset.theme === "dark";
+  const doc = document as Document & {
+    startViewTransition?: (cb: () => void) => { ready: Promise<void> };
+  };
+  if (
+    !at ||
+    willDark === isDark ||
+    typeof doc.startViewTransition !== "function" ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+    return setThemePref(pref);
+  const r = Math.hypot(
+    Math.max(at.x, window.innerWidth - at.x),
+    Math.max(at.y, window.innerHeight - at.y),
+  );
+  const vt = doc.startViewTransition(() => setThemePref(pref));
+  vt.ready
+    .then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${at.x}px ${at.y}px)`,
+            `circle(${r}px at ${at.x}px ${at.y}px)`,
+          ],
+        },
+        {
+          duration: 520,
+          easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+          pseudoElement: "::view-transition-new(root)",
+        },
+      );
+    })
+    .catch(() => undefined);
+}
+
 /** Resize and convert a picked photo to a square WebP (max 512px) before upload. */
 export async function compressAvatar(file: File, size = 512): Promise<Blob> {
   const bitmap = await createImageBitmap(file);

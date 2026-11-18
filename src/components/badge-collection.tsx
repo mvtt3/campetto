@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconCheck, IconSparkles } from "@tabler/icons-react";
 import { useData } from "@/lib/data/provider";
 import type { BadgeCategory, BadgeState } from "@/lib/badges";
-import { BadgeMedal, BadgeTile, TIER_STYLE } from "./badge-medal";
+import { BadgeMedal, BadgeTile, SpinMedal, TIER_STYLE } from "./badge-medal";
 import { Button, Segmented, haptic } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
@@ -254,7 +254,14 @@ export function BadgeCollection({
       >
         {open && (
           <div className="flex flex-col items-center gap-4 pb-2">
-            <BadgeMedal icon={open.def.icon} tier={open.tier} size={92} />
+            <SpinMedal
+              key={open.def.key}
+              icon={open.def.icon}
+              tier={open.tier}
+              size={96}
+              value={open.value}
+              unit={open.def.unit}
+            />
             <p className="text-[15px] font-semibold">
               {TIER_STYLE[open.tier].label}
             </p>

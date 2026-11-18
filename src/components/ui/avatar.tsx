@@ -164,6 +164,7 @@ export function AvatarStack({
       {shown.map((p, i) => (
         <span
           key={p.id}
+          data-player={p.id}
           style={{ marginLeft: i ? -size * 0.28 : 0 }}
           className="rounded-full ring-2 ring-surface"
         >

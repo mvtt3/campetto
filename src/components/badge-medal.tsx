@@ -2,7 +2,8 @@
 
 import clsx from "clsx";
 import { NewTag } from "./new-dot";
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
+import { haptic } from "./ui/basics";
 import {
   IconArrowBackUp,
   IconAward,
@@ -170,6 +171,165 @@ export function BadgeMedal({
           style={{ animation: "shine 1.1s 0.5s ease-out both" }}
         />
       )}
+    </span>
+  );
+}
+
+/**
+ * Il badge grande della scheda: si trascina e gira come una moneta, segue il dito,
+ * continua con lo slancio e si ferma su una faccia. Dietro: livello e numero.
+ * Un tocco lo fa girare una volta. Solo rotazione 3D di un livello già disegnato.
+ */
+export function SpinMedal({
+  icon,
+  tier,
+  size = 104,
+  value,
+  unit,
+}: {
+  icon: BadgeIcon;
+  tier: Tier;
+  size?: number;
+  value: number;
+  unit: string;
+}) {
+  const host = useRef<HTMLSpanElement>(null);
+  const inner = useRef<HTMLSpanElement>(null);
+  const gid = `s-${useId().replace(/:/g, "")}`;
+  const s = TIER_STYLE[tier];
+  useEffect(() => {
+    const el = host.current;
+    const card = inner.current;
+    if (!el || !card) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let a = 0;
+    let v = 0;
+    let raf = 0;
+    let prev = 0;
+    let face = 0;
+    let settle: { x: number; v: number; t: number } | null = null;
+    let drag: { x: number; a: number; last: number; t: number; v: number; moved: number } | null = null;
+    const paint = () => (card.style.transform = `rotateY(${a.toFixed(2)}deg)`);
+    const frame = (now: number) => {
+      const dt = Math.min(0.033, (now - prev) / 1000 || 0.016);
+      prev = now;
+      if (!drag) {
+        if (!settle && Math.abs(v) < 160)
+          settle = { x: a, v, t: Math.round((a + Math.sign(v) * 40) / 180) * 180 };
+        if (settle) {
+          const acc = -120 * (settle.x - settle.t) - 13 * settle.v;
+          settle.v += acc * dt;
+          settle.x += settle.v * dt;
+          a = settle.x;
+        } else {
+          v *= Math.pow(0.32, dt);
+          a += v * dt;
+        }
+      }
+      const f = Math.round(a / 180);
+      if (f !== face) {
+        face = f;
+        haptic(5);
+      }
+      paint();
+      const done =
+        !drag && settle && Math.abs(settle.x - settle.t) < 0.05 && Math.abs(settle.v) < 0.5;
+      if (done) {
+        a = settle!.t;
+        paint();
+        raf = 0;
+        return;
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    const wake = () => {
+      if (raf) return;
+      prev = performance.now();
+      raf = requestAnimationFrame(frame);
+    };
+    const down = (e: PointerEvent) => {
+      drag = { x: e.clientX, a, last: e.clientX, t: performance.now(), v: 0, moved: 0 };
+      settle = null;
+      v = 0;
+      el.setPointerCapture?.(e.pointerId);
+      wake();
+    };
+    const move = (e: PointerEvent) => {
+      if (!drag) return;
+      const now = performance.now();
+      drag.v = ((e.clientX - drag.last) / Math.max(1, now - drag.t)) * 1000 * 0.9;
+      drag.last = e.clientX;
+      drag.t = now;
+      drag.moved = Math.max(drag.moved, Math.abs(e.clientX - drag.x));
+      a = drag.a + (e.clientX - drag.x) * 0.9;
+    };
+    const up = () => {
+      if (!drag) return;
+      const tap = drag.moved < 6;
+      v = tap ? 900 : Math.max(-2600, Math.min(2600, drag.v));
+      drag = null;
+      if (reduce && tap) {
+        a = Math.round(a / 180) * 180 + 180;
+        v = 0;
+        settle = { x: a, v: 0, t: a };
+      }
+      wake();
+    };
+    el.addEventListener("pointerdown", down);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      el.removeEventListener("pointerdown", down);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+    };
+  }, []);
+  return (
+    <span
+      ref={host}
+      className="spin-medal inline-block"
+      data-no-swipe
+      data-vaul-no-drag
+      data-testid="spin-medal"
+    >
+      <span
+        ref={inner}
+        className="spin-medal-inner block"
+        style={{ width: size, height: size * 1.08 }}
+      >
+        <BadgeMedal icon={icon} tier={tier} size={size} className="spin-medal-face" />
+        <span className="spin-medal-face spin-medal-back grid place-items-center" aria-hidden>
+          <svg viewBox="0 0 100 108" className="absolute inset-0 h-full w-full">
+            <defs>
+              <linearGradient id={gid} x1="1" y1="0" x2="0.4" y2="1">
+                <stop offset="0" stopColor={s.a} />
+                <stop offset="1" stopColor={s.b} />
+              </linearGradient>
+            </defs>
+            <path
+              d="M50 3 L90 22 Q95 25 95 31 L95 72 Q95 78 90 81 L50 105 L10 81 Q5 78 5 72 L5 31 Q5 25 10 22 Z"
+              fill={`url(#${gid})`}
+              stroke={tier === 0 ? "var(--line-strong)" : "#1d1a16"}
+              strokeWidth={tier === 0 ? 2.5 : 5}
+            />
+          </svg>
+          <span
+            className="relative flex flex-col items-center leading-none"
+            style={{ color: tier === 0 ? "var(--muted)" : s.ink }}
+          >
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] opacity-80">
+              {tier === 0 ? "Da sbloccare" : s.label}
+            </span>
+            <span className="num mt-1 text-[28px]">{value}</span>
+            <span className="mt-1 max-w-[80px] text-center text-[11px] font-semibold opacity-85">
+              {unit}
+            </span>
+          </span>
+        </span>
+      </span>
     </span>
   );
 }

@@ -3589,3 +3589,135 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
 @keyframes studio-ember {
   50% { fill: #ff4d12; }
 }
+
+/* ---------- Testata del profilo: carta olografica (inclinando il telefono) ---------- */
+/* Riflesso e luce sono disegnati una volta, più grandi della testata: inclinando
+   useHeroMotion li sposta soltanto (transform e opacità sugli strati interni), così il
+   telefono non ridisegna e non ricalcola niente a ogni fotogramma. */
+.holo-foil,
+.holo-glare {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+}
+.holo-foil {
+  mix-blend-mode: color-dodge;
+  mask-image: radial-gradient(120% 95% at 50% 35%, #000 35%, transparent 100%);
+}
+/* Sui colori chiari "color-dodge" brucia tutto di bianco. */
+[data-holo="light"] .holo-foil {
+  mix-blend-mode: overlay;
+}
+.holo-glare {
+  mix-blend-mode: overlay;
+}
+.holo-foil > span,
+.holo-glare > span {
+  position: absolute;
+  inset: -60%;
+  will-change: transform, opacity;
+}
+.holo-foil > span {
+  opacity: 0.08;
+  background: repeating-linear-gradient(
+    115deg,
+    #ff6fae 0,
+    #ffd36b 4%,
+    #7dffbf 8%,
+    #62c3ff 12%,
+    #b58bff 16%,
+    #ff6fae 20%
+  );
+}
+.holo-glare > span {
+  opacity: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(255 255 255 / 0.7),
+    rgb(255 255 255 / 0.15) 12%,
+    transparent 28%
+  );
+}
+/* Il personaggio sporge: si sposta e ruota un filo più della carta (lo muove useHeroMotion). */
+.hero-parallax {
+  will-change: transform;
+}
+
+/* ---------- Cornice dell'MVP: quando compare ci passa una luce, tre volte ---------- */
+.mvp-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 280deg,
+    rgb(255 255 255 / 0.95) 322deg,
+    transparent 352deg
+  );
+  mask-image: radial-gradient(
+    closest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 3.5px)
+  );
+  opacity: 0;
+  /* Tre passaggi quando compare, poi si ferma: niente lavoro continuo per il telefono. */
+  animation: mvp-sheen 6s cubic-bezier(0.23, 1, 0.32, 1) 1.5s 3;
+}
+@keyframes mvp-sheen {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  20% {
+    transform: rotate(360deg);
+    opacity: 1;
+  }
+  24%,
+  100% {
+    transform: rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* ---------- Badge grande: gira come una moneta ---------- */
+.spin-medal {
+  perspective: 600px;
+  touch-action: pan-y;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.spin-medal-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.spin-medal-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.spin-medal-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+/* ---------- Cambio tema: il nuovo si allarga a cerchio dal tocco ---------- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mvp-ring::after {
+    animation: none;
+  }
+}

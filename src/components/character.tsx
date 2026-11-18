@@ -302,6 +302,7 @@ export function Character({
         opacity="0.16"
         className="character-shadow"
       />
+      <g className="character-sway">
       <g className="character-body">
         <g transform={mirror}>
           {/* gambe, calzini e scarpe */}
@@ -416,6 +417,7 @@ export function Character({
               strokeWidth="2.2"
               strokeLinecap="round"
             />
+            <g className="character-ball-drop">
             <g className="character-ball" display={noBall ? "none" : undefined}>
               <circle
                 cx="89"
@@ -439,6 +441,7 @@ export function Character({
                 strokeLinecap="round"
                 opacity="0.8"
               />
+            </g>
             </g>
             <circle
               cx="88.4"
@@ -590,11 +593,15 @@ export function Character({
           </>
         ) : (
           /* testa e accessori della figurina, più quello che indossa nel gioco */
-          <>
+          <g
+            className="character-head"
+            style={{ transformOrigin: `${head.cx}px ${head.cy + head.ry}px` }}
+          >
             <Figure id={id} uid={`c${uid}`} bust={false} />
             <OutfitLayer head={head} outfit={outfit} full={pose === "dribble"} />
-          </>
+          </g>
         )}
+      </g>
       </g>
     </svg>
   );

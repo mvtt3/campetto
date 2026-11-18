@@ -58,7 +58,7 @@ import { usePush } from "@/lib/notifications/use-push";
 import {
   compressAvatar,
   getThemePref,
-  setThemePref,
+  switchThemeWithWave,
   type ThemePref,
 } from "@/lib/theme";
 import {
@@ -406,9 +406,14 @@ export default function SettingsPage() {
               key={t.value}
               role="radio"
               aria-checked={theme === t.value}
-              onClick={() => {
+              onClick={(e) => {
                 setTheme(t.value);
-                setThemePref(t.value);
+                const r = e.currentTarget.getBoundingClientRect();
+                const tapped = e.clientX || e.clientY;
+                switchThemeWithWave(t.value, {
+                  x: tapped ? e.clientX : r.left + r.width / 2,
+                  y: tapped ? e.clientY : r.top + r.height / 2,
+                });
               }}
               className={clsx(
                 "press flex flex-col items-center gap-2 rounded-[22px] bg-surface p-2.5 shadow-[var(--shadow)] ring-2 transition-shadow",

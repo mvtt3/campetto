@@ -1238,6 +1238,8 @@ test("la partita aperta dalla Home, chiusa, torna alla Home", async ({
 });
 
 test("dal profilo, il personaggio apre la collezione", async ({ page }) => {
+  // Il personaggio "respira" sempre un filo: con le animazioni ridotte sta fermo e il tocco è sicuro.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await openApp(page, "demo");
   await page.goto("/profilo");
   await page.getByRole("link", { name: /Il tuo personaggio/ }).click();
@@ -1489,4 +1491,117 @@ test("notifiche: se il servizio del telefono non risponde, niente rotellina infi
   expect(saved).toHaveLength(1);
   expect(saved[0].message).toContain("iscrizione: nessuna risposta in 25s");
   expect(saved[0].message).toContain("permesso granted");
+});
+
+test("profilo: inclinando il telefono la carta si muove, scuotendolo il personaggio barcolla e poi si ferma", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo");
+  const hero = page.locator('section[aria-label="Giocatore"]:visible');
+  await expect(hero).toBeVisible();
+  const foil = hero.locator(".holo-foil > span");
+  // Da fermo il riflesso c'è appena, e nessuno si muove.
+  await expect(foil).toHaveCSS("opacity", "0.08");
+  // Inclinazione: si parte dritti, poi si gira il telefono verso destra.
+  await page.evaluate(async () => {
+    for (let i = 0; i <= 12; i++) {
+      window.dispatchEvent(
+        new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 40, gamma: i }),
+      );
+      await new Promise((r) => setTimeout(r, 16));
+    }
+  });
+  await expect
+    .poll(async () => Number(await foil.evaluate((el) => getComputedStyle(el).opacity)))
+    .toBeGreaterThan(0.2);
+  // Scossone: tre colpi avanti e indietro.
+  await page.evaluate(async () => {
+    const send = (x: number) =>
+      window.dispatchEvent(
+        new DeviceMotionEvent("devicemotion", {
+          acceleration: { x, y: 0, z: 0 },
+          accelerationIncludingGravity: { x, y: 9.8, z: 0 },
+          interval: 16,
+        }),
+      );
+    for (const x of [26, 0, -26, 0, 26]) {
+      send(x);
+      await new Promise((r) => setTimeout(r, 110));
+    }
+  });
+  const svg = hero.locator(".hero-wobble svg.character");
+  await expect(svg).toHaveAttribute("data-wobbling", "");
+  await expect(svg.locator(".character-sway")).toHaveAttribute("transform", /rotate/);
+  // Si ricompone da solo, col pallone di nuovo in mano.
+  await expect(svg).not.toHaveAttribute("data-wobbling", "", { timeout: 8000 });
+  await expect(svg.locator(".character-sway")).not.toHaveAttribute("transform", /./);
+  await expect(svg.locator(".character-ball-drop")).not.toHaveAttribute("transform", /./);
+});
+
+test("Ci sono: il tuo cerchietto salta al suo posto nella formazione", async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.goto("/organizza?nuova=1");
+  await page.getByRole("button", { name: "Domani" }).click();
+  await page.getByRole("button", { name: "18:00" }).click();
+  await page.getByRole("tab", { name: "3v3" }).click();
+  await page.getByRole("button", { name: "Proponi", exact: true }).click();
+  const card = page.locator('[data-testid="proposal-card"]:visible').first();
+  const answer = card.getByRole("group", { name: "La tua risposta" });
+  await answer.getByRole("button", { name: "Forse" }).click();
+  await expect(card.locator("ul [data-player]")).toHaveCount(0);
+  // Si contano le animazioni che partono sui cerchietti (anche se il telefono è lento e finiscono subito).
+  await page.evaluate(() => {
+    const w = window as unknown as { __jumps: number };
+    w.__jumps = 0;
+    const orig = Element.prototype.animate;
+    Element.prototype.animate = function (...args: Parameters<Element["animate"]>) {
+      if ((this as Element).matches("[data-player]")) w.__jumps++;
+      return orig.apply(this, args);
+    };
+  });
+  await answer.getByRole("button", { name: "Ci sono" }).click();
+  const mine = card.locator("ul [data-player]");
+  await expect(mine).toHaveCount(1);
+  // Il salto è un'animazione vera sul cerchietto, che poi finisce al suo posto.
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __jumps: number }).__jumps))
+    .toBe(1);
+  await expect
+    .poll(() => mine.evaluate((el) => el.getAnimations().length))
+    .toBe(0);
+  await expect(card).toContainText("1/6");
+});
+
+test("badge: quello grande si trascina, gira come una moneta e si ferma su una faccia", async ({
+  page,
+}) => {
+  await openApp(page, "demo");
+  await page.goto("/profilo/badge");
+  await page
+    .getByRole("button", { name: /Bronzo|Argento|Oro/ })
+    .first()
+    .click();
+  const medal = page.getByTestId("spin-medal");
+  await expect(medal).toBeVisible();
+  const box = (await medal.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++)
+    await page.mouse.move(box.x + box.width / 2 + i * 20, box.y + box.height / 2);
+  await page.mouse.up();
+  const angle = () =>
+    medal
+      .locator(".spin-medal-inner")
+      .evaluate((el) => Number(/rotateY\((-?[\d.]+)deg\)/.exec(el.style.transform)?.[1] ?? "0"));
+  await expect.poll(angle, { timeout: 6000 }).not.toBe(0);
+  // Alla fine resta dritto, davanti o dietro.
+  await expect
+    .poll(async () => (await angle()) % 180, { timeout: 8000 })
+    .toBe(0);
+  // Si chiude ancora trascinando giù o con il tasto Indietro: la scheda funziona come prima.
+  await page.keyboard.press("Escape");
+  await expect(medal).toHaveCount(0);
 });

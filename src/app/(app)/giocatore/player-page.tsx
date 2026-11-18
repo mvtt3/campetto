@@ -4,7 +4,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -16,6 +16,7 @@ import { AVATAR_PRESETS, CHARACTER_TAGLINE } from "@/components/avatar-presets";
 import { BadgeMedal } from "@/components/badge-medal";
 import { Character, characterOf } from "@/components/character";
 import { NewDot } from "@/components/new-dot";
+import { useHeroMotion } from "@/components/profile/hero-motion";
 import { RelationsList } from "@/components/profile/relations-list";
 import { StatsDashboard } from "@/components/profile/stats-dashboard";
 import { TrendChart } from "@/components/profile/trend-chart";
@@ -143,6 +144,9 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
       })),
     [stats, group],
   );
+  // La testata: carta olografica inclinando il telefono, personaggio che barcolla scuotendolo.
+  const heroRef = useRef<HTMLElement>(null);
+  useHeroMotion(heroRef, player?.id);
 
   if (!player) {
     return (
@@ -191,8 +195,10 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
     <>
       <PullToRefresh className="px-5 pb-6">
         <section
+          ref={heroRef}
           aria-label="Giocatore"
           data-tour={mine ? "profile-card" : undefined}
+          data-holo={light ? "light" : "dark"}
           className={clsx(
             "relative isolate -mx-5 overflow-hidden rounded-b-[30px]",
             light
@@ -231,6 +237,12 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
               <path d="M32 32c30 30 30 106 0 136" />
               <path d="M168 32c-30 30-30 106 0 136" />
             </svg>
+          </span>
+          <span aria-hidden className="holo-foil">
+            <span />
+          </span>
+          <span aria-hidden className="holo-glare">
+            <span />
           </span>
           <motion.span
             aria-hidden
@@ -297,6 +309,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                   </span>
                 </motion.span>
               )}
+              <span className="hero-parallax hero-wobble relative block">
               {mine ? (
                 <Link
                   href={CHARACTERS_HREF}
@@ -333,6 +346,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
                   className="short:h-[150px] short:w-auto"
                 />
               )}
+              </span>
             </span>
           </motion.span>
 

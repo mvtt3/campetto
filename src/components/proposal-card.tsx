@@ -14,7 +14,7 @@ import {
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { dayLabel, neededPlayers } from "@/lib/notifications/grouping";
 import { useData } from "@/lib/data/provider";
 import { useNow } from "@/lib/use-now";
@@ -45,6 +45,73 @@ const RESPONSES: { value: ResponseKind; label: string }[] = [
   { value: "forse", label: "Forse" },
   { value: "no", label: "No" },
 ];
+
+/**
+ * "Ci sono": il tuo cerchietto salta dal tasto al suo posto (formazione o fila di
+ * chi c'è) con un arco e un piccolo atterraggio. Solo transform, poco più di mezzo secondo.
+ */
+function jumpIn(from: HTMLElement, playerId: string) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const card = from.closest('[data-testid="proposal-card"]');
+  if (!card) return;
+  const a = from.getBoundingClientRect();
+  // Due fotogrammi: il tempo che il tuo cerchietto compaia al suo posto.
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const to = card.querySelector<HTMLElement>(`[data-player="${playerId}"]`);
+      const b = to?.getBoundingClientRect();
+      if (!to || !b || !b.width) return;
+      const dx = a.left + a.width / 2 - (b.left + b.width / 2);
+      const dy = a.top + a.height / 2 - (b.top + b.height / 2);
+      const lift = Math.min(80, Math.abs(dy) * 0.4 + 36);
+      const arc = Array.from({ length: 9 }, (_, i) => {
+        const k = i / 8;
+        const e = 1 - Math.pow(1 - k, 2);
+        const x = dx * (1 - e);
+        const y = dy * (1 - e) - lift * Math.sin(Math.PI * e);
+        return {
+          transform: `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${(0.55 + 0.45 * e).toFixed(3)})`,
+          offset: k * 0.78,
+        };
+      });
+      to.animate(
+        [
+          ...arc,
+          { transform: "scale(1.16,0.86)", offset: 0.86 },
+          { transform: "scale(0.96,1.04)", offset: 0.94 },
+          { transform: "none", offset: 1 },
+        ],
+        { duration: 560, easing: "linear" },
+      );
+      window.setTimeout(() => haptic(12), 440);
+    }),
+  );
+}
+
+/** Un numero che, quando cambia, entra scorrendo (su se sale, giù se scende). */
+function Rolling({ value, className }: { value: number; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const prev = useRef(value);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || prev.current === value) return;
+    const up = value > prev.current;
+    prev.current = value;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.animate(
+      [
+        { transform: `translateY(${up ? 55 : -55}%)`, opacity: 0 },
+        { transform: "none", opacity: 1 },
+      ],
+      { duration: 320, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
+    );
+  }, [value]);
+  return (
+    <span ref={ref} className={clsx("inline-block", className)}>
+      {value}
+    </span>
+  );
+}
 
 export function useRespond() {
   const { backend, me, mutate } = useData();
@@ -264,7 +331,10 @@ export function ProposalCard({
       ) : null}
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px]">
-          <span className="tnum font-bold">{Math.min(yes.length, needed)}</span>
+          <Rolling
+            value={Math.min(yes.length, needed)}
+            className="tnum font-bold"
+          />
           <span className="text-muted">
             {" "}
             di {needed}
@@ -322,7 +392,11 @@ export function ProposalCard({
           <button
             key={r.value}
             aria-pressed={on}
-            onClick={() => void respond(proposal, r.value)}
+            onClick={(e) => {
+              const from = e.currentTarget;
+              void respond(proposal, r.value);
+              if (r.value === "si" && mine !== "si" && me) jumpIn(from, me.id);
+            }}
             className={clsx(
               "press h-10 flex-1 rounded-full text-[14px] font-semibold transition-colors short:h-9",
               on
@@ -500,14 +574,13 @@ export function ProposalCard({
             Formazione
           </p>
           <p className="text-[13px] text-muted">
-            <span
+            <Rolling
+              value={Math.min(yes.length, needed)}
               className={clsx(
                 "num text-[18px]",
                 full ? "text-ok" : "text-text",
               )}
-            >
-              {Math.min(yes.length, needed)}
-            </span>
+            />
             /{needed}
             {yes.length > needed && (
               <span className="font-semibold">
@@ -531,7 +604,9 @@ export function ProposalCard({
                 className="flex min-w-0 flex-col items-center gap-1"
               >
                 {p ? (
-                  <Avatar player={p} size={40} href={false} />
+                  <span data-player={p.id} className="block rounded-full">
+                    <Avatar player={p} size={40} href={false} />
+                  </span>
                 ) : (
                   <span className="grid h-10 w-10 place-items-center rounded-full border-[1.5px] border-dashed border-line-strong text-faint">
                     <IconPlus size={16} aria-hidden />
