@@ -180,6 +180,7 @@ export function BadgeTile({
   selected,
   fresh,
   popped,
+  shine,
 }: {
   state: BadgeState;
   onClick?: () => void;
@@ -188,6 +189,8 @@ export function BadgeTile({
   fresh?: boolean;
   /** Appena riscattato: un piccolo salto. */
   popped?: boolean;
+  /** Riscattato con "Riscatta tutti": una striscia di luce che lo attraversa. */
+  shine?: boolean;
 }) {
   const { def, tier, value, next } = state;
   const progress = next ? Math.min(1, value / next) : 1;
@@ -203,6 +206,12 @@ export function BadgeTile({
       )}
     >
       {fresh && <NewTag className="-left-1 -top-1.5" />}
+      {shine && (
+        <span
+          className="claim-shine pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
+          aria-hidden
+        />
+      )}
       <BadgeMedal icon={def.icon} tier={tier} size={44} />
       <span
         className={clsx(

@@ -1,15 +1,16 @@
 "use client";
 
 import clsx from "clsx";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { IconCheck, IconSparkles } from "@tabler/icons-react";
 import { useData } from "@/lib/data/provider";
 import type { BadgeCategory, BadgeState } from "@/lib/badges";
 import { BadgeMedal, BadgeTile, TIER_STYLE } from "./badge-medal";
-import { Button, Segmented } from "./ui/basics";
+import { Button, Segmented, haptic } from "./ui/basics";
 import { Sheet } from "./ui/sheet";
 import { useToast } from "./ui/toast";
 import { say } from "@/lib/voice";
-import { play } from "@/lib/sound";
+import { play, playAt } from "@/lib/sound";
 import { useNewRewards } from "./rewards";
 
 const TIERS = [1, 2, 3, 4, 5] as const;
@@ -44,14 +45,66 @@ export function BadgeCollection({
   const rewards = useNewRewards();
   const fresh = editable ? rewards.badges : new Set<string>();
   const [claimed, setClaimed] = useState<string | null>(null);
+  // "Riscatta tutti": i nuovi si aprono uno dopo l'altro (done), restando al loro posto in cima
+  // (pinned) finché non cambi categoria o pagina: niente caselle che saltano mentre si accendono.
+  const [pinned, setPinned] = useState<Set<string>>(() => new Set());
+  const [done, setDone] = useState<Set<string>>(() => new Set());
+  const [phase, setPhase] = useState<"idle" | "claiming" | "done">("idle");
+  const [batch, setBatch] = useState<BadgeState[]>([]);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach((t) => clearTimeout(t)), []);
+  const top = (s: BadgeState) => fresh.has(s.def.key) || pinned.has(s.def.key);
   const list = states
     .filter((s) => cat === "tutti" || s.def.category === cat)
     .sort(
       (a, b) =>
-        Number(fresh.has(b.def.key)) - Number(fresh.has(a.def.key)) ||
+        Number(top(b)) - Number(top(a)) ||
         b.tier - a.tier ||
         progress(b) - progress(a),
     );
+
+  const claimAll = () => {
+    if (phase !== "idle" || !fresh.size) return;
+    // Prima quelli che si vedono (nell'ordine della griglia), poi gli altri delle altre categorie.
+    const shown = list.filter((s) => fresh.has(s.def.key));
+    const rest = states.filter(
+      (s) => fresh.has(s.def.key) && !shown.includes(s),
+    );
+    const all = [...shown, ...rest];
+    const keys = all.map((s) => s.def.key);
+    setBatch(all);
+    setPinned(new Set(keys));
+    setDone(new Set());
+    setPhase("claiming");
+    haptic(10);
+    play("unlock");
+    const still =
+      typeof matchMedia === "function" &&
+      matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Una cascata breve anche con tanti badge: al massimo un secondo e mezzo.
+    const step = still ? 0 : Math.min(120, 1500 / Math.max(1, shown.length));
+    shown.forEach((st, i) => {
+      const at = 180 + i * step;
+      playAt("tick", at / 1000);
+      timers.current.push(
+        window.setTimeout(() => {
+          setDone((d) => new Set(d).add(st.def.key));
+          haptic(6);
+        }, at),
+      );
+    });
+    const end = 180 + shown.length * step + 380;
+    timers.current.push(
+      window.setTimeout(() => {
+        setDone(new Set(keys));
+        rewards.claimBadges(keys);
+        setPhase("done");
+        play("success");
+        haptic([8, 40, 12]);
+      }, end),
+      window.setTimeout(() => setPhase("idle"), end + 2200),
+    );
+  };
   const openBadge = (s: BadgeState) => {
     if (fresh.has(s.def.key)) {
       // Riscattato: via l'etichetta, un piccolo salto e il suono dello sblocco.
@@ -130,25 +183,47 @@ export function BadgeCollection({
             style={{ width: `${(unlocked / states.length) * 100}%` }}
           />
         </div>
-        {editable && (
+        {editable && !fresh.size && phase === "idle" && (
           <p className="mt-2.5 text-[12.5px] text-muted">
-            {fresh.size
-              ? fresh.size === 1
-                ? "Uno nuovo da aprire"
-                : `${fresh.size} nuovi da aprire`
-              : "Tocca un badge per metterlo in vetrina"}
+            Tocca un badge per metterlo in vetrina
           </p>
         )}
       </div>
-      <Segmented value={cat} onChange={setCat} size="sm" options={CATS} />
+      {editable && (fresh.size > 0 || phase !== "idle") && (
+        <ClaimBanner
+          items={
+            phase === "idle"
+              ? [
+                  ...list.filter((s) => fresh.has(s.def.key)),
+                  ...states.filter(
+                    (s) => fresh.has(s.def.key) && !list.includes(s),
+                  ),
+                ]
+              : batch
+          }
+          phase={phase}
+          opened={done.size}
+          onClaim={claimAll}
+        />
+      )}
+      <Segmented
+        value={cat}
+        onChange={(c) => {
+          setCat(c);
+          if (phase === "idle") setPinned(new Set());
+        }}
+        size="sm"
+        options={CATS}
+      />
       <div className="grid grid-cols-3 gap-2">
         {list.map((s) => (
           <BadgeTile
             key={s.def.key}
             state={s}
             selected={editable && showcase.includes(s.def.key)}
-            fresh={fresh.has(s.def.key)}
-            popped={claimed === s.def.key}
+            fresh={fresh.has(s.def.key) && !done.has(s.def.key)}
+            popped={claimed === s.def.key || done.has(s.def.key)}
+            shine={done.has(s.def.key)}
             onClick={() => openBadge(s)}
           />
         ))}
@@ -221,6 +296,142 @@ export function BadgeCollection({
           </div>
         )}
       </Sheet>
+    </div>
+  );
+}
+
+/**
+ * In cima alla collezione quando ci sono badge nuovi: tre medaglie a ventaglio e "Riscatta tutti",
+ * sul blu del campo con il vetro chiaro della Home. Mentre si aprono conta quanti ne mancano,
+ * poi dice "fatto" e sparisce da solo.
+ */
+function ClaimBanner({
+  items,
+  phase,
+  opened,
+  onClaim,
+}: {
+  items: BadgeState[];
+  phase: "idle" | "claiming" | "done";
+  opened: number;
+  onClaim: () => void;
+}) {
+  const n = items.length;
+  if (!n) return null;
+  const fan = items.slice(0, 3);
+  const extra = n - fan.length;
+  return (
+    // Il contenitore si chiude in altezza dopo il "Fatto": la griglia sale piano, senza salti.
+    <div
+      className={clsx("claim-wrap", phase === "done" && "claim-wrap-closing")}
+    >
+      <div
+        className={clsx("min-h-0 px-3", phase === "done" && "overflow-hidden")}
+      >
+        <section
+          className={clsx(
+            "claim-banner court relative overflow-hidden rounded-[22px] px-4 pb-4 pt-3.5 text-white",
+            phase === "done" && "claim-banner-done",
+          )}
+          aria-live="polite"
+        >
+          <span
+            className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgb(255_197_49/0.42),transparent_68%)]"
+            aria-hidden
+          />
+          <span
+            className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgb(242_106_27/0.3),transparent_70%)]"
+            aria-hidden
+          />
+          <div className="relative flex items-center gap-3">
+            <div
+              className="relative h-[54px] shrink-0"
+              style={{ width: 46 + (fan.length - 1) * 20 }}
+              aria-hidden
+            >
+              {fan.map((s, i) => (
+                <span
+                  key={s.def.key}
+                  className={clsx(
+                    "claim-fan absolute top-1 drop-shadow-[0_6px_10px_rgb(0_0_0/0.3)]",
+                    phase !== "idle" && "claim-fan-go",
+                  )}
+                  style={
+                    {
+                      left: i * 20,
+                      zIndex: 3 - i,
+                      "--r": `${(i - (fan.length - 1) / 2) * 9}deg`,
+                      animationDelay: `${i * 70}ms`,
+                    } as React.CSSProperties
+                  }
+                >
+                  <BadgeMedal icon={s.def.icon} tier={s.tier} size={46} />
+                </span>
+              ))}
+              {extra > 0 && (
+                <span className="tnum absolute -bottom-1 -right-2 z-10 rounded-full bg-volt px-1.5 py-px text-[11px] font-bold text-volt-ink">
+                  +{extra}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[16px] font-bold leading-tight">
+                {phase === "done"
+                  ? n === 1
+                    ? "Eccolo nella collezione"
+                    : "Tutti nella collezione"
+                  : n === 1
+                    ? "Un badge nuovo"
+                    : `${n} badge nuovi`}
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-white/70">
+                {phase === "done"
+                  ? n === 1
+                    ? "Riscattato"
+                    : `${n} riscattati in un colpo`
+                  : n === 1
+                    ? "Pronto da prendere"
+                    : "Prendili tutti con un tocco"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClaim}
+            disabled={phase !== "idle"}
+            className="press relative mt-3.5 flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-full border border-white/20 bg-white/16 text-[14.5px] font-semibold backdrop-blur-md disabled:opacity-100"
+          >
+            {phase === "claiming" && (
+              <span
+                className="claim-fill absolute inset-y-0 left-0 bg-white/18"
+                style={{ width: `${(opened / n) * 100}%` }}
+                aria-hidden
+              />
+            )}
+            {phase === "done" ? (
+              <>
+                <IconCheck
+                  size={18}
+                  stroke={2.6}
+                  className="relative text-volt"
+                />
+                <span className="relative">Fatto</span>
+              </>
+            ) : phase === "claiming" ? (
+              <span className="tnum relative">
+                Apro {Math.min(opened + 1, n)} di {n}
+              </span>
+            ) : (
+              <>
+                <IconSparkles size={18} className="relative text-volt" />
+                <span className="relative">
+                  {n === 1 ? "Riscatta" : "Riscatta tutti"}
+                </span>
+              </>
+            )}
+          </button>
+        </section>
+      </div>
     </div>
   );
 }

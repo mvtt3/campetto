@@ -79,6 +79,8 @@ export interface NewRewards {
   characters: Set<AvatarPresetId>;
   total: number;
   claimBadge: (key: string) => void;
+  /** Riscatta in un colpo solo tutti quelli indicati (per "Riscatta tutti"). */
+  claimBadges: (keys: string[]) => void;
   claimCharacter: (id: AvatarPresetId) => void;
 }
 
@@ -87,6 +89,7 @@ const NONE: NewRewards = {
   characters: new Set(),
   total: 0,
   claimBadge: () => {},
+  claimBadges: () => {},
   claimCharacter: () => {},
 };
 
@@ -132,6 +135,17 @@ export function useNewRewards(): NewRewards {
           ...list.filter((x) => !x.startsWith(`${key}:`)),
           badgeId(s),
         ]);
+        bump();
+      },
+      claimBadges(keys) {
+        const take = got.filter(
+          (x) => keys.includes(x.def.key) && badges.has(x.def.key),
+        );
+        if (!take.length) return;
+        const keep = (read(bKey) ?? []).filter(
+          (x) => !take.some((t) => x.startsWith(`${t.def.key}:`)),
+        );
+        write(bKey, [...keep, ...take.map(badgeId)]);
         bump();
       },
       claimCharacter(id) {

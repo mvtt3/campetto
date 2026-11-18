@@ -48,7 +48,10 @@ test("l'amministratore vede gli strumenti per inserire le partite", async ({
 }) => {
   await openApp(page);
   await page.goto("/partite");
-  await page.getByRole("link", { name: /Aggiungi (una )?partita/ }).first().click();
+  await page
+    .getByRole("link", { name: /Aggiungi (una )?partita/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/nuova/);
   await page.goto("/profilo/impostazioni");
   await page.getByText("Gestione del gruppo").click();
@@ -369,7 +372,9 @@ test("chi ha proposto sposta la partita su una controproposta", async ({
     .locator('[data-testid="proposal-card"]:visible', { hasText: "19:00" })
     .first();
   await expect(moved).toContainText("Niche");
-  await expect(moved.getByRole("button", { name: "Sposta qui" })).toHaveCount(0);
+  await expect(moved.getByRole("button", { name: "Sposta qui" })).toHaveCount(
+    0,
+  );
 });
 
 test("partita confermata e poi in corso, nel calendario e nella Home", async ({
@@ -927,6 +932,51 @@ test("badge e personaggi nuovi da riscattare: pallino rosso finché non li apri"
   ).toBeVisible();
 });
 
+test("badge nuovi: Riscatta tutti li apre tutti in un colpo", async ({
+  page,
+}) => {
+  await skipTour(page);
+  await page.goto("/?mock=demo&telefono=nuovo");
+  const party = page.locator('[aria-labelledby="party-title"]');
+  await expect(party).toBeVisible();
+  for (let i = 0; i < 8 && (await party.count()); i++) {
+    const later = party.getByRole("button", { name: "Dopo" });
+    await (
+      (await later.count()) ? later : party.getByRole("button").last()
+    ).click();
+    await page.waitForTimeout(350);
+  }
+  await page.goto("/profilo/badge");
+  const fresh = page.getByRole("button", { name: /, nuovo$/ });
+  await expect(fresh.first()).toBeVisible();
+  const n = await fresh.count();
+  const claim = page.getByRole("button", {
+    name: n === 1 ? "Riscatta" : "Riscatta tutti",
+  });
+  await expect(claim).toBeVisible();
+  await expect(
+    page.getByText(n === 1 ? "Un badge nuovo" : `${n} badge nuovi`),
+  ).toBeVisible();
+  await claim.click();
+  // Si aprono uno dopo l'altro, poi "Fatto" e il riquadro se ne va da solo.
+  await expect(page.getByRole("button", { name: "Fatto" })).toBeVisible({
+    timeout: 5000,
+  });
+  await expect(fresh).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Fatto" })).toHaveCount(0, {
+    timeout: 5000,
+  });
+  await expect(
+    page.getByText("Tocca un badge per metterlo in vetrina"),
+  ).toBeVisible();
+  // Restano riscattati anche ricaricando la pagina.
+  await page.reload();
+  await expect(
+    page.getByText("Tocca un badge per metterlo in vetrina"),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /, nuovo$/ })).toHaveCount(0);
+});
+
 test("segnala un problema dalle impostazioni", async ({ page }) => {
   await openApp(page, "demo");
   await page.goto("/profilo/impostazioni");
@@ -1314,7 +1364,9 @@ test("partita annullata per pioggia: in Home e nel calendario al posto della par
   await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=demo-prop-2/);
   // Nel calendario di oggi c'è la scheda della pioggia.
   await page.goto("/organizza");
-  await expect(page.locator('[data-testid="rained-out"]:visible')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="rained-out"]:visible'),
+  ).toBeVisible();
 });
 
 test("annullare per pioggia: la proposta resta visibile come annullata", async ({
