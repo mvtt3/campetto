@@ -161,7 +161,6 @@ export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
 
 export function StudioNightCard({ latest }: { latest: StudioLatest }) {
   const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState(() => studioSeen(latest.id));
   const minutes = Math.max(1, Math.round(latest.duration / 60));
   return (
     <>
@@ -171,7 +170,6 @@ export function StudioNightCard({ latest }: { latest: StudioLatest }) {
         data-testid="studio-night-card"
         onClick={() => {
           setStudioSeen(latest.id);
-          setSeen(true);
           setOpen(true);
         }}
       >
@@ -195,9 +193,8 @@ export function StudioNightCard({ latest }: { latest: StudioLatest }) {
             Risultati, MVP e giocate · {minutes} min
           </span>
         </span>
-        <span className="relative flex h-9 shrink-0 items-center gap-1 rounded-full bg-court-ink pl-2.5 pr-3 text-[13px] font-semibold text-court-deep shadow-[0_4px_12px_-4px_rgb(0_0_0/0.35)]">
-          <IconPlayerPlayFilled size={13} aria-hidden />
-          {seen ? "Rivedi" : "Guarda"}
+        <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-court-ink text-court-deep shadow-[0_4px_12px_-4px_rgb(0_0_0/0.35)]">
+          <IconPlayerPlayFilled size={16} className="ml-px" aria-hidden />
         </span>
       </button>
       {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
