@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import { play } from "@/lib/sound";
 import { say } from "@/lib/voice";
+import { deviceInfo } from "@/lib/device-info";
 
 type Kind = "problema" | "idea" | "altro";
 const KINDS: {
@@ -33,20 +34,6 @@ const KINDS: {
 
 /** L'ultima schermata vista prima delle impostazioni, per capire dove è successo. */
 export const LAST_SCREEN_KEY = "campetto:ultima-schermata";
-
-function deviceInfo(): string {
-  const ua = navigator.userAgent;
-  const model =
-    ua
-      .match(/\(([^)]+)\)/)?.[1]
-      ?.split(";")
-      .slice(0, 3)
-      .join(";") ?? "";
-  return `${model} · ${window.innerWidth}×${window.innerHeight} · ${document.documentElement.dataset.theme ?? ""}`.slice(
-    0,
-    200,
-  );
-}
 
 /** Segnala un problema o suggerisci un'idea: arriva a chi aggiusta l'app. */
 export function FeedbackSheet({

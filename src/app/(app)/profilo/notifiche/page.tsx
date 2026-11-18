@@ -113,7 +113,14 @@ export default function NotificationsPage() {
           </div>
           {locked && (
             <p className="mt-3 rounded-[14px] bg-raised px-3 py-2 text-[12.5px] text-muted">
-              Accendile qui: poi scegli una per una cosa ricevere
+              {push.busy
+                ? "Sto chiedendo al telefono, un attimo…"
+                : "Accendile qui: poi scegli una per una cosa ricevere"}
+            </p>
+          )}
+          {locked && push.stuck && !push.busy && (
+            <p className="mt-2 px-1 text-[11.5px] text-muted">
+              {push.stuck}. L&apos;ho già segnalato a chi aggiusta l&apos;app.
             </p>
           )}
         </section>

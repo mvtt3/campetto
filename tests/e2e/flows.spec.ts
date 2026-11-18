@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { openApp, skipTour } from "./helpers";
 
 test("dal login con Google si entra nell'app", async ({ page }) => {
@@ -1414,4 +1414,79 @@ test("classifica da tre: chi ha tirato poco sta a parte, senza posizione", async
       few.getByText(/solo \d+ tir|nessun tiro/).first(),
     ).toBeVisible();
   }
+});
+
+/** Il servizio notifiche del telefono, finto: risponde subito o non risponde mai. */
+async function fakePushService(page: Page, answers: boolean) {
+  await page.context().grantPermissions(["notifications"]);
+  await page.addInitScript((ok) => {
+    // Chromium senza finestra dice sempre "negato": qui il permesso è concesso.
+    Object.defineProperty(Notification, "permission", { get: () => "granted" });
+    PushManager.prototype.subscribe = function () {
+      if (!ok) return new Promise(() => {});
+      const endpoint = "https://fcm.googleapis.com/fcm/send/prova";
+      const sub = {
+        endpoint,
+        unsubscribe: async () => true,
+        toJSON: () => ({ endpoint, keys: { p256dh: "p", auth: "a" } }),
+      };
+      return Promise.resolve(sub as unknown as PushSubscription);
+    };
+  }, answers);
+}
+
+test("notifiche: con il telefono che risponde si accendono", async ({
+  page,
+}) => {
+  await fakePushService(page, true);
+  await openApp(page, "demo");
+  await page.goto("/profilo/notifiche");
+  await page
+    .getByRole("switch", { name: "Notifiche su questo telefono" })
+    .click();
+  await expect(page.getByText("Attive, ti avviso io")).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(
+    page.getByRole("switch", { name: "Torna a giocare" }),
+  ).toBeEnabled();
+});
+
+test("notifiche: se il servizio del telefono non risponde, niente rotellina infinita", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await fakePushService(page, false);
+  await openApp(page, "demo");
+  await page.goto("/profilo/notifiche");
+  await page
+    .getByRole("switch", { name: "Notifiche su questo telefono" })
+    .click();
+  await expect(
+    page.getByText("Sto chiedendo al telefono, un attimo…"),
+  ).toBeVisible();
+  // Dopo il tempo massimo l'interruttore torna, con cosa fare e dove si è fermato.
+  await expect(
+    page.getByRole("switch", { name: "Notifiche su questo telefono" }),
+  ).toBeVisible({ timeout: 40000 });
+  await expect(
+    page.getByText(/Il servizio notifiche del telefono non risponde/),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      /Fermo su: servizio notifiche del telefono, nessuna risposta in 25 secondi/,
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Spente, non ti disturbo")).toBeVisible();
+  // La segnalazione automatica è partita, una sola, senza notifica.
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("campetto:mock:v1")!).notifications.filter(
+      (n: { type: string; message?: string }) =>
+        n.type === "feedback" &&
+        n.message?.startsWith("[Segnalazione automatica]"),
+    ),
+  );
+  expect(saved).toHaveLength(1);
+  expect(saved[0].message).toContain("iscrizione: nessuna risposta in 25s");
+  expect(saved[0].message).toContain("permesso granted");
 });

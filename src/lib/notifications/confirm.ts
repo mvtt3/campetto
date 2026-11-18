@@ -24,12 +24,17 @@ export function confirmedInvite(
 ): { title: string; body: string } {
   return {
     title: "✅ Partita confermata",
-    body: `${dayLabel(m.startsAt, now)}${atPlace(m.place)}: siete già in ${m.yes}. Vuoi esserci anche tu?`.replace(/^./, (c) => c.toUpperCase()),
+    body: `${dayLabel(m.startsAt, now)}${atPlace(m.place)}: siete già in ${m.yes}. Vuoi esserci anche tu?`.replace(
+      /^./,
+      (c) => c.toUpperCase(),
+    ),
   };
 }
 
 /** Il calendario su quel giorno, con la partita evidenziata. */
 export function proposalUrl(id: string, startsAt: string): string {
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date(startsAt));
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+  }).format(new Date(startsAt));
   return `/organizza?giorno=${day}&p=${id}`;
 }

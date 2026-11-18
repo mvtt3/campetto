@@ -23,7 +23,9 @@ const when = (m: Match, now?: Date) =>
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const dayParam = (iso: string) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date(iso));
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(
+    new Date(iso),
+  );
 
 /** Annullata a mano: per la pioggia o per altro. */
 export function cancelledPush(
