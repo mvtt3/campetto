@@ -2,6 +2,7 @@
 
 import { IconDeviceTv, IconPlayerPlayFilled } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { CourtLines } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { STUDIO_LATEST, STUDIO_LIST } from "@/lib/studio";
 import { Presenter } from "./presenter";
@@ -160,22 +161,46 @@ export function StudioNewsCard({ latest }: { latest: StudioLatest }) {
 
 export function StudioNightCard({ latest }: { latest: StudioLatest }) {
   const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState(() => studioSeen(latest.id));
+  const minutes = Math.max(1, Math.round(latest.duration / 60));
   return (
     <>
       <button
         type="button"
-        className="press flex h-12 w-full items-center gap-3 rounded-[18px] bg-linear-to-br from-court to-court-deep pl-1.5 pr-4 text-left text-[14px] font-semibold text-court-ink"
+        className="press relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] bg-linear-to-br from-court to-court-deep py-2.5 pl-1 pr-3 text-left text-court-ink"
         data-testid="studio-night-card"
         onClick={() => {
           setStudioSeen(latest.id);
+          setSeen(true);
           setOpen(true);
         }}
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[13px] bg-volt text-volt-ink">
-          <IconDeviceTv size={17} aria-hidden />
+        <CourtLines className="pointer-events-none absolute inset-0 h-full w-full opacity-25" />
+        <span className="relative -mb-5 shrink-0">
+          <StudioHosts size={40} />
         </span>
-        <span className="min-w-0 flex-1 truncate">Studio Campetto · la puntata della giornata</span>
-        <IconPlayerPlayFilled size={15} className="shrink-0" aria-hidden />
+        <span className="relative min-w-0 flex-1">
+          <span className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-volt">
+              Studio Campetto
+            </span>
+            {!seen && (
+              <span className="rounded-full bg-volt px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.06em] text-volt-ink">
+                Nuova
+              </span>
+            )}
+          </span>
+          <span className="block truncate text-[15px] font-semibold leading-snug">
+            La giornata raccontata in studio
+          </span>
+          <span className="block truncate text-[12.5px] text-court-ink/75">
+            Risultati, MVP e giocate · {minutes} min
+          </span>
+        </span>
+        <span className="relative flex h-9 shrink-0 items-center gap-1 rounded-full bg-court-ink pl-2.5 pr-3 text-[13px] font-semibold text-court-deep">
+          <IconPlayerPlayFilled size={13} aria-hidden />
+          {seen ? "Rivedi" : "Guarda"}
+        </span>
       </button>
       {open && <StudioShowLoader id={latest.id} onClose={() => setOpen(false)} />}
     </>
