@@ -8,8 +8,15 @@ import {
   useState,
 } from "react";
 import type { Outfit, Preset } from "./build";
-import { photoDpr, photoKey, readPhoto, savePhoto } from "./figure-photos";
+import {
+  photoDpr,
+  photoFresh,
+  photoKey,
+  readPhoto,
+  savePhoto,
+} from "./figure-photos";
 import type { Award, PodiumSlot, PodiumStage } from "./podium-stage";
+import { play } from "@/lib/sound";
 
 /** Chi sta su un posto del podio, in 3D. */
 export interface Figure3D {
@@ -19,6 +26,12 @@ export interface Figure3D {
   number?: string;
   award: Award;
 }
+
+const SOUND = {
+  oro: "coppa",
+  argento: "medaglia",
+  bronzo: "applauso",
+} as const;
 
 let mod: Promise<typeof import("./podium-stage")> | null = null;
 const load = () => (mod ??= import("./podium-stage"));
@@ -39,7 +52,12 @@ async function getShared() {
   canvas.style.cssText =
     "position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none";
   canvas.dataset.testid = "podio-3d";
-  shared = { canvas, stage: new m.PodiumStage(canvas) };
+  const stage = new m.PodiumStage(canvas);
+  // Ogni gesto ha il suo suono (se i suoni sono accesi).
+  stage.onPlay = (award) => {
+    if (award !== "riposo") play(SOUND[award]);
+  };
+  shared = { canvas, stage };
   return shared;
 }
 
@@ -136,16 +154,24 @@ export function usePodium3D(figs: (Figure3D | null)[] | null) {
       sh.stage.resize(r.width, r.height);
       await sh.stage.setSlots(slots);
       if (dead) return;
-      // Le foto che mancano si prendono da questo stesso fotogramma: la prossima volta sono pronte.
-      const shots = sh.stage.photos();
-      slots.forEach((s, i) => {
-        const key = photoKey(s);
-        if (!readPhoto(key) && shots[i]) savePhoto(key, shots[i]!);
-      });
+      // Le foto che mancano si ritagliano da questo stesso fotogramma: la prossima volta sono pronte.
+      const missing = slots.map((s) => !photoFresh(photoKey(s)));
+      const shots = missing.some(Boolean) ? sh.stage.photos() : [];
       sh.stage.render();
       sh.canvas.style.opacity = "1";
       liveRef.current = true;
       setLive(true);
+      // Si salvano dopo, una alla volta, quando il telefono è libero.
+      void (async () => {
+        const { breathe, encode } = await load();
+        for (let i = 0; i < slots.length; i++) {
+          const c = shots[i];
+          if (!missing[i] || !c) continue;
+          await breathe();
+          const url = encode(c);
+          if (url) savePhoto(photoKey(slots[i]), url);
+        }
+      })();
       if (queued.current !== null) {
         const i = queued.current;
         queued.current = null;

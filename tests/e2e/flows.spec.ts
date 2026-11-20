@@ -1551,6 +1551,72 @@ test("notifiche: se la richiesta del telefono non arriva, Spicchio dice dove dar
   expect(saved[0].message).toContain("permesso: dismissed");
 });
 
+test("podio 3D: personaggi veri al loro posto, il tocco li fa esultare e la volta dopo le foto sono pronte", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openApp(page, "demo");
+  await page.getByRole("link", { name: "Classifica" }).click();
+  await expect(page.getByLabel("Podio")).toBeVisible();
+  // Nella demo i tre del podio hanno già il loro 3D: il palco prende il posto delle figure.
+  const figures = page.getByTestId("podio-figura");
+  await expect(figures).toHaveCount(3);
+  await page.waitForFunction(
+    () =>
+      document.querySelector<HTMLCanvasElement>('[data-testid="podio-3d"]')
+        ?.style.opacity === "1",
+    null,
+    { timeout: 30000 },
+  );
+  // Toccare il personaggio lo fa esultare: resta in classifica, non apre il profilo.
+  await figures.first().click();
+  await page.waitForTimeout(400);
+  await expect(page).toHaveURL(/\/classifiche/);
+  // Le foto del podio e quelle della Home (tu e l'MVP) sono salvate sul telefono.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            Object.keys(localStorage).filter(
+              (k) =>
+                k.startsWith("campetto:figura3d:v1:") && !k.endsWith("indice"),
+            ).length,
+        ),
+      { timeout: 20000 },
+    )
+    .toBeGreaterThanOrEqual(3);
+  // Al gradino si va al profilo, come prima.
+  await page.getByLabel("Podio").getByRole("link").nth(0).click();
+  await expect(page).not.toHaveURL(/\/classifiche/);
+  // Riaprendo l'app: il podio mostra subito le foto, la Home il tuo personaggio in 3D.
+  await page.goto("/");
+  await expect(page.getByTestId("home-3d-mese")).toBeVisible({
+    timeout: 15000,
+  });
+  await page.getByRole("link", { name: "Classifica" }).click();
+  await expect(
+    page.getByTestId("podio-figura").first().locator("img"),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("podio per chi non prova il 3D: i personaggi disegnati di sempre", async ({
+  page,
+}) => {
+  await openApp(page, "demo", "light", "p2");
+  await page.getByRole("link", { name: "Classifica" }).click();
+  await expect(page.getByLabel("Podio")).toBeVisible();
+  await page.waitForTimeout(2500);
+  await expect(page.getByTestId("podio-figura")).toHaveCount(0);
+  await expect(page.locator('[data-testid="podio-3d"]')).toHaveCount(0);
+  await expect(page.getByLabel("Podio").locator("svg.character")).toHaveCount(
+    3,
+  );
+});
+
 test("profilo: inclinando il telefono la carta si muove, scuotendolo il personaggio barcolla e poi si ferma", async ({
   page,
 }) => {
@@ -1814,7 +1880,9 @@ test("profilo su un telefono senza giroscopio (Galaxy A05s): la carta si muove e
   await expect(svg).not.toHaveAttribute("data-wobbling", "", { timeout: 8000 });
 });
 
-test("collezione: carte trovate e da trovare, la carta si apre in 3D e si sfoglia", async ({ page }) => {
+test("collezione: carte trovate e da trovare, la carta si apre in 3D e si sfoglia", async ({
+  page,
+}) => {
   // Il 3D nel browser di prova gira senza scheda video: è lento, serve più tempo.
   test.slow();
   await openApp(page, "demo", "light", "p1");
@@ -1822,7 +1890,9 @@ test("collezione: carte trovate e da trovare, la carta si apre in 3D e si sfogli
   const coll = page.getByTestId("collezione");
   await expect(coll).toBeVisible();
   // Jack e Kenji sono di serie: almeno due carte trovate, il resto da trovare.
-  await expect(page.getByTestId("coll-found").getByRole("button")).not.toHaveCount(0);
+  await expect(
+    page.getByTestId("coll-found").getByRole("button"),
+  ).not.toHaveCount(0);
   const missing = page.getByTestId("coll-missing").getByRole("button");
   await expect(missing.first()).toBeVisible();
   await missing.first().click();
@@ -1835,15 +1905,21 @@ test("collezione: carte trovate e da trovare, la carta si apre in 3D e si sfogli
   await page.keyboard.press("Escape");
   await expect(detail).toBeHidden();
   // Un personaggio tuo che non stai usando: si sceglie da qui e nella griglia passa "Addosso".
-  const kenjiOn = /Addosso/.test(await page.getByTestId("card-skin-kenji").innerText());
-  const other = page.getByTestId(kenjiOn ? "card-skin-jack" : "card-skin-kenji");
+  const kenjiOn = /Addosso/.test(
+    await page.getByTestId("card-skin-kenji").innerText(),
+  );
+  const other = page.getByTestId(
+    kenjiOn ? "card-skin-jack" : "card-skin-kenji",
+  );
   await other.click();
   await page.getByTestId("card-wear").click();
   await page.keyboard.press("Escape");
   await expect(other).toContainText("Addosso");
 });
 
-test("pass: percorso a tabelloni con Sei qui, premi da riscattare tutti insieme", async ({ page }) => {
+test("pass: percorso a tabelloni con Sei qui, premi da riscattare tutti insieme", async ({
+  page,
+}) => {
   await openApp(page, "demo", "light", "p1");
   await page.goto("/pass");
   await expect(page.getByTestId("pass-track")).toBeVisible();

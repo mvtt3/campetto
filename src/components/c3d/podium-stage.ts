@@ -307,6 +307,9 @@ const KEYS: Record<Award, [Key[], Key[]]> = {
   ],
 };
 
+/** Le pose dei gesti, per i controlli: ogni gesto parte e finisce nella posa della foto. */
+export const GESTI = { REST, KEYS, track };
+
 interface Actor {
   slot: PodiumSlot;
   rig: CharacterRig;
@@ -450,6 +453,23 @@ function pose(a: Actor, t: number) {
   }
 }
 
+/** Cede il passo allo schermo: il lavoro riprende quando il telefono è libero. */
+export const breathe = () =>
+  new Promise<void>((r) =>
+    window.requestIdleCallback
+      ? window.requestIdleCallback(() => r(), { timeout: 200 })
+      : window.setTimeout(r, 16),
+  );
+
+/** La foto di un ritaglio, in WebP (o PNG se il telefono non sa farla). */
+export function encode(c: HTMLCanvasElement): string | null {
+  try {
+    return c.toDataURL("image/webp", 0.9);
+  } catch {
+    return null;
+  }
+}
+
 export class PodiumStage {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -466,6 +486,8 @@ export class PodiumStage {
   private env: THREE.WebGLRenderTarget;
   /** Chiamato alla fine di ogni movimento, quando il palco torna fermo. */
   onIdle?: () => void;
+  /** Chiamato quando parte un gesto (per il suono). */
+  onPlay?: (award: Award) => void;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -521,7 +543,12 @@ export class PodiumStage {
     for (const slot of slots) {
       let a = keep.get(slot.key);
       if (a && a.slot.award === slot.award) keep.delete(slot.key);
-      else a = this.makeActor(slot);
+      else {
+        // Un personaggio alla volta, lasciando respirare lo schermo tra uno e l'altro.
+        await breathe();
+        if (this.disposed) return;
+        a = this.makeActor(slot);
+      }
       a.slot = slot;
       this.place(a);
       next.push(a);
@@ -538,7 +565,13 @@ export class PodiumStage {
   }
 
   private makeActor(slot: PodiumSlot): Actor {
-    const rig = buildCharacter(slot.preset, slot.outfit, slot.number);
+    // Sul podio e con la coppa festeggiano tutti, anche chi di suo ha la faccia seria.
+    const rig = buildCharacter(
+      slot.preset,
+      slot.outfit,
+      slot.number,
+      slot.award === "riposo" ? undefined : "festa",
+    );
     const holder = new THREE.Group();
     holder.add(contactShadow(), rig.root);
     const upper = rig.arms[0].parent!;
@@ -599,7 +632,7 @@ export class PodiumStage {
    * Le foto dei tre posti, ritagliate dall'ultimo fotogramma a riposo: identiche al 3D.
    * Va chiamata subito dopo un render (stesso giro), finché il fotogramma è ancora lì.
    */
-  photos(): (string | null)[] {
+  photos(): (HTMLCanvasElement | null)[] {
     this.render();
     const src = this.renderer.domElement;
     return this.actors.map((a) => {
@@ -620,11 +653,7 @@ export class PodiumStage {
         c.width,
         c.height,
       );
-      try {
-        return c.toDataURL("image/webp", 0.9);
-      } catch {
-        return null;
-      }
+      return c;
     });
   }
 
@@ -641,6 +670,7 @@ export class PodiumStage {
     const a = this.actors[i];
     if (!a || (a.play > 0 && a.play < 1)) return;
     a.play = 0.0001;
+    this.onPlay?.(a.slot.award);
     this.loop();
   }
 
@@ -745,21 +775,43 @@ export class PodiumStage {
  * Usa un palco nascosto che si butta subito dopo, così non resta niente in memoria.
  * `fig`: quanto è alto il personaggio nel riquadro (il resto è aria per quello che sporge).
  */
+let photoStage: {
+  stage: PodiumStage;
+  canvas: HTMLCanvasElement;
+  timer: number;
+} | null = null;
+
 export async function figurePhoto(
   o: Omit<PodiumSlot, "cx" | "bottom" | "key"> & { fig: number },
 ): Promise<string | null> {
-  const c = document.createElement("canvas");
-  const st = new PodiumStage(c);
+  // Un solo palco nascosto per tutte le foto: si butta poco dopo l'ultima.
+  if (!photoStage) {
+    const canvas = document.createElement("canvas");
+    photoStage = { stage: new PodiumStage(canvas), canvas, timer: 0 };
+  }
+  const ps = photoStage;
+  window.clearTimeout(ps.timer);
   try {
-    st.resize(o.w, o.h);
-    await st.setSlots([
-      { ...o, key: "foto", cx: o.w / 2, bottom: o.h, h: o.fig },
+    ps.stage.resize(o.w, o.h);
+    await ps.stage.setSlots([
+      {
+        ...o,
+        key: `foto|${o.preset}|${JSON.stringify(o.outfit)}|${o.number ?? ""}`,
+        cx: o.w / 2,
+        bottom: o.h,
+        h: o.fig,
+      },
     ]);
-    st.render();
-    return c.toDataURL("image/webp", 0.9);
+    ps.stage.render();
+    return encode(ps.canvas);
   } catch {
     return null;
   } finally {
-    st.dispose();
+    ps.timer = window.setTimeout(() => {
+      if (photoStage === ps) {
+        ps.stage.dispose();
+        photoStage = null;
+      }
+    }, 5000);
   }
 }

@@ -186,6 +186,8 @@ interface Spec {
   arms?: "big";
   /** Occhi a mezz'asta, sguardo tranquillo. */
   lids?: boolean;
+  /** La faccia quando festeggia (podio, coppa), per chi di suo ha la faccia seria o arrabbiata. */
+  cheer?: FaceShape[];
 }
 
 const brows = (x: number, y: number, tilt: number, w = 6, gap = 8): FaceShape => ({
@@ -265,6 +267,10 @@ export const SPECS: Record<Preset, Spec> = {
       { d: "M50 53 Q42 50 36 54 Q31 57 32 52 Q30 56 35 58 Q43 59 50 55 Q57 59 65 58 Q70 56 68 52 Q69 57 64 54 Q58 50 50 53 Z", fill: INK },
       { d: "M44 61.6 Q50 63.6 56 61.6", stroke: INK, width: 2.6 },
     ],
+    cheer: [
+      { d: "M50 53 Q42 50 36 54 Q31 57 32 52 Q30 56 35 58 Q43 59 50 55 Q57 59 65 58 Q70 56 68 52 Q69 57 64 54 Q58 50 50 53 Z", fill: INK },
+      ...grin(50, 61, 0.72),
+    ],
     extra: [], headScale: [0.94, 0.94, 0.94], arms: "big",
   },
   // Ventosa: il rimbalzista, occhialoni da gioco con l'elastico e il paradenti.
@@ -300,6 +306,7 @@ export const SPECS: Record<Preset, Spec> = {
     shorts: YELLOW, shortsTrim: INK, shoes: RED,
     svg: { cx: 50, cy: 50, r: 26 }, eyes: [[42, 49, 0.9], [58, 49, 0.9]],
     paint: [brows(50, 40, -2.2, 7), { d: "M42 62 L58 62", stroke: INK, width: 3 }],
+    cheer: grin(50, 61.5, 0.85),
     extra: [], arms: "big",
   },
   // Lampo: il più veloce, fascia blu col fulmine e gambe lunghe.
@@ -745,7 +752,8 @@ const R = 0.56;
 /** Dove sta la testa: serve anche al camerino per inquadrare gli oggetti. */
 export const HEAD_Y = 2.3;
 
-export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: string): CharacterRig {
+/** "festa": la faccia contenta di chi sale sul podio o alza la coppa. */
+export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: string, mood?: "festa"): CharacterRig {
   const s = SPECS[preset];
   const root = new THREE.Group();
   const body = new THREE.Group();
@@ -942,7 +950,8 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
   head.add(skull);
   const eyes = s.eyes.map(([x, y, sc = 1, look = 0, lid]) => eye(R, f, x, y, sc, look, lid ?? s.lids));
   head.add(...eyes);
-  head.add(faceDecal(R, f, [...s.eyes.map(([x, y, sc = 1]): FaceShape => ({ ellipse: [x, y, 6.5 * sc, 8.3 * sc], fill: INK })), ...s.paint], preset));
+  const cheer = mood === "festa" && s.cheer;
+  head.add(faceDecal(R, f, [...s.eyes.map(([x, y, sc = 1]): FaceShape => ({ ellipse: [x, y, 6.5 * sc, 8.3 * sc], fill: INK })), ...(cheer || s.paint)], cheer ? `${preset}:festa` : preset));
 
   const afro = s.extra.includes("afro");
   const headTop = outfit.testa;

@@ -31,7 +31,11 @@ export type SoundName =
   | "dribble"
   | "heartbeat"
   | "message"
-  | "coins";
+  | "coins"
+  // Il podio in 3D: il gesto di chi è primo, secondo e terzo.
+  | "coppa"
+  | "medaglia"
+  | "applauso";
 
 const KEY = "campetto:suoni";
 const listeners = new Set<(on: boolean) => void>();
@@ -559,6 +563,39 @@ const RECIPES: Record<SoundName, (c: BaseAudioContext, t: number) => void> = {
     mallet(c, t, 1318.5, 0, 0.12, 0.3, 0.2);
     mallet(c, t, 1975.5, 0.11, 0.12, 0.45, 0.25);
   },
+  // Podio, primo: squilli di fanfara che salgono, il piatto quando alza la coppa e il pubblico che esplode.
+  coppa: (c, t) => {
+    const notes: [number, number][] = [[392, 0], [523.3, 0.12], [659.3, 0.24], [784, 0.36], [1046.5, 0.62]];
+    for (const [f, at] of notes) {
+      const dur = at > 0.5 ? 0.95 : 0.15;
+      tone(c, t, { f, at, dur, gain: 0.08, type: "triangle", attack: 0.012, reverb: 0.35 });
+      tone(c, t, { f, at, dur: dur * 0.9, gain: 0.018, type: "sawtooth", attack: 0.015, reverb: 0.3 });
+      tone(c, t, { f: f * 2, at, dur: dur * 0.6, gain: 0.02, attack: 0.01, reverb: 0.3 });
+    }
+    noise(c, t, { at: 0.62, dur: 1.2, gain: 0.045, filter: "highpass", f: 5200, attack: 0.003, reverb: 0.4 });
+    for (let i = 0; i < 6; i++)
+      noise(c, t, { at: 0.6 + i * 0.05, dur: 1.4 + i * 0.08, gain: 0.045, filter: "bandpass", f: 900 + i * 260, to: 700 + i * 180, q: 1.4, attack: 0.2, reverb: 0.35 });
+    tone(c, t, { f: 2400, to: 2900, at: 0.95, dur: 0.35, gain: 0.022, reverb: 0.3 });
+  },
+  // Podio, secondo: la medaglia che tintinna presa dal petto, un luccichio quando la mostra, un "evviva".
+  medaglia: (c, t) => {
+    [2637, 3520].forEach((f, i) => mallet(c, t, f, 0.56 + i * 0.05, 0.05, 0.35, 0.3));
+    [1568, 2093, 2637, 3136].forEach((f, i) => mallet(c, t, f, 1.05 + i * 0.06, 0.045, 0.5, 0.45));
+    for (let i = 0; i < 4; i++)
+      noise(c, t, { at: 1.0 + i * 0.05, dur: 0.9, gain: 0.04, filter: "bandpass", f: 1000 + i * 300, to: 800 + i * 200, q: 1.5, attack: 0.12, reverb: 0.3 });
+    tone(c, t, { f: 2200, to: 2800, at: 1.2, dur: 0.3, gain: 0.02, reverb: 0.3 });
+  },
+  // Podio, terzo: quattro battiti di mani a tempo col gesto, e intorno qualcuno che si unisce.
+  applauso: (c, t) => {
+    const clap = (at: number, g: number) => {
+      noise(c, t, { at, dur: 0.07, gain: g, filter: "bandpass", f: 1400, q: 1.2, attack: 0.001, reverb: 0.15 });
+      noise(c, t, { at: at + 0.008, dur: 0.05, gain: g * 0.6, filter: "bandpass", f: 2400, q: 1.5, attack: 0.001, reverb: 0.1 });
+    };
+    for (const at of [0.51, 0.87, 1.23, 1.59]) clap(at, 0.14);
+    let seed = 11;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 26; i++) clap(0.45 + rnd() * 1.4, 0.035 + rnd() * 0.03);
+  },
   // Soldi: monetine che tintinnano.
   coins: (c, t) => {
     [2093, 2637, 3136, 2793, 3520].forEach((f, i) => mallet(c, t, f, i * 0.045, 0.06, 0.22, 0.15));
@@ -595,6 +632,9 @@ const LEVEL: Record<SoundName, number> = {
   heartbeat: 3,
   message: 2.2,
   coins: 2.6,
+  coppa: 2.2,
+  medaglia: 2.3,
+  applauso: 3.2,
 };
 
 function run(c: BaseAudioContext, name: SoundName, t: number) {

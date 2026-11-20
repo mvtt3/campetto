@@ -8,10 +8,26 @@ import type { Award } from "./podium-stage";
  * Le foto dei personaggi 3D (podio e Home), salvate sul telefono: si mostrano subito, senza
  * scaricare il 3D. Si fanno dal 3D vero, quindi quando il 3D vivo prende il loro posto il
  * cambio non si vede. Al massimo qualche decina, le più vecchie si buttano.
+ * Ogni foto ricorda con quale versione dell'app è stata fatta: dopo un aggiornamento (magari
+ * i personaggi sono cambiati) si rifà, e intanto si mostra quella di prima.
  */
 const NS = "campetto:figura3d:v1:";
 const INDEX = `${NS}indice`;
 const MAX = 36;
+const BUILD = process.env.NEXT_PUBLIC_BUILD ?? "dev";
+
+function index(): Record<string, string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(INDEX) ?? "{}");
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+
+/** La foto c'è ed è di questa versione dell'app. */
+export const photoFresh = (key: string) =>
+  index()[key] === BUILD && !!readPhoto(key);
 
 export interface PhotoSpec {
   preset: Preset;
@@ -48,15 +64,18 @@ export function readPhoto(key: string): string | null {
 export function savePhoto(key: string, url: string) {
   mem.set(key, url);
   try {
-    const list: string[] = JSON.parse(localStorage.getItem(INDEX) ?? "[]");
-    const next = [...list.filter((k) => k !== key), key];
-    while (next.length > MAX) {
-      const old = next.shift()!;
+    const idx = index();
+    delete idx[key];
+    idx[key] = BUILD;
+    const keys = Object.keys(idx);
+    while (keys.length > MAX) {
+      const old = keys.shift()!;
+      delete idx[old];
       localStorage.removeItem(NS + old);
       mem.delete(old);
     }
     localStorage.setItem(NS + key, url);
-    localStorage.setItem(INDEX, JSON.stringify(next));
+    localStorage.setItem(INDEX, JSON.stringify(idx));
   } catch {
     /* spazio finito: resta solo in memoria per questa volta */
   }
@@ -87,7 +106,7 @@ let queue: Promise<void> = Promise.resolve();
 export function makePhotos(jobs: PhotoSpec[]) {
   for (const job of jobs) {
     const key = photoKey(job);
-    if (readPhoto(key)) continue;
+    if (photoFresh(key)) continue;
     queue = queue.then(
       () =>
         new Promise<void>((resolve) => {
