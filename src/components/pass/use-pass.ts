@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { characterOf, characterProgress } from "@/components/character";
 import type { Outfit, Preset } from "@/components/c3d/build";
+import { preset3d } from "@/components/c3d/cast";
 import { useData } from "@/lib/data/provider";
 import { passAllowed } from "@/lib/pass/actions";
 import { ITEM_BY_ID, type Item, type Slot } from "@/lib/pass/catalog";
@@ -10,8 +11,6 @@ import { computePass, type PassProgress } from "@/lib/pass/engine";
 import { usePassState, type PassState } from "@/lib/pass/store";
 import { useNow } from "@/lib/use-now";
 
-/** Il personaggio 3D di partenza, da quello che hai già scelto nell'app. */
-const START: Record<string, Preset> = { collana: "jack", occhiali: "kenji", bomber: "bomber" };
 
 export interface PassView {
   allowed: boolean;
@@ -58,7 +57,8 @@ export function usePass(): PassView {
     if (bomberOpen) p.owned.add("skin-bomber");
     return p;
   }, [me, allowed, data.matches, st, now, bomberOpen]);
-  const fallback: Preset = (me && START[characterOf(me)]) || "jack";
+  // Il personaggio 3D di partenza è quello che hai già scelto nell'app (se ha già il suo 3D).
+  const fallback: Preset = (me && preset3d(characterOf(me))) || "jack";
   const chosen = presetOf(ITEM_BY_ID.get(st.outfit.skin ?? ""));
   const preset = chosen && prog?.owned.has(`skin-${chosen}`) ? chosen : fallback;
   const outfit = useMemo(() => looksOf(st.outfit, prog?.owned), [st.outfit, prog]);

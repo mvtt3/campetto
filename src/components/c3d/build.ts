@@ -7,12 +7,20 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Look, Slot } from "@/lib/pass/catalog";
 
-export type Preset = "jack" | "kenji" | "bomber";
+export type Preset =
+  | "jack" | "kenji" | "bomber" | "fernando" | "lukas" | "giacomo" | "kofi" | "ventosa"
+  | "cecchino" | "regista" | "muro" | "lampo" | "jolly";
 export type Outfit = Partial<Record<Exclude<Slot, "skin">, Look>>;
 
 const INK = "#1d1a16";
 const CREAM = "#fff8ea";
 const RED = "#e5412d";
+const YELLOW = "#ffc531";
+const GREEN = "#2e9e5b";
+const PURPLE = "#7c4dcc";
+const TEAL = "#1597a6";
+const BLUE = "#2d5be3";
+const NAVY = "#1d3b66";
 
 /* ---------------------------------------------------------------- */
 /* Texture e materiali (condivisi: si creano una volta sola)         */
@@ -161,11 +169,30 @@ interface Spec {
   shorts: string;
   shortsTrim: string;
   shoes: string;
-  svg: { cx: number; cy: number; r: number };
-  eyes: [number, number, number?, number?][];
+  /** La testa nel disegno 2D: centro e raggio (ry se è allungata o schiacciata). */
+  svg: { cx: number; cy: number; r: number; ry?: number };
+  /** Occhi: x, y, misura, dove guarda, a mezz'asta (uno solo, per chi prende la mira). */
+  eyes: [number, number, number?, number?, boolean?][];
   paint: FaceShape[];
-  extra: ("collana" | "occhiali" | "afro" | "fascia")[];
+  extra: (
+    | "collana" | "occhiali" | "afro" | "fascia" | "bandana" | "fascia-alta" | "coppola" | "occhialoni"
+    | "fascia-gialla" | "berretto" | "fischietto" | "fascia-lampo" | "berretto-girato"
+  )[];
+  /** Testa allungata o schiacciata (x, y, z), come nel disegno. */
+  headScale?: [number, number, number];
+  /** Gambe più lunghe (+) o più corte (−), in unità del 3D. */
+  legs?: number;
+  /** Braccia grosse (i muscolosi e i rimbalzisti). */
+  arms?: "big";
+  /** Occhi a mezz'asta, sguardo tranquillo. */
+  lids?: boolean;
 }
+
+const brows = (x: number, y: number, tilt: number, w = 6, gap = 8): FaceShape => ({
+  d: `M${x - gap - w / 2} ${y - tilt} L${x - gap + w / 2} ${y + tilt} M${x + gap - w / 2} ${y + tilt} L${x + gap + w / 2} ${y - tilt}`,
+  stroke: INK,
+  width: 2.6,
+});
 
 function grin(x: number, y: number, w = 1): FaceShape[] {
   const T = (d: string) => d.replace(/(-?\d*\.?\d+) (-?\d*\.?\d+)/g, (_, a, b) => `${x + +a * w} ${y + +b}`);
@@ -195,6 +222,106 @@ export const SPECS: Record<Preset, Spec> = {
     svg: { cx: 50, cy: 53, r: 25 }, eyes: [[42, 56, 0.92], [58, 56, 0.92]], paint: grin(50, 67, 0.92),
     extra: ["afro", "fascia"],
   },
+  // Fernando: bandana rossa a pois annodata di lato, sguardo deciso e sorriso coi denti.
+  fernando: {
+    head: "testa-classico", jersey: YELLOW, trim: INK, number: "8", numberColor: INK,
+    shorts: YELLOW, shortsTrim: INK, shoes: RED,
+    svg: { cx: 50, cy: 49, r: 27 }, eyes: [[42, 48], [58, 48]],
+    paint: [
+      brows(50, 39.4, 1.8),
+      { d: "M40 61 Q50 69 60 61 Z", fill: CREAM, stroke: INK, width: 2.4 },
+      { d: "M45 61.6 V64.4 M50 62 V66 M55 61.6 V64.4", stroke: INK, width: 1.4 },
+    ],
+    extra: ["bandana"],
+  },
+  // Lukas: il più alto, testa allungata, fascia in fronte, occhi a mezz'asta.
+  lukas: {
+    head: "testa-classico", jersey: CREAM, trim: PURPLE, number: "33", numberColor: PURPLE,
+    shorts: PURPLE, shortsTrim: CREAM, shoes: RED,
+    svg: { cx: 50, cy: 45, r: 22, ry: 31 }, eyes: [[43, 47], [57, 47]], lids: true,
+    paint: [{ d: "M44 62 Q51 66 58 61", stroke: INK, width: 2.8 }],
+    extra: ["fascia-alta"], headScale: [0.86, 1.16, 0.88], legs: 0.2,
+  },
+  // Giacomo: il più basso, testa schiacciata, coppola anni '30, lentiggini e risata.
+  giacomo: {
+    head: "testa-classico", jersey: RED, trim: CREAM, number: "5", numberColor: CREAM, numberStroke: INK,
+    shorts: RED, shortsTrim: CREAM, shoes: RED,
+    svg: { cx: 50, cy: 56, r: 31, ry: 23 }, eyes: [[42, 55, 0.88], [58, 55, 0.88]],
+    paint: [
+      ...[[31, 62, 1.2], [34.5, 64.6, 1.2], [30, 66, 1.1], [69, 62, 1.2], [65.5, 64.6, 1.2], [70, 66, 1.1]].map(
+        ([x, y, r]): FaceShape => ({ ellipse: [x, y, r, r], fill: "#c9500f" }),
+      ),
+      ...grin(50, 65, 0.92),
+    ],
+    extra: ["coppola"], headScale: [1.12, 0.86, 1.04], legs: -0.15,
+  },
+  // Kofi: il più muscoloso, braccia grosse, sopracciglia decise e baffi a manubrio.
+  kofi: {
+    head: "testa-classico", jersey: CREAM, trim: RED, number: "1", numberColor: RED,
+    shorts: RED, shortsTrim: CREAM, shoes: RED,
+    svg: { cx: 50, cy: 44, r: 25 }, eyes: [[42, 41, 0.9], [58, 41, 0.9]],
+    paint: [
+      brows(50, 32.6, 2, 7),
+      { d: "M50 53 Q42 50 36 54 Q31 57 32 52 Q30 56 35 58 Q43 59 50 55 Q57 59 65 58 Q70 56 68 52 Q69 57 64 54 Q58 50 50 53 Z", fill: INK },
+      { d: "M44 61.6 Q50 63.6 56 61.6", stroke: INK, width: 2.6 },
+    ],
+    extra: [], headScale: [0.94, 0.94, 0.94], arms: "big",
+  },
+  // Ventosa: il rimbalzista, occhialoni da gioco con l'elastico e il paradenti.
+  ventosa: {
+    head: "testa-classico", jersey: GREEN, trim: CREAM, number: "4", numberColor: CREAM, numberStroke: INK,
+    shorts: GREEN, shortsTrim: CREAM, shoes: RED,
+    svg: { cx: 50, cy: 49, r: 26 }, eyes: [[42, 47, 0.9], [58, 47, 0.9]],
+    paint: [
+      { d: "M40 60 Q50 68 60 60 Z", fill: "#7fd1a4", stroke: INK, width: 2.4 },
+      { d: "M44 61.6 V64 M50 62 V65.6 M56 61.6 V64", stroke: INK, width: 1.2 },
+    ],
+    extra: ["occhialoni"], arms: "big",
+  },
+  // Cecchino: il tiratore, fascia gialla e un occhio socchiuso che prende la mira.
+  cecchino: {
+    head: "testa-classico", jersey: CREAM, trim: TEAL, number: "3", numberColor: TEAL,
+    shorts: TEAL, shortsTrim: CREAM, shoes: RED,
+    svg: { cx: 50, cy: 48, r: 26 }, eyes: [[42, 49, 1, 0, true], [58, 48]],
+    paint: [{ d: "M43 62 Q51 65 59 60", stroke: INK, width: 2.6 }],
+    extra: ["fascia-gialla"],
+  },
+  // Regista: il playmaker, cappellino con la visiera blu e il fischietto al collo.
+  regista: {
+    head: "testa-classico", jersey: BLUE, trim: CREAM, number: "10", numberColor: CREAM,
+    shorts: BLUE, shortsTrim: CREAM, shoes: RED,
+    svg: { cx: 50, cy: 50, r: 26 }, eyes: [[43, 52, 0.92, -1], [59, 52, 0.92, -1]],
+    paint: [...grin(51, 63, 0.85)],
+    extra: ["berretto", "fischietto"],
+  },
+  // Muro: il difensore, braccia grosse, faccia seria e bocca dritta.
+  muro: {
+    head: "testa-classico", jersey: YELLOW, trim: INK, number: "21", numberColor: INK,
+    shorts: YELLOW, shortsTrim: INK, shoes: RED,
+    svg: { cx: 50, cy: 50, r: 26 }, eyes: [[42, 49, 0.9], [58, 49, 0.9]],
+    paint: [brows(50, 40, -2.2, 7), { d: "M42 62 L58 62", stroke: INK, width: 3 }],
+    extra: [], arms: "big",
+  },
+  // Lampo: il più veloce, fascia blu col fulmine e gambe lunghe.
+  lampo: {
+    head: "testa-classico", jersey: TEAL, trim: YELLOW, number: "9", numberColor: YELLOW, numberStroke: INK,
+    shorts: TEAL, shortsTrim: YELLOW, shoes: RED,
+    svg: { cx: 50, cy: 49, r: 26 }, eyes: [[42, 50, 1, 1], [58, 50, 1, 1]],
+    paint: [...grin(51, 62, 0.9)],
+    extra: ["fascia-lampo"], legs: 0.1,
+  },
+  // Jolly: il tuttofare, cappellino girato, occhiolino e linguaccia.
+  jolly: {
+    head: "testa-classico", jersey: YELLOW, trim: PURPLE, number: "6", numberColor: PURPLE,
+    shorts: YELLOW, shortsTrim: PURPLE, shoes: RED,
+    svg: { cx: 50, cy: 50, r: 26 }, eyes: [[42, 50]],
+    paint: [
+      { d: "M53 50 Q58 46.4 63 50", stroke: INK, width: 2.8 },
+      { d: "M41 61 Q51 70 61 61 Q51 64 41 61 Z", fill: INK, stroke: INK, width: 2 },
+      { d: "M51 64.4 Q55 64 56 68 Q53.6 71 51 69 Z", fill: RED, stroke: INK, width: 1.4 },
+    ],
+    extra: ["berretto-girato"],
+  },
 };
 
 /* ---------------------------------------------------------------- */
@@ -217,7 +344,7 @@ function onHead(R: number, yaw: number, pitch: number, out = 0) {
 }
 
 function svgToHead(f: Spec["svg"], x: number, y: number): [number, number] {
-  const X = (x - f.cx) / f.r, Y = -(y - f.cy) / f.r;
+  const X = (x - f.cx) / f.r, Y = -(y - f.cy) / (f.ry ?? f.r);
   const pitch = Math.asin(Math.max(-0.99, Math.min(0.99, Y)));
   const yaw = Math.asin(Math.max(-0.99, Math.min(0.99, X / Math.cos(pitch))));
   return [yaw, pitch];
@@ -284,22 +411,37 @@ function faceTexture(f: Spec["svg"], shapes: FaceShape[]) {
   return canvasTex(c);
 }
 
-function eye(R: number, f: Spec["svg"], x: number, y: number, s = 1, look = 0) {
+function eye(R: number, f: Spec["svg"], x: number, y: number, s = 1, look = 0, lid = false) {
   const [yaw, pitch] = svgToHead(f, x, y);
-  const k = (R / f.r) * s;
+  // Su una testa allungata o schiacciata l'occhio resta della misura del disegno.
+  const k = (R / f.r) * s, ky = (R / (f.ry ?? f.r)) * s;
   const g = new THREE.Group();
   const { p, q } = onHead(R, yaw, pitch, -0.012);
   g.position.copy(p);
   g.quaternion.copy(q);
   const white = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), vinyl(CREAM, { roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.06 }));
-  white.scale.set(5.6 * k, 7.4 * k, 0.065);
+  white.scale.set(5.6 * k, 7.4 * ky, 0.065);
+  const drop = lid ? 2.2 : 1;
   const pupil = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), vinyl("#141110", { roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04 }));
-  pupil.scale.set(3 * k, 4.5 * k, 0.03);
-  pupil.position.set(look * 1.4 * k, -1 * k, 0.048);
+  pupil.scale.set(3 * k, 4.5 * ky, 0.03);
+  pupil.position.set(look * 1.4 * k, -drop * ky, 0.048);
   const shine = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshBasicMaterial({ color: "#ffffff", toneMapped: false }));
-  shine.scale.set(1.1 * k, 1.3 * k, 0.01);
-  shine.position.set(look * 1.4 * k + 1.3 * k, -1 * k + 1.9 * k, 0.076);
+  shine.scale.set(1.1 * k, 1.3 * ky, 0.01);
+  shine.position.set(look * 1.4 * k + 1.3 * k, -drop * ky + 1.9 * ky, 0.076);
   g.add(white, pupil, shine);
+  if (lid) {
+    // La palpebra: mezza calotta del colore della palla, con la riga scura sul bordo.
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+      vinyl("#f26a1b", { roughness: 0.55, clearcoat: 0.3 }),
+    );
+    cap.scale.set(6.4 * k, 8.4 * ky, 0.078);
+    cap.position.set(0, -1 * ky, 0);
+    const line = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 11.4 * k, 4, 8), vinyl(INK, { roughness: 0.3 }));
+    line.rotation.z = Math.PI / 2;
+    line.position.set(0, -1 * ky, 0.07);
+    g.add(cap, line);
+  }
   return g;
 }
 
@@ -614,6 +756,8 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
   const shorts = outfit.gambe?.kind === "shorts" ? outfit.gambe : null;
   const top = outfit.busto;
   const sleeveLook = outfit.braccio;
+  const lift = s.legs ?? 0;
+  const big = s.arms === "big";
 
   // Scarpe, calzini e gambe.
   for (const side of [-1, 1]) {
@@ -626,10 +770,15 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     sock.position.set(side * 0.2, 0.31, -0.04);
     const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.087, 0.087, 0.03, 16), vinyl(shoes?.upper ?? s.trim, { roughness: 0.7, clearcoat: 0 }));
     stripe.position.set(side * 0.2, 0.4, -0.04);
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.3, 4, 12), black);
-    leg.position.set(side * 0.2, 0.6, 0);
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.3 + lift, 4, 12), black);
+    leg.position.set(side * 0.2, 0.6 + lift / 2, 0);
     body.add(sock, stripe, leg);
   }
+
+  // Tutto quello che sta sopra le gambe: si alza o si abbassa con la lunghezza delle gambe.
+  const upper = new THREE.Group();
+  upper.position.y = lift;
+  body.add(upper);
 
   const cloth: Cloth = {};
   // Pantaloncini.
@@ -637,7 +786,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     lathe([[0.48, 0.6], [0.47, 0.75], [0.44, 0.9], [0.4, 0.98]], 40, 0.74),
     fabric({ map: once(`shorts:${shorts?.color ?? s.shorts}:${shorts?.trim ?? s.shortsTrim}:${shorts?.pattern ?? ""}`, () => shortsTexture(shorts?.color ?? s.shorts, shorts?.trim ?? s.shortsTrim, shorts?.pattern)), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5, sheen: 0.3 }),
   );
-  body.add(cloth.shorts);
+  upper.add(cloth.shorts);
 
   // Busto: la canotta, oppure la felpa o il maglione (più larghi, con le maniche).
   const torso: [number, number][] = [[0.44, 0.92], [0.43, 1.08], [0.46, 1.32], [0.47, 1.52], [0.44, 1.66], [0.34, 1.76], [0.2, 1.8]];
@@ -649,14 +798,14 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
         ? fabric({ color: top.color, roughness: 0.85, sheen: 0.6, sheenColor: new THREE.Color("#8a93a6") })
         : fabric({ map: once("sweater", sweaterTexture), roughness: 0.9, sheen: 0.7, sheenColor: new THREE.Color("#ffb3a8") });
     cloth.torso = new THREE.Mesh(lathe(big, 48, 0.78), mat);
-    body.add(cloth.torso);
+    upper.add(cloth.torso);
     // Polsini e fondo a costine.
     const rib = fabric({ color: top.kind === "hoodie" ? top.color : "#9e1c14", roughness: 0.9 });
     const hem = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.045, 10, 40), rib);
     hem.rotation.x = Math.PI / 2;
     hem.scale.set(1, 0.78, 1);
     hem.position.y = 0.88;
-    body.add(hem);
+    upper.add(hem);
     if (top.kind === "hoodie") {
       // Cappuccio dietro il collo, tasca davanti e lacci.
       const hood = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.11, 12, 32, Math.PI * 1.25), mat);
@@ -666,7 +815,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
       const pocket = new THREE.Mesh(new RoundedBoxGeometry(0.56, 0.22, 0.06, 3, 0.03), mat);
       pocket.position.set(0, 1.08, 0.36);
       pocket.rotation.x = -0.05;
-      body.add(hood, pocket);
+      upper.add(hood, pocket);
       // I lacci pendono da in alto: ognuno nel suo gruppo, così col vento dondolano.
       cloth.laces = [];
       for (const sd of [-1, 1]) {
@@ -677,7 +826,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
         const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.05, 8), vinyl(top.trim, { roughness: 0.4 }));
         tip.position.y = -0.3;
         hang.add(lace, tip);
-        body.add(hang);
+        upper.add(hang);
         cloth.laces.push(hang);
       }
     } else {
@@ -685,19 +834,19 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
       neck.rotation.x = Math.PI / 2;
       neck.scale.set(1, 0.78, 1);
       neck.position.y = 1.79;
-      body.add(neck);
+      upper.add(neck);
     }
   } else {
     cloth.torso = new THREE.Mesh(
       lathe(torso, 64, 0.74),
       fabric({ map: once(`jersey:${preset}:${number ?? s.number}`, () => jerseyTexture(s, number ?? s.number)), bumpMap: meshBump(), bumpScale: 0.6, sheenColor: new THREE.Color(s.jersey).lerp(new THREE.Color("#ffffff"), 0.5) }),
     );
-    body.add(cloth.torso);
+    upper.add(cloth.torso);
     const collar = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.035, 10, 40), fabric({ color: s.trim }));
     collar.rotation.x = Math.PI / 2;
     collar.scale.set(1, 0.74, 1);
     collar.position.y = 1.775;
-    body.add(collar);
+    upper.add(collar);
   }
 
   // Braccia "a tubo" nere coi guanti bianchi. La sinistra (a destra per chi guarda) tiene il pallone.
@@ -710,10 +859,17 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
         : null;
   for (const side of [-1, 1]) {
     const arm = new THREE.Group();
-    arm.position.set(side * 0.43, 1.6, 0);
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.42, 4, 12), black);
-    upper.position.y = -0.25;
-    arm.add(upper);
+    arm.position.set(side * (big ? 0.47 : 0.43), 1.6, 0);
+    const limb = new THREE.Mesh(new THREE.CapsuleGeometry(big ? 0.1 : 0.075, 0.42, 4, 12), black);
+    limb.position.y = -0.25;
+    arm.add(limb);
+    if (big) {
+      // Il bicipite gonfio, come nel disegno.
+      const biceps = new THREE.Mesh(new THREE.SphereGeometry(0.135, 20, 14), black);
+      biceps.scale.set(1, 1.35, 1);
+      biceps.position.set(side * 0.012, -0.2, 0.01);
+      arm.add(biceps);
+    }
     if (sleeveMat) {
       const sl = new THREE.Mesh(new THREE.CapsuleGeometry(0.105, 0.36, 4, 12), sleeveMat);
       sl.position.y = -0.22;
@@ -736,7 +892,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.095, 0.035, 10, 24), glove);
     cuff.rotation.x = Math.PI / 2;
     cuff.position.y = -0.5;
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 14), glove);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(big ? 0.145 : 0.13, 20, 14), glove);
     hand.scale.set(1, 1.05, 0.95);
     hand.position.y = -0.62;
     const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.04, 0.06, 4, 8), glove);
@@ -745,7 +901,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     arm.add(cuff, hand, thumb);
     arm.rotation.z = side === 1 ? 0.5 : -0.2;
     arm.userData.rest = arm.rotation.z;
-    body.add(arm);
+    upper.add(arm);
     arms.push(arm);
   }
 
@@ -763,7 +919,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     }),
   );
   const handAt = new THREE.Vector3(0, -0.62, 0).applyEuler(arms[1].rotation).add(arms[1].position);
-  ball.position.set(handAt.x + 0.02, handAt.y - 0.31, 0.04);
+  ball.position.set(handAt.x + 0.02, handAt.y - 0.31 + lift, 0.04);
   ball.userData.rest = ball.position.y;
   ball.userData.restX = ball.position.x;
   root.add(ball);
@@ -771,8 +927,11 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
   // Testa: un pallone con la faccia, come nel disegno dell'app.
   const f = s.svg;
   const head = new THREE.Group();
-  head.position.set(0, HEAD_Y, 0.02);
-  body.add(head);
+  // Testa allungata o schiacciata: il mento resta dove sta, cambia l'altezza.
+  const hs = s.headScale ?? [1, 1, 1];
+  head.scale.set(...hs);
+  head.position.set(0, HEAD_Y + (hs[1] - 1) * R, 0.02);
+  upper.add(head);
   const skull = new THREE.Mesh(
     new THREE.SphereGeometry(R, 56, 40),
     phys({ map: tex(s.head), bumpMap: tex("bump-testa", false), bumpScale: 1.1, roughness: 0.66, clearcoat: 0.18, clearcoatRoughness: 0.5 }),
@@ -781,7 +940,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     new THREE.Matrix4().makeRotationX(THREE.MathUtils.degToRad(25)).multiply(new THREE.Matrix4().makeRotationZ(THREE.MathUtils.degToRad(35))),
   );
   head.add(skull);
-  const eyes = s.eyes.map(([x, y, sc = 1, look = 0]) => eye(R, f, x, y, sc, look));
+  const eyes = s.eyes.map(([x, y, sc = 1, look = 0, lid]) => eye(R, f, x, y, sc, look, lid ?? s.lids));
   head.add(...eyes);
   head.add(faceDecal(R, f, [...s.eyes.map(([x, y, sc = 1]): FaceShape => ({ ellipse: [x, y, 6.5 * sc, 8.3 * sc], fill: INK })), ...s.paint], preset));
 
@@ -789,7 +948,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
   const headTop = outfit.testa;
 
   for (const x of s.extra) {
-    if (x === "collana" && !outfit.gioielli && !top) Object.assign(cloth, addChain(body, "star"));
+    if (x === "collana" && !outfit.gioielli && !top) Object.assign(cloth, addChain(upper, "star"));
     if (x === "occhiali" && !outfit.viso) {
       const frame = vinyl("#1b1817", { roughness: 0.22, clearcoat: 1 });
       for (const [ex, ey] of s.eyes) {
@@ -816,12 +975,31 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     }
     if (x === "afro") cloth.hair = addAfro(head, !!headTop);
     if (x === "fascia" && !headTop) addHeadband(head);
+    if (x === "fascia-alta" && !headTop) addHeadband(head, { color: CREAM, stripe: RED, h: 0.4 * R, w: 0.17, tilt: 0.12 });
+    if (x === "bandana" && !headTop) addBandana(head);
+    if (x === "coppola" && !headTop) addFlatCap(head);
+    if (x === "occhialoni" && !outfit.viso) addSportGoggles(head, f);
+    if (x === "fascia-gialla" && !headTop) addHeadband(head, { color: YELLOW, h: 0.4 * R, w: 0.15, tilt: 0.24 });
+    if (x === "fascia-lampo" && !headTop) {
+      addHeadband(head, { color: NAVY, h: 0.4 * R, w: 0.16, tilt: 0.24 });
+      addBolt(head, f);
+    }
+    if ((x === "berretto" || x === "berretto-girato") && !headTop) {
+      const girato = x === "berretto-girato";
+      const cap = addHat(head, girato ? { kind: "cap", color: PURPLE, visor: PURPLE } : { kind: "cap", color: CREAM, visor: BLUE }, false);
+      // Il regista lo porta un po' di lato, il jolly al contrario.
+      if (cap) {
+        cap.rotation.y = girato ? -2.36 : -0.4;
+        cloth.hat = cap;
+      }
+    }
+    if (x === "fischietto" && !top) addWhistle(upper);
   }
 
   // Oggetti da indossare: testa, viso, gioielli.
   if (headTop) cloth.hat = addHat(head, headTop, afro);
   if (outfit.viso) addFace(head, outfit.viso, f, s);
-  if (outfit.gioielli?.kind === "chain") Object.assign(cloth, addChain(body, outfit.gioielli.pendant, !!top));
+  if (outfit.gioielli?.kind === "chain") Object.assign(cloth, addChain(upper, outfit.gioielli.pendant, !!top));
   if (outfit.gioielli?.kind === "earring") addEarrings(head);
 
   return { root, body, head, arms, ball, eyes, blinkAt: 2 + Math.random() * 2, cloth };
@@ -933,14 +1111,19 @@ function addAfro(head: THREE.Group, squashed: boolean): THREE.Group {
   return group;
 }
 
-function addHeadband(head: THREE.Group) {
-  const tilt = 0.19, h = 0.225 * R, w = 0.15, th = 0.024;
+function addHeadband(head: THREE.Group, o: { color?: string; stripe?: string; h?: number; w?: number; tilt?: number } = {}) {
+  const tilt = o.tilt ?? 0.19, h = o.h ?? 0.225 * R, w = o.w ?? 0.15, th = 0.024;
   const n = new THREE.Vector3(0, Math.cos(tilt), -Math.sin(tilt));
   const rad = (hh: number) => Math.sqrt(R * R - hh * hh) + th;
   const band = new THREE.Group();
   band.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
   band.position.copy(n).multiplyScalar(h);
-  band.add(new THREE.Mesh(new THREE.CylinderGeometry(rad(h + w / 2), rad(h - w / 2), w, 64, 1, true), fabric({ color: RED, roughness: 0.6, sheen: 0.25 })));
+  band.add(new THREE.Mesh(new THREE.CylinderGeometry(rad(h + w / 2), rad(h - w / 2), w, 64, 1, true), fabric({ color: o.color ?? RED, roughness: 0.6, sheen: 0.25 })));
+  if (o.stripe) {
+    const st = new THREE.Mesh(new THREE.TorusGeometry(rad(h) + 0.004, 0.017, 8, 64), fabric({ color: o.stripe, roughness: 0.6 }));
+    st.rotation.x = Math.PI / 2;
+    band.add(st);
+  }
   const ink = vinyl(INK, { roughness: 0.35 });
   for (const dy of [-w / 2, w / 2]) {
     const e = new THREE.Mesh(new THREE.TorusGeometry(rad(h + dy), 0.016, 8, 64), ink);
@@ -949,6 +1132,160 @@ function addHeadband(head: THREE.Group) {
     band.add(e);
   }
   head.add(band);
+}
+
+/** La tela rossa a pois della bandana. */
+function bandanaTexture() {
+  const { c, g } = canvas(512, 256);
+  g.fillStyle = RED;
+  g.fillRect(0, 0, 512, 256);
+  g.fillStyle = CREAM;
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let y = 18; y < 256; y += 36)
+    for (let x = (y / 36) % 2 ? 0 : 22; x < 512; x += 44) {
+      g.beginPath();
+      g.arc(x + rnd() * 8, y + rnd() * 6, 6.5 + rnd() * 2, 0, Math.PI * 2);
+      g.fill();
+    }
+  return canvasTex(c);
+}
+
+/** Bandana: calotta stretta sulla testa, più alta in fronte, col nodo e le due code di lato. */
+function addBandana(head: THREE.Group) {
+  const mat = fabric({ map: once("bandana", bandanaTexture), roughness: 0.6, sheen: 0.35, sheenColor: new THREE.Color("#ffb3a8"), side: THREE.DoubleSide });
+  const edge = THREE.MathUtils.degToRad(66);
+  const g = new THREE.Group();
+  g.rotation.x = -0.2;
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(R * 1.035, 48, 20, 0, Math.PI * 2, 0, edge), mat);
+  const hem = new THREE.Mesh(new THREE.TorusGeometry(R * 1.035 * Math.sin(edge), 0.02, 8, 64), fabric({ color: "#b32f20", roughness: 0.7 }));
+  hem.rotation.x = Math.PI / 2;
+  hem.position.y = R * 1.035 * Math.cos(edge);
+  g.add(cap, hem);
+  head.add(g);
+  const red = fabric({ color: RED, roughness: 0.6, sheen: 0.35 });
+  const { p } = onHead(R, 1.28, 0.34, 0.03);
+  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), red);
+  knot.position.copy(p);
+  head.add(knot);
+  for (const [dx, dy, rz] of [[0.13, 0.05, 0.45], [0.1, -0.12, -1.0]] as const) {
+    const tail = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), red);
+    tail.scale.set(0.15, 0.065, 0.028);
+    tail.position.set(p.x + dx, p.y + dy, p.z - 0.03);
+    tail.rotation.set(0, -0.35, rz);
+    head.add(tail);
+  }
+}
+
+/** Coppola anni '30: calotta morbida inclinata in avanti, visierina corta e bottone in cima. */
+function addFlatCap(head: THREE.Group) {
+  const wool = fabric({ color: "#7a5a3c", roughness: 0.95, sheen: 0.25, sheenColor: new THREE.Color("#b08a62") });
+  const dark = fabric({ color: "#5e4430", roughness: 0.9, sheen: 0.2 });
+  const g = new THREE.Group();
+  g.rotation.x = 0.1;
+  g.position.set(0, 0.06, 0);
+  const edge = THREE.MathUtils.degToRad(70);
+  const sc = new THREE.Vector3(1.05, 0.9, 1.12);
+  const crown = new THREE.Mesh(new THREE.SphereGeometry(R * 1.06, 48, 20, 0, Math.PI * 2, 0, edge), wool);
+  crown.scale.copy(sc);
+  const rimY = R * 1.06 * Math.cos(edge) * sc.y;
+  const rimR = R * 1.06 * Math.sin(edge);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(rimR, 0.024, 8, 64), dark);
+  rim.rotation.x = Math.PI / 2;
+  rim.scale.set(sc.x, sc.z, 1);
+  rim.position.y = rimY;
+  // Visierina corta davanti, stretta quanto la fronte e piegata appena in giù.
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.62, R * 0.62, 0.035, 32, 1, false, -Math.PI / 2, Math.PI), dark);
+  brim.scale.set(1.05, 1, 0.55);
+  brim.position.set(0, rimY - 0.012, rimR * sc.z - 0.07);
+  brim.rotation.x = 0.22;
+  const button = new THREE.Mesh(new THREE.SphereGeometry(0.048, 12, 8), dark);
+  button.position.y = R * 1.06 * sc.y;
+  // La cucitura davanti, appena accennata.
+  const seamPts = [0.35, 0.8, 1.25].map((a) => new THREE.Vector3(0, Math.sin(a) * R * 1.075 * sc.y, Math.cos(a) * R * 1.075 * sc.z));
+  const seam = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(seamPts), 16, 0.009, 6, false), dark);
+  g.add(crown, rim, brim, button, seam);
+  head.add(g);
+}
+
+function roundedRect(w: number, h: number, r: number) {
+  const s = new THREE.Shape();
+  const x = -w / 2, y = -h / 2;
+  s.moveTo(x + r, y);
+  s.lineTo(x + w - r, y);
+  s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r);
+  s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h);
+  s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r);
+  s.quadraticCurveTo(x, y, x + r, y);
+  return s;
+}
+
+/** Occhialoni da gioco: due lenti squadrate con la montatura spessa e l'elastico attorno alla testa. */
+function addSportGoggles(head: THREE.Group, f: Spec["svg"]) {
+  const k = R / f.r;
+  const frameMat = vinyl(INK, { roughness: 0.3, clearcoat: 0.9 });
+  const lensMat = new THREE.MeshPhysicalMaterial({ color: "#ffffff", transparent: true, opacity: 0.2, roughness: 0.04, clearcoat: 1, depthWrite: false });
+  for (const cx of [40.5, 59.5]) {
+    const outer = roundedRect(17 * k, 15 * k, 6 * k);
+    outer.holes.push(roundedRect(12 * k, 10 * k, 3.6 * k));
+    const frame = new THREE.Mesh(new THREE.ExtrudeGeometry(outer, { depth: 0.035, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 2, curveSegments: 6 }), frameMat);
+    const [yaw, pitch] = svgToHead(f, cx, 46);
+    const { p, q } = onHead(R, yaw, pitch, 0.035);
+    frame.position.copy(p);
+    frame.quaternion.copy(q);
+    const lens = new THREE.Mesh(new THREE.ShapeGeometry(roundedRect(12.4 * k, 10.4 * k, 3.6 * k)), lensMat);
+    lens.position.copy(onHead(R, yaw, pitch, 0.06).p);
+    lens.quaternion.copy(q);
+    lens.renderOrder = 2;
+    head.add(frame, lens);
+  }
+  const [by, bp] = svgToHead(f, 50, 45);
+  head.add(tubeOnHead(R, [[by - 0.08, bp, 0.07], [by + 0.08, bp, 0.07]], 0.02, frameMat));
+  // L'elastico gira dietro la testa, all'altezza degli occhi.
+  const [, sp] = svgToHead(f, 50, 46);
+  const strap = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.022, R + 0.022, 0.07, 56, 1, true), fabric({ color: INK, roughness: 0.6, side: THREE.DoubleSide }));
+  strap.position.y = Math.sin(sp) * R * 0.98;
+  strap.scale.set(Math.cos(sp) + 0.02, 1, Math.cos(sp) + 0.02);
+  head.add(strap);
+}
+
+/** Il fulmine giallo sulla fascia di Lampo. */
+function addBolt(head: THREE.Group, f: Spec["svg"]) {
+  const k = R / f.r;
+  const pts: [number, number][] = [[52, 30.5], [46, 38.6], [50.4, 38.6], [47, 44], [55, 35.6], [50.8, 35.6], [53.6, 30.5]];
+  const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2((x - 50.5) * k, -(y - 37) * k)));
+  const bolt = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(sh, { depth: 0.02, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.005, bevelSegments: 1 }),
+    vinyl(YELLOW, { roughness: 0.3, clearcoat: 0.8 }),
+  );
+  const [yaw, pitch] = svgToHead(f, 50.5, 37);
+  const { p, q } = onHead(R, yaw, pitch, 0.026);
+  bolt.position.copy(p);
+  bolt.quaternion.copy(q);
+  head.add(bolt);
+}
+
+/** Il fischietto d'argento appeso al collo con il cordino. */
+function addWhistle(upper: THREE.Group) {
+  const metal = new THREE.MeshPhysicalMaterial({ color: "#dfe6ee", metalness: 0.85, roughness: 0.25, clearcoat: 0.6 });
+  const w = new THREE.Group();
+  const body = new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.09, 0.08, 3, 0.03), metal);
+  const tip = new THREE.Mesh(new RoundedBoxGeometry(0.07, 0.05, 0.06, 2, 0.015), metal);
+  tip.position.set(-0.09, 0.015, 0);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.007, 6, 12), metal);
+  ring.position.set(0.05, 0.055, 0);
+  w.add(body, tip, ring);
+  w.position.set(0.11, 1.5, 0.37);
+  w.rotation.set(-0.15, 0, -0.12);
+  upper.add(w);
+  const cord = vinyl(INK, { roughness: 0.6, clearcoat: 0 });
+  for (const sd of [-1, 1]) {
+    const pts = [new THREE.Vector3(sd * 0.2, 1.76, 0.2), new THREE.Vector3(sd * 0.12 + 0.05, 1.64, 0.33), new THREE.Vector3(0.16, 1.56, 0.37)];
+    upper.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.01, 6, false), cord));
+  }
 }
 
 /** Cappellino e berretto: si appoggiano in cima alla testa (o sull'afro, un po' più su). */

@@ -35,6 +35,12 @@ import { computePlayerStats } from "@/lib/stats/player";
 import { playerHref, shortName } from "@/lib/types";
 import { Character, characterOf } from "@/components/character";
 import { TeamBoard } from "@/components/team-board";
+import { preset3d } from "@/components/c3d/cast";
+import { usePodium3D, type Figure3D } from "@/components/c3d/podium-3d";
+import { homeFigures, useMyLook } from "@/components/c3d/home-figures";
+import { makePhotos } from "@/components/c3d/figure-photos";
+import { passAllowed } from "@/lib/pass/actions";
+import type { Award } from "@/components/c3d/podium-stage";
 
 type Board = "mvp" | "squadre" | StatKey;
 
@@ -109,10 +115,63 @@ const STEPS = [
 
 const SPRING = { type: "spring", stiffness: 260, damping: 22 } as const;
 
+/** Il riquadro del personaggio 3D sul podio: il primo più grande, con lo spazio per la coppa alzata. */
+const BOX_H: Record<number, number> = { 1: 150, 2: 124, 3: 124 };
+const AWARD: Record<number, Award> = { 1: "oro", 2: "argento", 3: "bronzo" };
+
 function Podium({ rows }: { rows: Row[] }) {
-  const { data, me } = useData();
+  const { data, me, engine } = useData();
+  const allowed = passAllowed(me);
+  const myLook = useMyLook(me);
+  // Il 3D sul podio, per ora in prova solo per chi prova il pass.
+  const figs: (Figure3D | null)[] | null = useMemo(() => {
+    if (!allowed) return null;
+    return STEPS.map(({ place }) => {
+      const row = rows[place - 1];
+      const p = row && data.players.find((x) => x.id === row.playerId);
+      const preset = p ? preset3d(characterOf(p)) : null;
+      if (!p || !preset) return null;
+      // Il proprio personaggio con quello che indossa nel camerino.
+      const outfit = p.id === me?.id ? myLook : {};
+      const number =
+        p.jerseyNumber != null ? String(p.jerseyNumber) : undefined;
+      return {
+        key: `${p.id}|${preset}|${JSON.stringify(outfit)}|${number ?? ""}`,
+        preset,
+        outfit,
+        number,
+        award: AWARD[place],
+      };
+    });
+  }, [allowed, myLook, rows, data.players, me?.id]);
+  const { root, host, live, bind, photoOf } = usePodium3D(figs);
+  // Col 3D già scaricato qui, si preparano anche le foto della Home (tu e l'MVP con la coppa).
+  const mvpPlayer = data.players.find(
+    (x) => x.id === engine.mvp?.entry.playerId,
+  );
+  const home = homeFigures(me, mvpPlayer, myLook);
+  const homeSig = JSON.stringify(home);
+  const on3d = figs !== null;
+  useEffect(() => {
+    if (!on3d) return;
+    const jobs = [home.month, home.mvp].filter((j) => j !== null);
+    if (!jobs.length) return;
+    const t = window.setTimeout(() => makePhotos(jobs), live ? 600 : 2500);
+    return () => window.clearTimeout(t);
+    // homeSig contiene già tutto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeSig, live, on3d]);
   return (
-    <div className="relative isolate -mx-5 overflow-hidden px-4 pt-2">
+    <div
+      ref={root}
+      className="relative isolate -mx-5 overflow-hidden px-4 pt-2"
+    >
+      {/* Il palco 3D: sopra i gradini, trasparente, i tocchi li prendono i riquadri qui sotto. */}
+      <div
+        ref={host}
+        className="pointer-events-none absolute inset-0 z-20"
+        aria-hidden
+      />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_38%_44%_at_50%_48%,rgb(255_197_49/0.5),transparent),radial-gradient(ellipse_50%_14%_at_50%_86%,rgb(255_197_49/0.3),transparent)]"
@@ -125,108 +184,176 @@ function Podium({ rows }: { rows: Row[] }) {
           const name = shortName(p, data.players);
           const mine = row.playerId === me?.id;
           const first = place === 1;
-          return (
+          const fig = figs?.[i] ?? null;
+          const href = mine ? "/profilo" : playerHref(row.playerId);
+          const photo = fig ? photoOf(i) : null;
+          const figure = (
+            <motion.div
+              className="relative z-10 -mb-2 flex w-full flex-col items-center"
+              initial={{ opacity: 0, y: -28 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...SPRING, delay: 0.04 + i * 0.05 }}
+            >
+              {fig && (
+                <div
+                  {...bind(i)}
+                  data-testid="podio-figura"
+                  role="img"
+                  aria-label={`${name}: toccalo per farlo esultare, trascina per girarlo`}
+                  className="relative w-full cursor-pointer touch-pan-y select-none"
+                  style={{ height: BOX_H[place] }}
+                >
+                  {!live &&
+                    (photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={photo}
+                        alt=""
+                        draggable={false}
+                        className="absolute inset-0 h-full w-full"
+                      />
+                    ) : (
+                      p && (
+                        <span className="absolute inset-x-0 bottom-0 flex justify-center">
+                          <Character
+                            id={characterOf(p)}
+                            outfit={p.outfit}
+                            number={p.jerseyNumber}
+                            height={first ? 118 : 96}
+                          />
+                        </span>
+                      )
+                    ))}
+                </div>
+              )}
+              {!fig && (
+                // Col podio 3D acceso, chi non ha ancora il suo 3D sta nello stesso spazio, più grande.
+                <div
+                  className={clsx(
+                    "flex flex-col items-center",
+                    figs && "justify-end",
+                  )}
+                  style={figs ? { height: BOX_H[place] } : undefined}
+                >
+                  {first && (
+                    <motion.span
+                      className="mb-0.5 text-gold drop-shadow-[0_2px_6px_rgb(232_161_0/0.5)]"
+                      initial={{ scale: 0, rotate: -30 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ ...SPRING, delay: 0.2 }}
+                    >
+                      <IconCrown size={26} aria-hidden />
+                    </motion.span>
+                  )}
+                  {p && (
+                    <Character
+                      id={characterOf(p)}
+                      outfit={p.outfit}
+                      number={p.jerseyNumber}
+                      height={figs ? (first ? 112 : 96) : first ? 104 : 80}
+                      title={name}
+                    />
+                  )}
+                </div>
+              )}
+              {!fig && (
+                <span className="absolute -bottom-0.5 left-1/2 -z-10 h-3 w-16 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(29_26_22/0.4),transparent)]" />
+              )}
+            </motion.div>
+          );
+          const step = (
+            <motion.div
+              className={clsx(
+                "flex w-full flex-col",
+                first && "drop-shadow-[0_0_18px_rgb(29_26_22/0.22)]",
+              )}
+              style={{ height, transformOrigin: "bottom" }}
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{ ...SPRING, delay: i * 0.06 }}
+            >
+              <span
+                className={clsx(
+                  "h-3 shrink-0 [clip-path:polygon(7%_0,93%_0,100%_100%,0_100%)]",
+                  top,
+                )}
+              />
+              <div
+                className={clsx(
+                  "relative flex flex-1 flex-col items-center overflow-hidden px-1 pt-1.5",
+                  tone,
+                )}
+              >
+                <span
+                  className={clsx(
+                    "display leading-none opacity-80 [text-shadow:0_1px_0_rgb(255_255_255/0.6)]",
+                    numeral,
+                  )}
+                >
+                  {place}
+                </span>
+                <p
+                  className={clsx(
+                    "mt-1 w-full truncate text-center font-semibold leading-tight",
+                    first ? "text-[14.5px]" : "text-[12.5px]",
+                  )}
+                >
+                  {mine ? "Tu" : name}
+                </p>
+                {row.value === "—" && row.sub ? (
+                  <span className="mt-1 text-center text-[10.5px] font-semibold leading-tight opacity-75">
+                    {row.sub}
+                  </span>
+                ) : (
+                  <span
+                    className={clsx(
+                      "num mt-0.5 leading-none [text-shadow:0_1px_0_rgb(255_255_255/0.55)]",
+                      first ? "text-[26px]" : "text-[20px]",
+                    )}
+                  >
+                    {row.value}
+                  </span>
+                )}
+                {first && (
+                  <motion.span
+                    className="absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/50 to-transparent"
+                    initial={{ x: "-120%" }}
+                    animate={{ x: "320%" }}
+                    transition={{
+                      delay: 0.7,
+                      duration: 1.1,
+                      ease: "easeInOut",
+                    }}
+                  />
+                )}
+              </div>
+            </motion.div>
+          );
+          // In 3D il personaggio si tocca per farlo esultare: al profilo si va dal gradino.
+          return fig ? (
+            <div
+              key={place}
+              className={clsx(
+                "relative flex min-w-0 flex-col items-center",
+                first && "z-10",
+              )}
+            >
+              {figure}
+              <Link href={href} className="press flex w-full flex-col">
+                {step}
+              </Link>
+            </div>
+          ) : (
             <Link
               key={place}
-              href={mine ? "/profilo" : playerHref(row.playerId)}
+              href={href}
               className={clsx(
                 "press relative flex min-w-0 flex-col items-center",
                 first && "z-10",
               )}
             >
-              <motion.div
-                className="relative z-10 -mb-2 flex flex-col items-center"
-                initial={{ opacity: 0, y: -28 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ ...SPRING, delay: 0.04 + i * 0.05 }}
-              >
-                {first && (
-                  <motion.span
-                    className="mb-0.5 text-gold drop-shadow-[0_2px_6px_rgb(232_161_0/0.5)]"
-                    initial={{ scale: 0, rotate: -30 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ ...SPRING, delay: 0.2 }}
-                  >
-                    <IconCrown size={26} aria-hidden />
-                  </motion.span>
-                )}
-                {p && (
-                  <Character
-                    id={characterOf(p)}
-                    outfit={p.outfit}
-                    number={p.jerseyNumber}
-                    height={first ? 104 : 80}
-                    title={name}
-                  />
-                )}
-                <span className="absolute -bottom-0.5 left-1/2 -z-10 h-3 w-16 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(29_26_22/0.4),transparent)]" />
-              </motion.div>
-              <motion.div
-                className={clsx(
-                  "flex w-full flex-col",
-                  first && "drop-shadow-[0_0_18px_rgb(29_26_22/0.22)]",
-                )}
-                style={{ height, transformOrigin: "bottom" }}
-                initial={{ scaleY: 0 }}
-                animate={{ scaleY: 1 }}
-                transition={{ ...SPRING, delay: i * 0.06 }}
-              >
-                <span
-                  className={clsx(
-                    "h-3 shrink-0 [clip-path:polygon(7%_0,93%_0,100%_100%,0_100%)]",
-                    top,
-                  )}
-                />
-                <div
-                  className={clsx(
-                    "relative flex flex-1 flex-col items-center overflow-hidden px-1 pt-1.5",
-                    tone,
-                  )}
-                >
-                  <span
-                    className={clsx(
-                      "display leading-none opacity-80 [text-shadow:0_1px_0_rgb(255_255_255/0.6)]",
-                      numeral,
-                    )}
-                  >
-                    {place}
-                  </span>
-                  <p
-                    className={clsx(
-                      "mt-1 w-full truncate text-center font-semibold leading-tight",
-                      first ? "text-[14.5px]" : "text-[12.5px]",
-                    )}
-                  >
-                    {mine ? "Tu" : name}
-                  </p>
-                  {row.value === "—" && row.sub ? (
-                    <span className="mt-1 text-center text-[10.5px] font-semibold leading-tight opacity-75">
-                      {row.sub}
-                    </span>
-                  ) : (
-                    <span
-                      className={clsx(
-                        "num mt-0.5 leading-none [text-shadow:0_1px_0_rgb(255_255_255/0.55)]",
-                        first ? "text-[26px]" : "text-[20px]",
-                      )}
-                    >
-                      {row.value}
-                    </span>
-                  )}
-                  {first && (
-                    <motion.span
-                      className="absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/50 to-transparent"
-                      initial={{ x: "-120%" }}
-                      animate={{ x: "320%" }}
-                      transition={{
-                        delay: 0.7,
-                        duration: 1.1,
-                        ease: "easeInOut",
-                      }}
-                    />
-                  )}
-                </div>
-              </motion.div>
+              {figure}
+              {step}
             </Link>
           );
         })}

@@ -39,6 +39,13 @@ import type { MvpEntry } from "@/lib/stats/awards";
 import { matchMvp } from "@/lib/stats/match-mvp";
 import { computePlayerStats, teamOf } from "@/lib/stats/player";
 import { Character, characterOf } from "@/components/character";
+import {
+  homeFigures,
+  MONTH_FIG,
+  MVP_FIG,
+  useMyLook,
+} from "@/components/c3d/home-figures";
+import { photoKey, usePhotoUrl } from "@/components/c3d/figure-photos";
 import { shortName, winnerOf, type Match, type Player } from "@/lib/types";
 import { useNow } from "@/lib/use-now";
 import { InfoTip } from "@/components/ui/info";
@@ -199,14 +206,18 @@ function MvpCard({
   mvp,
   player,
   players,
+  photo,
 }: {
   mvp: { entry: MvpEntry; period: { kind: string; month?: number } } | null;
   player: Player | undefined;
   players: Player[];
+  /** La foto 3D dell'MVP con la coppa, se è già pronta. */
+  photo?: string | null;
 }) {
   const score = mvp ? Math.round(mvp.entry.score * 100) : 0;
   const mvpName = player ? shortName(player, players) : "";
-  return (
+  const pop = Boolean(photo && mvp && player);
+  const card = (
     <Link
       href="/classifiche"
       data-tour="home-mvp"
@@ -233,17 +244,19 @@ function MvpCard({
       ))}
       {mvp && player ? (
         <>
-          <span
-            className="mvp-float absolute -bottom-24 -left-8 -z-10 drop-shadow-[0_10px_18px_rgb(242_106_27/0.35)]"
-            aria-hidden
-          >
-            <Character
-              id={characterOf(player)}
-              outfit={player.outfit}
-              number={player.jerseyNumber}
-              height={300}
-            />
-          </span>
+          {!pop && (
+            <span
+              className="mvp-float absolute -bottom-24 -left-8 -z-10 drop-shadow-[0_10px_18px_rgb(242_106_27/0.35)]"
+              aria-hidden
+            >
+              <Character
+                id={characterOf(player)}
+                outfit={player.outfit}
+                number={player.jerseyNumber}
+                height={300}
+              />
+            </span>
+          )}
           <div className="ml-[42%] flex min-w-0 flex-1 flex-col">
             <p className="text-[13px] font-semibold opacity-75">
               {mvp.period.kind === "month" && mvp.period.month !== undefined
@@ -301,6 +314,27 @@ function MvpCard({
         </div>
       )}
     </Link>
+  );
+  if (!pop) return card;
+  // In 3D l'MVP tiene la coppa e sporge un po' sopra la scheda; le gambe restano dentro.
+  return (
+    <div className="relative">
+      {card}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-6 bottom-0 left-0 w-[50%] overflow-hidden rounded-bl-[28px]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photo!}
+          alt=""
+          draggable={false}
+          data-testid="home-3d-mvp"
+          className="mvp-float absolute max-w-none drop-shadow-[0_10px_18px_rgb(242_106_27/0.35)]"
+          style={{ top: -33, left: -8, width: MVP_FIG.w, height: MVP_FIG.h }}
+        />
+      </span>
+    </div>
   );
 }
 
@@ -366,6 +400,16 @@ export function HomeScreen() {
         : null,
     [me, data.matches, year, month],
   );
+
+  // Le foto 3D (se il 3D è acceso e sono già pronte): la Home non scarica il 3D.
+  const myLook = useMyLook(me);
+  const figs3d = homeFigures(
+    me,
+    data.players.find((p) => p.id === engine.mvp?.entry.playerId),
+    myLook,
+  );
+  const monthPhoto = usePhotoUrl(figs3d.month ? photoKey(figs3d.month) : null);
+  const mvpPhoto = usePhotoUrl(figs3d.mvp ? photoKey(figs3d.mvp) : null);
 
   if (!me || !mine) return null;
   const elo = eloOf(engine.elo, me.id);
@@ -464,15 +508,34 @@ export function HomeScreen() {
               <span className="blob hero-drift -bottom-24 -left-16 h-60 w-60 bg-[radial-gradient(circle,rgb(242_106_27/0.35),transparent_70%)] [animation-delay:-6s]" />
               <CourtLines draw className="absolute inset-0 h-full w-full" />
               <span className="absolute -right-6 bottom-12 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgb(255_197_49/0.38),transparent_66%)]" />
-              <span className="hero-char absolute bottom-8 right-3 drop-shadow-[0_14px_20px_rgb(0_0_0/0.35)]">
-                <Character
-                  id={characterOf(me)}
-                  outfit={me.outfit}
-                  number={me.jerseyNumber}
-                  height={196}
-                />
-              </span>
+              {!monthPhoto && (
+                <span className="hero-char absolute bottom-8 right-3 drop-shadow-[0_14px_20px_rgb(0_0_0/0.35)]">
+                  <Character
+                    id={characterOf(me)}
+                    outfit={me.outfit}
+                    number={me.jerseyNumber}
+                    height={196}
+                  />
+                </span>
+              )}
             </div>
+            {/* In 3D il personaggio sporge un po' dalla scheda (meno se sopra c'è subito la testata). */}
+            {monthPhoto && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={monthPhoto}
+                alt=""
+                aria-hidden
+                draggable={false}
+                data-testid="home-3d-mese"
+                className="hero-char pointer-events-none absolute right-0 max-w-none drop-shadow-[0_14px_20px_rgb(0_0_0/0.3)]"
+                style={{
+                  width: MONTH_FIG.w,
+                  height: MONTH_FIG.h,
+                  bottom: hasNext ? 26 : 8,
+                }}
+              />
+            )}
             <div className="relative px-5 pb-5 pt-5">
               <p className="w-fit rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold">
                 Il tuo {MONTHS_IT[month].toLowerCase()}
@@ -570,7 +633,12 @@ export function HomeScreen() {
               </InfoTip>
             }
           >
-            <MvpCard mvp={mvp} player={mvpPlayer} players={data.players} />
+            <MvpCard
+              mvp={mvp}
+              player={mvpPlayer}
+              players={data.players}
+              photo={mvpPhoto}
+            />
           </Section>
 
           <Section
