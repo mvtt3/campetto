@@ -19,7 +19,7 @@ export function DoubleStamp({ n }: { n: number }) {
   return (
     <span
       className={clsx(
-        "ml-1 inline-grid h-[17px] place-items-center rounded-[5px] border-[1.5px] px-1 align-[1px] font-extrabold text-[9.5px] leading-none tracking-wide",
+        "ml-1 inline-grid h-[17px] shrink-0 place-items-center rounded-[5px] border-[1.5px] px-1 align-[1px] font-extrabold text-[9.5px] leading-none tracking-wide",
         n >= 3
           ? "border-[#6b46b8] bg-[#6b46b8] text-white"
           : "border-gold text-gold",
@@ -149,39 +149,40 @@ export function BoxTable({
                   ];
             return (
               <tr key={l.playerId} className="border-t border-line">
-                <td className="truncate py-2.5 pr-1 font-semibold">
-                  <span
-                    className={clsx(
-                      "mr-1.5 inline-block h-2.5 w-2.5 rounded-full",
-                      l.team === "A" ? "bg-court" : "bg-ball",
+                <td className="py-2.5 pr-1 font-semibold">
+                  {/* Se nella riga non c'è posto, i simboli vanno a capo sotto il nome: niente tagliato. */}
+                  <div className="flex flex-wrap items-center gap-y-0.5">
+                    <span className="flex min-w-0 max-w-full items-center">
+                      <span
+                        className={clsx(
+                          "mr-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full",
+                          l.team === "A" ? "bg-court" : "bg-ball",
+                        )}
+                      />
+                      <span className="min-w-0 truncate">{shortName(p, players)}</span>
+                    </span>
+                    {(p?.guest || p?.extra || l.sub || mvpId === l.playerId || tens.length >= 2) && (
+                      <span className="flex shrink-0 items-center">
+                        {p?.guest && (
+                          <span className="ml-1 rounded-full bg-raised px-1.5 text-[10px] font-bold uppercase text-muted">
+                            ospite
+                          </span>
+                        )}
+                        {p?.extra && (
+                          <span className="ml-1 rounded-full bg-raised px-1.5 text-[10px] font-bold uppercase text-muted">
+                            extra
+                          </span>
+                        )}
+                        {l.sub && (
+                          <IconRefresh size={11} className="ml-1 shrink-0 text-muted" aria-label="cambio" />
+                        )}
+                        {mvpId === l.playerId && (
+                          <IconCrown size={12} className="ml-1 shrink-0 text-gold" aria-label="MVP della partita" />
+                        )}
+                        <DoubleStamp n={tens.length} />
+                      </span>
                     )}
-                  />
-                  {shortName(p, players)}
-                  {p?.guest && (
-                    <span className="ml-1 rounded-full bg-raised px-1.5 text-[10px] font-bold uppercase text-muted">
-                      ospite
-                    </span>
-                  )}
-                  {p?.extra && (
-                    <span className="ml-1 rounded-full bg-raised px-1.5 text-[10px] font-bold uppercase text-muted">
-                      extra
-                    </span>
-                  )}
-                  {l.sub && (
-                    <IconRefresh
-                      size={11}
-                      className="ml-1 inline align-[-1px] text-muted"
-                      aria-label="cambio"
-                    />
-                  )}
-                  {mvpId === l.playerId && (
-                    <IconCrown
-                      size={12}
-                      className="ml-1 inline align-[-1px] text-gold"
-                      aria-label="MVP della partita"
-                    />
-                  )}
-                  <DoubleStamp n={tens.length} />
+                  </div>
                 </td>
                 {cells.map((c, i) => (
                   <td
