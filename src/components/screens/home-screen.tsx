@@ -30,6 +30,7 @@ import { CountUp, CourtLines } from "@/components/ui/basics";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { HighlightsHomeButton, PlayBadge } from "@/components/highlights/entry";
 import { GameHomeButton } from "@/components/game/entry";
+import { PassHomeCard } from "@/components/pass/home-card";
 import { useHighlights } from "@/components/highlights/provider";
 import { useData } from "@/lib/data/provider";
 import { filterMatches, MONTHS_IT } from "@/lib/periods";
@@ -557,6 +558,8 @@ export function HomeScreen() {
           </section>
 
           {!hasNext && nextSection}
+
+          <PassHomeCard index={2} />
 
           <Section
             index={2}
