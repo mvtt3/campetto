@@ -74,6 +74,13 @@ export interface StageOptions {
   framing?: Framing;
   /** Rotazione di partenza (radianti). */
   yaw?: number;
+  /** Gira da solo piano, come in vetrina (radianti al secondo); si ferma mentre lo tocchi. */
+  spin?: number;
+  /**
+   * Gira attorno a un oggetto che non sta sull'asse del personaggio (il pallone in mano, la
+   * fascia sul braccio): così, girando, resta al centro dell'inquadratura invece di uscirne.
+   */
+  pivot?: "pallone" | "braccio";
 }
 
 export class Stage {
@@ -97,6 +104,7 @@ export class Stage {
   private ro: ResizeObserver;
   private framing: Framing;
   private disposed = false;
+  private shadow: THREE.Mesh;
   onFirstFrame?: () => void;
   private firstDone = false;
 
@@ -104,7 +112,8 @@ export class Stage {
     this.renderer = makeRenderer(canvas, 1.5);
     this.scene = makeScene(this.renderer);
     this.scene.add(this.holder);
-    this.holder.add(contactShadow());
+    this.shadow = contactShadow();
+    this.holder.add(this.shadow);
     this.yaw = opts.yaw ?? -0.35;
     this.framing = opts.framing ?? "full";
     this.frame();
@@ -154,8 +163,10 @@ export class Stage {
     const f = FRAMES[this.framing];
     // Su uno schermo più alto che largo ci si allontana un po', così l'oggetto resta tutto in vista.
     const d = f.d * Math.max(1, 1 / Math.max(0.5, this.camera.aspect)) ** 0.8;
-    this.camPos.set(f.x ?? 0, f.y + d * 0.08, d);
-    this.camLook.set(f.x ?? 0, f.y, 0);
+    // Col perno l'oggetto è già sull'asse: la camera guarda dritto al centro.
+    const x = this.opts.pivot ? 0 : (f.x ?? 0);
+    this.camPos.set(x, f.y + d * 0.08, d);
+    this.camLook.set(x, f.y, 0);
     if (!this.framed || snap) {
       this.framed = true;
       this.camera.position.copy(this.camPos);
@@ -171,6 +182,7 @@ export class Stage {
     const old = this.rig;
     this.rig = buildCharacter(preset, outfit, number);
     this.holder.add(this.rig.root);
+    this.centerPivot();
     if (!old && !this.firstDone) {
       // La prima volta si preparano i materiali in parallelo, senza bloccare lo schermo.
       this.compiling = true;
@@ -188,6 +200,24 @@ export class Stage {
       this.pop = 0;
     }
     this.loop();
+  }
+
+  /** Sposta il personaggio in modo che l'oggetto scelto stia sull'asse di rotazione. */
+  private centerPivot() {
+    const r = this.rig;
+    if (!r || !this.opts.pivot) return;
+    r.root.position.set(0, 0, 0);
+    this.holder.updateMatrixWorld(true);
+    const target = this.opts.pivot === "pallone" ? r.ball : r.arms[0];
+    const c = new THREE.Box3().setFromObject(target).getCenter(new THREE.Vector3());
+    this.holder.worldToLocal(c);
+    r.root.position.set(-c.x, 0, -c.z);
+    this.shadow.position.set(0, this.shadow.position.y, 0);
+    // Il pallone da solo, come in vetrina: il personaggio non gli passa davanti girando.
+    if (this.opts.pivot === "pallone") {
+      r.body.visible = false;
+      this.shadow.scale.setScalar(0.45);
+    }
   }
 
   /** Il palleggio, come quando lo tocchi. */
@@ -212,8 +242,11 @@ export class Stage {
     }
   };
 
+  private spinHold = 0;
+
   private onDown = (e: PointerEvent) => {
     this.dragging = true;
+    this.spinHold = Infinity;
     this.lastX = e.clientX;
     this.moved = 0;
     this.vYaw = 0;
@@ -230,6 +263,7 @@ export class Stage {
   private onUp = () => {
     if (!this.dragging) return;
     this.dragging = false;
+    this.spinHold = performance.now() + 1400;
     if (this.moved < 6) this.dribbleNow();
   };
 
@@ -244,8 +278,10 @@ export class Stage {
     this.raf = 0;
     if (this.disposed || this.paused || this.compiling || !this.visible || document.hidden) return;
     // Quando nessuno lo tocca respira e basta: basta mezzo ritmo (30 al secondo), metà fatica.
+    const spin = this.opts.spin ?? 0;
     const busy =
       this.dragging ||
+      (spin !== 0 && performance.now() > this.spinHold) ||
       Math.abs(this.vYaw) > 0.02 ||
       this.dribble < 1 ||
       this.pop < 1 ||
@@ -261,6 +297,8 @@ export class Stage {
     if (!this.dragging) {
       this.vYaw *= Math.pow(0.04, dt);
       this.yaw += this.vYaw * dt;
+      // In vetrina riparte da solo un attimo dopo che l'hai lasciato.
+      if (spin && now > this.spinHold) this.yaw += spin * dt * Math.min(1, (now - this.spinHold) / 600);
     }
     if (this.dribble < 1) this.dribble = Math.min(1, this.dribble + dt / 1.1);
     if (this.pop < 1) this.pop = Math.min(1, this.pop + dt / 0.45);

@@ -95,14 +95,41 @@ export function ScreenHeader({
   back,
   action,
   subtitle,
+  center,
 }: {
   title: ReactNode;
   back?: string | (() => void);
   action?: ReactNode;
   subtitle?: ReactNode;
+  /** Titolo al centro, tra il bottone indietro e l'azione (le schermate "evento", come il pass). */
+  center?: boolean;
 }) {
   const backCls =
     "press -ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface shadow-[var(--shadow)]";
+  const backEl =
+    back &&
+    (typeof back === "string" ? (
+      <Link href={back} aria-label="Indietro" className={backCls}>
+        <IconChevronLeft size={22} />
+      </Link>
+    ) : (
+      <button onClick={back} aria-label="Indietro" className={backCls}>
+        <IconChevronLeft size={22} />
+      </button>
+    ));
+  if (center)
+    return (
+      <header className="safe-top shrink-0 px-5">
+        <div className="grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 pt-5">
+          <div className="flex">{backEl}</div>
+          <div className="min-w-0 text-center">
+            <h1 className="display truncate text-[23px] leading-tight">{title}</h1>
+            {subtitle && <p className="mt-0.5 truncate text-[12.5px] font-medium text-muted">{subtitle}</p>}
+          </div>
+          <div className="flex justify-end">{action}</div>
+        </div>
+      </header>
+    );
   return (
     <header className="safe-top shrink-0 px-5">
       <div className="flex min-h-16 items-center gap-3 pt-5">

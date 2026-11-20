@@ -2,27 +2,24 @@
 
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
-import { IconCheck, IconHandFinger, IconLock, IconX } from "@tabler/icons-react";
+import { IconCheck, IconHandFinger } from "@tabler/icons-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Statuina } from "@/components/c3d/viewer";
-import type { Outfit } from "@/components/c3d/build";
-import { Button, Chips, CourtLines, ScreenHeader, Segmented, haptic } from "@/components/ui/basics";
+import { Button, CourtLines, ScreenHeader, Segmented, haptic } from "@/components/ui/basics";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { play } from "@/lib/sound";
 import { buy, ensureStall, equip, stallOf } from "@/lib/pass/actions";
-import { ITEMS, ITEM_BY_ID, PRICE, RARITY_LABEL, SLOTS, type Item, type Slot } from "@/lib/pass/catalog";
+import { ITEM_BY_ID, PRICE, RARITY_LABEL, SLOTS, type Item, type Slot } from "@/lib/pass/catalog";
 import { todayKey } from "@/lib/pass/store";
 import { useNow } from "@/lib/use-now";
 import { RewardReveal } from "./reveal";
-import { FRAMING_OF, ItemPhoto, RarityTag, SpicchiChip, SpicchioIcon, sourceOf } from "./ui";
-import { presetOf, usePass } from "./use-pass";
+import { CardDetail, Collection } from "./collection";
+import { ItemPhoto, RarityTag, SpicchiChip, SpicchioIcon } from "./ui";
+import { usePass } from "./use-pass";
 
 const rise = (i: number) => ({ "--i": i }) as CSSProperties;
 const HINT_KEY = "campetto:camerino-gira";
-
-/** Nomi brevi per le categorie (stanno su un chip). */
-const SHORT: Partial<Record<Slot, string>> = { skin: "Personaggio", piedi: "Scarpe" };
 
 export function Camerino() {
   const router = useRouter();
@@ -30,9 +27,8 @@ export function Camerino() {
   const { prog, st, playerId } = v;
   const toast = useToast();
   const now = useNow(30_000);
-  const [tab, setTab] = useState<"armadio" | "bancarella">("armadio");
-  const [slot, setSlot] = useState<Slot>("skin");
-  const [trying, setTrying] = useState<string | null>(null);
+  const [tab, setTab] = useState<"collezione" | "bancarella">("collezione");
+  const [detail, setDetail] = useState<{ item: Item; list: Item[] } | null>(null);
   const [buying, setBuying] = useState<Item | null>(null);
   const [reveal, setReveal] = useState<Item | null>(null);
   const [hint, setHint] = useState(false);
@@ -62,18 +58,10 @@ export function Camerino() {
     if (playerId && stallIds.length && st.stall?.day !== today) ensureStall(playerId, stallIds, today);
   }, [playerId, stallIds, st.stall, today]);
 
-  const tryItem = trying ? ITEM_BY_ID.get(trying) : undefined;
-  const shownPreset = presetOf(tryItem) ?? v.preset;
-  const shownOutfit: Outfit = useMemo(
-    () => (tryItem && tryItem.slot !== "skin" ? { ...v.outfit, [tryItem.slot]: tryItem.look } : v.outfit),
-    [tryItem, v.outfit],
-  );
 
   if (!prog || !playerId) return null;
   const owned = prog.owned;
   const wornId = (s: Slot) => (s === "skin" ? `skin-${v.preset}` : st.outfit[s] && owned.has(st.outfit[s]!) ? st.outfit[s]! : null);
-  const framing = tryItem ? FRAMING_OF[tryItem.slot] : tab === "armadio" ? FRAMING_OF[slot] : "full";
-  const list = ITEMS.filter((i) => i.slot === slot);
   const anyOn = (Object.keys(st.outfit) as Slot[]).some((s) => s !== "skin" && wornId(s));
   const msToMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime();
   const hLeft = Math.floor(msToMidnight / 3_600_000);
@@ -81,7 +69,6 @@ export function Camerino() {
 
   const wear = (it: Item) => {
     haptic(8);
-    setTrying(null);
     if (it.slot !== "skin" && wornId(it.slot) === it.id) {
       equip(playerId, it.slot, null);
       play("toggleOff");
@@ -91,17 +78,22 @@ export function Camerino() {
     play("select");
   };
 
-  const pick = (it: Item) => {
-    if (owned.has(it.id)) wear(it);
-    else {
-      haptic(5);
-      setTrying(trying === it.id ? null : it.id);
-    }
+  const open = (it: Item, list: Item[]) => {
+    haptic(6);
+    play("select");
+    setDetail({ item: it, list });
   };
 
+  const natale = prog.season.theme === "natale";
   return (
-    <>
+    <div className="relative isolate flex min-h-0 flex-1 flex-col">
+      {natale && (
+        <div className="cielo-natale" aria-hidden>
+          <span className="snow" />
+        </div>
+      )}
       <ScreenHeader
+        center
         title="Camerino"
         back={() => (window.history.length > 1 ? router.back() : router.push("/"))}
         action={<SpicchiChip prog={prog} tone="solid" />}
@@ -115,10 +107,11 @@ export function Camerino() {
         >
           <span className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_18%,rgb(255_255_255/0.32),transparent_60%)]" aria-hidden />
           <CourtLines className="absolute inset-0 h-full w-full opacity-60" />
+          {natale && <span className="neve-tetto" aria-hidden />}
           <div className="absolute inset-0">
-            <Statuina preset={shownPreset} outfit={shownOutfit} number={v.number} framing={framing} paused={!!reveal} />
+            <Statuina preset={v.preset} outfit={v.outfit} number={v.number} framing="full" paused={!!reveal || !!detail} />
           </div>
-          {anyOn && !tryItem && (
+          {anyOn && (
             <button
               onClick={() => {
                 for (const s of SLOTS) if (s.id !== "skin") equip(playerId, s.id, null);
@@ -130,122 +123,26 @@ export function Camerino() {
               Togli tutto
             </button>
           )}
-          {hint && !tryItem && (
+          {hint && (
             <p className="fade-in pointer-events-none absolute inset-x-0 bottom-3 mx-auto flex w-fit items-center gap-1.5 rounded-full bg-black/25 px-3 py-1.5 text-[12.5px] font-semibold text-white backdrop-blur-md">
               <IconHandFinger size={15} aria-hidden /> Trascina per girarlo, tocca per palleggiare
             </p>
-          )}
-          {tryItem && (
-            <div
-              className="fade-in absolute inset-x-3 bottom-3 flex items-center gap-2.5 rounded-[20px] border border-white/20 bg-white/20 p-2 pl-3.5 text-white backdrop-blur-md"
-              data-testid="try-banner"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold">In prova: {tryItem.name}</span>
-                <span className="block truncate text-[12px] text-white/80">{sourceOf(tryItem)}</span>
-              </span>
-              {stallIds.includes(tryItem.id) && (
-                <Button size="sm" variant="primary" onClick={() => setBuying(tryItem)} sound={false}>
-                  <SpicchioIcon size={16} /> {PRICE[tryItem.rarity]}
-                </Button>
-              )}
-              <button
-                onClick={() => setTrying(null)}
-                aria-label="Togli la prova"
-                className="press grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20"
-              >
-                <IconX size={16} strokeWidth={2.4} />
-              </button>
-            </div>
           )}
         </section>
 
         <Segmented
           className="rise mt-5"
           value={tab}
-          onChange={(t) => {
-            setTab(t);
-            setTrying(null);
-          }}
+          onChange={(t) => setTab(t)}
           options={[
-            { value: "armadio", label: "Armadio" },
+            { value: "collezione", label: "Collezione" },
             { value: "bancarella", label: "Bancarella" },
           ]}
         />
 
-        {tab === "armadio" ? (
-          <div className="fade-in mt-4" key="armadio">
-            <Chips
-              scroll
-              value={slot}
-              onChange={(s) => {
-                setSlot(s);
-                setTrying(null);
-              }}
-              options={SLOTS.map((s) => ({ value: s.id, label: SHORT[s.id] ?? s.label }))}
-            />
-            <div className="mt-3 grid grid-cols-3 gap-x-2.5 gap-y-3" data-testid="armadio">
-              {slot !== "skin" && (
-                <button onClick={() => {
-                  setTrying(null);
-                  if (wornId(slot)) {
-                    equip(playerId, slot, null);
-                    play("toggleOff");
-                    haptic(8);
-                  }
-                }} className="press text-left" aria-pressed={!wornId(slot)}>
-                  <span
-                    className={clsx(
-                      "grid aspect-square place-items-center rounded-[20px] border-2 border-dashed text-[13px] font-semibold",
-                      !wornId(slot) ? "border-text text-text" : "border-line-strong text-muted",
-                    )}
-                  >
-                    Niente
-                  </span>
-                  <span className="mt-1.5 block truncate px-0.5 text-[12.5px] font-semibold text-muted">Togli</span>
-                </button>
-              )}
-              {list.map((it) => {
-                const mine = owned.has(it.id);
-                const on = wornId(it.slot) === it.id;
-                return (
-                  <button
-                    key={it.id}
-                    onClick={() => pick(it)}
-                    aria-pressed={on}
-                    data-testid={`item-${it.id}`}
-                    className="press min-w-0 text-left"
-                  >
-                    <span
-                      className={clsx(
-                        "relative block aspect-square overflow-hidden rounded-[20px] text-white transition-shadow",
-                        `rar-${it.rarity}`,
-                        it.rarity === "leggendario" && "shine",
-                        on && "shadow-[0_0_0_3px_var(--bg),0_0_0_6px_var(--volt)]",
-                        trying === it.id && "shadow-[0_0_0_3px_var(--bg),0_0_0_6px_#fffaf0]",
-                      )}
-                    >
-                      <ItemPhoto item={it} preset={v.preset} size={192} className="absolute inset-0" />
-                      {!mine && <span className="absolute inset-0 bg-[#1d1a16]/35" aria-hidden />}
-                      {!mine && (
-                        <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/40" aria-label="Non ce l'hai">
-                          <IconLock size={13} />
-                        </span>
-                      )}
-                      {on && (
-                        <span className="pop-in absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-volt text-volt-ink" aria-label="Lo indossi">
-                          <IconCheck size={15} strokeWidth={3} />
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-1.5 block truncate px-0.5 text-[12.5px] font-semibold">{it.name}</span>
-                    <span className="block truncate px-0.5 text-[11.5px] text-muted">
-                      {mine ? RARITY_LABEL[it.rarity] : sourceOf(it)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        {tab === "collezione" ? (
+          <div className="fade-in mt-4" key="collezione">
+            <Collection owned={owned} wornId={wornId} preset={v.preset} onOpen={open} />
           </div>
         ) : (
           <div className="fade-in mt-4" key="bancarella">
@@ -265,9 +162,9 @@ export function Camerino() {
                 return (
                   <div key={id} className="rise card overflow-hidden p-1.5" style={rise(i)}>
                     <button
-                      onClick={() => (mine ? wear(it) : setTrying(trying === id ? null : id))}
+                      onClick={() => open(it, stallIds.map((x) => ITEM_BY_ID.get(x)).filter((x): x is Item => !!x))}
                       className={clsx("press relative block aspect-square w-full overflow-hidden rounded-[16px]", `rar-${it.rarity}`, it.rarity === "leggendario" && "shine")}
-                      aria-label={mine ? `Indossa ${it.name}` : `Prova ${it.name}`}
+                      aria-label={`Guarda ${it.name}`}
                     >
                       <ItemPhoto item={it} preset={v.preset} size={224} className="absolute inset-0" />
                       <RarityTag rarity={it.rarity} className="absolute left-2 top-2 !bg-black/25 [background-image:none]" />
@@ -321,7 +218,6 @@ export function Camerino() {
                 if (!buy(playerId, it.id, prog.spicchi)) return;
                 play("coins");
                 setBuying(null);
-                setTrying(null);
                 setReveal(it);
               }}
             >
@@ -359,6 +255,29 @@ export function Camerino() {
         )}
       </Sheet>
 
+      {detail && (
+        <CardDetail
+          item={detail.item}
+          list={detail.list}
+          owned={owned}
+          wornId={wornId}
+          preset={v.preset}
+          outfit={v.outfit}
+          number={v.number}
+          spicchi={prog.spicchi}
+          inStall={(id) => stallIds.includes(id)}
+          onWear={(it) => {
+            wear(it);
+            if (it.slot === "skin" || wornId(it.slot) !== it.id) toast(`${it.name} addosso`);
+          }}
+          onBuy={(it) => {
+            setDetail(null);
+            setBuying(it);
+          }}
+          onMove={(it) => setDetail((d) => (d ? { ...d, item: it } : d))}
+          onClose={() => setDetail(null)}
+        />
+      )}
       {reveal && (
         <RewardReveal
           item={reveal}
@@ -375,6 +294,6 @@ export function Camerino() {
           }}
         />
       )}
-    </>
+    </div>
   );
 }

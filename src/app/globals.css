@@ -3853,6 +3853,339 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
   }
 }
 
+/* Il percorso del pass: un binario spesso dietro agli scudi dei livelli, giallo fin dove
+   sei arrivato. Ogni riga disegna il suo pezzo, così il colore cambia proprio al "Sei qui". */
+.road-row::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  border-radius: 4px;
+  background: var(--line);
+}
+.road-row[data-rail="done"]::before {
+  background: var(--volt);
+}
+.road-row[data-rail="here"]::before {
+  background: linear-gradient(var(--volt) 0 30px, var(--line) 30px);
+}
+.road-row:first-child::before {
+  top: 24px;
+}
+.road-row:last-child::before {
+  bottom: 50%;
+}
+/* I premi speciali: il blu del campo con la neve e un bordo dorato. */
+.road-big {
+  box-shadow:
+    0 0 0 2px #ffd36b,
+    var(--shadow-pop);
+}
+/* "Riscatta": il bottone salta piano, come i forzieri pronti. */
+.claim-bob {
+  animation: claim-bob 1.6s ease-in-out infinite;
+}
+@keyframes claim-bob {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-4px);
+  }
+  90% {
+    transform: translateY(0);
+  }
+}
+/* Il bottone dei premi pulsa con un alone che si allarga e sparisce (solo trasformazione e
+   trasparenza: niente da ridisegnare a ogni fotogramma). */
+.claim-cta {
+  position: relative;
+  isolation: isolate;
+}
+.claim-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 3px var(--volt),
+    0 0 22px 4px rgb(255 197 49 / 0.75);
+  opacity: 0;
+  animation: claim-cta 2.4s ease-in-out infinite;
+}
+@keyframes claim-cta {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  45% {
+    opacity: 0.9;
+    transform: scale(1.03, 1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .claim-bob,
+  .claim-cta::after {
+    animation: none;
+  }
+}
+
+/* La collezione, come le carte di Clash Royale: cornice spessa del colore della rarità, la
+   figura in alto e una targhetta scura col nome. Leggendario dorato, epico viola, raro blu,
+   comune grigio. Le carte che non hai restano spente. */
+.coll-card {
+  display: block;
+}
+.coll-frame {
+  position: relative;
+  display: block;
+  padding: 3px;
+  border-radius: 18px;
+  box-shadow: 0 6px 14px -8px rgb(29 26 22 / 0.55);
+}
+.coll-frame.big {
+  padding: 5px;
+  border-radius: 31px;
+  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.6);
+}
+.frame-comune {
+  background: linear-gradient(160deg, #dfe5ee, #8693a6 55%, #5b6677);
+}
+.frame-raro {
+  background: linear-gradient(160deg, #b5d4ff, #3d8bff 50%, #1b45b4);
+}
+.frame-epico {
+  background: linear-gradient(160deg, #e7cfff, #a259ff 50%, #4f22a6);
+}
+.frame-leggendario {
+  background: linear-gradient(135deg, #fff3bf, #ffb020 30%, #fff0a8 50%, #e2581b 75%, #ffd36b);
+}
+.coll-frame.is-locked {
+  background: linear-gradient(160deg, #cfc6b6, #8d8475);
+}
+.coll-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 15px 15px 6px 6px;
+}
+.coll-plate {
+  display: block;
+  margin-top: 3px;
+  border-radius: 6px 6px 15px 15px;
+  background: #1d1a16;
+  color: #fff;
+  padding: 5px 7px 6px;
+}
+.coll-frame.is-locked .coll-plate {
+  background: #4a443b;
+}
+.coll-frame.is-locked .coll-art {
+  filter: saturate(0.55) brightness(0.8);
+}
+.coll-off {
+  filter: grayscale(1) brightness(0.7) contrast(0.9);
+}
+/* Il riflesso olografico delle carte rare, lo stesso della carta del profilo, ma fermo: si
+   muove solo una striscia di luce ogni tanto. */
+.coll-foil {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.coll-foil::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 300%;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgb(255 120 200 / 0.2) 38%,
+    rgb(120 220 255 / 0.22) 48%,
+    rgb(255 240 140 / 0.2) 58%,
+    transparent 75%
+  );
+  animation: coll-foil 4.5s ease-in-out infinite alternate;
+}
+@keyframes coll-foil {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-66.6%);
+  }
+}
+/* La carta aperta arriva dal basso girando un poco, come quando la tiri fuori dal mazzo. */
+.coll-open {
+  animation: coll-open 420ms cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+}
+@keyframes coll-open {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.86) rotate(-4deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coll-foil::before,
+  .coll-open {
+    animation: none;
+  }
+}
+
+/* ---- Natale: le decorazioni della season (vedi components/pass/natale.tsx) ---- */
+/* La neve sul bordo di sopra delle carte, come sui tetti. Un disegno fermo ripetuto. */
+.neve-tetto,
+.neve-terra {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 14'%3E%3Cpath fill='white' d='M0 0H80V5Q76 5 75 8Q73 11 70 8Q67 5 63 6Q60 7 58 10Q55 14 52 10Q50 6 46 6Q42 6 40 8Q37 11 34 8Q31 5 27 6Q24 7 22 9Q19 12 16 9Q13 6 9 6Q5 6 3 7Q1 8 0 5Z'/%3E%3C/svg%3E") repeat-x 0 0 / 80px 14px;
+  pointer-events: none;
+}
+.neve-tetto {
+  top: -1px;
+  filter: drop-shadow(0 2px 0 rgb(23 58 122 / 0.22));
+}
+.neve-terra {
+  bottom: -1px;
+  transform: scaleY(-1);
+  opacity: 0.9;
+}
+.neve-tetto.small {
+  height: 10px;
+  background-size: 58px 10px;
+}
+/* Le lucine: si accendono e spengono a turno, solo trasparenza. */
+.lucina {
+  position: absolute;
+  width: 7px;
+  height: 10px;
+  margin-left: -3.5px;
+  margin-top: 1px;
+  border-radius: 45% 45% 50% 50% / 35% 35% 65% 65%;
+  background: radial-gradient(circle at 35% 30%, #fff 0 1.4px, var(--c) 2.6px);
+  box-shadow: 0 0 9px 2px color-mix(in srgb, var(--c) 65%, transparent);
+  animation: lucina 2s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+.lucina::before {
+  content: "";
+  position: absolute;
+  left: 1.5px;
+  top: -2.5px;
+  width: 4px;
+  height: 3.5px;
+  border-radius: 1px;
+  background: #173a7a;
+}
+@keyframes lucina {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+/* Il pupazzo dondola piano sul tetto della testata. */
+.pupazzo {
+  transform-origin: 47% 95%;
+  animation: pupazzo 3.6s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes pupazzo {
+  from {
+    transform: rotate(-3deg);
+  }
+  to {
+    transform: rotate(3deg);
+  }
+}
+/* Il tabellone della testata gira piano nello spazio, come appeso. */
+.tab-3d {
+  animation: tab-3d 5s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes tab-3d {
+  from {
+    transform: perspective(320px) rotateY(-14deg) rotateX(4deg);
+  }
+  to {
+    transform: perspective(320px) rotateY(14deg) rotateX(-3deg);
+  }
+}
+/* Il cielo d'inverno in cima alle pagine della season: azzurro ghiaccio che sfuma nel fondo,
+   con la neve che scende (solo trasformazioni). */
+.cielo-natale {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 380px;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(180deg, #d6e4f7 0%, rgb(214 228 247 / 0.55) 50%, rgb(214 228 247 / 0) 100%);
+}
+:root[data-theme="dark"] .cielo-natale {
+  background: linear-gradient(180deg, #1a2a48 0%, rgb(26 42 72 / 0.5) 50%, rgb(26 42 72 / 0) 100%);
+}
+/* Il binario dei livelli fatti diventa un bastoncino di zucchero: un pezzo solo sotto a
+   tutta la lista, così le righe non spezzano le strisce; quelle da fare lo coprono. */
+.road.natale::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 24px;
+  bottom: 60px;
+  width: 8px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(135deg, #e5483b 0 5px, #fff6ea 5px 10px);
+  box-shadow: 0 0 0 1.5px rgb(29 26 22 / 0.14);
+}
+.road.natale .road-row::before {
+  border-radius: 0;
+}
+.road.natale .road-row:last-child::before {
+  border-radius: 0 0 4px 4px;
+}
+.road.natale .road-row[data-rail="done"]::before {
+  background: transparent;
+}
+.road.natale .road-row[data-rail="here"]::before {
+  background: linear-gradient(transparent 0 30px, var(--line) 30px);
+}
+/* Mentre si scorre il pass le decorazioni stanno ferme (ripartono a dito fermo). */
+[data-scrolling] .snow,
+[data-scrolling] .lucina,
+[data-scrolling] .pupazzo,
+[data-scrolling] .tab-3d,
+[data-scrolling] .claim-cta::after,
+[data-scrolling] .claim-bob,
+[data-scrolling] .claim-glow,
+[data-scrolling] .hero-drift {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lucina,
+  .pupazzo,
+  .tab-3d {
+    animation: none;
+  }
+}
+
 /* La season di Natale: neve leggera (due strati di puntini che scendono, solo transform). */
 .snow {
   position: absolute;

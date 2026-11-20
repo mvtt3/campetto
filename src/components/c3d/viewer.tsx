@@ -23,6 +23,8 @@ export function Statuina({
   onReady,
   yaw,
   paused = false,
+  spin,
+  pivot,
 }: {
   preset: Preset;
   outfit: Outfit;
@@ -34,6 +36,10 @@ export function Statuina({
   yaw?: number;
   /** Fermo mentre c'è sopra un'altra finestra col 3D. */
   paused?: boolean;
+  /** Gira da solo piano (radianti al secondo), come in vetrina. */
+  spin?: number;
+  /** Gira attorno al pallone o al braccio invece che attorno al personaggio. */
+  pivot?: "pallone" | "braccio";
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const stage = useRef<Stage | null>(null);
@@ -54,7 +60,7 @@ export function Statuina({
       await m.preloadTextures();
       if (dead || !canvas.current) return;
       const l = latest.current;
-      const s = new m.Stage(canvas.current, { interactive, framing: l.framing, yaw });
+      const s = new m.Stage(canvas.current, { interactive, framing: l.framing, yaw, spin, pivot });
       s.onFirstFrame = () => {
         setReady(true);
         readyCb.current?.();

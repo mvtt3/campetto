@@ -1715,3 +1715,48 @@ test("profilo su un telefono senza giroscopio (Galaxy A05s): la carta si muove e
   await expect(svg).toHaveAttribute("data-wobbling", "");
   await expect(svg).not.toHaveAttribute("data-wobbling", "", { timeout: 8000 });
 });
+
+test("collezione: carte trovate e da trovare, la carta si apre in 3D e si sfoglia", async ({ page }) => {
+  // Il 3D nel browser di prova gira senza scheda video: è lento, serve più tempo.
+  test.slow();
+  await openApp(page, "demo", "light", "p1");
+  await page.goto("/camerino");
+  const coll = page.getByTestId("collezione");
+  await expect(coll).toBeVisible();
+  // Jack e Kenji sono di serie: almeno due carte trovate, il resto da trovare.
+  await expect(page.getByTestId("coll-found").getByRole("button")).not.toHaveCount(0);
+  const missing = page.getByTestId("coll-missing").getByRole("button");
+  await expect(missing.first()).toBeVisible();
+  await missing.first().click();
+  const detail = page.getByTestId("card-detail");
+  await expect(detail).toBeVisible();
+  await expect(detail.getByTestId("card-3d").locator("canvas")).toBeAttached();
+  const first = await detail.locator("#card-title").innerText();
+  await detail.getByRole("button", { name: "Carta dopo" }).click();
+  await expect(detail.locator("#card-title")).not.toHaveText(first);
+  await page.keyboard.press("Escape");
+  await expect(detail).toBeHidden();
+  // Un personaggio tuo che non stai usando: si sceglie da qui e nella griglia passa "Addosso".
+  const kenjiOn = /Addosso/.test(await page.getByTestId("card-skin-kenji").innerText());
+  const other = page.getByTestId(kenjiOn ? "card-skin-jack" : "card-skin-kenji");
+  await other.click();
+  await page.getByTestId("card-wear").click();
+  await page.keyboard.press("Escape");
+  await expect(other).toContainText("Addosso");
+});
+
+test("pass: percorso a tabelloni con Sei qui, premi da riscattare tutti insieme", async ({ page }) => {
+  await openApp(page, "demo", "light", "p1");
+  await page.goto("/pass");
+  await expect(page.getByTestId("pass-track")).toBeVisible();
+  await expect(page.getByTestId("level-1")).toBeVisible();
+  const all = page.getByTestId("claim-all");
+  if (await all.isVisible()) {
+    await all.click();
+    await page.keyboard.press("Escape");
+    await expect(all).toBeHidden();
+  }
+  const here = page.getByTestId("you-are-here");
+  await expect(here).toBeVisible();
+  await expect(here).toContainText("Per salire fai una di queste");
+});
