@@ -21,11 +21,27 @@ function fakePhone(opts: {
   };
   const reg = { active: { state: "activated" }, pushManager };
   const g = globalThis as Record<string, unknown>;
+  const store = new Map<string, string>();
   g.window = Object.assign(globalThis, {
     PushManager: class {},
     matchMedia: () => ({ matches: false }),
     dispatchEvent: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
   });
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    },
+  });
+  const docListeners = new Map<string, () => void>();
+  g.document = {
+    addEventListener: (t: string, f: () => void) => docListeners.set(t, f),
+    removeEventListener: (t: string) => docListeners.delete(t),
+  };
   g.Notification = {
     permission: opts.permission ?? "granted",
     requestPermission: vi.fn(opts.ask ?? (async () => "granted")),
@@ -45,8 +61,20 @@ function fakePhone(opts: {
       },
     },
   });
-  return { sub, pushManager };
+  return { sub, pushManager, store, docListeners };
 }
+
+/** Il permesso cambia fuori dall'app (impostazioni, controlli del sito). */
+function setPermission(p: NotificationPermission) {
+  (
+    Notification as unknown as { permission: NotificationPermission }
+  ).permission = p;
+}
+
+const lateEvents = () =>
+  (window.dispatchEvent as ReturnType<typeof vi.fn>).mock.calls.map(
+    (c) => (c[0] as Event).type,
+  );
 
 const backend = (over: Partial<Backend> = {}) =>
   ({
@@ -101,10 +129,7 @@ describe("accensione delle notifiche: mai una rotellina infinita", () => {
     answer(sub);
     await vi.advanceTimersByTimeAsync(0);
     expect(b.savePushSubscription).toHaveBeenCalledOnce();
-    const fired = (
-      window.dispatchEvent as ReturnType<typeof vi.fn>
-    ).mock.calls.map((c) => (c[0] as Event).type);
-    expect(fired).toContain(PUSH_LATE_EVENT);
+    expect(lateEvents()).toContain(PUSH_LATE_EVENT);
   });
 
   it("il server che non risponde al salvataggio non lascia la rotellina accesa", async () => {
@@ -158,5 +183,101 @@ describe("accensione delle notifiche: mai una rotellina infinita", () => {
     // A mano, col telefono che ora risponde.
     fakePhone({});
     await expect(enablePush(backend())).resolves.toBe("ok");
+  });
+});
+
+describe("il permesso che non arriva subito", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("richiesta scaduta senza risposta (la richiesta leggera di Chrome): non è un blocco", async () => {
+    fakePhone({ permission: "default", ask: async () => "default" });
+    const { enablePush } = await import("@/lib/notifications/push-client");
+    const b = backend();
+    await expect(enablePush(b)).resolves.toBe("dismissed");
+    expect(b.savePushSubscription).not.toHaveBeenCalled();
+  });
+
+  it("richiesta rifiutata: bloccato", async () => {
+    fakePhone({ permission: "default", ask: async () => "denied" });
+    const { enablePush } = await import("@/lib/notifications/push-client");
+    await expect(enablePush(backend())).resolves.toBe("denied");
+  });
+
+  it("il sì che arriva dopo il tempo massimo accende le notifiche da solo", async () => {
+    let answer: (p: NotificationPermission) => void = () => {};
+    fakePhone({
+      permission: "default",
+      ask: () => new Promise((r) => (answer = r)),
+    });
+    const { enablePush, PUSH_LIMITS, PUSH_LATE_EVENT } =
+      await import("@/lib/notifications/push-client");
+    const b = backend();
+    const seen = enablePush(b).catch((e: unknown) => e);
+    await vi.advanceTimersByTimeAsync(PUSH_LIMITS.permesso + 10);
+    expect(await seen).toMatchObject({ step: "permesso", timedOut: true });
+    setPermission("granted");
+    answer("granted");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(b.savePushSubscription).toHaveBeenCalledOnce();
+    expect(lateEvents()).toContain(PUSH_LATE_EVENT);
+  });
+
+  it("permesso dato dalle impostazioni: si iscrive da solo, ma solo se le notifiche erano state chieste", async () => {
+    fakePhone({ permission: "granted" });
+    const { resumePush, setWantPush } =
+      await import("@/lib/notifications/push-client");
+    const b = backend();
+    await expect(resumePush(b)).resolves.toBe(false);
+    expect(b.savePushSubscription).not.toHaveBeenCalled();
+    setWantPush(true);
+    await expect(resumePush(b)).resolves.toBe(true);
+    expect(b.savePushSubscription).toHaveBeenCalledOnce();
+  });
+
+  it("spente a mano: il permesso che resta non le riaccende", async () => {
+    fakePhone({});
+    const { enablePush, disablePush, resumePush } =
+      await import("@/lib/notifications/push-client");
+    const b = backend();
+    await expect(enablePush(b)).resolves.toBe("ok");
+    await disablePush(b);
+    await expect(resumePush(b)).resolves.toBe(false);
+    expect(b.savePushSubscription).toHaveBeenCalledOnce();
+  });
+
+  it("all'apertura: il telefono ha perso l'iscrizione ma il permesso c'è, ne rifà una", async () => {
+    const phone = fakePhone({ permission: "granted" });
+    phone.store.set("campetto:notifiche-volute", "1");
+    const { checkPush } = await import("@/lib/notifications/push-client");
+    const b = backend();
+    await expect(checkPush(b)).resolves.toBe(true);
+    expect(b.savePushSubscription).toHaveBeenCalledOnce();
+  });
+
+  it("all'apertura: mai chieste su questo telefono, non si iscrive da solo", async () => {
+    fakePhone({ permission: "granted" });
+    const { checkPush } = await import("@/lib/notifications/push-client");
+    const b = backend();
+    await expect(checkPush(b)).resolves.toBe(false);
+    expect(b.savePushSubscription).not.toHaveBeenCalled();
+  });
+
+  it("tornando nell'app col permesso cambiato, la pagina lo sa", async () => {
+    const phone = fakePhone({ permission: "default" });
+    const { watchPermission } = await import("@/lib/notifications/push-client");
+    const seen: NotificationPermission[] = [];
+    const stop = watchPermission((p) => seen.push(p));
+    phone.docListeners.get("visibilitychange")?.();
+    expect(seen).toEqual([]);
+    setPermission("granted");
+    phone.docListeners.get("visibilitychange")?.();
+    expect(seen).toEqual(["granted"]);
+    stop();
   });
 });

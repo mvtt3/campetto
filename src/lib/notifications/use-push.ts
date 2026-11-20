@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useData } from "@/lib/data/provider";
 import type { Backend } from "@/lib/data/backend";
@@ -13,20 +13,24 @@ import {
 import {
   PUSH_LATE_EVENT,
   PushStuck,
+  type PermissionHelp,
   type PushStep,
   checkPush,
   currentSubscription,
   disablePush,
   enablePush,
   isIos,
+  permissionHelp,
   pushSnapshot,
+  resumePush,
+  watchPermission,
 } from "./push-client";
 
 /** Cosa dire quando un passaggio si blocca: cosa fare, non cosa è successo dentro. */
 function stuckMessage(step: PushStep): string {
   switch (step) {
     case "permesso":
-      return "Il telefono non mi ha fatto chiedere il permesso: apri le impostazioni del telefono, App, Campetto, Notifiche, attivale e riprova";
+      return "Il telefono non mi ha mostrato la richiesta: qui sotto ti dico dove darmi il permesso";
     case "app":
       return "L'app non si è caricata del tutto: chiudila dalle app recenti, riaprila e riprova";
     case "iscrizione":
@@ -49,12 +53,20 @@ const STEP_NAME: Record<PushStep, string> = {
 const REPORT_KEY = "campetto:notifiche-segnalate";
 const REPORT_EVERY = 6 * 60 * 60 * 1000;
 
+/** Chi tiene bloccato il permesso, per il messaggio di Spicchio. */
+const BLOCKER: Record<PermissionHelp, string> = {
+  chrome: "Chrome",
+  samsung: "Samsung Internet",
+  ios: "L'iPhone",
+  altro: "Il browser",
+};
+
 /**
  * Quando l'accensione si blocca, una segnalazione arriva da sola a chi aggiusta l'app, con il
  * passaggio fermo e com'è messo il telefono. Senza notifica: è solo da leggere. Al massimo una
  * ogni sei ore per telefono.
  */
-async function report(backend: Backend, e: PushStuck) {
+async function report(backend: Backend, what: string) {
   try {
     const last = Number(localStorage.getItem(REPORT_KEY) ?? 0);
     if (Date.now() - last < REPORT_EVERY) return;
@@ -66,7 +78,7 @@ async function report(backend: Backend, e: PushStuck) {
     .sendFeedback({
       kind: "problema",
       message:
-        `[Segnalazione automatica] Notifiche non accese. ${e.message}. ${await pushSnapshot()}`.slice(
+        `[Segnalazione automatica] Notifiche non accese. ${what}. ${await pushSnapshot()}`.slice(
           0,
           1900,
         ),
@@ -103,6 +115,8 @@ export function usePush() {
   const [busy, setBusy] = useState(false);
   /** Dove si è fermato l'ultimo tentativo, per la riga di dettaglio. */
   const [stuck, setStuck] = useState<string | null>(null);
+  /** Il permesso manca: dove andare a darlo (la pagina mostra i passaggi). */
+  const [help, setHelp] = useState<PermissionHelp | null>(null);
 
   useEffect(() => {
     // Prima quello che dice il telefono, poi la conferma del server (che ripara se serve).
@@ -114,11 +128,16 @@ export function usePush() {
     };
   }, [backend]);
 
+  /** L'accensione arrivata da sola è già stata annunciata (può arrivare da due strade insieme). */
+  const lateDone = useRef(false);
   // Un'accensione andata oltre il tempo che poi finisce bene: si accende da sola.
   useEffect(() => {
     const late = () => {
+      if (lateDone.current) return;
+      lateDone.current = true;
       setOn(true);
       setStuck(null);
+      setHelp(null);
       void setAll(true);
       toast("Eccole, ora sono attive");
     };
@@ -126,24 +145,47 @@ export function usePush() {
     return () => window.removeEventListener(PUSH_LATE_EVENT, late);
   });
 
+  // Il permesso arriva da fuori (impostazioni, controlli del sito): si finisce senza altri tocchi.
+  useEffect(
+    () =>
+      watchPermission((p) => {
+        if (p !== "granted") return;
+        void resumePush(backend).then((ok) => {
+          if (ok) window.dispatchEvent(new Event(PUSH_LATE_EVENT));
+        });
+      }),
+    [backend],
+  );
+
   const toggle = async (want: boolean) => {
     if (busy) return;
     setBusy(true);
     setStuck(null);
+    setHelp(null);
+    lateDone.current = false;
     try {
       if (want) {
         const r = await enablePush(backend);
         if (r === "ok") {
+          lateDone.current = true;
           setOn(true);
           await setAll(true);
           toast("Fatto, ora ti avviso io");
           void backend.notify({ type: "test" });
-        } else if (r === "denied")
+        } else if (r === "denied" || r === "dismissed") {
+          const where = permissionHelp();
+          setHelp(where);
           toast(
-            "Il telefono mi blocca: riattiva le notifiche di Campetto nelle impostazioni del telefono",
+            r === "denied"
+              ? `${BLOCKER[where]} mi tiene le notifiche bloccate: qui sotto ti dico come sbloccarle`
+              : "Non è arrivata nessuna risposta alla richiesta: qui sotto ti dico dove darmi il permesso",
             "error",
           );
-        else if (r === "install")
+          setStuck(
+            `Fermo su: permesso del browser, ${r === "denied" ? "bloccato" : "nessuna risposta"}`,
+          );
+          void report(backend, `permesso: ${r}`);
+        } else if (r === "install")
           toast(
             "Su iPhone prima aggiungimi alla schermata Home, poi ti posso avvisare",
             "error",
@@ -159,10 +201,11 @@ export function usePush() {
     } catch (e) {
       if (want && e instanceof PushStuck) {
         toast(stuckMessage(e.step), "error");
+        if (e.step === "permesso") setHelp(permissionHelp());
         setStuck(
           `Fermo su: ${STEP_NAME[e.step]}${e.timedOut ? `, nessuna risposta in ${Math.round(e.ms / 1000)} secondi` : ""}`,
         );
-        void report(backend, e);
+        void report(backend, e.message);
       } else
         toast(
           "Non sono riuscito a cambiare le notifiche, riprova tra poco",
@@ -173,5 +216,5 @@ export function usePush() {
     }
   };
 
-  return { on, busy, stuck, toggle };
+  return { on, busy, stuck, help, toggle };
 }

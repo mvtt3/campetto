@@ -128,18 +128,70 @@ async function readyRegistration(): Promise<ServiceWorkerRegistration> {
 /** Evento sulla finestra quando un'accensione andata oltre il tempo finisce bene più tardi. */
 export const PUSH_LATE_EVENT = "campetto:notifiche-accese";
 
-export async function enablePush(
-  backend: Backend,
-): Promise<"ok" | "denied" | "unsupported" | "install"> {
+const WANT_KEY = "campetto:notifiche-volute";
+
+/**
+ * Se su questo telefono le notifiche sono state chieste (e non spente a mano). Serve per accenderle
+ * da sole quando il permesso arriva dopo: risposta in ritardo, o dato dalle impostazioni.
+ */
+export function wantPush(): boolean {
+  try {
+    return localStorage.getItem(WANT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setWantPush(on: boolean) {
+  try {
+    localStorage.setItem(WANT_KEY, on ? "1" : "0");
+  } catch {
+    /* senza memoria locale si chiede di nuovo a mano */
+  }
+}
+
+/**
+ * Com'è finita l'accensione. "dismissed": la richiesta è sparita senza risposta (Chrome su Android
+ * ora mostra una richiesta leggera che scade da sola, e nell'app installata a volte non si vede).
+ */
+export type EnableResult =
+  "ok" | "denied" | "dismissed" | "unsupported" | "install";
+
+/** Un'accensione a mano in corso: intanto niente accensioni da sole, si pesterebbero i piedi. */
+let enabling = false;
+
+export async function enablePush(backend: Backend): Promise<EnableResult> {
+  enabling = true;
+  try {
+    return await enableNow(backend);
+  } finally {
+    enabling = false;
+  }
+}
+
+async function enableNow(backend: Backend): Promise<EnableResult> {
   if (!pushSupported())
     return isIos() && !isStandalone() ? "install" : "unsupported";
+  setWantPush(true);
   // Se il controllo all'apertura sta già rifacendo l'iscrizione, gli si lascia un attimo per finire:
   // due iscrizioni insieme sullo stesso telefono si pestano i piedi.
   if (checking) await Promise.race([checking, sleep(4000)]);
   let permission = Notification.permission;
   if (permission === "denied") return "denied";
-  if (permission !== "granted")
-    permission = await within(Notification.requestPermission(), "permesso");
+  if (permission !== "granted") {
+    const asking = Notification.requestPermission();
+    try {
+      permission = await within(asking, "permesso");
+    } catch (e) {
+      // La richiesta resta aperta: se il telefono risponde sì più tardi, si finisce da soli.
+      if (e instanceof PushStuck && e.timedOut)
+        void asking
+          .then((p) => (p === "granted" ? lateFinish(backend) : undefined))
+          .catch(() => {});
+      throw e;
+    }
+  }
+  if (permission === "default") return "dismissed";
   if (permission !== "granted") return "denied";
   const reg = await readyRegistration();
   const subscribing = freshSubscription(reg);
@@ -163,6 +215,101 @@ export async function enablePush(
   await within(backend.savePushSubscription(sub.toJSON()), "salvataggio");
   pushChecked(true);
   return "ok";
+}
+
+/** Un'accensione finita più tardi del previsto: la pagina lo sa e accende l'interruttore. */
+async function lateFinish(backend: Backend) {
+  if (await resumePush(backend))
+    window.dispatchEvent(new Event(PUSH_LATE_EVENT));
+}
+
+let resuming: Promise<boolean> | null = null;
+/**
+ * Il permesso c'è ma l'iscrizione no, e su questo telefono le notifiche erano state chieste: la si
+ * fa adesso, senza chiedere nulla. Succede tornando dalle impostazioni dove si è dato il permesso,
+ * o quando la richiesta del telefono riceve un sì dopo il tempo massimo.
+ */
+export function resumePush(backend: Backend): Promise<boolean> {
+  if (resuming) return resuming;
+  if (
+    enabling ||
+    !pushSupported() ||
+    Notification.permission !== "granted" ||
+    !wantPush()
+  )
+    return Promise.resolve(false);
+  const run = (async () => {
+    try {
+      const reg = await readyRegistration();
+      const old = await reg.pushManager.getSubscription();
+      if (old) {
+        const known = await within(
+          backend.hasPushSubscription(old.endpoint),
+          "salvataggio",
+        ).catch(() => true);
+        if (known) {
+          pushChecked(true);
+          return true;
+        }
+      }
+      const fresh = await within(freshSubscription(reg), "iscrizione");
+      await within(backend.savePushSubscription(fresh.toJSON()), "salvataggio");
+      pushChecked(true);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      resuming = null;
+    }
+  })();
+  resuming = run;
+  return run;
+}
+
+/**
+ * Avvisa quando il permesso delle notifiche cambia: dalla richiesta del telefono, dai controlli del
+ * sito di Chrome o tornando nell'app dalle impostazioni. Restituisce come smettere di ascoltare.
+ */
+export function watchPermission(
+  onChange: (p: NotificationPermission) => void,
+): () => void {
+  if (!pushSupported()) return () => {};
+  let last = Notification.permission;
+  let alive = true;
+  const check = () => {
+    const now = Notification.permission;
+    if (!alive || now === last) return;
+    last = now;
+    onChange(now);
+  };
+  let status: PermissionStatus | null = null;
+  void navigator.permissions
+    ?.query({ name: "notifications" as PermissionName })
+    .then((s) => {
+      if (!alive) return;
+      status = s;
+      s.addEventListener("change", check);
+    })
+    .catch(() => {});
+  document.addEventListener("visibilitychange", check);
+  window.addEventListener("focus", check);
+  return () => {
+    alive = false;
+    status?.removeEventListener("change", check);
+    document.removeEventListener("visibilitychange", check);
+    window.removeEventListener("focus", check);
+  };
+}
+
+/** Dove si dà il permesso, a seconda del telefono e del browser. */
+export type PermissionHelp = "chrome" | "samsung" | "ios" | "altro";
+
+export function permissionHelp(): PermissionHelp {
+  if (isIos()) return "ios";
+  const ua = navigator.userAgent;
+  if (/SamsungBrowser/i.test(ua)) return "samsung";
+  if (/Android/i.test(ua) && /Chrome\//.test(ua)) return "chrome";
+  return "altro";
 }
 
 /** Chrome dice "permesso negato" anche quando le notifiche sono spente per Chrome nel telefono. */
@@ -211,15 +358,29 @@ export function checkPush(backend: Backend): Promise<boolean> {
         "app",
         5000,
       );
-      const sub = await reg?.pushManager.getSubscription();
-      if (!reg || !sub) return false;
+      if (!reg) return false;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        // Il telefono ha perso l'iscrizione (o non è mai arrivata): se le notifiche erano state
+        // chieste qui e il permesso c'è, se ne fa una nuova senza disturbare.
+        if (!wantPush()) return false;
+        const fresh = await within(freshSubscription(reg), "iscrizione");
+        await within(
+          backend.savePushSubscription(fresh.toJSON()),
+          "salvataggio",
+        );
+        return true;
+      }
       // Se il server non risponde si tiene per buona l'iscrizione che c'è: rifarla per un intoppo di
       // rete vorrebbe dire buttarne una che funziona.
       const known = await within(
         backend.hasPushSubscription(sub.endpoint),
         "salvataggio",
       ).catch(() => true);
-      if (known) return true;
+      if (known) {
+        setWantPush(true);
+        return true;
+      }
       const fresh = await within(freshSubscription(reg), "iscrizione");
       await within(backend.savePushSubscription(fresh.toJSON()), "salvataggio");
       return true;
@@ -240,6 +401,7 @@ export function pushChecked(on: boolean) {
 }
 
 export async function disablePush(backend: Backend): Promise<void> {
+  setWantPush(false);
   const sub = await currentSubscription();
   if (!sub) return;
   await within(backend.removePushSubscription(sub.endpoint), "salvataggio");

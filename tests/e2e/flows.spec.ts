@@ -1493,12 +1493,71 @@ test("notifiche: se il servizio del telefono non risponde, niente rotellina infi
   expect(saved[0].message).toContain("permesso granted");
 });
 
+test("notifiche: se la richiesta del telefono non arriva, Spicchio dice dove dare il permesso e poi si accendono da sole", async ({
+  page,
+}) => {
+  await page.context().grantPermissions(["notifications"]);
+  await page.addInitScript(() => {
+    // Come sul Galaxy: permesso mai dato e richiesta che scade senza mostrarsi.
+    const w = window as unknown as { __perm: NotificationPermission };
+    w.__perm = "default";
+    Object.defineProperty(Notification, "permission", { get: () => w.__perm });
+    Notification.requestPermission = async () => "default";
+    PushManager.prototype.subscribe = function () {
+      const endpoint = "https://fcm.googleapis.com/fcm/send/prova";
+      return Promise.resolve({
+        endpoint,
+        unsubscribe: async () => true,
+        toJSON: () => ({ endpoint, keys: { p256dh: "p", auth: "a" } }),
+      } as unknown as PushSubscription);
+    };
+  });
+  await openApp(page, "demo");
+  await page.goto("/profilo/notifiche");
+  await page
+    .getByRole("switch", { name: "Notifiche su questo telefono" })
+    .click();
+  await expect(
+    page.getByText("Il permesso lo dai qui, ci vuole un minuto"),
+  ).toBeVisible({ timeout: 20000 });
+  // Su Android il posto giusto è dentro Chrome, non Impostazioni → App.
+  await expect(page.getByText(/Impostazioni sito → Notifiche/)).toBeVisible();
+  await expect(
+    page.getByText(/Fermo su: permesso del browser, nessuna risposta/),
+  ).toBeVisible();
+  await expect(page.getByText("Spente, non ti disturbo")).toBeVisible();
+  // Il permesso viene dato fuori dall'app e si torna qui: si accendono senza toccare nulla.
+  await page.evaluate(() => {
+    (window as unknown as { __perm: NotificationPermission }).__perm =
+      "granted";
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect(page.getByText("Attive, ti avviso io")).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.getByText("Eccole, ora sono attive")).toBeVisible();
+  await expect(
+    page.getByText("Il permesso lo dai qui, ci vuole un minuto"),
+  ).toHaveCount(0);
+  // Anche questo caso arriva come segnalazione automatica, con lo stato del telefono.
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("campetto:mock:v1")!).notifications.filter(
+      (n: { type: string; message?: string }) =>
+        n.type === "feedback" &&
+        n.message?.startsWith("[Segnalazione automatica]"),
+    ),
+  );
+  expect(saved).toHaveLength(1);
+  expect(saved[0].message).toContain("permesso: dismissed");
+});
+
 test("profilo: inclinando il telefono la carta si muove, scuotendolo il personaggio barcolla e poi si ferma", async ({
   page,
 }) => {
   // Il suggerimento della prima volta qui non serve: lo prova un test a parte.
   await page.addInitScript(() => {
-    for (let i = 1; i <= 7; i++) localStorage.setItem(`campetto:motion-hint:p${i}`, "1");
+    for (let i = 1; i <= 7; i++)
+      localStorage.setItem(`campetto:motion-hint:p${i}`, "1");
   });
   await openApp(page, "demo");
   await page.goto("/profilo");
@@ -1511,13 +1570,19 @@ test("profilo: inclinando il telefono la carta si muove, scuotendolo il personag
   await page.evaluate(async () => {
     for (let i = 0; i <= 12; i++) {
       window.dispatchEvent(
-        new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 40, gamma: i }),
+        new DeviceOrientationEvent("deviceorientation", {
+          alpha: 0,
+          beta: 40,
+          gamma: i,
+        }),
       );
       await new Promise((r) => setTimeout(r, 16));
     }
   });
   await expect
-    .poll(async () => Number(await foil.evaluate((el) => getComputedStyle(el).opacity)))
+    .poll(async () =>
+      Number(await foil.evaluate((el) => getComputedStyle(el).opacity)),
+    )
     .toBeGreaterThan(0.2);
   // Scossone: il telefono fermo per un attimo (come il sensore vero, che manda dati di
   // continuo), poi tre colpi avanti e indietro.
@@ -1541,11 +1606,20 @@ test("profilo: inclinando il telefono la carta si muove, scuotendolo il personag
   });
   const svg = hero.locator(".hero-wobble svg.character");
   await expect(svg).toHaveAttribute("data-wobbling", "");
-  await expect(svg.locator(".character-sway")).toHaveAttribute("transform", /rotate/);
+  await expect(svg.locator(".character-sway")).toHaveAttribute(
+    "transform",
+    /rotate/,
+  );
   // Si ricompone da solo, col pallone di nuovo in mano.
   await expect(svg).not.toHaveAttribute("data-wobbling", "", { timeout: 8000 });
-  await expect(svg.locator(".character-sway")).not.toHaveAttribute("transform", /./);
-  await expect(svg.locator(".character-ball-drop")).not.toHaveAttribute("transform", /./);
+  await expect(svg.locator(".character-sway")).not.toHaveAttribute(
+    "transform",
+    /./,
+  );
+  await expect(svg.locator(".character-ball-drop")).not.toHaveAttribute(
+    "transform",
+    /./,
+  );
 });
 
 test("Ci sono: il tuo cerchietto salta al suo posto nella formazione", async ({
@@ -1566,7 +1640,9 @@ test("Ci sono: il tuo cerchietto salta al suo posto nella formazione", async ({
     const w = window as unknown as { __jumps: number };
     w.__jumps = 0;
     const orig = Element.prototype.animate;
-    Element.prototype.animate = function (...args: Parameters<Element["animate"]>) {
+    Element.prototype.animate = function (
+      ...args: Parameters<Element["animate"]>
+    ) {
       if ((this as Element).matches("[data-player]")) w.__jumps++;
       return orig.apply(this, args);
     };
@@ -1576,7 +1652,9 @@ test("Ci sono: il tuo cerchietto salta al suo posto nella formazione", async ({
   await expect(mine).toHaveCount(1);
   // Il salto è un'animazione vera sul cerchietto, che poi finisce al suo posto.
   await expect
-    .poll(() => page.evaluate(() => (window as unknown as { __jumps: number }).__jumps))
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { __jumps: number }).__jumps),
+    )
     .toBe(1);
   await expect
     .poll(() => mine.evaluate((el) => el.getAnimations().length))
@@ -1599,12 +1677,17 @@ test("badge: quello grande si trascina, gira come una moneta e si ferma su una f
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   for (let i = 1; i <= 6; i++)
-    await page.mouse.move(box.x + box.width / 2 + i * 20, box.y + box.height / 2);
+    await page.mouse.move(
+      box.x + box.width / 2 + i * 20,
+      box.y + box.height / 2,
+    );
   await page.mouse.up();
   const angle = () =>
     medal
       .locator(".spin-medal-inner")
-      .evaluate((el) => Number(/rotateY\((-?[\d.]+)deg\)/.exec(el.style.transform)?.[1] ?? "0"));
+      .evaluate((el) =>
+        Number(/rotateY\((-?[\d.]+)deg\)/.exec(el.style.transform)?.[1] ?? "0"),
+      );
   await expect.poll(angle, { timeout: 6000 }).not.toBe(0);
   // Alla fine resta dritto, davanti o dietro.
   await expect
@@ -1615,7 +1698,7 @@ test("badge: quello grande si trascina, gira come una moneta e si ferma su una f
   await expect(medal).toHaveCount(0);
 });
 
-test("profilo: la prima volta compare per un attimo \"inclina o scuoti\", poi mai più", async ({
+test('profilo: la prima volta compare per un attimo "inclina o scuoti", poi mai più', async ({
   page,
 }) => {
   await openApp(page, "demo");
@@ -1636,26 +1719,40 @@ test("profilo: la prima volta compare per un attimo \"inclina o scuoti\", poi ma
     );
     const t0 = performance.now();
     const look = () => {
-      if (el) w.__foilMax = Math.max(w.__foilMax, Number(getComputedStyle(el).opacity));
+      if (el)
+        w.__foilMax = Math.max(
+          w.__foilMax,
+          Number(getComputedStyle(el).opacity),
+        );
       if (performance.now() - t0 < 6000) requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
     window.dispatchEvent(
-      new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 40, gamma: 0 }),
+      new DeviceOrientationEvent("deviceorientation", {
+        alpha: 0,
+        beta: 40,
+        gamma: 0,
+      }),
     );
   });
   await expect(hint).toHaveClass(/motion-hint-on/, { timeout: 3000 });
   await expect(hint).toContainText("Inclina o scuoti");
   await expect(hint).not.toHaveClass(/motion-hint-on/, { timeout: 5000 });
   expect(
-    await page.evaluate(() => (window as unknown as { __foilMax: number }).__foilMax),
+    await page.evaluate(
+      () => (window as unknown as { __foilMax: number }).__foilMax,
+    ),
   ).toBeGreaterThan(0.15);
   // La volta dopo non c'è più.
   await page.reload();
   await expect(hero).toBeVisible();
   await page.evaluate(() =>
     window.dispatchEvent(
-      new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 40, gamma: 0 }),
+      new DeviceOrientationEvent("deviceorientation", {
+        alpha: 0,
+        beta: 40,
+        gamma: 0,
+      }),
     ),
   );
   await page.waitForTimeout(2000);
@@ -1666,7 +1763,8 @@ test("profilo su un telefono senza giroscopio (Galaxy A05s): la carta si muove e
   page,
 }) => {
   await page.addInitScript(() => {
-    for (let i = 1; i <= 7; i++) localStorage.setItem(`campetto:motion-hint:p${i}`, "1");
+    for (let i = 1; i <= 7; i++)
+      localStorage.setItem(`campetto:motion-hint:p${i}`, "1");
   });
   await openApp(page, "demo");
   await page.goto("/profilo");
