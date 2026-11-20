@@ -144,7 +144,7 @@ function Podium({ rows }: { rows: Row[] }) {
       };
     });
   }, [allowed, myLook, rows, data.players, me?.id]);
-  const { root, host, live, bind, photoOf } = usePodium3D(figs);
+  const { root, host, live, seen, bind, photoOf } = usePodium3D(figs);
   // Col 3D già scaricato qui, si preparano anche le foto della Home (tu e l'MVP con la coppa).
   const mvpPlayer = data.players.find(
     (x) => x.id === engine.mvp?.entry.playerId,
@@ -153,14 +153,15 @@ function Podium({ rows }: { rows: Row[] }) {
   const homeSig = JSON.stringify(home);
   const on3d = figs !== null;
   useEffect(() => {
-    if (!on3d) return;
+    // Solo con la classifica davanti: in sottofondo il telefono non fa lavoro 3D.
+    if (!on3d || !seen) return;
     const jobs = [home.month, home.mvp].filter((j) => j !== null);
     if (!jobs.length) return;
     const t = window.setTimeout(() => makePhotos(jobs), live ? 600 : 2500);
     return () => window.clearTimeout(t);
     // homeSig contiene già tutto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [homeSig, live, on3d]);
+  }, [homeSig, live, on3d, seen]);
   return (
     <div
       ref={root}

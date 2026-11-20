@@ -84,6 +84,8 @@ export function usePodium3D(figs: (Figure3D | null)[] | null) {
   const host = useRef<HTMLDivElement>(null);
   const boxes = useRef<(HTMLDivElement | null)[]>([]);
   const [live, setLive] = useState(false);
+  /** La classifica è stata davvero sotto gli occhi (non solo preparata dietro). */
+  const [seen, setSeen] = useState(false);
   const [sizes, setSizes] = useState<({ w: number; h: number } | null)[]>([]);
   const queued = useRef<number | null>(null);
   const liveRef = useRef(false);
@@ -136,7 +138,8 @@ export function usePodium3D(figs: (Figure3D | null)[] | null) {
   useEffect(() => {
     const el = root.current;
     const box = host.current;
-    if (!figsRef.current || !el || !figsRef.current.some(Boolean)) return;
+    if (!figsRef.current || !el) return;
+    const any3d = figsRef.current.some(Boolean);
     let dead = false;
     let started = false;
     let timer = 0;
@@ -184,10 +187,20 @@ export function usePodium3D(figs: (Figure3D | null)[] | null) {
       window.clearTimeout(timer);
       if (!e.isIntersecting || el.closest(".tab-off")) return;
       timer = window.setTimeout(() => {
+        // Se intanto si è cambiata scheda, niente: il 3D si prepara solo davanti agli occhi.
+        if (el.closest(".tab-off")) return;
+        setSeen(true);
+        if (!any3d) return;
         const idle =
           window.requestIdleCallback ??
           ((cb: () => void) => window.setTimeout(cb, 16));
-        idle(() => void go(), { timeout: 1200 });
+        idle(
+          () => {
+            if (!el.closest(".tab-off")) void go();
+            else started = false;
+          },
+          { timeout: 1200 },
+        );
       }, SETTLE_MS);
     });
     io.observe(el);
@@ -261,5 +274,5 @@ export function usePodium3D(figs: (Figure3D | null)[] | null) {
     return readPhoto(photoKey({ ...f, w: s.w, h: s.h }));
   };
 
-  return { root, host, live, bind, photoOf, dpr: photoDpr() };
+  return { root, host, live, seen, bind, photoOf, dpr: photoDpr() };
 }
