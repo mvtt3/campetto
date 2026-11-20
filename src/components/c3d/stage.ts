@@ -5,7 +5,7 @@
  */
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { animateRig, buildCharacter, disposeRig, type CharacterRig, type Outfit, type Preset } from "./build";
+import { animateRig, buildCharacter, disposeRig, swayRig, type CharacterRig, type Outfit, type Preset } from "./build";
 
 export type Framing = "full" | "testa" | "collo" | "busto" | "braccio" | "gambe" | "piedi" | "pallone";
 
@@ -115,6 +115,7 @@ export class Stage {
     this.shadow = contactShadow();
     this.holder.add(this.shadow);
     this.yaw = opts.yaw ?? -0.35;
+    this.prevYaw = this.yaw;
     this.framing = opts.framing ?? "full";
     this.frame();
     this.ro = new ResizeObserver(() => this.resize());
@@ -243,6 +244,10 @@ export class Stage {
   };
 
   private spinHold = 0;
+  /** Il "vento" sui vestiti: una molla che insegue la velocità con cui gira il personaggio. */
+  private sway = 0;
+  private swayV = 0;
+  private prevYaw = 0;
 
   private onDown = (e: PointerEvent) => {
     this.dragging = true;
@@ -283,6 +288,8 @@ export class Stage {
       this.dragging ||
       (spin !== 0 && performance.now() > this.spinHold) ||
       Math.abs(this.vYaw) > 0.02 ||
+      Math.abs(this.sway) > 0.004 ||
+      Math.abs(this.swayV) > 0.02 ||
       this.dribble < 1 ||
       this.pop < 1 ||
       this.camera.position.distanceToSquared(this.camPos) > 1e-5;
@@ -305,11 +312,22 @@ export class Stage {
     const p = this.pop < 1 ? 1 + Math.sin(this.pop * Math.PI) * 0.06 : 1;
     this.holder.scale.setScalar(p);
     this.holder.rotation.y = this.yaw;
+    // I vestiti restano indietro rispetto a dove gira (velocità opposta), poi lo raggiungono.
+    if (dt > 0) {
+      const w = (this.yaw - this.prevYaw) / dt;
+      const target = Math.max(-0.6, Math.min(0.6, -w * 0.09));
+      this.swayV += (55 * (target - this.sway) - 8 * this.swayV) * dt;
+      this.sway += this.swayV * dt;
+    }
+    this.prevYaw = this.yaw;
     const k = 1 - Math.pow(0.002, dt);
     this.camera.position.lerp(this.camPos, k);
     this.lookNow.lerp(this.camLook, k);
     this.camera.lookAt(this.lookNow);
-    if (this.rig) animateRig(this.rig, t, this.dribble);
+    if (this.rig) {
+      animateRig(this.rig, t, this.dribble);
+      swayRig(this.rig, this.sway, t);
+    }
     this.renderer.render(this.scene, this.camera);
     if (!this.firstDone && this.rig) {
       this.firstDone = true;

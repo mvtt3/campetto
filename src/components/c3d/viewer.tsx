@@ -116,8 +116,23 @@ let running = false;
  * Le foto piccole che servono anche fuori dal pass (la Home) restano salvate sul telefono:
  * così la Home le mostra subito senza scaricare il 3D.
  */
-const SAVED = "campetto:foto3d:v1:";
+// v2: scarpe da sneaker vere e catena ad anelli (le foto vecchie si buttano).
+const SAVED = "campetto:foto3d:v2:";
+let swept = false;
+function sweepOld() {
+  if (swept) return;
+  swept = true;
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k?.startsWith("campetto:foto3d:") && !k.startsWith(SAVED)) localStorage.removeItem(k);
+    }
+  } catch {
+    /* niente memoria: niente da pulire */
+  }
+}
 function saved(key: string): string | null {
+  sweepOld();
   try {
     return localStorage.getItem(SAVED + key);
   } catch {

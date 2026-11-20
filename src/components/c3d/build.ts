@@ -451,20 +451,106 @@ function stripesTexture(a: string, b: string) {
   return t;
 }
 
+/* La sneaker bassa: forme condivise da tutte le scarpe (si calcolano una volta). */
+const SHOE = { heel: -0.29, toe: 0.3, floor: 0.05, w: 0.138 };
+/** Altezza della tomaia lungo la scarpa (z avanti): tallone, caviglia, collo del piede, punta. */
+const SHOE_TOP: [number, number][] = [[-0.3, 0.19], [-0.26, 0.226], [-0.18, 0.208], [-0.1, 0.198], [-0.02, 0.212], [0.06, 0.198], [0.14, 0.17], [0.22, 0.145], [0.3, 0.12]];
+function shoeTop(z: number) {
+  const p = SHOE_TOP;
+  if (z <= p[0][0]) return p[0][1];
+  for (let i = 1; i < p.length; i++) {
+    if (z <= p[i][0]) {
+      const t = (z - p[i - 1][0]) / (p[i][0] - p[i - 1][0]);
+      const k = (1 - Math.cos(t * Math.PI)) / 2;
+      return p[i - 1][1] + (p[i][1] - p[i - 1][1]) * k;
+    }
+  }
+  return p[p.length - 1][1];
+}
+/** Quanto è larga la scarpa vista da sopra (0 in punta e al tallone, 1 al centro): tonda alle estremità. */
+const shoeWidth = (u: number) => Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(u), 3.2)));
+let shoeGeo: { upper: THREE.BufferGeometry; sole: THREE.BufferGeometry } | null = null;
+function shoeGeometry() {
+  if (shoeGeo) return shoeGeo;
+  const L = (SHOE.toe - SHOE.heel) / 2, zc = (SHOE.toe + SHOE.heel) / 2;
+  // Tomaia: una sfera fitta modellata a scarpa, così è liscia ovunque (niente spigoli o buchi).
+  const upper = new THREE.SphereGeometry(1, 40, 32);
+  const pos = upper.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    const u = pos.getY(i);
+    const px = pos.getX(i), pz = pos.getZ(i);
+    const r = Math.hypot(px, pz);
+    const c = r > 1e-6 ? px / r : 0;
+    const sn = r > 1e-6 ? pz / r : 0;
+    const z = zc + L * u;
+    const hw = SHOE.w * shoeWidth(u);
+    const ht = (shoeTop(z) - SHOE.floor) * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(u), 8)), 0.22);
+    const x = hw * Math.sign(c) * Math.pow(Math.abs(c), 0.7);
+    const y = sn >= 0 ? SHOE.floor + ht * Math.pow(sn, 0.7) : SHOE.floor + sn * 0.02;
+    pos.setXYZ(i, x, y, z);
+  }
+  upper.computeVertexNormals();
+  // Suola: la pianta vista da sopra, un po' più grande della tomaia, estrusa verso l'alto:
+  // sotto è piatta e poggia tutta per terra.
+  const foot = new THREE.Shape();
+  const N = 56, Ls = L - 0.002, Ws = SHOE.w + 0.002;
+  for (let k = 0; k <= N; k++) {
+    const u = -1 + (2 * k) / N;
+    const pt = [Ws * shoeWidth(u), zc + Ls * u] as const;
+    if (k === 0) foot.moveTo(pt[0], pt[1]);
+    else foot.lineTo(pt[0], pt[1]);
+  }
+  for (let k = N - 1; k > 0; k--) {
+    const u = -1 + (2 * k) / N;
+    foot.lineTo(-Ws * shoeWidth(u), zc + Ls * u);
+  }
+  const depth = 0.046, bevel = 0.009;
+  const sole = new THREE.ExtrudeGeometry(foot, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 4 });
+  sole.rotateX(Math.PI / 2);
+  sole.translate(0, depth + bevel, 0);
+  sole.computeVertexNormals();
+  shoeGeo = { upper, sole };
+  return shoeGeo;
+}
+
+/**
+ * Una sneaker bassa vera, non un mattoncino: tomaia liscia e bombata che scende verso la
+ * punta, suola piatta che poggia tutta per terra, imbottitura attorno alla caviglia,
+ * linguetta, lacci incrociati e linguetta dietro al tallone.
+ */
 function sneaker(upper: string, sole: string, laces: string) {
   const g = new THREE.Group();
-  const s = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.09, 0.6, 3, 0.04), vinyl(sole, { roughness: 0.6, clearcoat: 0.2 }));
-  s.position.set(0, 0.045, 0.04);
-  const u = new THREE.Mesh(new RoundedBoxGeometry(0.31, 0.2, 0.5, 4, 0.095), vinyl(upper, { roughness: 0.32 }));
-  u.position.set(0, 0.165, 0);
-  const toe = new THREE.Mesh(new RoundedBoxGeometry(0.3, 0.1, 0.18, 3, 0.05), vinyl(sole, { roughness: 0.5 }));
-  toe.position.set(0, 0.12, 0.22);
-  g.add(s, u, toe);
-  for (let i = 0; i < 2; i++) {
-    const lace = new THREE.Mesh(new RoundedBoxGeometry(0.17, 0.025, 0.045, 2, 0.012), vinyl(laces, { roughness: 0.7, clearcoat: 0 }));
-    lace.position.set(0, 0.268, 0.02 + i * 0.075);
-    lace.rotation.x = -0.25;
-    g.add(lace);
+  const geo = shoeGeometry();
+  const upperMat = vinyl(upper, { roughness: 0.38, clearcoat: 0.5 });
+  const soleMat = vinyl(sole, { roughness: 0.7, clearcoat: 0.1 });
+  g.add(new THREE.Mesh(geo.sole, soleMat), new THREE.Mesh(geo.upper, upperMat));
+
+  // Imbottitura attorno alla caviglia (il calzino entra lì) e linguetta davanti.
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.094, 0.024, 10, 28), vinyl(new THREE.Color(upper).lerp(new THREE.Color(INK), 0.3), { roughness: 0.6, clearcoat: 0.2 }));
+  collar.rotation.x = Math.PI / 2;
+  collar.scale.set(1, 1.25, 1);
+  collar.position.set(0, shoeTop(-0.1) + 0.004, -0.1);
+  const tongue = new THREE.Mesh(new RoundedBoxGeometry(0.11, 0.07, 0.035, 3, 0.016), upperMat);
+  tongue.position.set(0, shoeTop(-0.01) + 0.02, -0.01);
+  tongue.rotation.x = -0.5;
+  // Linguetta dietro al tallone.
+  const tab = new THREE.Mesh(new RoundedBoxGeometry(0.045, 0.07, 0.025, 2, 0.01), soleMat);
+  tab.position.set(0, shoeTop(-0.28) - 0.01, -0.282);
+  tab.rotation.x = 0.15;
+  g.add(collar, tongue, tab);
+
+  // Lacci incrociati sul collo del piede, appoggiati sulla tomaia.
+  const laceMat = vinyl(laces, { roughness: 0.8, clearcoat: 0 });
+  const laceGeo = new THREE.CapsuleGeometry(0.012, 0.1, 3, 6);
+  for (let i = 0; i < 3; i++) {
+    const z = 0.035 + i * 0.045;
+    const slope = (shoeTop(z + 0.01) - shoeTop(z - 0.01)) / 0.02;
+    for (const d of [-1, 1]) {
+      const l = new THREE.Mesh(laceGeo, laceMat);
+      l.rotation.set(-Math.atan(slope), d * 0.42, Math.PI / 2);
+      l.position.set(0, shoeTop(z) + 0.008, z);
+      g.add(l);
+    }
   }
   return g;
 }
@@ -481,6 +567,19 @@ export interface CharacterRig {
   ball: THREE.Mesh;
   eyes: THREE.Group[];
   blinkAt: number;
+  /** Quello che si muove col vento quando giri il personaggio (vedi swayRig). */
+  cloth: Cloth;
+}
+
+/** Le parti morbide: collana, ciondolo, capelli, berretto, pantaloncini, maglia, lacci della felpa. */
+export interface Cloth {
+  chain?: THREE.Group;
+  pendant?: THREE.Group;
+  hair?: THREE.Group;
+  hat?: THREE.Group;
+  shorts?: THREE.Mesh;
+  torso?: THREE.Mesh;
+  laces?: THREE.Group[];
 }
 
 const R = 0.56;
@@ -505,22 +604,23 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
     shoe.position.set(side * 0.2, 0, 0.06);
     shoe.rotation.y = side * 0.08;
     body.add(shoe);
-    const sock = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.09, 0.2, 16), vinyl("#fbfaf6", { roughness: 0.75, clearcoat: 0 }));
-    sock.position.set(side * 0.2, 0.36, 0);
+    // Calzino alto che esce dalla scarpa bassa.
+    const sock = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.088, 0.25, 16), vinyl("#fbfaf6", { roughness: 0.75, clearcoat: 0 }));
+    sock.position.set(side * 0.2, 0.31, -0.04);
     const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.087, 0.087, 0.03, 16), vinyl(shoes?.upper ?? s.trim, { roughness: 0.7, clearcoat: 0 }));
-    stripe.position.set(side * 0.2, 0.42, 0);
+    stripe.position.set(side * 0.2, 0.4, -0.04);
     const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.3, 4, 12), black);
     leg.position.set(side * 0.2, 0.6, 0);
     body.add(sock, stripe, leg);
   }
 
+  const cloth: Cloth = {};
   // Pantaloncini.
-  body.add(
-    new THREE.Mesh(
-      lathe([[0.48, 0.6], [0.47, 0.75], [0.44, 0.9], [0.4, 0.98]], 40, 0.74),
-      fabric({ map: once(`shorts:${shorts?.color ?? s.shorts}:${shorts?.trim ?? s.shortsTrim}:${shorts?.pattern ?? ""}`, () => shortsTexture(shorts?.color ?? s.shorts, shorts?.trim ?? s.shortsTrim, shorts?.pattern)), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5, sheen: 0.3 }),
-    ),
+  cloth.shorts = new THREE.Mesh(
+    lathe([[0.48, 0.6], [0.47, 0.75], [0.44, 0.9], [0.4, 0.98]], 40, 0.74),
+    fabric({ map: once(`shorts:${shorts?.color ?? s.shorts}:${shorts?.trim ?? s.shortsTrim}:${shorts?.pattern ?? ""}`, () => shortsTexture(shorts?.color ?? s.shorts, shorts?.trim ?? s.shortsTrim, shorts?.pattern)), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5, sheen: 0.3 }),
   );
+  body.add(cloth.shorts);
 
   // Busto: la canotta, oppure la felpa o il maglione (più larghi, con le maniche).
   const torso: [number, number][] = [[0.44, 0.92], [0.43, 1.08], [0.46, 1.32], [0.47, 1.52], [0.44, 1.66], [0.34, 1.76], [0.2, 1.8]];
@@ -531,7 +631,8 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
       top.kind === "hoodie"
         ? fabric({ color: top.color, roughness: 0.85, sheen: 0.6, sheenColor: new THREE.Color("#8a93a6") })
         : fabric({ map: once("sweater", sweaterTexture), roughness: 0.9, sheen: 0.7, sheenColor: new THREE.Color("#ffb3a8") });
-    body.add(new THREE.Mesh(lathe(big, 48, 0.78), mat));
+    cloth.torso = new THREE.Mesh(lathe(big, 48, 0.78), mat);
+    body.add(cloth.torso);
     // Polsini e fondo a costine.
     const rib = fabric({ color: top.kind === "hoodie" ? top.color : "#9e1c14", roughness: 0.9 });
     const hem = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.045, 10, 40), rib);
@@ -549,12 +650,18 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
       pocket.position.set(0, 1.08, 0.36);
       pocket.rotation.x = -0.05;
       body.add(hood, pocket);
+      // I lacci pendono da in alto: ognuno nel suo gruppo, così col vento dondolano.
+      cloth.laces = [];
       for (const sd of [-1, 1]) {
+        const hang = new THREE.Group();
+        hang.position.set(sd * 0.09, 1.74, 0.4);
         const lace = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.28, 6), vinyl(CREAM, { roughness: 0.8, clearcoat: 0 }));
-        lace.position.set(sd * 0.09, 1.6, 0.4);
+        lace.position.y = -0.14;
         const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.05, 8), vinyl(top.trim, { roughness: 0.4 }));
-        tip.position.set(sd * 0.09, 1.44, 0.4);
-        body.add(lace, tip);
+        tip.position.y = -0.3;
+        hang.add(lace, tip);
+        body.add(hang);
+        cloth.laces.push(hang);
       }
     } else {
       const neck = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.05, 10, 40), rib);
@@ -564,12 +671,11 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
       body.add(neck);
     }
   } else {
-    body.add(
-      new THREE.Mesh(
-        lathe(torso, 64, 0.74),
-        fabric({ map: once(`jersey:${preset}:${number ?? s.number}`, () => jerseyTexture(s, number ?? s.number)), bumpMap: meshBump(), bumpScale: 0.6, sheenColor: new THREE.Color(s.jersey).lerp(new THREE.Color("#ffffff"), 0.5) }),
-      ),
+    cloth.torso = new THREE.Mesh(
+      lathe(torso, 64, 0.74),
+      fabric({ map: once(`jersey:${preset}:${number ?? s.number}`, () => jerseyTexture(s, number ?? s.number)), bumpMap: meshBump(), bumpScale: 0.6, sheenColor: new THREE.Color(s.jersey).lerp(new THREE.Color("#ffffff"), 0.5) }),
     );
+    body.add(cloth.torso);
     const collar = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.035, 10, 40), fabric({ color: s.trim }));
     collar.rotation.x = Math.PI / 2;
     collar.scale.set(1, 0.74, 1);
@@ -666,7 +772,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
   const headTop = outfit.testa;
 
   for (const x of s.extra) {
-    if (x === "collana" && !outfit.gioielli && !top) addChain(body, "star");
+    if (x === "collana" && !outfit.gioielli && !top) Object.assign(cloth, addChain(body, "star"));
     if (x === "occhiali" && !outfit.viso) {
       const frame = vinyl("#1b1817", { roughness: 0.22, clearcoat: 1 });
       for (const [ex, ey] of s.eyes) {
@@ -691,55 +797,104 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
         head.add(tubeOnHead(R, [[y0, p0, 0.07], [y0 + sd * 0.25, p0 + 0.03, 0.045], [sd * 1.25, p0 + 0.05, 0.028], [sd * 1.75, p0 - 0.02, 0.026]], 0.017, frame));
       }
     }
-    if (x === "afro") addAfro(head, !!headTop);
+    if (x === "afro") cloth.hair = addAfro(head, !!headTop);
     if (x === "fascia" && !headTop) addHeadband(head);
   }
 
   // Oggetti da indossare: testa, viso, gioielli.
-  if (headTop) addHat(head, headTop, afro);
+  if (headTop) cloth.hat = addHat(head, headTop, afro);
   if (outfit.viso) addFace(head, outfit.viso, f, s);
-  if (outfit.gioielli?.kind === "chain") addChain(body, outfit.gioielli.pendant, !!top);
+  if (outfit.gioielli?.kind === "chain") Object.assign(cloth, addChain(body, outfit.gioielli.pendant, !!top));
   if (outfit.gioielli?.kind === "earring") addEarrings(head);
 
-  return { root, body, head, arms, ball, eyes, blinkAt: 2 + Math.random() * 2 };
+  return { root, body, head, arms, ball, eyes, blinkAt: 2 + Math.random() * 2, cloth };
 }
 
+/** Raggio del busto alla quota y (lo stesso profilo della canotta), per appoggiarci la catena. */
+function torsoRadius(y: number) {
+  const p: [number, number][] = [[0.44, 0.92], [0.43, 1.08], [0.46, 1.32], [0.47, 1.52], [0.44, 1.66], [0.34, 1.76], [0.2, 1.8]];
+  if (y <= p[0][1]) return p[0][0];
+  for (let i = 1; i < p.length; i++) if (y <= p[i][1]) return p[i - 1][0] + ((p[i][0] - p[i - 1][0]) * (y - p[i - 1][1])) / (p[i][1] - p[i - 1][1]);
+  return p[p.length - 1][0];
+}
+
+/**
+ * La catena d'oro: anelli veri intrecciati (uno dritto e uno girato) che scendono a U sul
+ * petto appoggiati alla maglia, e il ciondolo appeso a un anellino. Catena e ciondolo sono
+ * in gruppi col perno in alto: quando giri il personaggio dondolano (vedi swayRig).
+ */
 function addChain(body: THREE.Group, pendant: "star" | "ball", overTop = false) {
-  const gold = new THREE.MeshPhysicalMaterial({ color: "#f2b632", metalness: 1, roughness: 0.2, clearcoat: 0.6 });
-  const n = 30;
-  const beads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.028, 10, 8), gold, n);
-  const mtx = new THREE.Matrix4();
+  const gold = new THREE.MeshPhysicalMaterial({ color: "#f2b632", metalness: 1, roughness: 0.22, clearcoat: 0.6 });
   const lift = overTop ? 0.05 : 0;
+  const neck = new THREE.Vector3(0, 1.78, 0);
+  const chain = new THREE.Group();
+  chain.position.copy(neck);
+  // Il percorso: dai lati del collo giù fino al centro del petto, sempre sopra la maglia.
+  const at = (a: number) => {
+    const x = Math.sin(a) * 0.27;
+    const y = 1.79 - 0.25 * Math.pow(Math.cos(a), 1.6);
+    const r = torsoRadius(y) + lift;
+    const z = Math.sqrt(Math.max(0, r * r - x * x)) * (overTop ? 0.78 : 0.74) + 0.024;
+    return new THREE.Vector3(x, y, z).sub(neck);
+  };
+  const curve = new THREE.CatmullRomCurve3(Array.from({ length: 13 }, (_, i) => at(-Math.PI / 2 + (i / 12) * Math.PI)));
+  const n = 46;
+  const links = new THREE.InstancedMesh(new THREE.TorusGeometry(0.019, 0.0065, 6, 12), gold, n);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), roll = new THREE.Quaternion(), one = new THREE.Vector3(1, 1.45, 1);
   for (let i = 0; i < n; i++) {
-    const a = (i / (n - 1)) * Math.PI;
-    const x = Math.cos(a) * 0.27;
-    const y = 1.775 - Math.sin(a) * 0.17;
-    const z = Math.sqrt(Math.max(0, 0.44 * 0.44 - x * x)) * 0.74 + 0.03 + lift - (1 - Math.sin(a)) * 0.06;
-    mtx.setPosition(x, y, z);
-    beads.setMatrixAt(i, mtx);
+    const t = i / (n - 1);
+    const p = curve.getPointAt(t);
+    const tan = curve.getTangentAt(t);
+    // L'anello sta lungo la catena; uno su due è girato di 90°.
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tan);
+    roll.setFromAxisAngle(new THREE.Vector3(0, 1, 0), i % 2 ? Math.PI / 2 : 0);
+    m.compose(p, q.multiply(roll), one);
+    links.setMatrixAt(i, m);
   }
-  body.add(beads);
-  const st = new THREE.Mesh(
-    pendant === "star"
-      ? new THREE.ExtrudeGeometry(star(0.095, 0.042), { depth: 0.025, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 2 })
-      : new THREE.SphereGeometry(0.07, 16, 12),
-    new THREE.MeshPhysicalMaterial({ color: "#ffc531", metalness: 0.85, roughness: 0.22, clearcoat: 0.8 }),
-  );
-  st.position.set(0, 1.5, 0.335 + lift);
-  st.rotation.x = -0.12;
-  body.add(st);
+  chain.add(links);
+
+  // Il ciondolo appeso in basso, col suo anellino.
+  const bottom = curve.getPointAt(0.5);
+  const hang = new THREE.Group();
+  hang.position.copy(bottom);
+  const bail = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.008, 8, 16), gold);
+  bail.position.y = -0.028;
+  hang.add(bail);
+  const shine = new THREE.MeshPhysicalMaterial({ color: "#ffc531", metalness: 0.85, roughness: 0.2, clearcoat: 0.8 });
+  if (pendant === "star") {
+    const st = new THREE.Mesh(new THREE.ExtrudeGeometry(star(0.095, 0.042), { depth: 0.025, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 2 }), shine);
+    st.position.set(0, -0.135, -0.004);
+    st.rotation.x = -0.12;
+    hang.add(st);
+  } else {
+    // Un pallone d'oro con le cuciture.
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 20, 14), shine);
+    ball.position.y = -0.112;
+    const seam = new THREE.MeshPhysicalMaterial({ color: "#a8741a", metalness: 1, roughness: 0.35 });
+    for (const [rx, ry] of [[0, 0], [Math.PI / 2, 0], [0, Math.PI / 2]]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.071, 0.0045, 6, 32), seam);
+      ring.rotation.set(rx, ry, 0);
+      ball.add(ring);
+    }
+    hang.add(ball);
+  }
+  chain.add(hang);
+  body.add(chain);
+  return { chain, pendant: hang };
 }
 
-function addAfro(head: THREE.Group, squashed: boolean) {
+function addAfro(head: THREE.Group, squashed: boolean): THREE.Group {
   const hair = new THREE.MeshPhysicalMaterial({ color: "#2e1c11", roughness: 0.78, sheen: 0.8, sheenRoughness: 0.5, sheenColor: new THREE.Color("#6e4f3c"), bumpMap: curlBump(), bumpScale: 4 });
   const geo = new THREE.SphereGeometry(1, 14, 10);
   const c0 = new THREE.Vector3(0, 0.66 * R, -0.42 * R);
   // Sotto un cappello l'afro si schiaccia un po' e sporge ai lati.
   const ax = new THREE.Vector3(1.12 * R, (squashed ? 0.7 : 0.92) * R, 0.86 * R);
+  // Tutto l'afro in un gruppo col perno al centro della testa: col vento si piega un filo.
+  const group = new THREE.Group();
   const core = new THREE.Mesh(geo, hair);
   core.position.copy(c0);
   core.scale.copy(ax).multiplyScalar(0.9);
-  head.add(core);
+  group.add(core);
   const N = 70;
   const list: THREE.Matrix4[] = [];
   const q = new THREE.Quaternion(), sc = new THREE.Vector3();
@@ -756,7 +911,9 @@ function addAfro(head: THREE.Group, squashed: boolean) {
   }
   const puffs = new THREE.InstancedMesh(geo, hair, list.length);
   list.forEach((m, i) => puffs.setMatrixAt(i, m));
-  head.add(puffs);
+  group.add(puffs);
+  head.add(group);
+  return group;
 }
 
 function addHeadband(head: THREE.Group) {
@@ -778,7 +935,7 @@ function addHeadband(head: THREE.Group) {
 }
 
 /** Cappellino e berretto: si appoggiano in cima alla testa (o sull'afro, un po' più su). */
-function addHat(head: THREE.Group, look: Look, afro: boolean) {
+function addHat(head: THREE.Group, look: Look, afro: boolean): THREE.Group | undefined {
   const g = new THREE.Group();
   g.position.y = afro ? R * 0.72 : R * 0.18;
   g.position.z = afro ? -0.08 : 0;
@@ -832,10 +989,16 @@ function addHat(head: THREE.Group, look: Look, afro: boolean) {
     const tip = path.getPoint(1);
     const pom = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), fur);
     pom.position.set(tip.x, tip.y + 0.02, tip.z);
-    g.add(cone, brim, pom);
+    // Cono e pon pon si piegano insieme sul bordo di pelliccia, che resta fermo.
+    const flop = new THREE.Group();
+    flop.add(cone, pom);
+    g.add(flop, brim);
     g.userData.pom = pom;
+    head.add(g);
+    return flop;
   }
   head.add(g);
+  return undefined;
 }
 
 function addFace(head: THREE.Group, look: Look, f: Spec["svg"], s: Spec) {
@@ -910,6 +1073,43 @@ export function animateRig(u: CharacterRig, t: number, dribble: number) {
   u.arms[1].rotation.z = (u.arms[1].userData.rest as number) + Math.sin(t * 2.1) * 0.02 + push * 0.4;
 }
 
+/**
+ * Il vento leggero: quando giri il personaggio le parti morbide restano un attimo indietro e
+ * poi lo raggiungono, come per una folata. `sway` arriva dalla scena (una molla sulla
+ * velocità di rotazione, circa tra -0.6 e 0.6); qui si girano solo pochi gruppi, niente fisica.
+ */
+export function swayRig(u: CharacterRig, sway: number, t: number) {
+  const c = u.cloth;
+  const breeze = Math.sin(t * 1.7) * 0.025 + Math.sin(t * 2.9 + 1) * 0.012;
+  const w = sway + breeze;
+  const a = Math.abs(sway);
+  if (c.chain) {
+    c.chain.rotation.y = w * 0.45;
+    c.chain.rotation.x = -a * 0.22;
+  }
+  if (c.pendant) {
+    c.pendant.rotation.z = w * 0.7;
+    c.pendant.rotation.x = -a * 0.45 - Math.abs(breeze) * 0.3;
+  }
+  if (c.hair) {
+    c.hair.rotation.z = w * 0.1;
+    c.hair.rotation.y = w * 0.12;
+  }
+  if (c.hat) {
+    c.hat.rotation.z = w * 0.35;
+    c.hat.rotation.x = -a * 0.12;
+  }
+  if (c.shorts) {
+    c.shorts.rotation.y = w * 0.14;
+    c.shorts.scale.set(1 + a * 0.06, 1, 1 + a * 0.06);
+  }
+  if (c.torso) c.torso.rotation.y = w * 0.05;
+  if (c.laces) for (const l of c.laces) {
+    l.rotation.z = w * 0.8;
+    l.rotation.x = -a * 0.5;
+  }
+}
+
 /** Libera la memoria della scheda video quando il personaggio cambia (le texture condivise restano). */
 export function disposeRig(rig: CharacterRig) {
   const shared = new Set([...texCache.values(), ...drawn.values()]);
@@ -918,7 +1118,8 @@ export function disposeRig(rig: CharacterRig) {
   rig.root.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
-    m.geometry.dispose();
+    // Le forme delle scarpe sono di tutti: restano.
+    if (m.geometry !== shoeGeo?.upper && m.geometry !== shoeGeo?.sole) m.geometry.dispose();
     const mats = Array.isArray(m.material) ? m.material : [m.material];
     for (const mat of mats) {
       for (const k of ["map", "bumpMap"] as const) {
