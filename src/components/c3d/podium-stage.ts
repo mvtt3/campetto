@@ -10,10 +10,41 @@ import {
   buildCharacter,
   disposeRig,
   preloadTextures,
+  setLite,
   type CharacterRig,
   type Outfit,
   type Preset,
 } from "./build";
+
+/**
+ * Le schede video deboli (Mali-G52 del Galaxy A05s e simili): materiali più semplici e meno
+ * pixel, come nel camerino. Si guarda una volta sola.
+ */
+let weakGpu: boolean | null = null;
+function detectWeakGpu(renderer: THREE.WebGLRenderer) {
+  if (weakGpu !== null) return weakGpu;
+  let name = "";
+  try {
+    const gl = renderer.getContext();
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    name = String(
+      ext
+        ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
+        : gl.getParameter(gl.RENDERER),
+    );
+  } catch {
+    /* senza nome si va a sensazione: sotto */
+  }
+  const cores = navigator.hardwareConcurrency || 8;
+  const mem =
+    (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+  weakGpu =
+    /Mali-(T|G3|G5[0-9]|G6[0-9]\b|G71|G72)|Adreno \(TM\) ([3-5]\d\d|6[0-1]\d)|PowerVR|SwiftShader/i.test(
+      name,
+    ) ||
+    (mem <= 3 && cores <= 8);
+  return weakGpu;
+}
 
 /** Il premio del posto (con il suo gesto), o "riposo": fermo col pallone, come nel camerino. */
 export type Award = "oro" | "argento" | "bronzo" | "riposo";
@@ -484,6 +515,7 @@ export class PodiumStage {
   private compiled: Promise<void> | null = null;
   private drag: { i: number; x: number; moved: number } | null = null;
   private env: THREE.WebGLRenderTarget;
+  private weak = false;
   /** Chiamato alla fine di ogni movimento, quando il palco torna fermo. */
   onIdle?: () => void;
   /** Chiamato quando parte un gesto (per il suono). */
@@ -496,8 +528,11 @@ export class PodiumStage {
       alpha: true,
       powerPreference: "high-performance",
     });
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const weak = detectWeakGpu(this.renderer);
+    // Il podio è piccolo: anche sulle schede deboli resta nitido, ma con meno pixel.
+    this.dpr = Math.min(window.devicePixelRatio || 1, weak ? 1.5 : 2);
     this.renderer.setPixelRatio(this.dpr);
+    this.weak = weak;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.setClearColor(0x000000, 0);
@@ -565,6 +600,8 @@ export class PodiumStage {
   }
 
   private makeActor(slot: PodiumSlot): Actor {
+    // Materiali semplici sulle schede deboli (vale per chi si costruisce adesso).
+    setLite(this.weak);
     // Sul podio e con la coppa festeggiano tutti, anche chi di suo ha la faccia seria.
     const rig = buildCharacter(
       slot.preset,
