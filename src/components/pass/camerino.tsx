@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { IconCheck, IconHandFinger } from "@tabler/icons-react";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Statuina } from "@/components/c3d/viewer";
 import { Button, CourtLines, ScreenHeader, Segmented, haptic } from "@/components/ui/basics";
 import { Sheet } from "@/components/ui/sheet";
@@ -57,6 +57,18 @@ export function Camerino() {
   useEffect(() => {
     if (playerId && stallIds.length && st.stall?.day !== today) ensureStall(playerId, stallIds, today);
   }, [playerId, stallIds, st.stall, today]);
+
+  // Arrivati da una storia dello Spogliatoio: si apre subito la carta (o la bancarella).
+  const deepLinked = useRef(false);
+  useEffect(() => {
+    if (deepLinked.current || !prog) return;
+    deepLinked.current = true;
+    const q = new URLSearchParams(window.location.search);
+    const it = q.get("carta") ? ITEM_BY_ID.get(q.get("carta")!) : undefined;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (it) setDetail({ item: it, list: [it] });
+    if (q.get("scheda") === "bancarella") setTab("bancarella");
+  }, [prog]);
 
 
   if (!prog || !playerId) return null;

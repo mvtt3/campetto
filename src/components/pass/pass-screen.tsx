@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   IconCheck,
-  IconChevronDown,
   IconChevronRight,
   IconGift,
   IconHanger,
@@ -41,10 +40,12 @@ import {
   type Item,
   type Level,
   type Rarity,
+  type Slot,
 } from "@/lib/pass/catalog";
 import type { PassProgress } from "@/lib/pass/engine";
 import { resetPass, type PassState } from "@/lib/pass/store";
 import { CappelloBabbo, Fiocco, Lucine, Pupazzo } from "./natale";
+import { CardDetail } from "./collection";
 import { RewardReveal } from "./reveal";
 import { BoostIcon, ItemPhoto, SpicchiChip, SpicchioIcon, rewardLabel } from "./ui";
 import { usePass } from "./use-pass";
@@ -67,12 +68,27 @@ export function PassScreen() {
   const [reveal, setReveal] = useState<{ item: Item; kicker: string; refund?: number } | null>(null);
   const [boostFull, setBoostFull] = useState<Level | null>(null);
   const [boostSheet, setBoostSheet] = useState(false);
-  const [showDone, setShowDone] = useState(false);
+  const [detail, setDetail] = useState<Item | null>(null);
   const [justClaimed, setJustClaimed] = useState<number | null>(null);
   const [haul, setHaul] = useState<{ spicchi: number; boosts: number; items: Item[]; left: number } | null>(null);
   // Mentre scorri le decorazioni si fermano un attimo (neve, lucine, bagliori): lo scorrimento
   // resta fluido anche sui telefoni lenti, e a dito fermo ripartono.
   const shell = useRef<HTMLDivElement>(null);
+  // Arrivati da una storia dello Spogliatoio (?livello=N): si va dritti a quel livello.
+  const linked = useRef(false);
+  const ready = !!v.prog;
+  useEffect(() => {
+    if (linked.current || !ready) return;
+    const n = Number(new URLSearchParams(window.location.search).get("livello"));
+    if (!n) return;
+    const t = window.setTimeout(() => {
+      linked.current = true;
+      const el = document.getElementById(`lv-${n}`);
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      el?.classList.add("lv-flash");
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [ready]);
   const stickSpy = useRef<HTMLSpanElement>(null);
   const [stuck, setStuck] = useState(false);
   const claimable = (v.prog?.toClaim.length ?? 0) > 0;
@@ -107,9 +123,41 @@ export function PassScreen() {
   const next = level < LEVELS ? PASS_LEVELS[level] : null;
   const claimed = new Set(st.claimed);
   const pending = pendingBoosts(st, prog);
-  let doneUpTo = 0;
-  while (doneUpTo < level && claimed.has(doneUpTo + 1)) doneUpTo++;
-  const collapse = doneUpTo >= 2 && !showDone;
+  // Tutti gli oggetti del pass in ordine di livello: dalla scheda si sfogliano.
+  const passItems = PASS_LEVELS.flatMap((l) => (l.reward.kind === "item" ? [ITEM_BY_ID.get(l.reward.id)!] : [])).filter(Boolean);
+  const owned = prog.owned;
+  const wornId = (sl: Slot) => (sl === "skin" ? `skin-${v.preset}` : st.outfit[sl] && owned.has(st.outfit[sl]!) ? st.outfit[sl]! : null);
+  const wear = (it: Item) => {
+    haptic(8);
+    if (it.slot !== "skin" && wornId(it.slot) === it.id) {
+      equip(playerId, it.slot, null);
+      play("toggleOff");
+      return;
+    }
+    equip(playerId, it.slot, it.id);
+    play("select");
+    toast(`${it.name} addosso`);
+  };
+  const levelOf = (it: Item) => PASS_LEVELS.find((l) => l.reward.kind === "item" && l.reward.id === it.id);
+  const goToLevel = (n: number) => {
+    setDetail(null);
+    window.setTimeout(() => {
+      const el = document.getElementById(`lv-${n}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.classList.remove("lv-flash");
+      void el?.offsetWidth;
+      el?.classList.add("lv-flash");
+    }, 80);
+  };
+  const openReward = (l: Level) => {
+    haptic(6);
+    play("select");
+    if (l.reward.kind === "item") {
+      const it = ITEM_BY_ID.get(l.reward.id);
+      if (it) setDetail(it);
+    } else if (l.reward.kind === "boost") setBoostSheet(true);
+    else toast(`${l.reward.amount} Spicchi da spendere alla bancarella`);
+  };
 
   const claim = (lv: Level) => {
     haptic(12);
@@ -300,22 +348,7 @@ export function PassScreen() {
             </InfoTip>
           </div>
           <ol className={clsx("road relative", natale && "natale")} data-testid="pass-track">
-            {collapse && (
-              <li className="road-row relative flex items-center gap-3 py-1.5" data-rail="done">
-                <Tabellone n={doneUpTo} state="done" natale={natale} />
-                <button
-                  onClick={() => setShowDone(true)}
-                  className="press flex flex-1 items-center justify-between rounded-[20px] bg-surface px-4 py-3 text-left shadow-[var(--shadow)]"
-                >
-                  <span>
-                    <span className="block text-[14.5px] font-semibold">Livelli 1–{doneUpTo}</span>
-                    <span className="text-[12.5px] text-muted">Tutto riscattato</span>
-                  </span>
-                  <IconChevronDown size={18} className="text-muted" />
-                </button>
-              </li>
-            )}
-            {PASS_LEVELS.filter((l) => !collapse || l.n > doneUpTo).map((l) => (
+            {PASS_LEVELS.map((l) => (
               <Fragment key={l.n}>
                 {next && l.n === next.n && (
                   <YouAreHere
@@ -334,6 +367,7 @@ export function PassScreen() {
                   preset={v.preset}
                   pop={justClaimed === l.n}
                   onClaim={() => claim(l)}
+                  onOpen={() => openReward(l)}
                 />
               </Fragment>
             ))}
@@ -481,6 +515,36 @@ export function PassScreen() {
           }}
         />
       )}
+      {detail && (
+        <CardDetail
+          item={detail}
+          list={passItems}
+          owned={owned}
+          wornId={wornId}
+          preset={v.preset}
+          outfit={v.outfit}
+          number={v.number}
+          spicchi={prog.spicchi}
+          inStall={() => false}
+          onWear={wear}
+          onBuy={() => undefined}
+          onMove={setDetail}
+          onClose={() => setDetail(null)}
+          passAction={(it) => {
+            const l = levelOf(it);
+            if (!l) return null;
+            if (l.n <= level && !claimed.has(l.n))
+              return {
+                label: "Riscatta il premio",
+                onClick: () => {
+                  setDetail(null);
+                  claim(l);
+                },
+              };
+            return { label: `Vai al livello ${l.n}`, onClick: () => goToLevel(l.n) };
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -592,7 +656,8 @@ function YouAreHere({
     // All'apertura il percorso scorre fino a qui (se non ci sono premi da prendere più su).
     const t = window.setTimeout(() => {
       const el = ref.current;
-      if (el && !document.querySelector("[data-claimable]")) el.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (el && !document.querySelector("[data-claimable]") && !new URLSearchParams(window.location.search).get("livello"))
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 450);
     return () => window.clearTimeout(t);
   }, []);
@@ -647,6 +712,7 @@ function LevelRow({
   preset,
   pop,
   onClaim,
+  onOpen,
 }: {
   lv: Level;
   natale?: boolean;
@@ -656,8 +722,12 @@ function LevelRow({
   preset: Preset;
   pop: boolean;
   onClaim: () => void;
+  /** Tocca il premio: si apre la sua scheda (gli oggetti in 3D, da indossare se sono tuoi). */
+  onOpen: () => void;
 }) {
   const big = CARDINE.includes(lv.n);
+  // Ogni premio si muove per conto suo: ritmi sfasati, così la lista non balla tutta insieme.
+  const delay = { animationDelay: `-${((lv.n * 0.73) % 3.2).toFixed(2)}s` } as CSSProperties;
   const item = lv.reward.kind === "item" ? ITEM_BY_ID.get(lv.reward.id) : undefined;
   const rarity: Rarity | null = item?.rarity ?? null;
   const sub = item
@@ -675,8 +745,14 @@ function LevelRow({
     >
       <Tabellone n={lv.n} state={state === "claimed" ? "done" : state} glow={lively} natale={natale} />
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={`Livello ${lv.n}: ${rewardLabel(lv.reward, item)}`}
+        onClick={onOpen}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
+        data-testid={`reward-${lv.n}`}
         className={clsx(
-          "relative flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-[22px] p-2 pr-3",
+          "press relative flex min-w-0 flex-1 cursor-pointer items-center gap-3 overflow-hidden rounded-[22px] p-2 pr-3",
           big ? "road-big court text-white" : "bg-surface shadow-[var(--shadow)]",
           state === "ready" && "ring-2 ring-volt",
           state === "locked" && !big && "opacity-85",
@@ -700,15 +776,22 @@ function LevelRow({
           )}
         >
           {item ? (
-            <ItemPhoto item={item} preset={preset} size={big ? 184 : 124} persist className="absolute inset-0" />
+            <span className="rw-float" style={delay}>
+              <ItemPhoto item={item} preset={preset} size={big ? 184 : 124} persist className="absolute inset-0" />
+            </span>
           ) : lv.reward.kind === "boost" ? (
-            <BoostIcon size={big ? 38 : 27} className="text-volt" />
+            <span className="rw-zap" style={delay}>
+              <BoostIcon size={big ? 38 : 27} className="text-volt" />
+            </span>
           ) : (
             <span className="flex flex-col items-center">
-              <SpicchioIcon size={big ? 36 : 26} />
+              <span className="rw-coin" style={delay}>
+                <SpicchioIcon size={big ? 36 : 26} />
+              </span>
               <span className="num mt-0.5 text-[13px] text-[#7a4a12] dark:text-gold">{lv.reward.kind === "spicchi" ? lv.reward.amount : null}</span>
             </span>
           )}
+          <span className="rw-glint" style={delay} aria-hidden />
           {state === "locked" && (
             <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/40" aria-hidden>
               <IconLock size={11} />
@@ -725,7 +808,14 @@ function LevelRow({
           <span className={clsx("mt-0.5 line-clamp-1 text-[12.5px]", big ? "text-white/75" : "text-muted")}>{sub}</span>
           {/* Il bottone sotto al nome, come "Riscuoti" sotto ai premi: il nome resta intero. */}
           {state === "ready" && (
-            <Button size="sm" variant="primary" onClick={onClaim} data-testid={`claim-${lv.n}`} sound={false} className={clsx("mt-1.5 !h-8 !px-3.5 !text-[13.5px]", lively && "claim-bob")}>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClaim();
+              }}
+              data-testid={`claim-${lv.n}`} sound={false} className={clsx("mt-1.5 !h-8 !px-3.5 !text-[13.5px]", lively && "claim-bob")}>
               Riscatta
             </Button>
           )}

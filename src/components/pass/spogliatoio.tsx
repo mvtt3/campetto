@@ -3,10 +3,10 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { IconCrown, IconX } from "@tabler/icons-react";
+import { IconBallBasketball, IconBuildingStore, IconChartBar, IconCrown, IconHanger, IconTicket, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Photo } from "@/components/c3d/viewer";
+import { Statuina } from "@/components/c3d/viewer";
 import { CountUp, CourtLines, haptic } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { markLockerSeen } from "@/lib/pass/actions";
@@ -37,6 +37,13 @@ export function Spogliatoio() {
   const { prog, playerId } = v;
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  // La prima storia aspetta il personaggio 3D: il tempo parte quando si vede.
+  const [ready3d, setReady3d] = useState(false);
+  useEffect(() => {
+    // Se il 3D non parte (telefono senza WebGL), dopo un po' si va avanti lo stesso.
+    const t = window.setTimeout(() => setReady3d(true), 4000);
+    return () => window.clearTimeout(t);
+  }, []);
   const pressAt = useRef(0);
   const close = () => (window.history.length > 1 ? router.back() : router.push("/pass"));
 
@@ -55,14 +62,14 @@ export function Spogliatoio() {
     if (playerId && day) markLockerSeen(playerId, day);
   }, [playerId, day]);
 
-  const slides = useMemo(() => (g && prog && me ? buildSlides(g, prog.matches, me.id, v) : []), [g, prog, me, v]);
+  const slides = useMemo(() => (g && prog && me ? buildSlides(g, prog.matches, me.id, v, () => setReady3d(true)) : []), [g, prog, me, v]);
 
   if (!prog || !playerId || !g) return null;
   const s = slides[Math.min(i, slides.length - 1)];
 
   return createPortal(
     <div
-      className={clsx("fixed inset-0 z-[75] mx-auto flex max-w-lg select-none flex-col overflow-hidden text-white", s.bg, paused && "story-paused")}
+      className={clsx("fixed inset-0 z-[75] mx-auto flex max-w-lg select-none flex-col overflow-hidden text-white", s.bg, (paused || (i === 0 && !ready3d)) && "story-paused")}
       data-testid="spogliatoio"
       onPointerDown={() => {
         pressAt.current = performance.now();
@@ -71,7 +78,8 @@ export function Spogliatoio() {
       onPointerUp={(e) => {
         setPaused(false);
         if (performance.now() - pressAt.current > 280) return;
-        if ((e.target as Element).closest("a,button")) return;
+        // Sui bottoni, sui link e sul personaggio 3D (che si gira col dito) non si cambia storia.
+        if ((e.target as Element).closest("a,button,[data-no-nav]")) return;
         haptic(5);
         const right = e.clientX > window.innerWidth * 0.33;
         if (right) {
@@ -118,6 +126,23 @@ export function Spogliatoio() {
   );
 }
 
+/** Il rimando dalla storia al punto dell'app dove c'è quella cosa. */
+function Go({ href, icon, children, dark }: { href: string; icon: ReactNode; children: ReactNode; dark?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={clsx(
+        "press rise inline-flex h-11 w-fit items-center gap-2 rounded-full px-4 text-[14px] font-semibold backdrop-blur-md",
+        dark ? "bg-[#1d1a16]/85 text-white" : "bg-white/20 text-white",
+      )}
+      style={{ ["--i" as string]: 6 }}
+    >
+      {icon}
+      {children}
+    </Link>
+  );
+}
+
 function Kicker({ children }: { children: ReactNode }) {
   return <p className="rise text-[13px] font-bold uppercase tracking-[0.1em] text-volt">{children}</p>;
 }
@@ -127,6 +152,7 @@ function buildSlides(
   all: PassMatch[],
   meId: string,
   v: ReturnType<typeof usePass>,
+  onReady3d: () => void,
 ): { bg: string; body: ReactNode }[] {
   const won = g.matches.filter((m) => m.ctx.won).length;
   const lost = g.matches.length - won;
@@ -158,8 +184,9 @@ function buildSlides(
               {dayLabel(g.day)}
             </h1>
           </div>
-          <div className="relative mx-auto mt-2 aspect-square w-full max-w-[300px] flex-1">
-            <Photo preset={v.preset} outfit={v.outfit} framing="full" size={420} className="absolute inset-0" />
+          {/* Il personaggio vero in 3D (nitido, e si gira col dito), non una foto ingrandita. */}
+          <div className="relative mx-auto mt-2 w-full max-w-[320px] flex-1" data-no-nav>
+            <Statuina preset={v.preset} outfit={v.outfit} number={v.number} framing="full" spin={0.45} className="absolute inset-0" onReady={onReady3d} />
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -174,6 +201,11 @@ function buildSlides(
                 <p className="mt-1 text-[12.5px] font-medium text-white/75">{l}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-4">
+            <Go href={g.matches.length === 1 ? `/partite?m=${g.matches[0].match.id}` : "/partite"} icon={<IconBallBasketball size={18} aria-hidden />}>
+              {g.matches.length === 1 ? "Apri la partita" : "Vedi le partite"}
+            </Go>
           </div>
         </div>
       ),
@@ -212,6 +244,11 @@ function buildSlides(
               );
             })}
           </div>
+          <div className="mt-8">
+            <Go href="/profilo" icon={<IconChartBar size={18} aria-hidden />}>
+              Le tue statistiche
+            </Go>
+          </div>
         </div>
       ),
     });
@@ -237,7 +274,12 @@ function buildSlides(
             g.ups.map((u, k) => {
               const lv = PASS_LEVELS[u.level - 1];
               return (
-                <div key={u.level} className="rise flex items-center gap-3 rounded-[18px] border border-white/15 bg-white/15 px-3.5 py-3 backdrop-blur-md" style={{ ["--i" as string]: k + 3 }}>
+                <Link
+                  key={u.level}
+                  href={`/pass?livello=${u.level}`}
+                  className="press rise flex items-center gap-3 rounded-[18px] border border-white/15 bg-white/15 px-3.5 py-3 backdrop-blur-md"
+                  style={{ ["--i" as string]: k + 3 }}
+                >
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-volt text-[15px] font-bold text-volt-ink">{u.level}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14.5px] font-semibold">
@@ -245,7 +287,8 @@ function buildSlides(
                     </span>
                     <span className="block truncate text-[12.5px] text-white/75">Premio: {rewardLabel(lv.reward, lv.reward.kind === "item" ? ITEM_BY_ID.get(lv.reward.id) : undefined)}</span>
                   </span>
-                </div>
+                  <IconTicket size={18} className="shrink-0 text-white/70" aria-hidden />
+                </Link>
               );
             })
           ) : (
@@ -253,6 +296,11 @@ function buildSlides(
               Nessun livello oggi, ma i punti restano: il prossimo è più vicino
             </p>
           )}
+        </div>
+        <div className="mt-6">
+          <Go href={g.ups.length ? `/pass?livello=${g.ups[g.ups.length - 1].level}` : "/pass"} icon={<IconTicket size={18} aria-hidden />}>
+            Vai al pass
+          </Go>
         </div>
       </div>
     ),
@@ -282,16 +330,28 @@ function buildSlides(
             </p>
             <div className="mt-3 grid grid-cols-3 gap-2.5">
               {items.slice(0, 3).map((it, k) => (
-                <div key={it.id} className="pop-in" style={{ animationDelay: `${200 + k * 90}ms` }}>
+                // Tocca l'oggetto: si apre la sua carta nel camerino, in 3D, da provare.
+                <Link key={it.id} href={`/camerino?carta=${it.id}`} className="press pop-in block" style={{ animationDelay: `${200 + k * 90}ms` }}>
                   <span className={clsx("relative block aspect-square overflow-hidden rounded-[20px]", `rar-${it.rarity}`)}>
-                    <ItemPhoto item={it} preset={v.preset} size={192} className="absolute inset-0" />
+                    <ItemPhoto item={it} preset={v.preset} size={240} className="absolute inset-0" />
+                    <span className="rw-glint" aria-hidden />
                   </span>
                   <span className="mt-1.5 block truncate text-[12.5px] font-semibold">{it.name}</span>
-                </div>
+                </Link>
               ))}
             </div>
           </>
         )}
+        <div className="mt-6 flex flex-wrap gap-2">
+          {items.length > 0 && (
+            <Go href={`/camerino?carta=${items[0].id}`} icon={<IconHanger size={18} aria-hidden />} dark>
+              Provalo nel camerino
+            </Go>
+          )}
+          <Go href="/camerino?scheda=bancarella" icon={<IconBuildingStore size={18} aria-hidden />} dark>
+            Spendili alla bancarella
+          </Go>
+        </div>
       </div>
     ),
   });
@@ -318,8 +378,14 @@ function buildSlides(
           )}
           <div className="mt-10 flex gap-2">
             <Link
+              href={`/partite?m=${best.match.id}`}
+              className="press sticker flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-court"
+            >
+              <IconBallBasketball size={18} aria-hidden /> Apri la partita
+            </Link>
+            <Link
               href="/pass"
-              className="press sticker flex h-12 flex-1 items-center justify-center rounded-full bg-white text-[15px] font-semibold text-court"
+              className="press flex h-12 flex-1 items-center justify-center rounded-full bg-white/20 text-[15px] font-semibold backdrop-blur-md"
             >
               Vai al pass
             </Link>

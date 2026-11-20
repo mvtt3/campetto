@@ -312,6 +312,7 @@ export function CardDetail({
   onBuy,
   onMove,
   onClose,
+  passAction,
 }: {
   item: Item;
   list: Item[];
@@ -326,8 +327,11 @@ export function CardDetail({
   onBuy: (item: Item) => void;
   onMove: (item: Item) => void;
   onClose: () => void;
+  /** Aperta dal pass: al posto del rimando al pass, l'azione giusta (riscatta, vai al livello). */
+  passAction?: (item: Item) => { label: string; onClick: () => void } | null;
 }) {
   const mine = owned.has(item.id);
+  const fromPass = !mine && passAction ? passAction(item) : null;
   const on = wornId(item.slot) === item.id;
   const skin = item.look.kind === "skin" ? item.look.preset : null;
   const wear: Outfit = skin ? outfit : { ...outfit, [item.slot]: item.look };
@@ -516,6 +520,14 @@ export function CardDetail({
                         `Ti mancano ${price - spicchi} Spicchi`
                       )}
                     </Button>
+                  ) : fromPass ? (
+                    <button
+                      onClick={fromPass.onClick}
+                      className="press sticker flex h-12 w-full items-center justify-center rounded-full bg-volt text-[15px] font-bold text-volt-ink"
+                      data-testid="card-pass-action"
+                    >
+                      {fromPass.label}
+                    </button>
                   ) : lv ? (
                     <Link
                       href="/pass"

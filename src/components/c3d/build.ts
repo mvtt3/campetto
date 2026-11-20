@@ -51,10 +51,27 @@ export function preloadTextures(): Promise<void> {
   return ready;
 }
 
+/**
+ * Sui telefoni con la scheda video debole (per esempio i Mali-G52) i materiali diventano più
+ * semplici: niente secondo strato lucido, niente velluto, niente riflessi cangianti. La
+ * statuina resta uguale a colpo d'occhio, ma ogni pixel costa molto meno.
+ */
+let lite = false;
+export function setLite(v: boolean) {
+  lite = v;
+}
+function phys(o: THREE.MeshPhysicalMaterialParameters) {
+  if (lite) {
+    o = { ...o, clearcoat: 0, sheen: 0, iridescence: 0 };
+    // Il lucido che dava il secondo strato lo rende un po' la ruvidità.
+    if (o.roughness != null) o.roughness = Math.max(0.12, o.roughness * 0.85);
+  }
+  return new THREE.MeshPhysicalMaterial(o);
+}
 const vinyl = (color: THREE.ColorRepresentation, o: THREE.MeshPhysicalMaterialParameters = {}) =>
-  new THREE.MeshPhysicalMaterial({ color, roughness: 0.38, clearcoat: 0.55, clearcoatRoughness: 0.35, ...o });
+  phys({ color, roughness: 0.38, clearcoat: 0.55, clearcoatRoughness: 0.35, ...o });
 const fabric = (o: THREE.MeshPhysicalMaterialParameters = {}) =>
-  new THREE.MeshPhysicalMaterial({ roughness: 0.62, sheen: 0.4, sheenRoughness: 0.5, sheenColor: new THREE.Color("#ffffff"), ...o });
+  phys({ roughness: 0.62, sheen: 0.4, sheenRoughness: 0.5, sheenColor: new THREE.Color("#ffffff"), ...o });
 
 function canvas(w: number, h: number) {
   const c = document.createElement("canvas");
@@ -235,7 +252,7 @@ function faceDecal(R: number, f: Spec["svg"], shapes: FaceShape[], key: string) 
   const map = once(`face:${key}`, () => faceTexture(f, shapes));
   const m = new THREE.Mesh(
     new THREE.SphereGeometry(R * 1.003, 40, 28, Math.PI / 2 + FACE.yaw0, FACE.yaw1 - FACE.yaw0, Math.PI / 2 - FACE.pitch1, FACE.pitch1 - FACE.pitch0),
-    new THREE.MeshPhysicalMaterial({ map, transparent: true, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.12, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+    phys({ map, transparent: true, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.12, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
   );
   m.renderOrder = 1;
   return m;
@@ -736,7 +753,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
   const ballLook = outfit.pallone?.kind === "ball" ? outfit.pallone.texture : "classico";
   const ball = new THREE.Mesh(
     new THREE.SphereGeometry(0.2, 32, 24),
-    new THREE.MeshPhysicalMaterial({
+    phys({
       map: tex(`pallone-${ballLook}`),
       bumpMap: tex("bump-pallone", false),
       bumpScale: 1.2,
@@ -758,7 +775,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
   body.add(head);
   const skull = new THREE.Mesh(
     new THREE.SphereGeometry(R, 56, 40),
-    new THREE.MeshPhysicalMaterial({ map: tex(s.head), bumpMap: tex("bump-testa", false), bumpScale: 1.1, roughness: 0.66, clearcoat: 0.18, clearcoatRoughness: 0.5 }),
+    phys({ map: tex(s.head), bumpMap: tex("bump-testa", false), bumpScale: 1.1, roughness: 0.66, clearcoat: 0.18, clearcoatRoughness: 0.5 }),
   );
   skull.quaternion.setFromRotationMatrix(
     new THREE.Matrix4().makeRotationX(THREE.MathUtils.degToRad(25)).multiply(new THREE.Matrix4().makeRotationZ(THREE.MathUtils.degToRad(35))),
@@ -783,7 +800,7 @@ export function buildCharacter(preset: Preset, outfit: Outfit = {}, number?: str
         rim.quaternion.copy(q);
         const lens = new THREE.Mesh(
           new THREE.CircleGeometry((9 / f.r) * R, 32),
-          new THREE.MeshPhysicalMaterial({ color: "#ffffff", transparent: true, opacity: 0.16, roughness: 0.04, clearcoat: 1, depthWrite: false }),
+          phys({ color: "#ffffff", transparent: true, opacity: 0.16, roughness: 0.04, clearcoat: 1, depthWrite: false }),
         );
         lens.position.copy(p);
         lens.quaternion.copy(q);
@@ -824,7 +841,7 @@ function torsoRadius(y: number) {
  * in gruppi col perno in alto: quando giri il personaggio dondolano (vedi swayRig).
  */
 function addChain(body: THREE.Group, pendant: "star" | "ball", overTop = false) {
-  const gold = new THREE.MeshPhysicalMaterial({ color: "#f2b632", metalness: 1, roughness: 0.22, clearcoat: 0.6 });
+  const gold = phys({ color: "#f2b632", metalness: 1, roughness: 0.22, clearcoat: 0.6 });
   const lift = overTop ? 0.05 : 0;
   const neck = new THREE.Vector3(0, 1.78, 0);
   const chain = new THREE.Group();
@@ -860,7 +877,7 @@ function addChain(body: THREE.Group, pendant: "star" | "ball", overTop = false) 
   const bail = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.008, 8, 16), gold);
   bail.position.y = -0.028;
   hang.add(bail);
-  const shine = new THREE.MeshPhysicalMaterial({ color: "#ffc531", metalness: 0.85, roughness: 0.2, clearcoat: 0.8 });
+  const shine = phys({ color: "#ffc531", metalness: 0.85, roughness: 0.2, clearcoat: 0.8 });
   if (pendant === "star") {
     const st = new THREE.Mesh(new THREE.ExtrudeGeometry(star(0.095, 0.042), { depth: 0.025, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 2 }), shine);
     st.position.set(0, -0.135, -0.004);
@@ -870,7 +887,7 @@ function addChain(body: THREE.Group, pendant: "star" | "ball", overTop = false) 
     // Un pallone d'oro con le cuciture.
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 20, 14), shine);
     ball.position.y = -0.112;
-    const seam = new THREE.MeshPhysicalMaterial({ color: "#a8741a", metalness: 1, roughness: 0.35 });
+    const seam = phys({ color: "#a8741a", metalness: 1, roughness: 0.35 });
     for (const [rx, ry] of [[0, 0], [Math.PI / 2, 0], [0, Math.PI / 2]]) {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.071, 0.0045, 6, 32), seam);
       ring.rotation.set(rx, ry, 0);
@@ -884,7 +901,7 @@ function addChain(body: THREE.Group, pendant: "star" | "ball", overTop = false) 
 }
 
 function addAfro(head: THREE.Group, squashed: boolean): THREE.Group {
-  const hair = new THREE.MeshPhysicalMaterial({ color: "#2e1c11", roughness: 0.78, sheen: 0.8, sheenRoughness: 0.5, sheenColor: new THREE.Color("#6e4f3c"), bumpMap: curlBump(), bumpScale: 4 });
+  const hair = phys({ color: "#2e1c11", roughness: 0.78, sheen: 0.8, sheenRoughness: 0.5, sheenColor: new THREE.Color("#6e4f3c"), bumpMap: curlBump(), bumpScale: 4 });
   const geo = new THREE.SphereGeometry(1, 14, 10);
   const c0 = new THREE.Vector3(0, 0.66 * R, -0.42 * R);
   // Sotto un cappello l'afro si schiaccia un po' e sporge ai lati.
@@ -1004,7 +1021,7 @@ function addHat(head: THREE.Group, look: Look, afro: boolean): THREE.Group | und
 function addFace(head: THREE.Group, look: Look, f: Spec["svg"], s: Spec) {
   if (look.kind === "shades") {
     const frame = vinyl(look.frame, { roughness: 0.25, clearcoat: 1 });
-    const lensMat = new THREE.MeshPhysicalMaterial({ color: look.lens, roughness: 0.05, metalness: 0.3, clearcoat: 1, clearcoatRoughness: 0 });
+    const lensMat = phys({ color: look.lens, roughness: 0.05, metalness: 0.3, clearcoat: 1, clearcoatRoughness: 0 });
     for (const [ex, ey] of s.eyes) {
       const [yaw, pitch] = svgToHead(f, ex, ey);
       const { p, q } = onHead(R, yaw, pitch, 0.075);
@@ -1023,7 +1040,7 @@ function addFace(head: THREE.Group, look: Look, f: Spec["svg"], s: Spec) {
     const [, ep] = svgToHead(f, 50, s.eyes[0][1]);
     const lens = new THREE.Mesh(
       new THREE.SphereGeometry(R + 0.08, 40, 12, Math.PI / 2 - 0.75, 1.5, Math.PI / 2 - ep - 0.24, 0.48),
-      new THREE.MeshPhysicalMaterial({ color: "#8fd3ff", metalness: 0.9, roughness: 0.08, iridescence: 1, iridescenceIOR: 1.6, clearcoat: 1 }),
+      phys({ color: "#8fd3ff", metalness: 0.9, roughness: 0.08, iridescence: 1, iridescenceIOR: 1.6, clearcoat: 1 }),
     );
     const rim = vinyl(INK, { roughness: 0.4 });
     const frame = new THREE.Mesh(new THREE.SphereGeometry(R + 0.06, 40, 12, Math.PI / 2 - 0.8, 1.6, Math.PI / 2 - ep - 0.27, 0.54), rim);
@@ -1034,8 +1051,8 @@ function addFace(head: THREE.Group, look: Look, f: Spec["svg"], s: Spec) {
 }
 
 function addEarrings(head: THREE.Group) {
-  const gem = new THREE.MeshPhysicalMaterial({ color: "#ffffff", metalness: 0.1, roughness: 0, clearcoat: 1, iridescence: 0.8, envMapIntensity: 2.4 });
-  const gold = new THREE.MeshPhysicalMaterial({ color: "#f2b632", metalness: 1, roughness: 0.2 });
+  const gem = phys({ color: "#ffffff", metalness: 0.1, roughness: 0, clearcoat: 1, iridescence: 0.8, envMapIntensity: 2.4 });
+  const gold = phys({ color: "#f2b632", metalness: 1, roughness: 0.2 });
   for (const sd of [-1, 1]) {
     const { p } = onHead(R, sd * 1.42, -0.22, 0.03);
     const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 8, 20), gold);

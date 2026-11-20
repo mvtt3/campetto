@@ -5,7 +5,7 @@
  */
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { animateRig, buildCharacter, disposeRig, swayRig, type CharacterRig, type Outfit, type Preset } from "./build";
+import { animateRig, buildCharacter, disposeRig, setLite, swayRig, type CharacterRig, type Outfit, type Preset } from "./build";
 
 export type Framing = "full" | "testa" | "collo" | "busto" | "braccio" | "gambe" | "piedi" | "pallone";
 
@@ -60,9 +60,33 @@ function makeScene(renderer: THREE.WebGLRenderer) {
   return scene;
 }
 
+/**
+ * Le schede video dei telefoni economici (Mali-G52 del Galaxy A05s, i Mali/Adreno più vecchi,
+ * PowerVR): lì si disegna con meno pixel e materiali più semplici. Si guarda una volta sola.
+ */
+let weakGpu: boolean | null = null;
+function detectWeakGpu(renderer: THREE.WebGLRenderer) {
+  if (weakGpu !== null) return weakGpu;
+  let name = "";
+  try {
+    const gl = renderer.getContext();
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+  } catch {
+    /* senza nome si va a sensazione: sotto */
+  }
+  const cores = navigator.hardwareConcurrency || 8;
+  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+  weakGpu =
+    /Mali-(T|G3|G5[0-9]|G6[0-9]\b|G71|G72)|Adreno \(TM\) ([3-5]\d\d|6[0-1]\d)|PowerVR|SwiftShader/i.test(name) || (mem <= 3 && cores <= 8);
+  setLite(weakGpu);
+  return weakGpu;
+}
+
 function makeRenderer(canvas: HTMLCanvasElement, maxDpr: number) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
+  const weak = detectWeakGpu(renderer);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, weak ? Math.min(maxDpr, 1.25) : maxDpr));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.setClearColor(0x000000, 0);
@@ -110,6 +134,9 @@ export class Stage {
 
   constructor(private canvas: HTMLCanvasElement, private opts: StageOptions = {}) {
     this.renderer = makeRenderer(canvas, 1.5);
+    this.fullDpr = this.renderer.getPixelRatio();
+    // Mentre lo giri si disegna con meno pixel (non si nota, si muove); fermo torna nitido.
+    this.moveDpr = Math.min(this.fullDpr, weakGpu ? 0.9 : 1.15);
     this.scene = makeScene(this.renderer);
     this.scene.add(this.holder);
     this.shadow = contactShadow();
@@ -244,6 +271,16 @@ export class Stage {
   };
 
   private spinHold = 0;
+  private fullDpr = 1;
+  private moveDpr = 1;
+  private lowRes = false;
+  private calmSince = 0;
+  private setRes(low: boolean) {
+    if (low === this.lowRes || this.fullDpr <= this.moveDpr) return;
+    this.lowRes = low;
+    this.renderer.setPixelRatio(low ? this.moveDpr : this.fullDpr);
+    this.resize();
+  }
   /** Il "vento" sui vestiti: una molla che insegue la velocità con cui gira il personaggio. */
   private sway = 0;
   private swayV = 0;
@@ -312,6 +349,13 @@ export class Stage {
     const p = this.pop < 1 ? 1 + Math.sin(this.pop * Math.PI) * 0.06 : 1;
     this.holder.scale.setScalar(p);
     this.holder.rotation.y = this.yaw;
+    // Giro veloce col dito (o ancora in corsa dopo averlo lasciato): meno pixel. Appena
+    // rallenta per un attimo torna nitido.
+    const fast = this.dragging || Math.abs(this.vYaw) > 0.6;
+    if (fast) {
+      this.calmSince = now;
+      this.setRes(true);
+    } else if (this.lowRes && now - this.calmSince > 350) this.setRes(false);
     // I vestiti restano indietro rispetto a dove gira (velocità opposta), poi lo raggiungono.
     if (dt > 0) {
       const w = (this.yaw - this.prevYaw) / dt;

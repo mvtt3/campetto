@@ -3855,6 +3855,12 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
 
 /* Il percorso del pass: un binario spesso dietro agli scudi dei livelli, giallo fin dove
    sei arrivato. Ogni riga disegna il suo pezzo, così il colore cambia proprio al "Sei qui". */
+/* Le righe fuori schermo non si disegnano finché non arrivano: con 30 premi animati lo
+   scorrimento resta a 60 al secondo anche sui telefoni lenti. */
+.road-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 88px;
+}
 .road-row::before {
   content: "";
   position: absolute;
@@ -4167,8 +4173,119 @@ html[data-studio="1"] body > :not(.studio-shell) *::after {
 .road.natale .road-row[data-rail="here"]::before {
   background: linear-gradient(transparent 0 30px, var(--line) 30px);
 }
+/* I premi del percorso sono vivi: l'oggetto galleggia, lo Spicchio gira, il boost scatta e un
+   lampo di luce ci passa sopra ogni tanto. Solo trasformazioni, ritmi sfasati riga per riga. */
+.rw-float {
+  position: absolute;
+  inset: 0;
+  animation: rw-float 3.2s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes rw-float {
+  0%,
+  100% {
+    transform: translateY(2px) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.05);
+  }
+}
+.rw-coin,
+.rw-zap {
+  display: inline-block;
+  will-change: transform;
+}
+.rw-coin {
+  animation: rw-coin 3.6s ease-in-out infinite;
+}
+@keyframes rw-coin {
+  0%,
+  58% {
+    transform: perspective(160px) rotateY(0) translateY(0);
+  }
+  79% {
+    transform: perspective(160px) rotateY(180deg) translateY(-4px);
+  }
+  100% {
+    transform: perspective(160px) rotateY(360deg) translateY(0);
+  }
+}
+.rw-zap {
+  animation: rw-zap 2.6s ease-in-out infinite;
+}
+@keyframes rw-zap {
+  0%,
+  68%,
+  100% {
+    transform: scale(1) rotate(0);
+  }
+  75% {
+    transform: scale(1.22) rotate(-9deg);
+  }
+  82% {
+    transform: scale(0.94) rotate(7deg);
+  }
+  89% {
+    transform: scale(1.08) rotate(0);
+  }
+}
+.rw-glint {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.rw-glint::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  transform: translateX(-170%) skewX(-18deg);
+  animation: rw-glint 4.8s ease-in-out infinite;
+  animation-delay: inherit;
+}
+@keyframes rw-glint {
+  0%,
+  60% {
+    transform: translateX(-170%) skewX(-18deg);
+  }
+  84%,
+  100% {
+    transform: translateX(340%) skewX(-18deg);
+  }
+}
+/* Arrivati a un livello dalla scheda: la riga si accende un attimo. */
+.lv-flash > div:last-child {
+  animation: lv-flash 1.3s ease-out;
+}
+@keyframes lv-flash {
+  0%,
+  40% {
+    box-shadow:
+      0 0 0 3px var(--volt),
+      0 0 22px rgb(255 197 49 / 0.7);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rw-float,
+  .rw-coin,
+  .rw-zap,
+  .rw-glint::before,
+  .lv-flash > div:last-child {
+    animation: none;
+  }
+}
+
 /* Mentre si scorre il pass le decorazioni stanno ferme (ripartono a dito fermo). */
 [data-scrolling] .snow,
+[data-scrolling] .rw-float,
+[data-scrolling] .rw-coin,
+[data-scrolling] .rw-zap,
+[data-scrolling] .rw-glint::before,
 [data-scrolling] .lucina,
 [data-scrolling] .pupazzo,
 [data-scrolling] .tab-3d,
