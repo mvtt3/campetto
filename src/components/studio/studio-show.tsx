@@ -43,7 +43,10 @@ import {
   VISIT_UP,
   VISIT_X,
   votesOf,
+  walkAt,
+  walkLookX,
   type StudioVisit,
+  type StudioWalk,
 } from "@/lib/studio";
 import { KIT } from "@/components/avatar-presets";
 import { useData } from "@/lib/data/provider";
@@ -302,6 +305,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const guestBox = useRef<HTMLDivElement>(null);
   const visitBox = useRef<HTMLDivElement>(null);
   const visitSmoke = useRef<HTMLDivElement>(null);
+  // Chi passa per lo studio (show.walks): un riquadro per passaggio, nello stesso ordine.
+  const walkBoxes = useRef<(HTMLDivElement | null)[]>([]);
   const guestChair = useRef<HTMLDivElement>(null);
   // Il terzo microfono: compare quando l'ospite si siede e sparisce quando si alza.
   const guestMic = useRef<HTMLDivElement>(null);
@@ -601,7 +606,13 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         const shift = (who === "lui" ? 1 : -1) * GUEST_SPREAD * g.apart + VISIT_ROOM[who] * v.room;
         // Quando passa la comparsa la guardano tutti: la seguono con lo sguardo finché non esce.
         const hostX = (who === "lui" ? 278 : 112) + shift;
-        const look = v.on ? Math.max(-1, Math.min(1, (VISIT_X + v.x - hostX) / 45)) : lookAt(line, who, t, g.on && g.seat > 0.5);
+        // Chi passa per lo studio e si fa notare: lo seguono con gli occhi, senza smettere di parlare.
+        const wx = walkLookX(show, t);
+        const look = v.on
+          ? Math.max(-1, Math.min(1, (VISIT_X + v.x - hostX) / 45))
+          : wx !== null
+            ? Math.max(-1, Math.min(1, (wx - hostX) / 60))
+            : lookAt(line, who, t, g.on && g.seat > 0.5);
         sm.look += (look - sm.look) * 0.14;
         const dx = `translateX(${shift.toFixed(2)}px)`;
         const listening = line && line.who !== who;
@@ -696,6 +707,28 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
             if (vb.dataset.walk !== walking) vb.dataset.walk = walking;
           }
         }
+      }
+
+      // Chi passa: attraversa a passo costante, dondola un po' a ogni passo; la nuvoletta durante l'urlo.
+      if (odd && show.walks) {
+        show.walks.forEach((w, i) => {
+          const wb = walkBoxes.current[i];
+          if (!wb) return;
+          const ws = walkAt(w, t);
+          const vis = ws.on ? "visible" : "hidden";
+          if (wb.style.visibility !== vis) {
+            wb.style.visibility = vis;
+            wb.dataset.on = ws.on ? "1" : "0";
+            wb.dataset.walk = ws.on ? "1" : "0";
+          }
+          if (!ws.on) return;
+          const bob = -Math.abs(Math.sin(ws.walk * Math.PI)) * (w.layer === "davanti" ? 9 : 5);
+          const sway = Math.sin(ws.walk * Math.PI) * (w.layer === "davanti" ? 3.5 : 2);
+          const tr = `translate3d(${ws.x.toFixed(1)}px, ${bob.toFixed(1)}px, 0) rotate(${sway.toFixed(2)}deg)`;
+          if (wb.style.transform !== tr) wb.style.transform = tr;
+          const sh = ws.shout ? "1" : "0";
+          if (wb.dataset.shout !== sh) wb.dataset.shout = sh;
+        });
       }
 
       const s = screenAt(show, t);
@@ -1033,6 +1066,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
               </>
             )}
           </div>
+          {show.walks?.map((w, i) =>
+            w.layer === "dietro" ? <WalkerInStudio key={i} walk={w} boxRef={(el) => void (walkBoxes.current[i] = el)} /> : null,
+          )}
           {show.visit && <VisitorSmoke visit={show.visit} boxRef={visitSmoke} />}
           {show.guest && <GuestInStudio playerId={show.guest.playerId} boxRef={guestBox} chairRef={guestChair} />}
           {show.visit && <VisitorInStudio visit={show.visit} boxRef={visitBox} />}
@@ -1052,6 +1088,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
             <DeskMic tilt={14} style={{ left: MIC_X - MIC_W / 2, top: MIC_BASE - 556 - MIC_H }} />
           </div>
           <Desk />
+          {show.walks?.map((w, i) =>
+            w.layer === "davanti" ? <WalkerInStudio key={i} walk={w} boxRef={(el) => void (walkBoxes.current[i] = el)} /> : null,
+          )}
           {show.guest && <DeskMic boxRef={guestMic} tilt={-14} style={{ left: 195 + 52 - MIC_W / 2, top: MIC_BASE - MIC_H, visibility: "hidden", transform: "scale(0)" }} />}
         </div>
         </div>
@@ -1609,6 +1648,85 @@ const VisitorSmoke = memo(function VisitorSmoke({ visit, boxRef }: { visit: Stud
           </g>
         </g>
       </svg>
+    </div>
+  );
+});
+
+/**
+ * Chi passa per lo studio senza fermarsi: il personaggio del giocatore che cammina, dietro i
+ * conduttori (più piccolo, si vede dal busto in su) o davanti alla scrivania. Se fuma tiene la
+ * rollata con il fumo che sale; se ha una scritta, maglia chiara con la scritta al posto del numero;
+ * se urla, la nuvoletta e la bocca aperta (data-shout).
+ */
+const WalkerInStudio = memo(function WalkerInStudio({ walk, boxRef }: { walk: StudioWalk; boxRef: (el: HTMLDivElement | null) => void }) {
+  const { data } = useData();
+  const player = data.players.find((p) => p.id === walk.playerId);
+  if (!player) return null;
+  const id = characterOf(player);
+  const vh = 185 + (KIT[id]?.legs ?? 0);
+  const back = walk.layer === "dietro";
+  const h = Math.round(GUEST_H * (back ? 0.8 : 1));
+  const w = (h * 100) / vh;
+  const top = back ? 330 : 522;
+  const eyes = walk.eyes === "sonno" ? SLEEPY[id] : undefined;
+  const [my, mw] = MOUTH[id] ?? [62, 0.85];
+  // Va verso sinistra: lo si specchia, così guarda dove va (le scritte sulla maglia solo verso destra).
+  const flip = walk.dir === -1 && !walk.shirt;
+  return (
+    <div
+      ref={boxRef}
+      className="studio-guest studio-visit studio-walker absolute will-change-transform"
+      data-walk="0"
+      data-on="0"
+      data-shout="0"
+      style={{ left: -w / 2, top, width: w, visibility: "hidden", transformOrigin: "50% 100%", ["--reach" as string]: walk.hand ? "0.32" : "0" }}
+      aria-hidden
+    >
+      <div className="relative" style={flip ? { transform: "scaleX(-1)" } : undefined}>
+        <Character
+          id={id}
+          outfit={walk.shirt ? undefined : player.outfit}
+          kit={walk.shirt ? { jersey: "#FFF8EA", trim: "#1D1A16" } : undefined}
+          number={walk.shirt ? null : player.jerseyNumber}
+          height={h}
+          idle
+          noBall
+          pose="porge"
+          hand={walk.hand === "rollata" ? <Rollata /> : null}
+        />
+        <svg className="character character-idle absolute inset-0" viewBox={`0 0 100 ${vh}`} width={w} height={h} style={{ overflow: "visible" }}>
+          <g className="character-body">
+            {eyes?.at.map(([x, y], i) => <SleepyEye key={i} x={x} y={y} s={eyes.s} lid={eyes.ball} />)}
+            {walk.shirt && (
+              <>
+                <text x="50" y="97" textAnchor="middle" fontSize="10.5" fontWeight="900" fill="#1D1A16" fontFamily="var(--font-dm-sans), sans-serif" textLength="44" lengthAdjust="spacingAndGlyphs">
+                  {walk.shirt}
+                </text>
+                {/* Sotto la scritta il distintivo della maglia appesa nello studio: la montagnetta davanti al sole. */}
+                <g transform="translate(42.8 101.5) scale(0.8)">
+                  <rect width="18" height="15" rx="4" fill="#2D5BE3" />
+                  <circle cx="12.5" cy="6" r="3.2" fill="#FFC531" />
+                  <path d="M1.5 15 L7 6 L10 10 L12.5 7.5 L16.5 15 Z" fill="#1D1A16" />
+                  <path d="M5.3 8.8 L7 6 L8.7 8.6 L7.6 9.4 L6.6 8.6 Z" fill="#FFF8EA" />
+                </g>
+              </>
+            )}
+            {walk.shout && (
+              <g transform={`translate(50 ${my + 1}) scale(${mw} 1)`}>
+                <g className="studio-walker-mouth">
+                  <ellipse rx="8.5" ry="6.5" fill="#5A1410" stroke="#1D1A16" strokeWidth="2" />
+                  <ellipse cy="3" rx="4.6" ry="2.4" fill="#E5412D" />
+                </g>
+              </g>
+            )}
+          </g>
+        </svg>
+      </div>
+      {walk.shout && (
+        <span className="studio-shout display absolute whitespace-nowrap rounded-[18px] border-[3px] border-[#1d1a16] bg-white px-3.5 py-1.5 text-[22px] leading-none text-[#1d1a16]" style={{ left: "58%", top: -26 }}>
+          {walk.shout.text}
+        </span>
+      )}
     </div>
   );
 });

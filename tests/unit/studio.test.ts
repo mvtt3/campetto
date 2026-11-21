@@ -18,6 +18,9 @@ import {
   screenAt,
   topAt,
   type StudioShow,
+  walkAt,
+  walkLookX,
+  type StudioWalk,
 } from "@/lib/studio";
 
 const show: StudioShow = {
@@ -223,5 +226,32 @@ describe("la sezione dei migliori della giornata (top)", () => {
     expect(topAt({ top }, 29.99)?.index).toBe(2);
     expect(topAt({ top }, 30)).toBeNull();
     expect(topAt({ top: undefined }, 12)).toBeNull();
+  });
+});
+
+describe("chi passa per lo studio (walks)", () => {
+  const w: StudioWalk = { playerId: "p", enter: 10, exit: 18, layer: "dietro", dir: 1, look: false };
+  it("fuori scena prima e dopo, a metà strada a metà tempo, da sinistra a destra", () => {
+    expect(walkAt(w, 9.9).on).toBe(false);
+    expect(walkAt(w, 18.1).on).toBe(false);
+    const a = walkAt(w, 10).x;
+    const m = walkAt(w, 14).x;
+    const b = walkAt(w, 18).x;
+    expect(a).toBeLessThan(0);
+    expect(b).toBeGreaterThan(390);
+    expect(m).toBeCloseTo((a + b) / 2, 5);
+  });
+  it("da destra a sinistra e l'urlo solo mentre urla", () => {
+    const v: StudioWalk = { playerId: "m", enter: 0, exit: 2.6, layer: "davanti", dir: -1, look: true, shout: { t: 1, d: 0.6, text: "Ehi!" } };
+    expect(walkAt(v, 0).x).toBeGreaterThan(walkAt(v, 2.6).x);
+    expect(walkAt(v, 0.5).shout).toBe(false);
+    expect(walkAt(v, 1.2).shout).toBe(true);
+    expect(walkAt(v, 2.5).shout).toBe(false);
+  });
+  it("i conduttori guardano solo chi si fa notare", () => {
+    expect(walkLookX({ walks: [w] }, 14)).toBeNull();
+    const v: StudioWalk = { ...w, look: true };
+    expect(walkLookX({ walks: [v] }, 14)).toBeCloseTo(walkAt(v, 14).x, 5);
+    expect(walkLookX({ walks: [v] }, 30)).toBeNull();
   });
 });

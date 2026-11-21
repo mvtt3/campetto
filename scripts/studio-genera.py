@@ -15,6 +15,9 @@ Uso: python3 scripts/studio-genera.py scaletta.json cartella-uscita musica.mp3 [
 L'ospite: un giocatore delle ultime partite entra con la sua sedia, si siede tra i conduttori,
 risponde con la sua voce (sempre la stessa per lui) e poi saluta ed esce; all'ingresso la musica
 sale un attimo. Il replay ha una regia calcolata dal movimento: tiene dentro canestro e giocatori.
+Chi passa per lo studio ("passanti" nella scaletta, "passa": "<chiave>" su una battuta): attraversa
+la scena dietro i conduttori o davanti alla scrivania mentre si parla; se urla ("shout"), l'urlo
+arriva subito dopo quella battuta, con la sua voce Gemini, e i conduttori riprendono dopo.
 La scaletta deve parlare un po' di tutti: se un giocatore ha più di una grafica tutta per sé, o
 qualcuno che ha giocato non ne ha nessuna, la puntata non si genera (STUDIO_FORZA=1 per farlo lo stesso).
 
@@ -400,10 +403,25 @@ def gemini_jobs():
         job["id"] = hashlib.sha1(json.dumps(job, sort_keys=True).encode()).hexdigest()[:16]
         c["parts"] = [job["id"]]
         jobs.append(job)
+    # Gli urli di chi passa: una richiesta a testa, con la voce di quel giocatore.
+    for key, pw in (plan.get("passanti") or {}).items():
+        sh = pw.get("shout")
+        if not sh:
+            continue
+        regia = sh.get("regia") or (
+            "Un ragazzo attraversa di corsa uno studio televisivo e sbotta ad alta voce, di getto, "
+            "seccato e spazientito, come un'imprecazione detta tra sé, in italiano. Solo questa frase, una volta."
+        )
+        job = {"speakers": [{"name": re.sub(r"[^\w]", "", key.title()) or "Passante", "voice": sh["voice"]}],
+               "prompt": regia + "\n\n" + sh.get("say", sh["text"]), "seed": 7}
+        job["id"] = hashlib.sha1(json.dumps(job, sort_keys=True).encode()).hexdigest()[:16]
+        SHOUT_JOBS[key] = job["id"]
+        jobs.append(job)
     return chunks, jobs
 
 
 _whisper = None
+SHOUT_JOBS = {}  # chiave del passante → id della richiesta Gemini del suo urlo
 
 
 def whisper_words(path):
@@ -529,6 +547,16 @@ def gemini_line(si, li):
     return raw, words
 
 
+def shout_audio(key):
+    """L'urlo di chi passa (dal .wav di Gemini): senza silenzi, allo stesso livello delle battute."""
+    x = decode(os.path.join(gem_dir, SHOUT_JOBS[key] + ".wav"))
+    on = np.where(np.abs(x) > 0.012)[0]
+    if len(on):
+        x = x[max(0, on[0] - int(0.02 * SR)): on[-1] + int(0.12 * SR)]
+    pk = float(np.max(np.abs(x))) or 1.0
+    return (x * (0.7 / pk)).astype(np.float32)
+
+
 def sign_off():
     """Ogni puntata finisce con la firma dei due conduttori, dopo i saluti."""
     if plan.get("firma") is False:
@@ -567,6 +595,7 @@ async def main():
     top_items, votes = [], []
     guest = None
     visit = None
+    walks = []
     cur = "coppia"
     shown_screen = 0
     for si, seg in enumerate(plan["segments"]):
@@ -804,7 +833,32 @@ async def main():
                     # Se ne va: di nuovo larghi, così lo si vede uscire.
                     shots.append({"t": round(visit["leave"] + 0.35, 3), "cam": "ampio", "screen": shown_screen})
                     cur = "ampio"
+            if line.get("passa"):
+                # Chi passa: parte con questa battuta; se urla, l'urlo arriva appena finita la
+                # battuta (a metà del suo passaggio) e la battuta dopo aspetta che abbia finito.
+                key = line["passa"]
+                pw = plan["passanti"][key]
+                wk = {"playerId": pw["playerId"], "layer": pw.get("layer", "dietro"), "dir": pw.get("dir", 1)}
+                for k in ("eyes", "hand", "shirt", "look"):
+                    if pw.get(k):
+                        wk[k] = pw[k]
+                dur = float(pw.get("dur", 6.0))
+                if pw.get("shout") and TTS == "gemini":
+                    sa = shout_audio(key)
+                    st = t + d + pw["shout"].get("after", 0.1)
+                    sd = len(sa) / SR
+                    wk["enter"] = round(st + sd / 2 - dur / 2, 3)
+                    wk["shout"] = {"t": round(st, 3), "d": round(sd, 3), "text": pw["shout"]["text"]}
+                    voice_track.append((st, sa * float(pw["shout"].get("gain", 0.9))))
+                    shout_end = st + sd + pw["shout"].get("pause", 0.3)
+                else:
+                    wk["enter"] = round(t + float(pw.get("delay", 0.3)), 3)
+                    shout_end = None
+                wk["exit"] = round(wk["enter"] + dur, 3)
+                walks.append(wk)
             t += d + line.get("gap", GAP)
+            if line.get("passa") and shout_end is not None:
+                t = max(t, shout_end)
             if visiting and talk and li == 0:
                 # Porge mentre il conduttore finisce di parlare; la risposta arriva dopo.
                 visit["offer"] = round(max(visit["stop"] + 0.4, t - GAP - pv.get("offerBefore", 1.4)), 3)
@@ -1006,6 +1060,8 @@ async def main():
     }
     if visit:
         show["visit"] = visit
+    if walks:
+        show["walks"] = walks
     if top_items:
         for it in top_items:
             it["release"] = it["release"]  # nel video sorgente; nella puntata cade a t + d - TOP_POST

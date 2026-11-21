@@ -262,6 +262,30 @@ export interface StudioVisit {
   hand?: "rollata";
 }
 
+/**
+ * Chi passa per lo studio senza fermarsi (una o più volte a puntata): attraversa la scena da un lato
+ * all'altro, dietro i conduttori (si vede dal busto in su, più piccolo perché più lontano) oppure
+ * davanti alla scrivania. Può fumare con gli occhi assonnati, avere una scritta sulla maglia e
+ * urlare qualcosa (la nuvoletta, con la sua voce nell'audio della puntata).
+ */
+export interface StudioWalk {
+  playerId: Id;
+  /** Entra in scena ed esce (secondi della puntata): in mezzo cammina a passo costante. */
+  enter: number;
+  exit: number;
+  layer: "dietro" | "davanti";
+  /** 1: da sinistra a destra; -1: da destra a sinistra. */
+  dir: 1 | -1;
+  eyes?: "sonno";
+  hand?: "rollata";
+  /** La scritta sulla maglia (maglia chiara, scritta scura), al posto del numero. */
+  shirt?: string;
+  /** I conduttori lo seguono con lo sguardo mentre passa (ma continuano a parlare). */
+  look?: boolean;
+  /** L'urlo: quando, quanto dura e cosa dice (nella nuvoletta). */
+  shout?: { t: number; d: number; text: string };
+}
+
 export interface StudioShow {
   v: 2;
   id: string;
@@ -288,6 +312,8 @@ export interface StudioShow {
   guest?: StudioGuest | null;
   /** Una comparsa che passa dallo studio mentre c'è l'ospite (vedi StudioVisit). */
   visit?: StudioVisit | null;
+  /** Chi passa per lo studio senza fermarsi (vedi StudioWalk). */
+  walks?: StudioWalk[];
   /**
    * Le azioni sul maxischermo mentre si parla: un solo video piccolo, già tagliato per lo schermo e
    * con il misuratore di tiro disegnato dentro i fotogrammi (scripts/studio-muro.py). Parte al
@@ -461,6 +487,34 @@ export function visitAt(show: Pick<StudioShow, "visit">, t: number): { on: boole
   const r = v.refuse ?? -9;
   const shake = t > r && t < r + 0.9 ? Math.sin((t - r) * 21) * 4 * (1 - (t - r) / 0.9) : 0;
   return { on: true, x, walk, reach, room, shake };
+}
+
+/** Da dove a dove attraversa lo studio chi passa (x del centro, px dello studio), per livello. */
+export const WALK_PATH = { dietro: { from: -60, to: 450 }, davanti: { from: -80, to: 470 } };
+
+/**
+ * Chi passa al tempo t: x del centro (px dello studio), la fase del passo e se sta urlando.
+ * Passo costante: entra ed esce già camminando, fuori dall'inquadratura.
+ */
+export function walkAt(w: StudioWalk, t: number): { on: boolean; x: number; walk: number; shout: boolean } {
+  const p = WALK_PATH[w.layer];
+  const [a, b] = w.dir === 1 ? [p.from, p.to] : [p.to, p.from];
+  if (t < w.enter || t > w.exit) return { on: false, x: a, walk: 0, shout: false };
+  const u = (t - w.enter) / Math.max(0.1, w.exit - w.enter);
+  // Più passi al secondo per chi va di fretta (davanti), passo lento per chi passa dietro fumando.
+  const steps = w.layer === "davanti" ? 3.4 : 2.2;
+  const shout = !!w.shout && t >= w.shout.t - 0.05 && t <= w.shout.t + w.shout.d + 0.45;
+  return { on: true, x: a + (b - a) * u, walk: (t - w.enter) * steps, shout };
+}
+
+/** Se qualcuno sta passando e i conduttori lo guardano: la sua x (px dello studio), altrimenti null. */
+export function walkLookX(show: Pick<StudioShow, "walks">, t: number): number | null {
+  for (const w of show.walks ?? []) {
+    if (!w.look) continue;
+    const s = walkAt(w, t);
+    if (s.on) return s.x;
+  }
+  return null;
 }
 
 /** Dove punta la telecamera: un punto dello studio che va al centro, e quanto zoom. */
