@@ -44,14 +44,19 @@ def frames(path, t0, dur, norot):
                           "-vf", f"fps={FPS},scale={SRC_W}:{SRC_H}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=10 ** 7)  # si legge solo quanto serve: il resto del flusso si chiude senza lamenti
     size = SRC_W * SRC_H * 3
-    while True:
-        buf = p.stdout.read(size)
-        if len(buf) < size:
-            break
-        yield np.frombuffer(buf, dtype=np.uint8).reshape(SRC_H, SRC_W, 3)
-    p.stdout.close()
-    p.terminate()
-    p.wait()
+    # try/finally: quando chi legge smette prima (break), ffmpeg va chiuso subito. Senza, ogni
+    # azione lasciava un ffmpeg aperto con i suoi fotogrammi in memoria: con 39 azioni la
+    # memoria finiva e la puntata si fermava a metà.
+    try:
+        while True:
+            buf = p.stdout.read(size)
+            if len(buf) < size:
+                break
+            yield np.frombuffer(buf, dtype=np.uint8).reshape(SRC_H, SRC_W, 3)
+    finally:
+        p.stdout.close()
+        p.kill()
+        p.wait()
 
 
 def build(show_path):
