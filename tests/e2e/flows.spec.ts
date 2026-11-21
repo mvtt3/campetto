@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openApp, skipTour } from "./helpers";
+import { ONESIGNAL_APP_ID, ONESIGNAL_FOR } from "../../src/lib/config";
 
 test("dal login con Google si entra nell'app", async ({ page }) => {
   await page.goto("/?mock=reset");
@@ -1420,6 +1421,8 @@ test("classifica da tre: chi ha tirato poco sta a parte, senza posizione", async
 
 /** Il servizio notifiche del telefono, finto: risponde subito o non risponde mai. */
 async function fakePushService(page: Page, answers: boolean) {
+  // Con OneSignal acceso l'iscrizione la fa OneSignal: anche lui finto, con la stessa risposta.
+  await fakeOneSignal(page, answers);
   await page.context().grantPermissions(["notifications"]);
   await page.addInitScript((ok) => {
     // Chromium senza finestra dice sempre "negato": qui il permesso è concesso.
@@ -1496,6 +1499,7 @@ test("notifiche: se il servizio del telefono non risponde, niente rotellina infi
 test("notifiche: se la richiesta del telefono non arriva, Spicchio dice dove dare il permesso e poi si accendono da sole", async ({
   page,
 }) => {
+  await fakeOneSignal(page, true);
   await page.context().grantPermissions(["notifications"]);
   await page.addInitScript(() => {
     // Come sul Galaxy: permesso mai dato e richiesta che scade senza mostrarsi.
@@ -1933,4 +1937,73 @@ test("pass: percorso a tabelloni con Sei qui, premi da riscattare tutti insieme"
   const here = page.getByTestId("you-are-here");
   await expect(here).toBeVisible();
   await expect(here).toContainText("Per salire fai una di queste");
+});
+
+/**
+ * OneSignal finto al posto del suo script: si comporta come quello vero (coda OneSignalDeferred,
+ * iscrizione che nasce alla richiesta del permesso). Se non risponde, la richiesta resta appesa.
+ */
+async function fakeOneSignal(page: Page, answers = true) {
+  let loaded = 0;
+  await page.route(
+    "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js",
+    (route) => {
+      loaded++;
+      return route.fulfill({
+        contentType: "application/javascript",
+        body: `(() => {
+          const answers = ${answers};
+          let id = null, optedIn = false;
+          const ls = new Set();
+          const os = {
+            init: async (o) => { window.__osInit = o; },
+            login: async (x) => { window.__osLogin = x; },
+            Notifications: { requestPermission: () => {
+              if (!answers) return new Promise(() => {});
+              id = "os-prova"; optedIn = true;
+              ls.forEach((l) => l({ previous: {}, current: { id, optedIn } }));
+              return Promise.resolve(true);
+            } },
+            User: { PushSubscription: {
+              get id() { return id; }, get token() { return id && "https://fcm.googleapis.com/fcm/send/os"; },
+              get optedIn() { return optedIn; },
+              optIn: async () => {}, optOut: async () => { optedIn = false; },
+              addEventListener: (_, l) => ls.add(l), removeEventListener: (_, l) => ls.delete(l),
+            } },
+          };
+          const queue = window.OneSignalDeferred || [];
+          window.OneSignalDeferred = { push: (cb) => cb(os) };
+          queue.forEach((cb) => cb(os));
+        })();`,
+      });
+    },
+  );
+  return () => loaded;
+}
+
+test("notifiche con OneSignal: l'amministratore le accende e passano da OneSignal", async ({
+  page,
+}) => {
+  test.skip(
+    !ONESIGNAL_APP_ID || ONESIGNAL_FOR === "no",
+    "OneSignal non è ancora collegato",
+  );
+  await fakePushService(page, true);
+  const loads = await fakeOneSignal(page);
+  await openApp(page, "demo");
+  await page.goto("/profilo/notifiche");
+  await page
+    .getByRole("switch", { name: "Notifiche su questo telefono" })
+    .click();
+  await expect(page.getByText("Attive, ti avviso io")).toBeVisible({
+    timeout: 20000,
+  });
+  expect(loads()).toBeGreaterThan(0);
+  const init = await page.evaluate(
+    () => (window as unknown as { __osInit: Record<string, unknown> }).__osInit,
+  );
+  expect(init).toMatchObject({
+    appId: ONESIGNAL_APP_ID,
+    serviceWorkerPath: "sw.js",
+  });
 });

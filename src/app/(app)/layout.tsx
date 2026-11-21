@@ -31,7 +31,7 @@ import { Button, Spinner } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
 import { NavProvider } from "@/lib/nav";
 import { gameAllowed } from "@/lib/config";
-import { checkPush } from "@/lib/notifications/push-client";
+import { checkPush, configurePush } from "@/lib/notifications/push-client";
 import { OutfitsVisible } from "@/components/outfit-layer";
 
 /** Pagine riservate all'amministratore: inserire, importare, segnare dal video, gestire il gruppo. */
@@ -130,6 +130,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const pathRef = useRef(path);
   useEffect(() => {
     // Notifiche: se il telefono le ha accese ma il server ha perso la sua iscrizione, si ripara qui.
+    configurePush(me);
     if (me && backend.kind !== "mock") void checkPush(backend);
   }, [me, backend]);
   useEffect(() => {

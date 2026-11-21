@@ -87,6 +87,9 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+/** Le notifiche mandate da OneSignal le mostra OneSignal: le riconosce da custom.i. */
+const fromOneSignal = (data) => Boolean(data && data.custom && typeof data.custom.i === "string");
+
 self.addEventListener("push", (event) => {
   let data = {};
   try {
@@ -94,6 +97,9 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { title: "Campetto", body: event.data ? event.data.text() : "" };
   }
+  if (fromOneSignal(data)) return;
+  // Le nostre: OneSignal (se c'è) non le tocca.
+  event.stopImmediatePropagation();
   const title = data.title || "Campetto";
   event.waitUntil(
     self.registration.showNotification(title, {
@@ -109,8 +115,11 @@ self.addEventListener("push", (event) => {
 });
 
 self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
   const d = event.notification.data || {};
+  // Quelle di OneSignal (hanno il loro numero): il tocco lo gestisce OneSignal.
+  if (d.notificationId) return;
+  event.stopImmediatePropagation();
+  event.notification.close();
   let url = d.url || "/";
   // Risposta diretta dai pulsanti della notifica: l'app la registra appena si apre.
   if (event.action && d.proposalId) url = `/organizza?p=${d.proposalId}&r=${event.action}`;
@@ -126,3 +135,14 @@ self.addEventListener("notificationclick", (event) => {
     }),
   );
 });
+
+// Notifiche con OneSignal: OneSignal registra questa stessa sw.js con il suo App ID
+// nell'indirizzo. Solo in quel caso si carica la sua parte (dopo le nostre, che passano prima).
+// Se la rete non la dà, l'app funziona lo stesso: si riprova al prossimo aggiornamento.
+if (new URL(self.location.href).searchParams.has("appId")) {
+  try {
+    importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+  } catch {
+    /* senza OneSignal per ora: le nostre notifiche funzionano comunque */
+  }
+}

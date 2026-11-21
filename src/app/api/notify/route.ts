@@ -1,14 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { matchMvp } from "@/lib/stats/match-mvp";
-import webpush from "web-push";
 import { z } from "zod";
 import { BADGE_BY_KEY, computeBadges } from "@/lib/badges";
-import {
-  GAME_ON,
-  SUPABASE_PUBLISHABLE_KEY,
-  SUPABASE_URL,
-  VAPID_PUBLIC_KEY,
-} from "@/lib/config";
+import { GAME_ON, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/config";
+import { deliver, pushReady, type PushRow } from "@/lib/notifications/deliver";
 import {
   MATCH_SELECT,
   PROPOSAL_SELECT,
@@ -124,6 +119,7 @@ class Ctx {
     public sb: SupabaseClient,
     public me: string,
     players: Player[] = [],
+    public origin = "https://campetto.vercel.app",
   ) {
     if (isNight())
       for (const p of players) if (p.notifyPrefs.notte) this.quiet.add(p.id);
@@ -144,29 +140,15 @@ class Ctx {
   }
 
   async send(targets: Target[], payload: Payload) {
-    await Promise.all(
-      targets
-        .filter((t) => !this.quiet.has(t.player_id))
-        .map(async (t) => {
-          try {
-            await webpush.sendNotification(
-              {
-                endpoint: t.endpoint,
-                keys: { p256dh: t.p256dh, auth: t.auth },
-              },
-              JSON.stringify(payload),
-              { TTL: 12 * 3600, urgency: "normal" },
-            );
-            this.sent++;
-          } catch (e) {
-            const status = (e as { statusCode?: number }).statusCode;
-            if (status === 404 || status === 410)
-              await this.sb.rpc("drop_push_subscription", {
-                p_endpoint: t.endpoint,
-              });
-          }
-        }),
+    const res = await deliver(
+      targets.filter((t) => !this.quiet.has(t.player_id)),
+      payload,
+      { ttl: 12 * 3600, urgency: "normal" },
+      this.origin,
     );
+    this.sent += res.sent;
+    for (const endpoint of res.dead)
+      await this.sb.rpc("drop_push_subscription", { p_endpoint: endpoint });
   }
 
   async claim(key: string): Promise<boolean> {
@@ -727,19 +709,21 @@ async function tick(req: Request) {
     .json()
     .then((b: { force?: unknown } | null) => b?.force === true)
     .catch(() => false);
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!secret)
     return Response.json({ error: "Accesso richiesto" }, { status: 401 });
-  if (!privateKey)
+  if (!pushReady())
     return Response.json(
-      { skipped: "VAPID_PRIVATE_KEY mancante" },
+      { skipped: "nessuna chiave per le notifiche" },
       { status: 202 },
     );
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "mailto:campetto@example.com",
-    VAPID_PUBLIC_KEY,
-    privateKey,
-  );
+  const origin = new URL(req.url).origin;
+  /** Una notifica a un telefono; true se è partita. */
+  const one = async (
+    r: PushRow,
+    msg: Payload,
+    ttl: number,
+    urgency: "high" | "normal" | "low",
+  ) => (await deliver([r], msg, { ttl, urgency }, origin)).sent > 0;
   const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -757,21 +741,20 @@ async function tick(req: Request) {
       minute: "2-digit",
       timeZone: "Europe/Rome",
     });
-    try {
-      await webpush.sendNotification(
-        { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-        JSON.stringify({
+    if (
+      await one(
+        r,
+        {
           title: "Tra un'ora si gioca",
           body: `Ti aspetto${r.place ? atPlace(r.place as Place) : " al campetto"} alle ${time}: siete in ${r.yes_count}${r.format ? ` per il ${r.format}` : ""}`,
           url: "/organizza",
           tag: `reminder-${r.proposal_id}`,
-        }),
-        { TTL: 3600, urgency: "high" },
-      );
+        },
+        3600,
+        "high",
+      )
+    )
       sent++;
-    } catch {
-      /* abbonamento scaduto: lo ripulisce il prossimo invio normale */
-    }
   }
   // Partita confermata: a 12 ore dall'inizio, se ci sono almeno 4 "ci sono". Di notte si
   // aspetta le 8 (non la segna come inviata), così il messaggio non va perso.
@@ -781,10 +764,10 @@ async function tick(req: Request) {
       p_secret: secret,
     });
     for (const r of (due as DueConfirmation[] | null) ?? []) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-          JSON.stringify({
+      if (
+        await one(
+          r,
+          {
             ...confirmedPush({
               startsAt: r.starts_at,
               place: (r.place as Place | null) ?? null,
@@ -792,13 +775,12 @@ async function tick(req: Request) {
             }),
             url: proposalUrl(r.proposal_id, r.starts_at),
             tag: `proposal-${r.proposal_id}`,
-          }),
-          { TTL: 6 * 3600, urgency: "normal" },
-        );
+          },
+          6 * 3600,
+          "normal",
+        )
+      )
         confirmed++;
-      } catch {
-        /* abbonamento scaduto */
-      }
     }
   }
   // Annullate da sole: 12 ore prima senza abbastanza "ci sono". Solo di giorno: di notte la
@@ -816,16 +798,15 @@ async function tick(req: Request) {
         },
         r.proposer,
       );
-      try {
-        await webpush.sendNotification(
-          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-          JSON.stringify({ ...msg, tag: `proposal-${r.proposal_id}` }),
-          { TTL: 6 * 3600, urgency: "normal" },
-        );
+      if (
+        await one(
+          r,
+          { ...msg, tag: `proposal-${r.proposal_id}` },
+          6 * 3600,
+          "normal",
+        )
+      )
         cancelled++;
-      } catch {
-        /* abbonamento scaduto */
-      }
     }
   }
   // "Torna a giocare": verso sera (17–19, ora di Roma), a chi non apre l'app da 6 giorni,
@@ -841,21 +822,20 @@ async function tick(req: Request) {
         r.nickname || r.first_name,
         r.days,
       );
-      try {
-        await webpush.sendNotification(
-          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-          JSON.stringify({
+      if (
+        await one(
+          r,
+          {
             title: msg.title,
             body: msg.body,
             url: msg.url,
             tag: "ritorno",
-          }),
-          { TTL: 6 * 3600, urgency: "low" },
-        );
+          },
+          6 * 3600,
+          "low",
+        )
+      )
         nudged++;
-      } catch {
-        /* abbonamento scaduto */
-      }
     }
   }
   // Le notizie nuove (annunci): appena pubblicate, ma solo di giorno (quelle programmate per
@@ -865,10 +845,10 @@ async function tick(req: Request) {
   if (!night || force) {
     const { data: due } = await sb.rpc("cron_due_news", { p_secret: secret });
     for (const r of (due as DueNews[] | null) ?? []) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-          JSON.stringify({
+      if (
+        await one(
+          r,
+          {
             title: r.title,
             body: r.body.length > 140 ? `${r.body.slice(0, 137)}…` : r.body,
             // L'annuncio con un'azione porta lì (e, se è su una proposta, si risponde dai bottoni).
@@ -883,13 +863,12 @@ async function tick(req: Request) {
                   data: { proposalId: r.proposal_id },
                 }
               : {}),
-          }),
-          { TTL: 24 * 3600, urgency: "normal" },
-        );
+          },
+          24 * 3600,
+          "normal",
+        )
+      )
         news++;
-      } catch {
-        /* abbonamento scaduto */
-      }
     }
   }
   // Gli avvisi al volo (es. "pioggia prevista alle 18"): solo di giorno, una volta per
@@ -898,16 +877,7 @@ async function tick(req: Request) {
   if (!night) {
     const { data: due } = await sb.rpc("cron_due_alerts", { p_secret: secret });
     for (const r of (due as DueAlert[] | null) ?? []) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-          JSON.stringify(alertPayload(r)),
-          { TTL: 6 * 3600, urgency: "high" },
-        );
-        alerts++;
-      } catch {
-        /* abbonamento scaduto */
-      }
+      if (await one(r, alertPayload(r), 6 * 3600, "high")) alerts++;
     }
   }
   // Campetto Star: chi era primo a mezzanotte in una sfida del gioco. Con il gioco spento
@@ -924,21 +894,20 @@ async function tick(req: Request) {
           : r.game === "liberi"
             ? "tiri liberi a oltranza"
             : "gara delle schiacciate";
-      try {
-        await webpush.sendNotification(
-          { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-          JSON.stringify({
+      if (
+        await one(
+          r,
+          {
             title: "Sei il re del campetto 👑",
             body: `A mezzanotte eri primo nella ${name} con ${r.score}: il premio ti aspetta in Campetto Star`,
             url: "/gioca",
             tag: `re-${r.game}`,
-          }),
-          { TTL: 24 * 3600, urgency: "normal" },
-        );
+          },
+          24 * 3600,
+          "normal",
+        )
+      )
         kings++;
-      } catch {
-        /* abbonamento scaduto */
-      }
     }
   }
   return Response.json({ sent, confirmed, cancelled, nudged, news, alerts, kings });
@@ -1007,7 +976,6 @@ interface DueNudge {
 
 export async function POST(req: Request) {
   if (req.headers.get("x-campetto-cron")) return tick(req);
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token)
     return Response.json({ error: "Accesso richiesto" }, { status: 401 });
@@ -1027,18 +995,18 @@ export async function POST(req: Request) {
   if (!meId)
     return Response.json({ error: "Non sei nel gruppo" }, { status: 403 });
 
-  if (!privateKey)
+  if (!pushReady())
     return Response.json(
-      { skipped: "VAPID_PRIVATE_KEY mancante" },
+      { skipped: "nessuna chiave per le notifiche" },
       { status: 202 },
     );
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "mailto:campetto@example.com",
-    VAPID_PUBLIC_KEY,
-    privateKey,
-  );
 
-  const ctx = new Ctx(sb, meId as string, await loadPlayers(sb));
+  const ctx = new Ctx(
+    sb,
+    meId as string,
+    await loadPlayers(sb),
+    new URL(req.url).origin,
+  );
   const body = parsed.data;
   try {
     if (body.type === "test") {

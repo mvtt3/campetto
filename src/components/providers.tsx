@@ -51,8 +51,19 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
+      const sw = navigator.serviceWorker;
+      void sw
+        .getRegistration("/")
+        .then((reg) => {
+          // Con le notifiche di OneSignal la stessa sw.js è registrata da OneSignal con il suo
+          // App ID nell'indirizzo: registrarla di nuovo senza la rimetterebbe in giro ogni volta.
+          const url =
+            reg?.active?.scriptURL ??
+            reg?.waiting?.scriptURL ??
+            reg?.installing?.scriptURL;
+          if (url && new URL(url).searchParams.has("appId")) return;
+          return sw.register("/sw.js", { scope: "/" });
+        })
         .catch(() => {});
     }
   }, []);

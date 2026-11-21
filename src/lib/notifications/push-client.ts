@@ -1,7 +1,14 @@
 "use client";
 
-import { VAPID_PUBLIC_KEY } from "../config";
+import { VAPID_PUBLIC_KEY, oneSignalFor } from "../config";
 import type { Backend } from "../data/backend";
+import {
+  ONESIGNAL_PREFIX,
+  type OneSignalApi,
+  loadOneSignal,
+  oneSignalId,
+  oneSignalSubscribe,
+} from "./onesignal";
 
 export function pushSupported(): boolean {
   return (
@@ -125,6 +132,21 @@ async function readyRegistration(): Promise<ServiceWorkerRegistration> {
   return within(sw.ready, "app");
 }
 
+/** Chi usa l'app su questo telefono: decide se le notifiche passano da OneSignal. */
+let who: { id: string; isAdmin: boolean } | null = null;
+
+const viaOneSignal = () => oneSignalFor(who);
+
+/** Da chiamare appena si sa chi è entrato, prima dei controlli sulle notifiche. */
+export function configurePush(
+  me: { id: string; isAdmin: boolean } | null | undefined,
+) {
+  const before = viaOneSignal();
+  who = me ? { id: me.id, isAdmin: me.isAdmin } : null;
+  // Cambia la strada delle notifiche: il controllo fatto con l'altra non vale più.
+  if (before !== viaOneSignal()) checked = null;
+}
+
 /** Evento sulla finestra quando un'accensione andata oltre il tempo finisce bene più tardi. */
 export const PUSH_LATE_EVENT = "campetto:notifiche-accese";
 
@@ -135,10 +157,16 @@ const WANT_KEY = "campetto:notifiche-volute";
  * da sole quando il permesso arriva dopo: risposta in ritardo, o dato dalle impostazioni.
  */
 export function wantPush(): boolean {
+  return pushWish() === "1";
+}
+
+/** "1" chieste, "0" spente a mano, null mai toccate su questo telefono. */
+function pushWish(): "1" | "0" | null {
   try {
-    return localStorage.getItem(WANT_KEY) === "1";
+    const v = localStorage.getItem(WANT_KEY);
+    return v === "1" || v === "0" ? v : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -193,6 +221,7 @@ async function enableNow(backend: Backend): Promise<EnableResult> {
   }
   if (permission === "default") return "dismissed";
   if (permission !== "granted") return "denied";
+  if (viaOneSignal()) return enableOneSignal(backend);
   const reg = await readyRegistration();
   const subscribing = freshSubscription(reg);
   let sub: PushSubscription;
@@ -240,6 +269,7 @@ export function resumePush(backend: Backend): Promise<boolean> {
     return Promise.resolve(false);
   const run = (async () => {
     try {
+      if (viaOneSignal()) return await oneSignalCheck(backend);
       const reg = await readyRegistration();
       const old = await reg.pushManager.getSubscription();
       if (old) {
@@ -353,6 +383,11 @@ export function checkPush(backend: Backend): Promise<boolean> {
   const run = (async () => {
     if (!pushSupported() || Notification.permission !== "granted") return false;
     try {
+      if (viaOneSignal()) {
+        // OneSignal si carica quando l'app è già aperta: non rallenta l'avvio.
+        await sleep(1500);
+        return await oneSignalCheck(backend);
+      }
       const reg = await within(
         navigator.serviceWorker.getRegistration("/"),
         "app",
@@ -402,6 +437,18 @@ export function pushChecked(on: boolean) {
 
 export async function disablePush(backend: Backend): Promise<void> {
   setWantPush(false);
+  if (viaOneSignal()) {
+    const os = await within(loadOneSignal(), "app");
+    const id = os.User.PushSubscription.id;
+    await within(os.User.PushSubscription.optOut(), "iscrizione");
+    if (id)
+      await within(
+        backend.removePushSubscription(ONESIGNAL_PREFIX + id),
+        "salvataggio",
+      );
+    pushChecked(false);
+    return;
+  }
   const sub = await currentSubscription();
   if (!sub) return;
   await within(backend.removePushSubscription(sub.endpoint), "salvataggio");
@@ -434,9 +481,142 @@ export async function pushSnapshot(): Promise<string> {
     parts.push(
       sub ? `iscrizione ${new URL(sub.endpoint).host}` : "nessuna iscrizione",
     );
+    if (viaOneSignal())
+      parts.push(
+        lastOs
+          ? `OneSignal ${oneSignalId(lastOs) ?? "senza iscrizione"}`
+          : "OneSignal non caricato",
+      );
     parts.push(navigator.onLine ? "online" : "offline");
   } catch (e) {
     parts.push(errorText(e));
   }
   return parts.join(", ");
+}
+
+/** Lo stato da mostrare subito, prima del controllo completo. */
+export async function quickPushState(): Promise<boolean> {
+  if (!viaOneSignal()) return Boolean(await currentSubscription());
+  if (!pushSupported() || Notification.permission !== "granted") return false;
+  const wish = pushWish();
+  return (
+    wish === "1" || (wish === null && Boolean(await currentSubscription()))
+  );
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * OneSignal: il permesso lo chiediamo noi come prima (con i tempi massimi e l'aiuto), poi
+ * l'iscrizione la fa OneSignal. Sul server resta una riga "onesignal:<numero>" al posto
+ * dell'indirizzo del telefono: così le preferenze e i promemoria funzionano come prima.
+ * ------------------------------------------------------------------------------------------- */
+
+/** L'ultimo OneSignal caricato, per la segnalazione automatica. */
+let lastOs: OneSignalApi | null = null;
+const SAVED_KEY = "campetto:onesignal-id";
+
+async function openOneSignal(): Promise<OneSignalApi> {
+  const os = await within(loadOneSignal(), "app", 20_000);
+  lastOs = os;
+  watchOneSignal(os);
+  // Il nome sul pannello di OneSignal: utile per le prove, non blocca nulla.
+  if (who && !loggedIn) {
+    loggedIn = true;
+    void os.login(who.id).catch(() => {
+      loggedIn = false;
+    });
+  }
+  return os;
+}
+let loggedIn = false;
+
+/** Salva sul server l'iscrizione di OneSignal (e toglie quella vecchia di questo telefono). */
+async function saveOneSignal(backend: Backend, id: string) {
+  await backend.savePushSubscription({
+    endpoint: ONESIGNAL_PREFIX + id,
+    keys: { p256dh: "onesignal", auth: "onesignal" },
+  });
+  let prev: string | null = null;
+  try {
+    prev = localStorage.getItem(SAVED_KEY);
+    localStorage.setItem(SAVED_KEY, id);
+  } catch {
+    /* senza memoria locale la vecchia la ripulisce il server */
+  }
+  if (prev && prev !== id)
+    await backend
+      .removePushSubscription(ONESIGNAL_PREFIX + prev)
+      .catch(() => {});
+}
+
+/** La vecchia iscrizione del telefono (prima di OneSignal): via dal server. */
+function dropLegacy(
+  backend: Backend,
+  os: OneSignalApi,
+  legacy: PushSubscription | null,
+) {
+  if (legacy && legacy.endpoint !== os.User.PushSubscription.token)
+    void backend.removePushSubscription(legacy.endpoint).catch(() => {});
+}
+
+let watching = false;
+/** Se OneSignal cambia il numero dell'iscrizione, il server lo sa subito. */
+function watchOneSignal(os: OneSignalApi) {
+  if (watching) return;
+  watching = true;
+  os.User.PushSubscription.addEventListener("change", (e) => {
+    const id = e.current.id;
+    if (!id || !e.current.optedIn || !wantPush() || !savedBackend) return;
+    void saveOneSignal(savedBackend, id).catch(() => {});
+  });
+}
+let savedBackend: Backend | null = null;
+
+async function enableOneSignal(backend: Backend): Promise<EnableResult> {
+  savedBackend = backend;
+  const legacy = await currentSubscription();
+  const os = await openOneSignal();
+  const subscribing = oneSignalSubscribe(os);
+  let id: string;
+  try {
+    id = await within(subscribing, "iscrizione");
+  } catch (e) {
+    if (e instanceof PushStuck && e.timedOut) {
+      // OneSignal ci mette più del dovuto: se poi risponde, si finisce da soli.
+      void subscribing
+        .then((late) => saveOneSignal(backend, late))
+        .then(() => {
+          pushChecked(true);
+          window.dispatchEvent(new Event(PUSH_LATE_EVENT));
+        })
+        .catch(() => {});
+    }
+    throw e;
+  }
+  await within(saveOneSignal(backend, id), "salvataggio");
+  dropLegacy(backend, os, legacy);
+  pushChecked(true);
+  return "ok";
+}
+
+/**
+ * All'apertura (e quando il permesso arriva da fuori): chi aveva le notifiche passa a OneSignal
+ * da solo, senza chiedere nulla; chi le ha già con OneSignal controlla che il server lo sappia.
+ */
+async function oneSignalCheck(backend: Backend): Promise<boolean> {
+  savedBackend = backend;
+  if (!pushSupported() || Notification.permission !== "granted") return false;
+  const wish = pushWish();
+  const legacy = await currentSubscription();
+  if (wish === "0" || (wish === null && !legacy)) return false;
+  const os = await openOneSignal();
+  const id =
+    oneSignalId(os) ?? (await within(oneSignalSubscribe(os), "iscrizione"));
+  setWantPush(true);
+  const known = await within(
+    backend.hasPushSubscription(ONESIGNAL_PREFIX + id),
+    "salvataggio",
+  ).catch(() => true);
+  if (!known) await within(saveOneSignal(backend, id), "salvataggio");
+  dropLegacy(backend, os, legacy);
+  return true;
 }

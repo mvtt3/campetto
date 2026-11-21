@@ -14,6 +14,24 @@ export const VAPID_PUBLIC_KEY =
 export const APP_NAME = "Campetto";
 
 /**
+ * Notifiche con OneSignal. L'App ID è pubblico (finisce nel browser); la chiave per mandare
+ * (ONESIGNAL_REST_API_KEY) sta solo nelle variabili d'ambiente del server.
+ */
+export const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "";
+
+/**
+ * Chi riceve le notifiche con OneSignal: "admin" = solo l'amministratore (la prova sul suo
+ * telefono), "tutti" = tutti, "no" = nessuno (restano quelle di prima). Gli altri restano col
+ * sistema di prima finché non si passa a "tutti".
+ */
+export const ONESIGNAL_FOR = "admin" as "no" | "admin" | "tutti";
+
+/** Le notifiche di questo giocatore passano da OneSignal? */
+export const oneSignalFor = (me: { isAdmin: boolean } | null | undefined) =>
+  Boolean(ONESIGNAL_APP_ID) &&
+  (ONESIGNAL_FOR === "tutti" || (ONESIGNAL_FOR === "admin" && !!me?.isAdmin));
+
+/**
  * Campetto Star (il gioco): finché è false lo vede solo l'amministratore, per le prove.
  * Anche quello che si indossa nel gioco, nell'app, lo vede solo lui. Quando è pronto
  * per tutti si mette a true.

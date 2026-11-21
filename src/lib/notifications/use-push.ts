@@ -16,12 +16,13 @@ import {
   type PermissionHelp,
   type PushStep,
   checkPush,
-  currentSubscription,
+  configurePush,
   disablePush,
   enablePush,
   isIos,
   permissionHelp,
   pushSnapshot,
+  quickPushState,
   resumePush,
   watchPermission,
 } from "./push-client";
@@ -118,15 +119,18 @@ export function usePush() {
   /** Il permesso manca: dove andare a darlo (la pagina mostra i passaggi). */
   const [help, setHelp] = useState<PermissionHelp | null>(null);
 
+  const meId = me?.id ?? null;
+  const meAdmin = me?.isAdmin ?? false;
   useEffect(() => {
     // Prima quello che dice il telefono, poi la conferma del server (che ripara se serve).
+    configurePush(meId ? { id: meId, isAdmin: meAdmin } : null);
     let alive = true;
-    void currentSubscription().then((s) => alive && setOn(Boolean(s)));
+    void quickPushState().then((s) => alive && setOn(s));
     void checkPush(backend).then((ok) => alive && setOn(ok));
     return () => {
       alive = false;
     };
-  }, [backend]);
+  }, [backend, meId, meAdmin]);
 
   /** L'accensione arrivata da sola è già stata annunciata (può arrivare da due strade insieme). */
   const lateDone = useRef(false);
