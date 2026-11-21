@@ -44,7 +44,7 @@ function vapid(): boolean {
   return (vapidReady = true);
 }
 
-const oneSignalKey = () => process.env.ONESIGNAL_REST_API_KEY || "";
+const oneSignalKey = () => (process.env.ONESIGNAL_REST_API_KEY || "").trim();
 
 /** C'è almeno un modo di mandare notifiche? */
 export function pushReady(): boolean {

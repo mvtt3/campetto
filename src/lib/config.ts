@@ -17,7 +17,12 @@ export const APP_NAME = "Campetto";
  * Notifiche con OneSignal. L'App ID è pubblico (finisce nel browser); la chiave per mandare
  * (ONESIGNAL_REST_API_KEY) sta solo nelle variabili d'ambiente del server.
  */
-export const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "";
+export const ONESIGNAL_APP_ID =
+  process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID ||
+  "61dd1b95-5026-4044-a050-4443d500510f";
+/** Serve solo a Safari sul Mac: anche questo è pubblico. */
+export const ONESIGNAL_SAFARI_WEB_ID =
+  "web.onesignal.auto.017f9378-7499-4b97-8d47-e55f2bb151c0";
 
 /**
  * Chi riceve le notifiche con OneSignal: "admin" = solo l'amministratore (la prova sul suo

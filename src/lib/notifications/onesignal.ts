@@ -1,6 +1,6 @@
 "use client";
 
-import { ONESIGNAL_APP_ID } from "../config";
+import { ONESIGNAL_APP_ID, ONESIGNAL_SAFARI_WEB_ID } from "../config";
 
 /** La parte di OneSignal che usiamo (SDK web v16). */
 export interface OneSignalApi {
@@ -56,6 +56,7 @@ export function loadOneSignal(): Promise<OneSignalApi> {
       try {
         await os.init({
           appId: ONESIGNAL_APP_ID,
+          safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
           serviceWorkerPath: "sw.js",
           serviceWorkerParam: { scope: "/" },
           autoResubscribe: true,
