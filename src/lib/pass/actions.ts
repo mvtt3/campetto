@@ -12,12 +12,12 @@ import {
 } from "./catalog";
 import { seeded } from "./engine";
 import { todayKey, updatePass } from "./store";
+import { PASS_FOR_ALL, PASS_PREVIEW_FOR_ADMIN } from "./flags";
 
-/** Il pass si vede solo all'amministratore finché non si decide di pubblicarlo. */
-export const PASS_FOR_ALL = false;
+export { PASS_FOR_ALL, PASS_PREVIEW_FOR_ADMIN };
 
 export const passAllowed = (me: { isAdmin: boolean } | null | undefined) =>
-  PASS_FOR_ALL || !!me?.isAdmin;
+  PASS_FOR_ALL || (PASS_PREVIEW_FOR_ADMIN && !!me?.isAdmin);
 
 /** Cosa si può vincere a sorpresa: niente personaggi né esclusivi del pass. */
 const POOL = ITEMS.filter((i) => i.slot !== "skin" && !i.esclusivo);

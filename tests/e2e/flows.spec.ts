@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openApp, skipTour } from "./helpers";
 import { ONESIGNAL_APP_ID, ONESIGNAL_FOR } from "../../src/lib/config";
+import { PASS_ON } from "../../src/lib/pass/flags";
 
 test("dal login con Google si entra nell'app", async ({ page }) => {
   await page.goto("/?mock=reset");
@@ -1558,6 +1559,8 @@ test("notifiche: se la richiesta del telefono non arriva, Spicchio dice dove dar
 test("podio 3D: personaggi veri al loro posto, il tocco li fa esultare e la volta dopo le foto sono pronte", async ({
   page,
 }) => {
+  // Pass, collezione e 3D sono spenti per tutti (anche per l'amministratore): si riprova quando tornano.
+  test.skip(!PASS_ON, "pass e 3D spenti");
   test.setTimeout(90000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -1887,6 +1890,8 @@ test("profilo su un telefono senza giroscopio (Galaxy A05s): la carta si muove e
 test("collezione: carte trovate e da trovare, la carta si apre in 3D e si sfoglia", async ({
   page,
 }) => {
+  // Pass, collezione e 3D sono spenti per tutti (anche per l'amministratore): si riprova quando tornano.
+  test.skip(!PASS_ON, "pass e 3D spenti");
   // Il 3D nel browser di prova gira senza scheda video: è lento, serve più tempo.
   test.slow();
   await openApp(page, "demo", "light", "p1");
@@ -1924,6 +1929,8 @@ test("collezione: carte trovate e da trovare, la carta si apre in 3D e si sfogli
 test("pass: percorso a tabelloni con Sei qui, premi da riscattare tutti insieme", async ({
   page,
 }) => {
+  // Pass, collezione e 3D sono spenti per tutti (anche per l'amministratore): si riprova quando tornano.
+  test.skip(!PASS_ON, "pass e 3D spenti");
   await openApp(page, "demo", "light", "p1");
   await page.goto("/pass");
   await expect(page.getByTestId("pass-track")).toBeVisible();

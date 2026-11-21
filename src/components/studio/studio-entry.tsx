@@ -4,7 +4,7 @@ import { IconDeviceTv, IconPlayerPlayFilled } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { CourtLines } from "@/components/ui/basics";
 import { useData } from "@/lib/data/provider";
-import { STUDIO_LATEST, STUDIO_LIST } from "@/lib/studio";
+import { STUDIO_LATEST, STUDIO_LIST, STUDIO_PREVIEW } from "@/lib/studio";
 import { Presenter } from "./presenter";
 import { StudioShowLoader } from "./studio-show";
 
@@ -23,6 +23,25 @@ function loadLatest(): Promise<StudioLatest | null> {
   return cached;
 }
 
+let previewed: Promise<StudioLatest | null> | null = null;
+/**
+ * La puntata in anteprima (/studio/anteprima.json): la prova di una serata nuova che vede solo
+ * l'amministratore, come se fosse già uscita, prima di pubblicarla per tutti.
+ */
+function loadPreview(): Promise<StudioLatest | null> {
+  previewed ??= fetch(STUDIO_PREVIEW, { cache: "no-store" })
+    .then((r) => (r.ok ? (r.json() as Promise<StudioLatest>) : null))
+    .then((l) => (l && typeof l.id === "string" && typeof l.day === "string" ? l : null))
+    .catch(() => null);
+  return previewed;
+}
+
+/** Chi vede l'anteprima: l'amministratore vero (anche quando guarda l'app "da giocatore" no). */
+function usePreviewAllowed(): boolean {
+  const { me, playerView } = useData();
+  return Boolean(me?.isAdmin) && playerView.available && !playerView.on;
+}
+
 /** Lo Studio è per tutti quelli del gruppo. Nei dati di prova si accende con ?studio=1 (o =popup, senza aprirlo subito). */
 export function useStudioEnabled(): boolean {
   const { me, backend } = useData();
@@ -33,15 +52,18 @@ export function useStudioEnabled(): boolean {
 }
 
 export function useStudioLatest(enabled: boolean): StudioLatest | null {
+  const preview = usePreviewAllowed();
   const [latest, setLatest] = useState<StudioLatest | null>(null);
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
-    void loadLatest().then((l) => alive && setLatest(l));
+    void (preview ? loadPreview() : Promise.resolve(null))
+      .then((p) => p ?? loadLatest())
+      .then((l) => alive && setLatest(l));
     return () => {
       alive = false;
     };
-  }, [enabled]);
+  }, [enabled, preview]);
   return latest;
 }
 
@@ -82,15 +104,18 @@ function loadEpisodes(): Promise<StudioLatest[]> {
 /** La puntata di una serata (giorno "aaaa-mm-gg"), se c'è e se lo Studio è visibile. */
 export function useStudioEpisode(day: string): StudioLatest | null {
   const enabled = useStudioEnabled();
+  const preview = usePreviewAllowed();
   const [list, setList] = useState<StudioLatest[]>([]);
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
-    void loadEpisodes().then((l) => alive && setList(l));
+    void Promise.all([loadEpisodes(), preview ? loadPreview() : Promise.resolve(null)]).then(
+      ([l, p]) => alive && setList(p && !l.some((e) => e.id === p.id) ? [p, ...l] : l),
+    );
     return () => {
       alive = false;
     };
-  }, [enabled]);
+  }, [enabled, preview]);
   return enabled ? (list.find((e) => e.day === day) ?? null) : null;
 }
 

@@ -380,6 +380,8 @@ export function duelWinners(state: StudioDuelState | null | undefined, kind: Stu
 export const STUDIO_LATEST = "/studio/ultima.json";
 /** Tutte le puntate uscite (una per serata), dalla più recente. */
 export const STUDIO_LIST = "/studio/puntate.json";
+/** La puntata in anteprima: c'è solo finché l'amministratore non la pubblica, e la vede solo lui. */
+export const STUDIO_PREVIEW = "/studio/anteprima.json";
 export const studioUrl = (id: string) => `/studio/${id}.json`;
 
 /** Lo studio è disegnato su 390×844: le inquadrature sono uno zoom su questo spazio. */
