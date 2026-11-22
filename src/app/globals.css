@@ -2298,6 +2298,85 @@ html[data-shot="3"] .intro-ball-x {
 .hl-stage video {
   background: transparent;
 }
+/* "Schermo intero" sotto il video orizzontale, come su TikTok: sale dal basso e il telefono
+   dell'icona si gira di traverso due volte, poi resta fermo. */
+.hl-turn-hint {
+  top: calc(50% + min(50%, 50vw * var(--hl-ar, 0.5625)) + 12px);
+  transform: translateX(-50%);
+  animation: hl-turn-in 420ms cubic-bezier(0.2, 0.9, 0.25, 1.15) 900ms both;
+}
+.hl-turn-icon .hl-turn-phone {
+  transform-origin: 12px 12px;
+  animation: hl-turn-phone 2.4s ease-in-out 1.4s 2;
+}
+.hl-turn-icon .hl-turn-arrow {
+  animation: hl-turn-arrow 2.4s ease-in-out 1.4s 2;
+}
+@keyframes hl-turn-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+@keyframes hl-turn-phone {
+  0%,
+  15% {
+    transform: rotate(0deg);
+  }
+  40%,
+  70% {
+    transform: rotate(90deg);
+  }
+  95%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes hl-turn-arrow {
+  0%,
+  15%,
+  95%,
+  100% {
+    opacity: 1;
+  }
+  40%,
+  70% {
+    opacity: 0.25;
+  }
+}
+/* A schermo intero: la scena copre tutto e il video è girato di 90°; l'app resta in verticale. */
+.hl-stage.hl-land {
+  inset: 0;
+  z-index: 40;
+  background: #000;
+  container-type: size;
+}
+.hl-land .hl-turn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.hl-land .hl-turn video {
+  object-fit: contain;
+}
+.hl-land-exit {
+  margin-top: env(safe-area-inset-left, 0px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hl-turn-hint,
+  .hl-turn-icon .hl-turn-phone,
+  .hl-turn-icon .hl-turn-arrow {
+    animation: none;
+  }
+}
+
 .hl-top {
   padding-top: var(--sat);
   height: calc(var(--sat) + 56px);

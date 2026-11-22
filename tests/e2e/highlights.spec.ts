@@ -856,3 +856,56 @@ test("notizie nuove: il pallino sulla scheda la prima volta, poi spariscono tutt
   await expect(page.getByTestId("news-highlights")).toBeVisible();
   await expect(page.locator("[data-fresh]")).toHaveCount(0);
 });
+
+test("video orizzontale: 'Schermo intero' sotto il video, il video si gira e si torna indietro", async ({
+  page,
+}) => {
+  await openFeed(page);
+  await waitPlaying(page);
+  const hint = active(page).getByTestId("hl-turn");
+  await expect(hint).toBeVisible({ timeout: 4000 });
+  // Sta sotto il video, non sopra.
+  const video = await active(page).getByTestId("hl-video").boundingBox();
+  const vRatio = await page.evaluate(() => {
+    const v = document.querySelector<HTMLVideoElement>("[data-active] video")!;
+    return v.videoHeight / v.videoWidth;
+  });
+  const shown = video!.width * vRatio;
+  const hintBox = await hint.boundingBox();
+  expect(hintBox!.y).toBeGreaterThan(video!.y + (video!.height + shown) / 2);
+  await hint.click();
+  const stage = active(page).getByTestId("hl-stage");
+  await expect(stage).toHaveAttribute("data-land", "1");
+  await expect(hint).toHaveCount(0);
+  // Il video gira di 90° e riempie lo schermo per lungo.
+  const turned = await page.evaluate(() => {
+    const t = document.querySelector<HTMLElement>("[data-active] .hl-turn")!;
+    const r = t.getBoundingClientRect();
+    return { w: r.width, h: r.height, vw: innerWidth, vh: innerHeight };
+  });
+  expect(Math.abs(turned.w - turned.vw)).toBeLessThan(2);
+  expect(Math.abs(turned.h - turned.vh)).toBeLessThan(2);
+  // Il video continua a scorrere.
+  const t0 = (await videoState(page))!.t;
+  await expect
+    .poll(async () => (await videoState(page))!.t, { timeout: 4000 })
+    .toBeGreaterThan(t0 + 0.3);
+  await page.getByTestId("hl-land-exit").click();
+  await expect(stage).not.toHaveAttribute("data-land", "1");
+  await expect(active(page).getByTestId("hl-turn")).toBeVisible();
+});
+
+test("video verticale: niente 'Schermo intero'", async ({ page }) => {
+  await openFeed(page);
+  await waitPlaying(page);
+  // hl-3 è verticale: ci si arriva scorrendo due volte.
+  for (let i = 0; i < 2; i++) {
+    const before = await activeIndex(page);
+    await page.mouse.move(200, 500);
+    await page.mouse.wheel(0, 900);
+    await expect.poll(() => activeIndex(page)).toBeGreaterThan(before);
+  }
+  await waitPlaying(page);
+  await page.waitForTimeout(1500);
+  await expect(active(page).getByTestId("hl-turn")).toHaveCount(0);
+});

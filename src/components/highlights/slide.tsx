@@ -29,6 +29,7 @@ import { Mascot } from "@/components/mascot";
 import { compactCount, tickerText, type TickerItem } from "@/lib/highlights";
 import type { Highlight } from "@/lib/types";
 import { BallIcon } from "./ball-icon";
+import { LandExit, TurnHint, tapInView, useLandscape } from "./landscape";
 
 export interface SlideProps {
   h: Highlight;
@@ -77,6 +78,11 @@ export const Slide = memo(function Slide(p: SlideProps) {
   const [failed, setFailed] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
   const [portrait, setPortrait] = useState(false);
+  // Il video orizzontale: altezza / larghezza (per mettere "Schermo intero" subito sotto).
+  const [ratio, setRatio] = useState<number | null>(null);
+  const stageEl = useRef<HTMLDivElement>(null);
+  const landBar = useRef<HTMLDivElement>(null);
+  const { land, enter: enterLand, exit: exitLand } = useLandscape(stageEl);
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number }[]>(
     [],
   );
@@ -205,6 +211,11 @@ export const Slide = memo(function Slide(p: SlideProps) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [active, play]);
 
+  // Scorrendo via (o tornando indietro) lo schermo intero si chiude.
+  useEffect(() => {
+    if (!active && land) exitLand();
+  }, [active, land, exitLand]);
+
   // La barra di avanzamento: un requestAnimationFrame che tocca solo lo stile.
   useEffect(() => {
     if (!active) return;
@@ -213,6 +224,8 @@ export const Slide = memo(function Slide(p: SlideProps) {
       const el = video.current;
       if (el && bar.current && el.duration > 0 && !scrubbing.current) {
         bar.current.style.transform = `scaleX(${Math.min(1, el.currentTime / el.duration)})`;
+        if (landBar.current)
+          landBar.current.style.transform = bar.current.style.transform;
         seekEl.current?.setAttribute(
           "aria-valuenow",
           String(Math.round(el.currentTime)),
@@ -315,16 +328,14 @@ export const Slide = memo(function Slide(p: SlideProps) {
       tapTimer.current = null;
       lastTap.current = 0;
       const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const x = (e.clientX - box.left) / Math.max(1, box.width);
-      if (x < 0.3 || x > 0.7) {
-        skipBy(x < 0.3 ? "l" : "r");
+      // A schermo intero il video è girato: destra e sinistra sono quelle di chi guarda.
+      const at = tapInView(e, box, land);
+      if (at.fx < 0.3 || at.fx > 0.7) {
+        skipBy(at.fx < 0.3 ? "l" : "r");
         return;
       }
       const id = now;
-      setBursts((b) => [
-        ...b.slice(-3),
-        { id, x: e.clientX - box.left, y: e.clientY - box.top },
-      ]);
+      setBursts((b) => [...b.slice(-3), { id, x: at.x, y: at.y }]);
       window.setTimeout(
         () => setBursts((b) => b.filter((x) => x.id !== id)),
         800,
@@ -381,134 +392,166 @@ export const Slide = memo(function Slide(p: SlideProps) {
       )}
 
       <div
-        className={clsx("hl-stage absolute", portrait && "hl-stage-full")}
+        ref={stageEl}
+        className={clsx(
+          "hl-stage absolute",
+          portrait && "hl-stage-full",
+          land && "hl-land",
+        )}
+        style={
+          ratio ? ({ "--hl-ar": ratio } as React.CSSProperties) : undefined
+        }
         onClick={onTap}
         data-testid="hl-stage"
+        data-land={land ? "1" : undefined}
       >
-        {near ? (
-          <video
-            ref={video}
-            src={h.videoUrl}
-            poster={h.posterUrl ?? undefined}
-            preload={active ? "auto" : p.preload}
-            playsInline
-            muted
-            // Niente audio dai video, mai: si sente solo la musica del feed.
-            onVolumeChange={(e) => {
-              if (!e.currentTarget.muted) e.currentTarget.muted = true;
-            }}
-            disablePictureInPicture
-            disableRemotePlayback
-            controlsList="nodownload noplaybackrate noremoteplayback"
-            className={clsx(
-              "h-full w-full",
-              portrait ? "object-cover" : "object-contain",
-            )}
-            onLoadedMetadata={(e) => {
-              const v = e.currentTarget;
-              setPortrait(v.videoHeight > v.videoWidth * 1.1);
-            }}
-            onWaiting={() => setLoading(true)}
-            onPlaying={() => {
-              setLoading(false);
-              setFailed(false);
-            }}
-            onCanPlay={(e) => {
-              setLoading(false);
-              // Arrivato dopo essere diventato attivo: parte adesso.
-              if (
-                activeRef.current &&
-                e.currentTarget.paused &&
-                !userPausedRef.current
-              )
-                void play();
-            }}
-            onEnded={() => onEnded(index)}
-            onError={onVideoError}
-            data-testid="hl-video"
-          />
-        ) : (
-          h.posterUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={h.posterUrl}
-              alt=""
-              loading="lazy"
-              className="h-full w-full object-contain"
+        {active && !portrait && ratio && !land && !failed && !scrub && (
+          <TurnHint onOpen={() => void enterLand()} />
+        )}
+        <div className="hl-turn relative h-full w-full">
+          {near ? (
+            <video
+              ref={video}
+              src={h.videoUrl}
+              poster={h.posterUrl ?? undefined}
+              preload={active ? "auto" : p.preload}
+              playsInline
+              muted
+              // Niente audio dai video, mai: si sente solo la musica del feed.
+              onVolumeChange={(e) => {
+                if (!e.currentTarget.muted) e.currentTarget.muted = true;
+              }}
+              disablePictureInPicture
+              disableRemotePlayback
+              controlsList="nodownload noplaybackrate noremoteplayback"
+              className={clsx(
+                "h-full w-full",
+                portrait ? "object-cover" : "object-contain",
+              )}
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                setPortrait(v.videoHeight > v.videoWidth * 1.1);
+                if (v.videoWidth > 0) setRatio(v.videoHeight / v.videoWidth);
+              }}
+              onWaiting={() => setLoading(true)}
+              onPlaying={() => {
+                setLoading(false);
+                setFailed(false);
+              }}
+              onCanPlay={(e) => {
+                setLoading(false);
+                // Arrivato dopo essere diventato attivo: parte adesso.
+                if (
+                  activeRef.current &&
+                  e.currentTarget.paused &&
+                  !userPausedRef.current
+                )
+                  void play();
+              }}
+              onEnded={() => {
+                // Finito a schermo intero: si torna al feed, poi si passa al prossimo.
+                if (land) exitLand();
+                onEnded(index);
+              }}
+              onError={onVideoError}
+              data-testid="hl-video"
             />
-          )
-        )}
+          ) : (
+            h.posterUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={h.posterUrl}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-contain"
+              />
+            )
+          )}
 
-        {bursts.map((b) => (
-          <span
-            key={b.id}
-            className="hl-burst pointer-events-none absolute"
-            style={{ left: b.x, top: b.y }}
-            aria-hidden
-          >
-            <BallIcon size={86} filled />
-          </span>
-        ))}
+          {bursts.map((b) => (
+            <span
+              key={b.id}
+              className="hl-burst pointer-events-none absolute"
+              style={{ left: b.x, top: b.y }}
+              aria-hidden
+            >
+              <BallIcon size={86} filled />
+            </span>
+          ))}
 
-        {skip && (
-          <span
-            key={skip.id}
-            className={clsx(
-              "hl-skip pointer-events-none absolute top-1/2 flex -translate-y-1/2 flex-col items-center gap-0.5 rounded-full px-5 py-4 text-[13px] font-bold text-[#f6eedc]",
-              skip.side === "l" ? "left-[8%]" : "right-[8%]",
-            )}
-            data-testid="hl-skip"
-            aria-hidden
-          >
-            {skip.side === "l" ? (
-              <IconChevronsLeft size={30} strokeWidth={2.4} />
-            ) : (
-              <IconChevronsRight size={30} strokeWidth={2.4} />
-            )}
-            10 s
-          </span>
-        )}
+          {skip && (
+            <span
+              key={skip.id}
+              className={clsx(
+                "hl-skip pointer-events-none absolute top-1/2 flex -translate-y-1/2 flex-col items-center gap-0.5 rounded-full px-5 py-4 text-[13px] font-bold text-[#f6eedc]",
+                skip.side === "l" ? "left-[8%]" : "right-[8%]",
+              )}
+              data-testid="hl-skip"
+              aria-hidden
+            >
+              {skip.side === "l" ? (
+                <IconChevronsLeft size={30} strokeWidth={2.4} />
+              ) : (
+                <IconChevronsRight size={30} strokeWidth={2.4} />
+              )}
+              10 s
+            </span>
+          )}
 
-        {active && userPaused && !failed && (
-          <span className="hl-paused pointer-events-none absolute left-1/2 top-1/2 grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#17130f]/45 text-[#f6eedc]">
-            <IconPlayerPlayFilled size={34} fill="currentColor" aria-hidden />
-          </span>
-        )}
+          {active && userPaused && !failed && (
+            <span className="hl-paused pointer-events-none absolute left-1/2 top-1/2 grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#17130f]/45 text-[#f6eedc]">
+              <IconPlayerPlayFilled size={34} fill="currentColor" aria-hidden />
+            </span>
+          )}
 
-        {showLoader && !failed && (
-          <div
-            className="pointer-events-none absolute inset-0 grid place-items-center"
-            role="status"
-            aria-label="Arriva il video"
-            data-testid="hl-loading"
-          >
-            <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#f6eedc]/25 border-t-[#f6eedc]" />
-          </div>
-        )}
-
-        {failed && (
-          <div
-            className="absolute inset-0 grid place-items-center"
-            role="alert"
-            data-testid="hl-error"
-          >
-            <div className="flex flex-col items-center gap-2 rounded-[22px] bg-[#17130f]/60 px-5 py-4 text-center text-[#f6eedc]">
-              <Mascot pose="boh" size={64} animate={false} />
-              <p className="text-[14px] font-semibold">
-                Il video non vuole partire
-              </p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  retry();
-                }}
-                className="press flex h-10 items-center gap-1.5 rounded-full bg-[#f47a2e] px-4 text-[14px] font-bold text-[#fffaf0]"
-              >
-                <IconRotate size={16} aria-hidden /> Riprova
-              </button>
+          {showLoader && !failed && (
+            <div
+              className="pointer-events-none absolute inset-0 grid place-items-center"
+              role="status"
+              aria-label="Arriva il video"
+              data-testid="hl-loading"
+            >
+              <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#f6eedc]/25 border-t-[#f6eedc]" />
             </div>
-          </div>
-        )}
+          )}
+
+          {failed && (
+            <div
+              className="absolute inset-0 grid place-items-center"
+              role="alert"
+              data-testid="hl-error"
+            >
+              <div className="flex flex-col items-center gap-2 rounded-[22px] bg-[#17130f]/60 px-5 py-4 text-center text-[#f6eedc]">
+                <Mascot pose="boh" size={64} animate={false} />
+                <p className="text-[14px] font-semibold">
+                  Il video non vuole partire
+                </p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    retry();
+                  }}
+                  className="press flex h-10 items-center gap-1.5 rounded-full bg-[#f47a2e] px-4 text-[14px] font-bold text-[#fffaf0]"
+                >
+                  <IconRotate size={16} aria-hidden /> Riprova
+                </button>
+              </div>
+            </div>
+          )}
+
+          {land && (
+            <>
+              <LandExit onExit={exitLand} />
+              <div className="hl-land-progress pointer-events-none absolute inset-x-0 bottom-0 z-[7] h-[3px] bg-[#f6eedc]/25">
+                <div
+                  ref={landBar}
+                  className="h-full origin-left bg-[#ef7d2d]"
+                  style={{ transform: "scaleX(0)" }}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Avanzamento: sottile sul bordo basso del video. Si tocca e si trascina per andare avanti
