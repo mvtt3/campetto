@@ -952,6 +952,10 @@ async def main():
     for start, a in voice_track:
         i = int(start * SR)
         voice[i:i + len(a)] += a
+    # Le voci di Gemini nascono a 24 kHz: sopra gli 11 kHz resta solo il residuo del cambio di
+    # frequenza sulle "s", che dopo la compressione AAC fa picchi oltre lo zero (si sente gracchiare).
+    from scipy.signal import butter, sosfiltfilt
+    voice = sosfiltfilt(butter(8, 11000, "low", fs=SR, output="sos"), voice).astype(np.float32)
 
     # Effetti: un fruscio leggero quando cambia la grafica (rumore filtrato che sale e scende).
     sfx = np.zeros(total, dtype=np.float32)
@@ -1031,15 +1035,28 @@ async def main():
     # Guadagno fisso fino a -15 LUFS, poi il limitatore (a 192 kHz, così prende anche i picchi
     # tra un campione e l'altro). Dopo la compressione AAC i picchi possono risalire: si misura e,
     # se serve, si limita un po' di più.
+    # Senza la "sostituzione del rumore" dell'encoder AAC (PNS): sulle "s" e sui piatti inventava
+    # picchi fino a +8 dB. Se il limitatore non basta si abbassa un poco tutto, e alla peggio si
+    # tiene il tentativo migliore.
     gain = -15.0 - float(js["input_i"])
-    for limit in (0.74, 0.66, 0.58, 0.5):
+    final = os.path.join(out, audio_name)
+    best = None
+    for drop, limit in ((0, 0.74), (0, 0.66), (0, 0.58), (0, 0.5), (-1, 0.5), (-2, 0.5), (-3, 0.5)):
+        tmp = os.path.join(out, f"prova-{drop}-{limit}.m4a")
         run(["ffmpeg", "-v", "error", "-y", "-i", raw_wav, "-af",
-             f"volume={gain:.2f}dB,aresample=192000,alimiter=limit={limit}:attack=2:release=80:level=false,aresample={SR}",
-             "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", os.path.join(out, audio_name)])
-        chk = run(["ffmpeg", "-v", "info", "-i", os.path.join(out, audio_name), "-af", "loudnorm=print_format=json", "-f", "null", "-"]).stderr.decode()
+             f"volume={gain + drop:.2f}dB,aresample=192000,alimiter=limit={limit}:attack=2:release=80:level=false,aresample={SR}",
+             "-c:a", "aac", "-b:a", "160k", "-aac_pns", "0", "-movflags", "+faststart", tmp])
+        chk = run(["ffmpeg", "-v", "info", "-i", tmp, "-af", "loudnorm=print_format=json", "-f", "null", "-"]).stderr.decode()
         tp = float(json.loads(chk[chk.rindex("{"): chk.rindex("}") + 1])["input_tp"])
+        if best is None or tp < best[0]:
+            if best:
+                os.remove(best[1])
+            best = (tp, tmp)
+        else:
+            os.remove(tmp)
         if tp <= -1.5:
             break
+    os.replace(best[1], final)
 
     show = {
         "v": 2,
