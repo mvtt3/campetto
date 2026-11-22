@@ -940,6 +940,9 @@ function Body({ screen }: { screen: StudioScreen }) {
       // Fino a quattro sono schede con la figura; di più, una lista a due colonne che resta leggibile.
       const n = screen.items.length;
       const list = n > 4;
+      // Con tante azioni (più di 12) le righe si stringono, così la lista entra tutta nello schermo e
+      // non sembra che continui sotto.
+      const dense = n > 12;
       return (
         <>
           <CourtBg />
@@ -947,16 +950,20 @@ function Body({ screen }: { screen: StudioScreen }) {
             <Chip tone="volt" icon={IconFlame}>
               {screen.kicker}
             </Chip>
-            <p className="studio-in display mt-2 text-[26px] leading-[1.02]" style={at(0.15)}>
+            <p className={clsx("studio-in display leading-[1.02]", dense ? "mt-1 text-[22px]" : "mt-2 text-[26px]")} style={at(0.15)}>
               {screen.title}
             </p>
             {list ? (
-              <div className="mt-3 grid flex-1 grid-cols-2 content-start gap-x-2 gap-y-1.5">
+              <div className={clsx("grid flex-1 grid-cols-2 content-start gap-x-2", dense ? "mt-2 gap-y-1" : "mt-3 gap-y-1.5")}>
                 {screen.items.map((id, i) => (
-                  <div key={i} className="studio-in flex min-w-0 items-center gap-1.5 rounded-full bg-white/12 py-1 pl-1 pr-2" style={at(0.3 + i * 0.07)}>
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-volt text-[12px] font-black text-volt-ink">{i + 1}</span>
-                    <Avatar player={player(id)} size={24} href={false} ring="none" />
-                    <span className="min-w-0 truncate text-[12.5px] font-bold">{name(id)}</span>
+                  <div
+                    key={i}
+                    className={clsx("studio-in flex min-w-0 items-center rounded-full bg-white/12 pl-0.5", dense ? "gap-1 py-0.5 pr-1.5" : "gap-1.5 py-1 pl-1 pr-2")}
+                    style={at(0.3 + i * (dense ? 0.04 : 0.07))}
+                  >
+                    <span className={clsx("grid shrink-0 place-items-center rounded-full bg-volt font-black text-volt-ink", dense ? "h-[18px] w-[18px] text-[10px]" : "h-6 w-6 text-[12px]")}>{i + 1}</span>
+                    <Avatar player={player(id)} size={dense ? 18 : 24} href={false} ring="none" />
+                    <span className={clsx("min-w-0 truncate font-bold", dense ? "text-[11px]" : "text-[12.5px]")}>{name(id)}</span>
                   </div>
                 ))}
               </div>

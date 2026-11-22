@@ -811,7 +811,8 @@ async def main():
             if is_top and li < len(top_seg):
                 it = top_seg[li]
                 it["t"] = round(top_cursor, 3)
-                it["d"] = round(max(TOP_MIN, (t + d + 0.9) - top_cursor, it.get("post", TOP_POST) + 2.2), 2)
+                # "min": l'azione dura almeno tanto (per vedere tutto: il passaggio, il crossover...).
+                it["d"] = round(max(TOP_MIN, it.get("min", 0), (t + d + 0.9) - top_cursor, it.get("post", TOP_POST) + 2.2), 2)
                 top_cursor = round(top_cursor + it["d"], 3)
                 top_items.append(it)
                 t = top_cursor

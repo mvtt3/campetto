@@ -316,7 +316,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const guestPlate = useRef<HTMLDivElement>(null);
   const chromeTimer = useRef(0);
   const clock = useRef({ t: startAt, at: 0, running: false, audioOk: true });
-  const smooth = useRef({ lui: { mouth: 0, look: 0 }, lei: { mouth: 0, look: 0 }, ospite: { mouth: 0, look: 0 } });
+  const smooth = useRef({ lui: { mouth: 0, look: 0, turn: 1 }, lei: { mouth: 0, look: 0, turn: 1 }, ospite: { mouth: 0, look: 0, turn: 1 } });
   const rigs = useRef<{ lui?: Rig; lei?: Rig }>({});
 
   const [playing, setPlaying] = useState(false);
@@ -613,7 +613,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
           : wx !== null
             ? Math.max(-1, Math.min(1, (wx - hostX) / 60))
             : lookAt(line, who, t, g.on && g.seat > 0.5);
-        sm.look += (look - sm.look) * 0.14;
+        // Chi passa veloce lo seguono anche con la testa (di più) e con lo sguardo più pronto.
+        sm.look += (look - sm.look) * (wx !== null ? 0.3 : 0.14);
+        sm.turn += ((wx !== null ? 2 : 1) - sm.turn) * 0.12;
         const dx = `translateX(${shift.toFixed(2)}px)`;
         const listening = line && line.who !== who;
         // Si scrive solo sui pezzi che si muovono, e solo quando cambiano (a passi piccoli ma
@@ -626,8 +628,8 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         // Busto, testa e viso sono livelli a sé (si spostano senza ridisegnare): qui anche a passi fini.
         const u = rig.u;
         put(rig.breath, "transform", `translate3d(0, ${(Math.sin(t * 1.5 + (who === "lui" ? 0 : 1.7)) * 1.8 * u).toFixed(2)}px, 0)`);
-        put(rig.head, "transform", `rotate(${(sm.look * 4).toFixed(2)}deg) translate3d(0, ${(nod * 2.5 * u).toFixed(2)}px, 0)`);
-        put(rig.face, "transform", `translate3d(${(sm.look * 7 * u).toFixed(2)}px, 0, 0)`);
+        put(rig.head, "transform", `rotate(${(sm.look * 4 * sm.turn).toFixed(2)}deg) translate3d(0, ${(nod * 2.5 * u).toFixed(2)}px, 0)`);
+        put(rig.face, "transform", `translate3d(${(sm.look * 7 * Math.min(sm.turn, 1.5) * u).toFixed(2)}px, 0, 0)`);
         // Le pupille a mezzo punto per volta: si vedono uguali e si ridisegnano molto meno.
         const pupil = `translateX(${(Math.round(sm.look * 6) / 2).toFixed(1)}px)`;
         for (const p of rig.pupils) put(p, "transform", pupil);
@@ -1665,9 +1667,11 @@ const WalkerInStudio = memo(function WalkerInStudio({ walk, boxRef }: { walk: St
   const id = characterOf(player);
   const vh = 185 + (KIT[id]?.legs ?? 0);
   const back = walk.layer === "dietro";
-  const h = Math.round(GUEST_H * (back ? 0.8 : 1));
+  // Dietro: cammina sul pavimento alle spalle delle sedie (i piedi a terra dietro la scrivania, o sul
+  // pavimento ai lati), un po' più piccolo perché più lontano. Davanti: davanti alla scrivania.
+  const h = Math.round(GUEST_H * (back ? 0.9 : 1));
   const w = (h * 100) / vh;
-  const top = back ? 330 : 522;
+  const top = back ? 628 - h : 522;
   const eyes = walk.eyes === "sonno" ? SLEEPY[id] : undefined;
   const [my, mw] = MOUTH[id] ?? [62, 0.85];
   // Va verso sinistra: lo si specchia, così guarda dove va (le scritte sulla maglia solo verso destra).
