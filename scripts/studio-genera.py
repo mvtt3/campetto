@@ -53,6 +53,7 @@ PAUSE_MAX = 0.6   # il silenzio più lungo ammesso dentro una battuta
 PAUSE_KEEP = 0.32 # e a quanto si accorcia
 MIN_SCREEN = 4.6  # ogni grafica resta a tutto schermo almeno tanto: il tempo di leggerla
 TOP_MIN = 4.4     # ogni azione dura almeno tanto (altrimenti quanto la battuta che la commenta)
+TOP_SAY_END = 1.0  # la battuta di un'azione finisce tanto dopo il tiro (la palla è entrata)
 
 src, out, music_path = sys.argv[1], sys.argv[2], sys.argv[3]
 public_dir = sys.argv[4] if len(sys.argv) > 4 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public")
@@ -770,6 +771,26 @@ async def main():
                         w[2] = round(max(w[1] + 0.05, min(w[2], c0)), 3)
             if cuts:
                 d = len(a) / SR
+            if is_top and li < len(top_seg):
+                # La battuta va con l'azione del suo video: finisce un attimo dopo il tiro ("dentro"
+                # quando la palla entra), oppure una parola scelta cade in un momento preciso
+                # ("sayAt": {"word": "finta", "t": -1,8} = la parola "finta" 1,8 s prima del tiro).
+                # Così la voce non resta indietro sul video dopo, né anticipa il canestro.
+                it0 = top_seg[li]
+                post0 = it0.get("post", TOP_POST)
+                lead0 = max(TOP_MIN, it0.get("min", 0), post0 + 2.2) - post0
+                at = it0.get("sayAt") or {}
+                ref, rel_t = d, float(at.get("t", TOP_SAY_END))
+                if at.get("word"):
+                    hit = next((w for w in ws if norm(w[0]).startswith(norm(at["word"]))), None)
+                    if hit:
+                        ref = hit[1]
+                lead = max(lead0, ref - rel_t + 0.45)
+                t = top_cursor + lead + rel_t - ref
+                # Se la battuta finisce tardi si tiene più video dopo il tiro (il tiro resta al suo posto).
+                post0 = max(post0, round((t + d + 0.5) - (top_cursor + lead), 2))
+                it0["post"] = post0
+                it0["lead"] = round(lead, 2)
             cam = line.get("cam", seg["cam"])
             if visiting and not talk and li == 0 and "cam" not in line:
                 cam = "visita"  # la risposta all'offerta: si resta sul primo piano dei due
@@ -812,7 +833,7 @@ async def main():
                 it = top_seg[li]
                 it["t"] = round(top_cursor, 3)
                 # "min": l'azione dura almeno tanto (per vedere tutto: il passaggio, il crossover...).
-                it["d"] = round(max(TOP_MIN, it.get("min", 0), (t + d + 0.9) - top_cursor, it.get("post", TOP_POST) + 2.2), 2)
+                it["d"] = round(it.pop("lead") + it["post"], 2)
                 top_cursor = round(top_cursor + it["d"], 3)
                 top_items.append(it)
                 t = top_cursor
