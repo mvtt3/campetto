@@ -408,8 +408,13 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   // Qui il tempo scorre liscio con performance.now() e si riallinea all'audio piano piano a ogni suo
   // nuovo valore; se l'audio salta (seek) ci si rimette subito, se si blocca (rete) ci si ferma con lui.
   const sync = useRef({ ok: false, base: 0, at: 0, last: -1, lastAt: 0, out: 0 });
+  // Le azioni aspettano il loro video: se sul telefono il video dei migliori sta ancora caricando,
+  // la voce si ferma con lui (come un player che carica), così non racconta un'azione mentre se ne
+  // vede un'altra. "since": da quando il video non è pronto (un intoppo brevissimo non ferma niente).
+  const hold = useRef({ on: false, since: 0 });
   const now = useCallback(() => {
     const c = clock.current;
+    if (hold.current.on) return c.t;
     const a = audio.current;
     const s = sync.current;
     if (a && c.audioOk && !a.paused && a.readyState >= 2) {
@@ -457,6 +462,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const start = useCallback(async () => {
     const c = clock.current;
     const a = audio.current;
+    hold.current = { on: false, since: 0 };
     // Su iPhone: da qui l'audio è quello di un video, si sente anche col silenzioso.
     setMediaAudio("studio", true);
     c.at = performance.now();
@@ -492,6 +498,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     const c = clock.current;
     c.t = now();
     c.running = false;
+    hold.current = { on: false, since: 0 };
     audio.current?.pause();
     videos.current.forEach((v) => v?.pause());
     topVideo.current?.pause();
@@ -811,12 +818,38 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       const tv = topVideo.current;
       if (tv && show.top) {
         const inTop = m === "top";
-        // Tra poco tocca alle azioni e il video intero non è ancora arrivato: si passa alla rete.
-        if (topSrcRef.current === null && (inTop || topStarts.some((s0) => s0 > t && s0 - t < 8))) {
+        // Tra poco tocca alle azioni e il video intero non è ancora arrivato: si passa alla rete
+        // (mezzo minuto prima: sul telefono con poca rete deve fare in tempo a caricarsi).
+        if (topSrcRef.current === null && (inTop || topStarts.some((s0) => s0 > t && s0 - t < 30))) {
           topSrcRef.current = show.top.src;
           setTopSrc(show.top.src);
         }
         const live = syncVideo(tv, t - show.top.t0, c.running, inTop, !inTop) && inTop;
+        if (c.running) {
+          const want = t - show.top.t0;
+          const len = Number.isFinite(tv.duration) ? tv.duration : Infinity;
+          const needs = inTop && want > 0.05 && want < len - 0.3;
+          const ready = tv.readyState >= 3 && !tv.seeking && Math.abs(tv.currentTime - want) < 0.6;
+          const h = hold.current;
+          const p = performance.now();
+          if (needs && !ready && !h.on) {
+            if (!h.since) h.since = p;
+            else if (p - h.since > 250) {
+              h.on = true;
+              c.t = t;
+              audio.current?.pause();
+            }
+          } else if (h.on && (!needs || ready)) {
+            hold.current = { on: false, since: 0 };
+            c.at = p;
+            sync.current.ok = false;
+            const a = audio.current;
+            if (a && c.audioOk) {
+              if (Math.abs(a.currentTime - c.t) > 0.05) a.currentTime = c.t;
+              void a.play().catch(() => {});
+            }
+          } else if (!h.on && (ready || !needs)) h.since = 0;
+        }
         // Fuori dalle azioni il video resta visibile sul suo fotogramma (la sezione intera è trasparente):
         // all'uscita sfuma l'azione sullo studio, senza un fotogramma scuro in mezzo.
         if (!inTop && tv.style.opacity !== "1") tv.style.opacity = "1";
