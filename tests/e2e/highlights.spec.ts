@@ -885,6 +885,25 @@ test("video orizzontale: 'Schermo intero' sotto il video, il video si gira e si 
   });
   expect(Math.abs(turned.w - turned.vw)).toBeLessThan(2);
   expect(Math.abs(turned.h - turned.vh)).toBeLessThan(2);
+  // Copre tutto lo schermo, dall'alto: niente testata del feed sopra e niente fascia nera sotto.
+  const cover = await page.evaluate(() => {
+    const st = document.querySelector<HTMLElement>(
+      "[data-active] [data-land]",
+    )!;
+    const r = st.getBoundingClientRect();
+    const top = document.querySelector<HTMLElement>(".hl-top")!;
+    return {
+      top: r.top,
+      h: r.height,
+      vh: innerHeight,
+      scroll: st.parentElement!.scrollTop,
+      head: getComputedStyle(top).visibility,
+    };
+  });
+  expect(Math.abs(cover.top)).toBeLessThan(1);
+  expect(Math.abs(cover.h - cover.vh)).toBeLessThan(2);
+  expect(cover.scroll).toBe(0);
+  expect(cover.head).toBe("hidden");
   // Il video continua a scorrere.
   const t0 = (await videoState(page))!.t;
   await expect
@@ -908,4 +927,44 @@ test("video verticale: niente 'Schermo intero'", async ({ page }) => {
   await waitPlaying(page);
   await page.waitForTimeout(1500);
   await expect(active(page).getByTestId("hl-turn")).toHaveCount(0);
+});
+
+test("schermo intero senza l'API del browser (iPhone): il video girato copre tutto lo schermo", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Element.prototype.requestFullscreen = function () {
+      return Promise.reject(new Error("non disponibile"));
+    };
+  });
+  await openFeed(page);
+  await waitPlaying(page);
+  const hint = active(page).getByTestId("hl-turn");
+  await expect(hint).toBeVisible({ timeout: 4000 });
+  await hint.click();
+  await expect(active(page).getByTestId("hl-stage")).toHaveAttribute(
+    "data-land",
+    "1",
+  );
+  await page.waitForTimeout(400);
+  const cover = await page.evaluate(() => {
+    const st = document.querySelector<HTMLElement>(
+      "[data-active] [data-land]",
+    )!;
+    const r = st.getBoundingClientRect();
+    const top = document.querySelector<HTMLElement>(".hl-top")!;
+    return {
+      top: r.top,
+      h: r.height,
+      vh: innerHeight,
+      scroll: st.parentElement!.scrollTop,
+      head: getComputedStyle(top).visibility,
+    };
+  });
+  expect(Math.abs(cover.top)).toBeLessThan(1);
+  expect(Math.abs(cover.h - cover.vh)).toBeLessThan(2);
+  expect(cover.scroll).toBe(0);
+  expect(cover.head).toBe("hidden");
+  await page.getByTestId("hl-land-exit").click();
+  await expect(page.locator(".hl-top")).toBeVisible();
 });

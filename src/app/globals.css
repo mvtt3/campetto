@@ -2355,6 +2355,14 @@ html[data-shot="3"] .intro-ball-x {
   background: #000;
   container-type: size;
 }
+/* Dove lo schermo intero vero non c'è (iPhone, alcune app): la scheda non deve scorrere sotto il
+   video girato e la testata del feed (indietro, volume) non deve restare sopra al video. */
+.hl-slide:has(.hl-land) {
+  overflow: clip;
+}
+.hl-feed:has(.hl-land) .hl-top {
+  visibility: hidden;
+}
 .hl-land .hl-turn {
   position: absolute;
   left: 50%;

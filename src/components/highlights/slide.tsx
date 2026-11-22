@@ -216,6 +216,16 @@ export const Slide = memo(function Slide(p: SlideProps) {
     if (!active && land) exitLand();
   }, [active, land, exitLand]);
 
+  // Entrando o uscendo dallo schermo intero la scheda resta ferma in cima (il fuoco sul tasto
+  // può farla scorrere di qualche pixel, e il video girato resterebbe spostato).
+  useEffect(() => {
+    const slide = stageEl.current?.parentElement;
+    if (!slide) return;
+    slide.scrollTo(0, 0);
+    const id = requestAnimationFrame(() => slide.scrollTo(0, 0));
+    return () => cancelAnimationFrame(id);
+  }, [land]);
+
   // La barra di avanzamento: un requestAnimationFrame che tocca solo lo stile.
   useEffect(() => {
     if (!active) return;
