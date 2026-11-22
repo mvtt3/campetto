@@ -80,6 +80,11 @@ export const Slide = memo(function Slide(p: SlideProps) {
   const [portrait, setPortrait] = useState(false);
   // Il video orizzontale: altezza / larghezza (per mettere "Schermo intero" subito sotto).
   const [ratio, setRatio] = useState<number | null>(null);
+  const readSize = (v: HTMLVideoElement) => {
+    if (v.videoWidth <= 0) return;
+    setPortrait(v.videoHeight > v.videoWidth * 1.1);
+    setRatio(v.videoHeight / v.videoWidth);
+  };
   const stageEl = useRef<HTMLDivElement>(null);
   const landBar = useRef<HTMLDivElement>(null);
   const { land, enter: enterLand, exit: exitLand } = useLandscape(stageEl);
@@ -438,17 +443,17 @@ export const Slide = memo(function Slide(p: SlideProps) {
                 "h-full w-full",
                 portrait ? "object-cover" : "object-contain",
               )}
-              onLoadedMetadata={(e) => {
-                const v = e.currentTarget;
-                setPortrait(v.videoHeight > v.videoWidth * 1.1);
-                if (v.videoWidth > 0) setRatio(v.videoHeight / v.videoWidth);
-              }}
+              // Le misure del video: dai metadati, e di nuovo quando parte (se il video era già
+              // in memoria i metadati possono arrivare prima che l'app li ascolti).
+              onLoadedMetadata={(e) => readSize(e.currentTarget)}
               onWaiting={() => setLoading(true)}
-              onPlaying={() => {
+              onPlaying={(e) => {
+                readSize(e.currentTarget);
                 setLoading(false);
                 setFailed(false);
               }}
               onCanPlay={(e) => {
+                readSize(e.currentTarget);
                 setLoading(false);
                 // Arrivato dopo essere diventato attivo: parte adesso.
                 if (
