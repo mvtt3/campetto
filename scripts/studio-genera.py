@@ -429,8 +429,13 @@ def whisper_words(path):
     """Le parole dette, con inizio e fine, dal riconoscimento vocale (in cache accanto al .wav)."""
     global _whisper
     meta = path + ".words.json"
+    # La cache vale solo per la registrazione da cui è stata fatta: un .wav rifatto con lo stesso nome
+    # (stessa richiesta, voce nuova) con i tempi vecchi tagliava le battute nei punti sbagliati.
+    sig = hashlib.sha1(open(path, "rb").read()).hexdigest()[:16]
     if os.path.exists(meta):
-        return json.load(open(meta))
+        cached = json.load(open(meta))
+        if isinstance(cached, dict) and cached.get("wav") == sig:
+            return cached["words"]
     if _whisper is None:
         from faster_whisper import WhisperModel
         _whisper = WhisperModel(os.environ.get("STUDIO_WHISPER", "small"), device="cpu", compute_type="int8")
@@ -438,7 +443,7 @@ def whisper_words(path):
     audio = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768
     segs, _ = _whisper.transcribe(audio, language="it", word_timestamps=True, vad_filter=False)
     words = [[w.word.strip(), float(w.start), float(w.end)] for sg in segs for w in sg.words]
-    json.dump(words, open(meta, "w"), ensure_ascii=False)
+    json.dump({"wav": sig, "words": words}, open(meta, "w"), ensure_ascii=False)
     return words
 
 
