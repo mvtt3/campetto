@@ -81,7 +81,10 @@ def crop_center(clip, local, crop_w):
             pre = min(max(pre, hx - hw + 0.05), hx + hw - 0.05)
         post = pre if (near or hx is None) else hx + 0.13 * (1 if sx > hx else -1)
         w_in = smooth((local - (shot["t"] - 2.1)) / 1.2)
-        w_out = smooth((local - (shot["t"] + 0.1)) / 1.0)
+        # Dopo il rilascio verso il canestro: più è lontano, più tempo ci mette (stessa velocità per
+        # tutti), così il passaggio non sembra uno scatto quando chi tira è dall'altra parte.
+        span = 1.0 + 1.6 * max(0.0, abs(post - pre) - 0.15)
+        w_out = smooth((local - (shot["t"] + 0.1)) / span)
         c = c + (pre - c) * w_in
         c = c + (post - c) * w_out
     return min(1 - hw, max(hw, c))
