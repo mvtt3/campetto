@@ -28,7 +28,8 @@ export type NewsIcon =
   | "season"
   | "megaphone"
   | "leader"
-  | "video";
+  | "video"
+  | "rain";
 
 export interface NewsStory {
   id: string;
@@ -154,7 +155,9 @@ export function buildNews(
       icon:
         p.kind === "stagione"
           ? "season"
-          : /highlight/i.test(p.title)
+          : p.kind === "meteo"
+            ? "rain"
+            : /highlight/i.test(p.title)
             ? "video"
             : "megaphone",
       title: p.title,

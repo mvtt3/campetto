@@ -1,7 +1,8 @@
 "use client";
 
 
-import { IconCrown, IconX } from "@tabler/icons-react";
+import { IconCalendarEvent, IconCloudRain, IconCrown, IconX } from "@tabler/icons-react";
+import clsx from "clsx";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { BADGE_BY_KEY, type BadgeUnlock } from "@/lib/badges";
@@ -10,7 +11,7 @@ import { play } from "@/lib/sound";
 import { matchMvp } from "@/lib/stats/match-mvp";
 import { normalizeBox, teamOf } from "@/lib/stats/player";
 import { sortChrono } from "@/lib/periods";
-import { winnerOf, type NewsPost, type Proposal } from "@/lib/types";
+import { placeLabel, winnerOf, type NewsPost, type Proposal } from "@/lib/types";
 import {
   pregameTargets,
   previewProposal,
@@ -105,6 +106,24 @@ function setLater(id: string) {
   }
 }
 
+/** L'avviso meteo compare una volta sola per telefono: alla prima apertura, poi mai più. */
+const meteoKey = (id: string) => `campetto:avviso-meteo-visto:${id}`;
+function meteoSeen(id: string): boolean {
+  try {
+    return localStorage.getItem(meteoKey(id)) === "1";
+  } catch {
+    return false;
+  }
+}
+function setMeteoSeen(id: string) {
+  try {
+    localStorage.setItem(meteoKey(id), "1");
+  } catch {
+    /* niente: al massimo ricompare */
+  }
+}
+const isMeteo = (item: Item | undefined) => item?.kind === "news" && item.post.kind === "meteo";
+
 /** Legge e aggiorna una lista "già visti" sul telefono. null = telefono nuovo. */
 function seenList(key: string, all: string[]): string[] | null {
   let seen: string[] | null = null;
@@ -156,6 +175,11 @@ export function BadgeCelebration() {
     const nowIso = new Date().toISOString();
     for (const post of data.news ?? []) {
       if (!post.popup || (post.until && post.until <= nowIso) || later(post.id) || isMatchesNotice(post)) continue;
+      // L'avviso meteo è per tutti, anche per chi ha già risposto, ma una volta sola.
+      if (post.kind === "meteo") {
+        if (!meteoSeen(post.id)) items.push({ kind: "news", id: `n:${post.id}`, post });
+        continue;
+      }
       if (post.proposalId) {
         const prop = data.proposals.find((x) => x.id === post.proposalId);
         if (!prop || prop.status !== "aperta") continue;
@@ -299,6 +323,11 @@ export function BadgeCelebration() {
 
   const current = queue[0];
 
+  // L'avviso meteo conta come visto appena compare: alla prossima apertura non torna.
+  useEffect(() => {
+    if (current?.kind === "news" && current.post.kind === "meteo") setMeteoSeen(current.post.id);
+  }, [current]);
+
   // Il suono di ogni festa, quando compare.
   useEffect(() => {
     if (!current) return;
@@ -306,6 +335,7 @@ export function BadgeCelebration() {
       if (current.kind === "result")
         play(current.won >= current.lost ? "win" : "loss");
       else if (current.kind === "preview" || current.kind === "studio") play("whistle");
+      else if (isMeteo(current)) return;
       else play("unlock");
     }, 180);
     return () => window.clearTimeout(t);
@@ -341,9 +371,19 @@ export function BadgeCelebration() {
         initial={{ opacity: 0, scale: 0.88, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
-        className="court relative flex max-h-[calc(100dvh-24px)] w-full max-w-xs flex-col items-center overflow-y-auto overflow-x-hidden overscroll-contain rounded-[32px] px-6 pb-6 pt-7 text-center"
+        className={clsx(
+          isMeteo(current) ? "storm text-white" : "court",
+          "relative flex max-h-[calc(100dvh-24px)] w-full max-w-xs flex-col items-center overflow-y-auto overflow-x-hidden overscroll-contain rounded-[32px] px-6 pb-6 pt-7 text-center",
+        )}
         onClick={(e) => e.stopPropagation()}
       >
+        {isMeteo(current) ? (
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]">
+            <span className="rain-fall absolute -left-8 -right-2" />
+            <span className="absolute -right-14 -top-16 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgb(255_255_255/0.2),transparent_68%)]" />
+            <span className="absolute -bottom-12 -left-6 h-32 w-48 rounded-full bg-[radial-gradient(ellipse,rgb(160_196_255/0.28),transparent_70%)]" />
+          </div>
+        ) : (
         <CourtLines
           arcOnly={current.kind === "preview"}
           className={
@@ -352,6 +392,7 @@ export function BadgeCelebration() {
               : "absolute inset-0 h-full w-full"
           }
         />
+        )}
         <button
           type="button"
           aria-label="Chiudi"
@@ -363,7 +404,8 @@ export function BadgeCelebration() {
         {current.kind === "result" && <ResultBody item={current} />}
         {current.kind === "badge" && <BadgeBody unlock={current.unlock} />}
         {current.kind === "character" && <CharacterBody id={current.id} />}
-        {current.kind === "news" && <NewsBody post={current.post} />}
+        {current.kind === "news" &&
+          (current.post.kind === "meteo" ? <MeteoBody post={current.post} /> : <NewsBody post={current.post} />)}
         {current.kind === "preview" && (
           <PregameBody proposal={current.proposal} targets={current.targets} />
         )}
@@ -384,6 +426,25 @@ export function BadgeCelebration() {
               }}
             >
               Guarda
+            </Button>
+          </div>
+        ) : isMeteo(current) && current.kind === "news" ? (
+          <div className="relative mt-5 flex w-full gap-2">
+            {current.post.link && (
+              <Button
+                variant="light"
+                className="flex-1 whitespace-nowrap text-[#2b3c5a]"
+                onClick={() => {
+                  const to = current.post.link!;
+                  next();
+                  router.push(to);
+                }}
+              >
+                La partita
+              </Button>
+            )}
+            <Button variant="primary" className="flex-[1.4] whitespace-nowrap" data-testid="meteo-ok" onClick={next}>
+              {current.post.cta ?? "Ho capito"}
             </Button>
           </div>
         ) : current.kind === "news" ? (
@@ -522,6 +583,51 @@ function ResultBody({ item }: { item: ResultItem }) {
           {item.elo > 0 ? `+${item.elo}` : `−${Math.abs(item.elo)}`} ELO
         </p>
       )}
+    </>
+  );
+}
+
+const TZ = "Europe/Rome";
+/** "sabato 28" */
+const meteoDay = (iso: string) =>
+  new Date(iso).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", timeZone: TZ });
+const meteoTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+
+/**
+ * L'avviso meteo, come le allerte delle app del meteo e delle prenotazioni sportive:
+ * Spicchio triste sotto la nuvola, cosa aspettarsi in una riga, quando e dove, cosa fare.
+ */
+function MeteoBody({ post }: { post: NewsPost }) {
+  const { data } = useData();
+  const prop = post.proposalId ? data.proposals.find((x) => x.id === post.proposalId) : null;
+  return (
+    <>
+      <div className="relative drop-shadow-[0_10px_16px_rgb(0_0_0/0.3)]">
+        <Mascot pose="triste" size={96} />
+      </div>
+      <span className="relative mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[12.5px] font-semibold">
+        <IconCloudRain size={15} stroke={2.2} aria-hidden />
+        Avviso meteo
+      </span>
+      <h2 id="party-title" className="title relative mt-2 text-[26px] leading-[1.1]">
+        {post.title}
+      </h2>
+      {prop && (
+        <p className="tnum relative mt-3 inline-flex items-center gap-1.5 whitespace-nowrap rounded-2xl bg-white px-3 py-1.5 text-[14px] font-semibold text-[#22324d]">
+          <IconCalendarEvent size={17} className="shrink-0 text-ball" aria-hidden />
+          <span className="first-letter:uppercase">{meteoDay(prop.startsAt)}</span>
+          <span aria-hidden className="text-[#22324d]/35">·</span>
+          {meteoTime(prop.startsAt)}
+          {prop.place && (
+            <>
+              <span aria-hidden className="text-[#22324d]/35">·</span>
+              {placeLabel(prop.place)}
+            </>
+          )}
+        </p>
+      )}
+      <p className="relative mt-3 text-[14.5px] leading-snug text-white/90">{post.body}</p>
     </>
   );
 }

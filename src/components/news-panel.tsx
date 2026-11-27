@@ -9,6 +9,7 @@ import {
   IconFlame,
   IconLock,
   IconMovie,
+  IconCloudRain,
   IconNews,
   IconSparkles,
   IconSpeakerphone,
@@ -45,6 +46,7 @@ const ICON: Record<NewsIcon, typeof IconFlame> = {
   megaphone: IconSpeakerphone,
   leader: IconTrophy,
   video: IconMovie,
+  rain: IconCloudRain,
 };
 const TINT: Record<NewsIcon, string> = {
   record: "bg-volt/30 text-volt-ink",
@@ -57,6 +59,7 @@ const TINT: Record<NewsIcon, string> = {
   megaphone: "bg-raised text-text",
   leader: "bg-ok/15 text-ok",
   video: "bg-ball-soft text-ball",
+  rain: "bg-[#3a4f72]/15 text-[#3a4f72] dark:bg-[#a0c4ff]/15 dark:text-[#a0c4ff]",
 };
 
 const ICON_BOX =

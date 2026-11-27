@@ -1353,6 +1353,21 @@ test("annuncio all'apertura: scheda come i badge, porta alla proposta nel calend
   await expect(page).toHaveURL(/\/organizza\?giorno=.*&p=/);
 });
 
+test("avviso meteo: Spicchio sotto la pioggia, quando e dove, una volta sola", async ({ page }) => {
+  await skipTour(page);
+  await page.goto("/?mock=demo&meteo=1");
+  const ok = page.getByTestId("meteo-ok");
+  await expect(ok).toBeVisible({ timeout: 20000 });
+  await expect(page.getByRole("dialog")).toContainText("Campo bagnato in vista");
+  await ok.click();
+  await expect(ok).toHaveCount(0);
+  // Alla prossima apertura non torna.
+  await page.goto("/?mock=demo&meteo=1");
+  await page.getByRole("navigation", { name: "Navigazione principale" }).waitFor();
+  await page.waitForTimeout(3000);
+  await expect(page.getByTestId("meteo-ok")).toHaveCount(0);
+});
+
 test("partita annullata per pioggia: in Home e nel calendario al posto della partita in corso", async ({
   page,
 }) => {

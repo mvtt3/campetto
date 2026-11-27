@@ -686,6 +686,19 @@ export function createMockBackend(): Backend {
               },
             ]
           : [];
+      // ?meteo=1: l'avviso meteo (campo bagnato) sulla prossima proposta aperta, una volta sola.
+      if (params.get("meteo") === "1" && next)
+        promo.push({
+          id: "n-meteo",
+          kind: "meteo",
+          title: "Campo bagnato in vista",
+          body: "Le previsioni lo danno bagnato e scivoloso. Meglio scarpe con una buona presa, riscaldamento fatto bene e occhio ai cambi di direzione.",
+          createdAt: new Date(Date.now() - 600_000).toISOString(),
+          link: `/organizza?giorno=${next.startsAt.slice(0, 10)}&p=${next.id}`,
+          popup: true,
+          until: next.startsAt,
+          proposalId: next.id,
+        });
       return structuredClone({
         players: split.players,
         guests: split.guests,

@@ -390,7 +390,7 @@ export interface NewsPost {
   id: string;
   title: string;
   body: string;
-  kind: "annuncio" | "stagione" | "novita";
+  kind: "annuncio" | "stagione" | "novita" | "meteo";
   createdAt: string;
   /** Dove porta il tocco (una pagina dell'app), se porta da qualche parte. */
   link?: string;
