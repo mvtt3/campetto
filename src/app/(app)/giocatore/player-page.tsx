@@ -35,11 +35,8 @@ import { useData } from "@/lib/data/provider";
 import { MONTHS_IT } from "@/lib/periods";
 import { trophiesOf } from "@/lib/stats/awards";
 import { eloOf } from "@/lib/stats/elo";
-import {
-  computePlayerStats,
-  defenseAvg,
-  type PlayerStats,
-} from "@/lib/stats/player";
+import { computePlayerStats } from "@/lib/stats/player";
+import { overall, playerAttributes, productionRating } from "@/lib/stats/ratings";
 import { form, headToHead } from "@/lib/stats/relations";
 import { displayName, shortName } from "@/lib/types";
 
@@ -77,29 +74,6 @@ const rise = (delay: number) => ({
   transition: { ...SPRING, delay },
 });
 
-const ATTRIBUTES: {
-  label: string;
-  get: (s: PlayerStats) => number | null;
-}[] = [
-  { label: "Realizzazione", get: (s) => (s.statGames ? s.avg.pts : null) },
-  {
-    label: "Tiro da tre",
-    get: (s) => (s.totals.fg3a >= 5 ? s.fg3Pct : null),
-  },
-  { label: "Rimbalzi", get: (s) => (s.statGames ? s.rebAvg : null) },
-  { label: "Passaggio", get: (s) => (s.statGames ? s.avg.ast : null) },
-  { label: "Difesa", get: (s) => (s.statGames ? defenseAvg(s) : null) },
-  { label: "Vincente", get: (s) => (s.games ? s.winPct : null) },
-];
-
-function rating(mine: number | null, all: (number | null)[]): number | null {
-  if (mine === null) return null;
-  const pool = all.filter((v): v is number => v !== null);
-  if (pool.length < 2) return 75;
-  const below = pool.filter((v) => v < mine).length;
-  return Math.round(45 + (54 * below) / (pool.length - 1));
-}
-
 export function PlayerPage() {
   const params = useSearchParams();
   const id = params.get("id") ?? "";
@@ -126,24 +100,8 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
     () => (me ? headToHead(me.id, id, data.matches) : null),
     [me, id, data.matches],
   );
-  const group = useMemo(
-    () => engine.playerIds.map((pid) => computePlayerStats(pid, data.matches)),
-    [engine.playerIds, data.matches],
-  );
-  const stats = useMemo(
-    () =>
-      group.find((s) => s.playerId === id) ??
-      computePlayerStats(id, data.matches),
-    [group, id, data.matches],
-  );
-  const attributes = useMemo(
-    () =>
-      ATTRIBUTES.map((a) => ({
-        label: a.label,
-        value: rating(a.get(stats), group.map(a.get)),
-      })),
-    [stats, group],
-  );
+  const stats = useMemo(() => computePlayerStats(id, data.matches), [id, data.matches]);
+  const attributes = useMemo(() => playerAttributes(stats), [stats]);
   // La testata: carta olografica inclinando il telefono, personaggio che barcolla scuotendolo.
   const heroRef = useRef<HTMLElement>(null);
   // Solo nel proprio profilo, la prima volta: "inclina o scuoti".
@@ -178,10 +136,7 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
   const tint = playerColor(player);
   const light = isLightColor(tint);
   const boxed = stats.statGames > 0;
-  const rated = attributes.flatMap((a) => (a.value === null ? [] : [a.value]));
-  const ovr = rated.length
-    ? Math.round(rated.reduce((x, y) => x + y, 0) / rated.length)
-    : null;
+  const ovr = overall(attributes, productionRating(stats));
   const line = [
     { label: "Punti", value: boxed ? stats.avg.pts : null, decimals: 1 },
     { label: "Rimb.", value: boxed ? stats.rebAvg : null, decimals: 1 },
@@ -541,14 +496,22 @@ export function PlayerView({ id, mine }: { id: string; mine?: boolean }) {
               <h2 className={clsx(LABEL, "flex items-center gap-1.5")}>
                 Attributi
                 <InfoTip label="Come si calcolano gli attributi" size={14}>
-                  Ogni voce confronta il giocatore con il resto del gruppo: 99 è
-                  il migliore, 45 chi sta più indietro. OVR è la media. Senza
-                  tabellino si vede solo Vincente
+                  Ogni voce misura solo le tue partite, su una scala fissa da 60
+                  a 99: il 99 è da fenomeno. Con pochi tiri o poche partite il
+                  voto è prudente e sale man mano. OVR è la media, con le tre
+                  voci migliori che contano di più, più quanto produci a partita
                 </InfoTip>
               </h2>
               <ul className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-[22px] bg-surface px-4 py-4 shadow-[var(--shadow)]">
                 {attributes.map((a, i) => (
-                  <li key={a.label} className="min-w-0">
+                  <li
+                    key={a.label}
+                    // Con un numero dispari di voci l'ultima prende tutta la riga.
+                    className={clsx(
+                      "min-w-0",
+                      attributes.length % 2 === 1 && i === attributes.length - 1 && "col-span-2",
+                    )}
+                  >
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="truncate text-[12.5px] font-semibold text-muted">
                         {a.label}
