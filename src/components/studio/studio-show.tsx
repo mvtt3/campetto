@@ -238,12 +238,19 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   const topOut = useRef<number | null>(null);
   const [topLive, setTopLive] = useState(false);
   const topSrcRef = useRef<string | null>(null);
+  // L'audio è partito davvero (primo "playing"): fino ad allora non si scarica nient'altro, così
+  // all'apertura la rete e il telefono servono solo alla voce e alla sigla (prima scattava tutto).
+  const [audioGo, setAudioGo] = useState(false);
+  const topFetch = useRef<AbortController | null>(null);
   useEffect(() => {
     const url = show.top?.src;
-    if (!url) return;
+    if (!url || !audioGo) return;
+    // Le azioni arrivano presto (entro mezzo minuto): niente download intero, si legge dalla rete.
+    if (topSrcRef.current !== null || topStarts.some((s0) => s0 > startAt - 1 && s0 - startAt < 30)) return;
     let alive = true;
     let blobUrl: string | null = null;
     const ctrl = new AbortController();
+    topFetch.current = ctrl;
     fetch(url, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
       .then((b) => {
@@ -262,7 +269,7 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
       ctrl.abort();
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [show.top?.src]);
+  }, [show.top?.src, audioGo, topStarts, startAt]);
   const duels = useMemo(() => show.duels ?? [], [show]);
   const duelArmed = useRef(duels.map(() => true));
   const [duelOpen, setDuelOpen] = useState<number | null>(null);
@@ -412,11 +419,31 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
   // la voce si ferma con lui (come un player che carica), così non racconta un'azione mentre se ne
   // vede un'altra. "since": da quando il video non è pronto (un intoppo brevissimo non ferma niente).
   const hold = useRef({ on: false, since: 0 });
+  // In attesa dell'audio (all'apertura o se la rete lo ferma): tutto resta fermo con lui, niente
+  // immagini che vanno avanti mute per poi tornare indietro quando la voce parte.
+  const waiting = useRef(false);
+  const audioGoRef = useRef(false);
+  const audioGoAt = useRef(0);
+  // Se l'audio sta suonando (dagli eventi "playing" / "waiting" / "pause"); "from": dove era quando si è fermato.
+  const audioPlay = useRef({ on: false, from: 0 });
   const now = useCallback(() => {
     const c = clock.current;
     if (hold.current.on) return c.t;
     const a = audio.current;
     const s = sync.current;
+    const ap = audioPlay.current;
+    if (a && c.audioOk && c.running && !a.ended && !a.error && !ap.on) {
+      // Se l'evento "playing" non arriva ma l'audio va avanti davvero, si riparte lo stesso.
+      if (!a.paused && a.readyState >= 3 && a.currentTime > ap.from + 0.25) ap.on = true;
+      else {
+        waiting.current = true;
+        if (a.readyState >= 1) c.t = a.currentTime;
+        c.at = performance.now();
+        s.ok = false;
+        return c.t;
+      }
+    }
+    waiting.current = false;
     if (a && c.audioOk && !a.paused && a.readyState >= 2) {
       const p = performance.now();
       const at = a.currentTime;
@@ -541,6 +568,36 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     };
   }, [start]);
 
+  // La prima volta che l'audio suona davvero: da lì si può scaricare il resto (il video delle azioni).
+  useEffect(() => {
+    const a = audio.current;
+    if (!a) return;
+    const go = () => {
+      if (audioGoRef.current) return;
+      audioGoRef.current = true;
+      audioGoAt.current = performance.now();
+      setAudioGo(true);
+    };
+    const on = () => {
+      audioPlay.current.on = true;
+      go();
+    };
+    const off = () => {
+      audioPlay.current = { on: false, from: a.currentTime };
+    };
+    // Senza audio (errore) non si aspetta: dopo un attimo si carica lo stesso.
+    const fallback = window.setTimeout(() => !clock.current.audioOk && go(), 2500);
+    a.addEventListener("playing", on);
+    a.addEventListener("waiting", off);
+    a.addEventListener("pause", off);
+    return () => {
+      window.clearTimeout(fallback);
+      a.removeEventListener("playing", on);
+      a.removeEventListener("waiting", off);
+      a.removeEventListener("pause", off);
+    };
+  }, []);
+
   useEffect(() => {
     const onHide = () => document.hidden && clock.current.running && pause();
     document.addEventListener("visibilitychange", onHide);
@@ -560,10 +617,16 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
     let counters: HTMLElement[] = [];
     let countersFor = "";
     let recheck = 0;
+    let lastWait = false;
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const t = now();
       const c = clock.current;
+      // Mentre si aspetta l'audio anche le animazioni CSS (sigla, entrate) restano ferme con lui.
+      if (waiting.current !== lastWait) {
+        lastWait = waiting.current;
+        root.current?.classList.toggle("studio-wait", lastWait);
+      }
       // Il voto: arrivati al momento, lo show si ferma e si apre la scelta (una volta per visione).
       const prev = lastTick.current;
       lastTick.current = t;
@@ -671,7 +734,11 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         // Quando arriva la comparsa l'ospite si sposta un po' a sinistra (sedia e microfono con lui).
         const gShift = VISIT_ROOM.ospite * v.room;
         gb.style.transform = `translate3d(${(g.x + gShift).toFixed(1)}px, ${((1 - g.seat) * -30 + bob + talk).toFixed(1)}px, 0) rotate(${tilt.toFixed(2)}deg)`;
-        put(gb.querySelector(".studio-guest-mouth"), "transform", `scaleY(${gs.mouth.toFixed(2)})`);
+        // Come i conduttori: il sorriso del personaggio sfuma mentre la bocca si apre, mai tutti e due.
+        const gmo = gs.mouth;
+        put(gb.querySelector(".studio-guest-mouth"), "transform", `scale(${(0.7 + gmo * 0.3).toFixed(2)}, ${gmo.toFixed(2)})`);
+        put(gb.querySelector(".studio-guest-mouth"), "opacity", String(Math.min(1, gmo * 8).toFixed(2)));
+        put(gb.querySelector(".fig-mouth"), "opacity", String(Math.max(0, 1 - gmo * 8).toFixed(2)));
         const gw = g.walk ? "1" : "0";
         if (gb.dataset.walk !== gw) gb.dataset.walk = gw;
         const gse = g.seat > 0.5 ? "1" : "0";
@@ -820,8 +887,9 @@ export function StudioShowPlayer({ show, onClose, startAt = 0, seenBefore = fals
         const inTop = m === "top";
         // Tra poco tocca alle azioni e il video intero non è ancora arrivato: si passa alla rete
         // (mezzo minuto prima: sul telefono con poca rete deve fare in tempo a caricarsi).
-        if (topSrcRef.current === null && (inTop || topStarts.some((s0) => s0 > t && s0 - t < 30))) {
+        if (topSrcRef.current === null && (inTop || (audioGoRef.current && performance.now() - audioGoAt.current > 1500 && topStarts.some((s0) => s0 > t && s0 - t < 30)))) {
           topSrcRef.current = show.top.src;
+          topFetch.current?.abort();
           setTopSrc(show.top.src);
         }
         const live = syncVideo(tv, t - show.top.t0, c.running, inTop, !inTop) && inTop;
@@ -1572,7 +1640,7 @@ function Plate({ name, role, style, out, small, right, boxRef }: { name: string;
 
 // Dove ha la bocca ogni personaggio (nel disegno a figura intera), per farla aprire quando parla.
 const MOUTH: Partial<Record<string, [number, number]>> = {
-  collana: [63, 1], bandana: [61, 0.8], coppola: [70, 0.92], muscoli: [61.6, 0.62], volo: [64, 1.05], gigante: [60, 0.9], mago: [66, 0.8],
+  collana: [60.5, 1.05], bandana: [61, 0.8], coppola: [70, 0.92], muscoli: [61.6, 0.62], volo: [64, 1.05], gigante: [60, 0.9], mago: [66, 0.8],
   rimbalzo: [60, 0.85], fuoco: [69, 0.9], uragano: [62, 0.8], bomber: [72, 0.92], postino: [72.6, 0.8], gentiluomo: [70, 0.8], marinaio: [69, 0.9],
   professore: [65.4, 0.8], pirata: [72, 0.88], samurai: [66.5, 0.8], aviatore: [69, 0.9], faraone: [65, 0.8], drago: [71, 0.9], luchador: [63.4, 0.8],
   astronauta: [67, 0.95], sole: [66, 1], direttore: [68.4, 0.8], leggenda: [65, 1],
@@ -1609,11 +1677,14 @@ const GuestInStudio = memo(function GuestInStudio({ playerId, boxRef, chairRef }
       </div>
       <div ref={boxRef} className="studio-guest absolute will-change-transform" data-walk="0" data-seat="0" style={{ left: 195 - w / 2, top: 463, width: w, visibility: "hidden", transformOrigin: "50% 100%" }} aria-hidden>
         <Character id={id} outfit={player.outfit} number={player.jerseyNumber} height={GUEST_H} idle />
-        <svg className="absolute inset-0" viewBox={`0 0 100 ${vh}`} width={w} height={GUEST_H} style={{ overflow: "visible" }}>
-          <g transform={`translate(50 ${my + 1}) scale(${mw} 1)`}>
-            <g className="studio-guest-mouth">
-              <ellipse rx="8.5" ry="6.5" fill="#5A1410" stroke="#1D1A16" strokeWidth="2" />
-              <ellipse cy="3" rx="4.6" ry="2.4" fill="#E5412D" />
+        {/* La bocca che parla respira col corpo (stessa animazione), così resta ferma sulla faccia. */}
+        <svg className="character character-idle absolute inset-0" viewBox={`0 0 100 ${vh}`} width={w} height={GUEST_H} style={{ overflow: "visible" }}>
+          <g className="character-body">
+            <g transform={`translate(50 ${my + 1}) scale(${mw} 1)`}>
+              <g className="studio-guest-mouth">
+                <ellipse rx="8.5" ry="6.5" fill="#5A1410" stroke="#1D1A16" strokeWidth="2" />
+                <ellipse cy="3" rx="4.6" ry="2.4" fill="#E5412D" />
+              </g>
             </g>
           </g>
         </svg>
@@ -1695,9 +1766,12 @@ const VisitorSmoke = memo(function VisitorSmoke({ visit, boxRef }: { visit: Stud
  */
 const WalkerInStudio = memo(function WalkerInStudio({ walk, boxRef }: { walk: StudioWalk; boxRef: (el: HTMLDivElement | null) => void }) {
   const { data } = useData();
-  const player = data.players.find((p) => p.id === walk.playerId);
-  if (!player) return null;
-  const id = characterOf(player);
+  const player = walk.playerId ? data.players.find((p) => p.id === walk.playerId) : undefined;
+  if (!player && !walk.figure) return null;
+  // La comparsa disegnata apposta usa il corpo di una figurina e ci ridisegna sopra testa e vestiti.
+  const id = player ? characterOf(player) : "occhiali";
+  const fig = walk.figure;
+  const wide = (walk.shout?.text.length ?? 0) > 20;
   const vh = 185 + (KIT[id]?.legs ?? 0);
   const back = walk.layer === "dietro";
   // Dietro: cammina sul pavimento alle spalle delle sedie (i piedi a terra dietro la scrivania, o sul
@@ -1722,9 +1796,9 @@ const WalkerInStudio = memo(function WalkerInStudio({ walk, boxRef }: { walk: St
       <div className="relative" style={flip ? { transform: "scaleX(-1)" } : undefined}>
         <Character
           id={id}
-          outfit={walk.shirt ? undefined : player.outfit}
+          outfit={walk.shirt || !player ? undefined : player.outfit}
           kit={walk.shirt ? { jersey: "#FFF8EA", trim: "#1D1A16" } : undefined}
-          number={walk.shirt ? null : player.jerseyNumber}
+          number={walk.shirt || !player ? null : player.jerseyNumber}
           height={h}
           idle
           noBall
@@ -1734,7 +1808,8 @@ const WalkerInStudio = memo(function WalkerInStudio({ walk, boxRef }: { walk: St
         <svg className="character character-idle absolute inset-0" viewBox={`0 0 100 ${vh}`} width={w} height={h} style={{ overflow: "visible" }}>
           <g className="character-body">
             {eyes?.at.map(([x, y], i) => <SleepyEye key={i} x={x} y={y} s={eyes.s} lid={eyes.ball} />)}
-            {walk.shirt && (
+            {fig === "pelliccia" && <FurGirl shirt={walk.shirt} />}
+            {walk.shirt && !fig && (
               <>
                 <text x="50" y="97" textAnchor="middle" fontSize="10.5" fontWeight="900" fill="#1D1A16" fontFamily="var(--font-dm-sans), sans-serif" textLength="44" lengthAdjust="spacingAndGlyphs">
                   {walk.shirt}
@@ -1760,13 +1835,112 @@ const WalkerInStudio = memo(function WalkerInStudio({ walk, boxRef }: { walk: St
         </svg>
       </div>
       {walk.shout && (
-        <span className="studio-shout display absolute whitespace-nowrap rounded-[18px] border-[3px] border-[#1d1a16] bg-white px-3.5 py-1.5 text-[22px] leading-none text-[#1d1a16]" style={{ left: "58%", top: -26 }}>
+        <span
+          className={clsx(
+            "studio-shout display absolute rounded-[18px] border-[3px] border-[#1d1a16] bg-white px-3.5 py-1.5 text-[22px] leading-none text-[#1d1a16]",
+            wide ? "is-wide w-[236px] whitespace-normal py-2 text-center leading-[1.05]" : "whitespace-nowrap",
+          )}
+          style={wide ? { left: "50%", marginLeft: -118, top: -64 } : { left: "58%", top: -26 }}
+        >
           {walk.shout.text}
         </span>
       )}
     </div>
   );
 });
+
+/**
+ * La ragazza con la pelliccia (una comparsa, non un giocatore): testa a pallone come tutti, capelli
+ * lunghi scuri, occhiali neri, rossetto, pelliccia aperta sopra la maglia chiara con la scritta.
+ * Si disegna sopra il corpo della figurina "occhiali" (testa 50,48 raggio 27).
+ */
+function FurGirl({ shirt }: { shirt?: string }) {
+  const INK = "#1D1A16";
+  const HAIR = "#2B1A12";
+  const FUR = "#A87A4E";
+  const FUR_LIGHT = "#D6B285";
+  // Il pelo: ciuffi tondi che si sovrappongono (scuri sotto, chiari sopra), un po' irregolari.
+  const tufts = (pts: [number, number][], r: number) => (
+    <>
+      <g fill={FUR} stroke={INK} strokeWidth="1.5">
+        {pts.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={r * (i % 3 === 1 ? 1.15 : 1)} />
+        ))}
+      </g>
+      <g fill={FUR}>
+        {pts.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={r * (i % 3 === 1 ? 1.15 : 1) - 1.2} />
+        ))}
+      </g>
+      <g fill={FUR_LIGHT} opacity="0.9">
+        {pts.map(([x, y], i) => (
+          <circle key={i} cx={x - r * 0.25} cy={y - r * 0.3} r={r * 0.45} />
+        ))}
+      </g>
+    </>
+  );
+  const line = (x0: number, y0: number, x1: number, y1: number, n: number, wob = 1): [number, number][] =>
+    Array.from({ length: n }, (_, i) => [x0 + ((x1 - x0) * i) / (n - 1) + (i % 2 ? wob : -wob), y0 + ((y1 - y0) * i) / (n - 1)]);
+  const collar: [number, number][] = Array.from({ length: 9 }, (_, i) => {
+    const a = Math.PI * (0.04 + (0.92 * i) / 8);
+    return [50 - Math.cos(a) * 25, 71 + Math.sin(a) * 8];
+  });
+  return (
+    <g>
+      {/* I capelli lunghi dietro la testa, sulle spalle. */}
+      <path d="M22 44 Q20 20 50 18 Q80 20 78 44 L80 76 Q72 82 64 76 L50 74 L36 76 Q28 82 20 76 Z" fill={HAIR} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+      {/* Le maniche di pelliccia sulle braccia (le mani restano fuori). */}
+      <g fill="none" strokeLinecap="round">
+        <path d="M26 80 Q13 99 15.3 110" stroke={INK} strokeWidth="15.5" />
+        <path d="M74 80 Q87 99 84.7 110" stroke={INK} strokeWidth="15.5" />
+        <path d="M26 80 Q13 99 15.3 110" stroke={FUR} strokeWidth="12" />
+        <path d="M74 80 Q87 99 84.7 110" stroke={FUR} strokeWidth="12" />
+        <path d="M23 86 Q16 97 16.5 104 M77 86 Q84 97 83.5 104" stroke={FUR_LIGHT} strokeWidth="2.4" opacity="0.8" />
+      </g>
+      {tufts([[12.5, 111], [18, 112]], 3.6)}
+      {tufts([[82, 112], [87.5, 111]], 3.6)}
+      {/* La pelliccia aperta: due pannelli larghi ai lati, la maglia chiara in mezzo con la scritta. */}
+      <path d="M21.5 77 Q16.5 100 21 126 L32 126 L32 74 L27 70.5 Z" fill={FUR} stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M78.5 77 Q83.5 100 79 126 L68 126 L68 74 L73 70.5 Z" fill={FUR} stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M25 84 Q23 100 25 118 M75 84 Q77 100 75 118" fill="none" stroke={FUR_LIGHT} strokeWidth="2.2" strokeLinecap="round" opacity="0.7" />
+      {tufts(line(31.5, 79, 31.5, 124, 8), 3.4)}
+      {tufts(line(68.5, 79, 68.5, 124, 8), 3.4)}
+      {tufts(line(22, 126.5, 30, 126.5, 3, 0), 3)}
+      {tufts(line(70, 126.5, 78, 126.5, 3, 0), 3)}
+      {shirt && (
+        <text x="50" y="100" textAnchor="middle" fontSize="10.5" fontWeight="900" fill={INK} fontFamily="var(--font-dm-sans), sans-serif" textLength="28" lengthAdjust="spacingAndGlyphs">
+          {shirt}
+        </text>
+      )}
+      {/* Il collo di pelliccia, gonfio. */}
+      {tufts(collar, 5)}
+      {/* La testa a pallone. */}
+      <circle cx="50" cy="48" r="27.6" fill="#F07A2E" stroke={INK} strokeWidth="2.6" />
+      <path d="M50 21 V75 M23 48 H77 M31 29 Q42 48 31 67 M69 29 Q58 48 69 67" fill="none" stroke="#B9500F" strokeWidth="1.6" opacity="0.75" />
+      <path d="M33 33 Q38 26 46 24.5" fill="none" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" opacity="0.5" />
+      {/* La frangia e le ciocche ai lati del viso. */}
+      <path d="M22.6 46 Q21 22 50 19.5 Q79 22 77.4 46 Q70 33 58 30 Q52 36 40 35 Q30 36 26 47 Z" fill={HAIR} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M23 44 Q22 62 27 72 L31 70 Q27 58 27.5 46 Z M77 44 Q78 62 73 72 L69 70 Q73 58 72.5 46 Z" fill={HAIR} stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+      {/* Occhi con le ciglia e occhiali neri. */}
+      <g>
+        <circle cx="41" cy="49" r="4.4" fill="#FFFFFF" stroke={INK} strokeWidth="1.8" />
+        <circle cx="59" cy="49" r="4.4" fill="#FFFFFF" stroke={INK} strokeWidth="1.8" />
+        <circle cx="41.8" cy="49.6" r="2.3" fill={INK} />
+        <circle cx="59.8" cy="49.6" r="2.3" fill={INK} />
+        <path d="M36.5 45.5 L35 43.6 M38.6 44.6 L37.8 42.4 M63.5 45.5 L65 43.6 M61.4 44.6 L62.2 42.4" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
+        <g fill="none" stroke={INK} strokeWidth="3">
+          <rect x="32.5" y="42" width="17" height="14" rx="5" fill="#FFFFFF" fillOpacity="0.16" />
+          <rect x="50.5" y="42" width="17" height="14" rx="5" fill="#FFFFFF" fillOpacity="0.16" />
+          <path d="M49.5 47 Q50 46 50.5 47 M32.5 47 L25 45 M67.5 47 L75 45" strokeLinecap="round" />
+        </g>
+      </g>
+      {/* Il rossetto: chiusa sorride, quando parla si apre la bocca (data-shout). */}
+      <path className="walker-smile" d="M43.5 61.5 Q50 66.5 56.5 61.5" fill="none" stroke="#C2183B" strokeWidth="3.2" strokeLinecap="round" />
+      <circle cx="35" cy="59" r="3" fill="#FF6F7D" opacity="0.35" />
+      <circle cx="65" cy="59" r="3" fill="#FF6F7D" opacity="0.35" />
+    </g>
+  );
+}
 
 /** Dove sono gli occhi delle figurine (per disegnarci sopra quelli assonnati) e il colore della testa. */
 const SLEEPY: Partial<Record<string, { at: [number, number][]; s: number; ball: string }>> = {

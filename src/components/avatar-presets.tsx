@@ -646,8 +646,9 @@ function Eye({
 }
 
 function Grin({ x, y, w = 1 }: { x: number; y: number; w?: number }) {
+  // fig-mouth: nello Studio, quando l'ospite parla, questo sorriso sparisce e si apre la bocca.
   return (
-    <g transform={`translate(${x} ${y}) scale(${w} 1)`}>
+    <g className="fig-mouth" transform={`translate(${x} ${y}) scale(${w} 1)`}>
       <path
         d="M-11 0 Q0 13 11 0 Q0 3.5 -11 0 Z"
         fill={INK}

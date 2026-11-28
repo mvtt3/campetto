@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "@/lib/data/provider";
 import type { StudioVoteState } from "@/lib/data/backend";
 import { votesOf, type StudioShow, type StudioTopItem, type StudioVote, type StudioVoteKind } from "@/lib/studio";
-import { shortName } from "@/lib/types";
+import { shortName, type Player } from "@/lib/types";
 import { Avatar } from "../ui/avatar";
 import { haptic } from "../ui/basics";
 
@@ -106,6 +106,7 @@ export function VoteOverlay({ show, vote, onDone }: { show: StudioShow; vote: St
   const pct = useMemo(() => percentages(counts), [counts]);
   const total = counts.reduce((a, b) => a + b, 0);
   const results = mine !== null;
+  const voters = useMemo(() => options.map((_, i) => cat?.voters?.[i] ?? []), [cat, options]);
 
   const choose = (i: number) => {
     if (!kind || pending !== null || results || !state) return;
@@ -138,24 +139,25 @@ export function VoteOverlay({ show, vote, onDone }: { show: StudioShow; vote: St
   const me = meP?.id;
   return (
     <div className="studio-vote absolute inset-0 z-30 flex flex-col" role="dialog" aria-modal="true" aria-label="Il voto del pubblico">
-      <div className="absolute inset-0 bg-[#0c1736]/72 backdrop-blur-[6px]" />
+      <div className="absolute inset-0 bg-[#0a1430]/91 backdrop-blur-[24px] backdrop-saturate-[0.7]" />
       <div className="relative flex flex-1 flex-col px-4 pt-[max(14px,var(--sat))]" style={{ paddingBottom: "max(18px, calc(var(--sab) + 12px))" }}>
-        <div className="studio-vote-head flex items-center justify-between">
+        <div className="studio-vote-head flex items-center justify-between pr-12">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1 text-[12px] font-semibold text-white/90">
             <span className="h-1.5 w-1.5 rounded-full bg-volt" />
-            Il voto del pubblico{steps.length > 1 ? ` · ${step + 1} di ${steps.length}` : kind === "assist" ? " · Assist" : " · Canestro"}
+            Il voto del pubblico{vote.tag ? ` · ${vote.tag}` : steps.length > 1 ? ` · ${step + 1} di ${steps.length}` : kind === "assist" ? " · Assist" : " · Canestro"}
           </span>
           <button type="button" className="press rounded-full px-3 py-1.5 text-[13px] font-semibold text-white/80" onClick={() => onDone(done())}>
             Salta
           </button>
         </div>
-        <div className="studio-vote-title mt-5">
-          <h2 className="display text-[30px] leading-[1.05] text-white">{kind ? TITLE[kind] : ""}</h2>
-          <p className="mt-1.5 text-[14px] text-white/75">{results ? (votedHere ? "Fatto! Ecco come stanno andando i voti." : "Hai già votato: ecco come sta andando.") : kind ? ASK[kind] : ""}</p>
+        <div className="flex min-h-0 flex-1 flex-col justify-center py-3">
+        <div className="studio-vote-title">
+          <h2 className="display text-[30px] leading-[1.05] text-white">{kind ? (vote.title ?? TITLE[kind]) : ""}</h2>
+          <p className="mt-1.5 text-[14px] text-white/75">{results ? (votedHere ? "Fatto! Ecco come stanno andando i voti." : "Hai già votato: ecco come sta andando.") : kind ? (vote.ask ?? ASK[kind]) : ""}</p>
         </div>
 
         {failed === "load" || !state ? (
-          <div className="grid flex-1 place-items-center">
+          <div className="grid min-h-[40vh] place-items-center">
             {failed === "load" ? (
               <div className="text-center">
                 <p className="text-[15px] font-semibold text-white">Il voto non si carica</p>
@@ -173,7 +175,7 @@ export function VoteOverlay({ show, vote, onDone }: { show: StudioShow; vote: St
             )}
           </div>
         ) : (
-          <div key={kind} className="studio-vote-grid mt-5 grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overscroll-contain pb-2" style={{ gridTemplateColumns: options.length === 1 ? "1fr" : "1fr 1fr" }}>
+          <div key={kind} className="studio-vote-grid mt-5 grid min-h-0 content-start gap-3 overflow-y-auto overscroll-contain pb-2" style={{ gridTemplateColumns: options.length === 1 ? "1fr" : "1fr 1fr" }}>
             {options.map((idx, i) => {
               const it = items[idx];
               if (!it) return null;
@@ -208,7 +210,10 @@ export function VoteOverlay({ show, vote, onDone }: { show: StudioShow; vote: St
                   <span className="absolute inset-x-0 bottom-0 p-2.5">
                     <Who item={it} players={data.players} guests={data.guests} me={me} />
                     {results ? (
-                      <Bar pct={pct[i]} n={counts[i]} lead={lead} />
+                      <>
+                        <Bar pct={pct[i]} n={counts[i]} lead={lead} />
+                        <Voters ids={voters[i] ?? []} players={data.players} />
+                      </>
                     ) : (
                       <span className="mt-1.5 block text-[11.5px] text-white/70">
                         Partita {it.game} · {it.label}
@@ -221,6 +226,8 @@ export function VoteOverlay({ show, vote, onDone }: { show: StudioShow; vote: St
             })}
           </div>
         )}
+
+        </div>
 
         {failed === "vote" && (
           <p role="alert" className="studio-vote-err mt-3 rounded-2xl bg-[#F26A1B] px-4 py-2.5 text-center text-[13px] font-semibold text-white">
@@ -289,6 +296,24 @@ function Bar({ pct, n, lead }: { pct: number; n: number; lead: boolean }) {
       <span className="mt-1.5 block h-[5px] overflow-hidden rounded-full bg-white/22">
         <span className={clsx("studio-vote-fill block h-full origin-left rounded-full", lead ? "bg-[#4dff9f]" : "bg-white/85")} style={{ transform: `scaleX(${pct / 100})` }} />
       </span>
+    </span>
+  );
+}
+
+/** Le facce di chi ha scelto questa azione (si vedono solo dopo aver votato), come nel calendario. */
+function Voters({ ids, players }: { ids: string[]; players: Player[] }) {
+  const who = ids.map((id) => players.find((p) => p.id === id)).filter((p): p is Player => !!p);
+  if (who.length === 0) return <span className="mt-1.5 block h-[22px]" aria-hidden />;
+  return (
+    <span className="studio-vote-faces mt-1.5 flex items-center" aria-label={`Votato da ${who.map((p) => shortName(p, players)).join(", ")}`}>
+      {who.slice(0, 5).map((p, i) => (
+        <span key={p.id} className="rounded-full ring-2 ring-[#0c1736]" style={{ marginLeft: i ? -7 : 0, ["--j" as string]: i }}>
+          <Avatar player={p} size={22} href={false} ring="none" />
+        </span>
+      ))}
+      {who.length > 5 && (
+        <span className="tnum -ml-[7px] grid h-[22px] w-[22px] place-items-center rounded-full bg-white/20 text-[10px] font-bold text-white ring-2 ring-[#0c1736]">+{who.length - 5}</span>
+      )}
     </span>
   );
 }

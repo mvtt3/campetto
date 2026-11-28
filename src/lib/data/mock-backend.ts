@@ -1046,14 +1046,14 @@ export function createMockBackend(): Backend {
     // (così le percentuali hanno un senso) e lo stesso errore vero se si prova a votare due volte.
     async studioVoteState(episode, options) {
       await mockDelay();
-      return mockVoteState(episode, options);
+      return mockVoteState(episode, options, state.meId, state.players.filter((p) => p.id !== state.meId).map((p) => p.id));
     },
     async studioVote(episode, category, choice, options) {
       await mockDelay();
       if (failing("voto")) throw new Error("Spicchio non riesce a mandare il voto");
       const k = `campetto:mock:voto:${episode}:${category}`;
       if (localStorage.getItem(k) === null) localStorage.setItem(k, String(choice));
-      return mockVoteState(episode, options);
+      return mockVoteState(episode, options, state.meId, state.players.filter((p) => p.id !== state.meId).map((p) => p.id));
     },
 
     // Il voto a sfide nei dati finti: le scelte degli altri fisse, le mie nel browser.
@@ -1300,7 +1300,7 @@ export function mockAllowed(): boolean {
 }
 
 /** Lo stato del voto finto: i voti degli altri sono fissi (dipendono dalla puntata), il mio dal browser. */
-function mockVoteState(episode: string, options: number): StudioVoteState {
+function mockVoteState(episode: string, options: number, meId = "p1", pool: string[] = []): StudioVoteState {
   const seed = Array.from(episode).reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
   const out = {} as StudioVoteState;
   for (const [ci, category] of (["canestro", "assist"] as const).entries()) {
@@ -1308,7 +1308,18 @@ function mockVoteState(episode: string, options: number): StudioVoteState {
     const mine = localStorage.getItem(`campetto:mock:voto:${episode}:${category}`);
     const my = mine === null ? null : Number(mine);
     if (my !== null && my >= 0 && my < options) counts[my] += 1;
-    out[category] = { counts, mine: my };
+    // Chi ha votato cosa (solo dopo il mio voto): i giocatori finti in fila, il mio id sulla mia scelta.
+    let k = 0;
+    const voters =
+      my === null
+        ? []
+        : counts.map((n, i) => {
+            const ids: string[] = [];
+            for (let j = 0; j < n - (i === my ? 1 : 0); j++) ids.push(pool.length ? pool[k++ % pool.length] : "");
+            if (i === my) ids.push(meId);
+            return ids.filter(Boolean);
+          });
+    out[category] = { counts, mine: my, voters };
   }
   return out;
 }

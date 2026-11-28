@@ -269,9 +269,12 @@ function Body({ screen }: { screen: StudioScreen }) {
             <Chip tone="volt" icon={IconTrophy}>
               {screen.kicker}
             </Chip>
-            <div className="mt-2 flex items-center gap-2">
-              <Avatar player={p} size={34} href={false} ring="none" />
-              <p className="studio-in display text-[26px] leading-none" style={at(0.2)}>
+            {/* Il personaggio intero, come nelle altre schede: più grande se il record è uno solo. */}
+            <div className="mt-1 flex items-end gap-1">
+              <span className="-mb-1 -ml-3 shrink-0">
+                <Figure player={p} height={screen.items.length > 2 ? 112 : screen.items.length > 1 ? 150 : 188} />
+              </span>
+              <p className="studio-in display min-w-0 flex-1 truncate pb-4 text-[28px] leading-none" style={at(0.2)}>
                 {name(screen.playerId)}
               </p>
             </div>
@@ -873,6 +876,200 @@ function Body({ screen }: { screen: StudioScreen }) {
           </ul>
           {screen.note && (
             <p className="studio-in mt-2 text-[11.5px] font-medium text-[#1d1a16]/55" style={at(1.3)}>
+              {screen.note}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    case "squadre": {
+      // Le squadre che hanno vinto, dalla vittoria più netta: tre facce coi nomi e lo scarto, sotto
+      // la partita col risultato e la barra lunga quanto lo scarto. La prima è in giallo.
+      const rows = [...screen.rows].sort((a, b) => b.sa - b.sb - (a.sa - a.sb) || a.game - b.game);
+      const max = Math.max(1, ...rows.map((r) => r.sa - r.sb));
+      return (
+        <div className="absolute inset-0 flex flex-col bg-[#FFFAF0] px-4 pb-3.5 pt-4 text-[#1d1a16]">
+          <Chip tone="ink" icon={IconUsersGroup}>
+            {screen.kicker}
+          </Chip>
+          <p className="studio-in display mt-2 text-[21px] leading-[1.1]" style={at(0.1)}>
+            {screen.title}
+          </p>
+          <ul className="mt-1.5 flex flex-1 flex-col justify-around">
+            {rows.map((r, i) => {
+              const diff = r.sa - r.sb;
+              const top = i === 0;
+              return (
+                <li key={r.game} className={clsx("studio-in rounded-[12px] px-2 py-[3px]", top && "bg-volt/35")} style={at(0.3 + i * 0.15)}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex shrink-0">
+                      {r.ids.map((id, k) => (
+                        <span key={id} className={clsx("rounded-full", k > 0 && "-ml-1.5 ring-2", top ? "ring-[#FFEFB0]" : "ring-[#FFFAF0]")}>
+                          <Avatar player={player(id)} size={20} href={false} ring="none" />
+                        </span>
+                      ))}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold">{r.ids.map(name).join(", ")}</span>
+                    <span className={clsx("score shrink-0 text-right text-[17px] leading-none", top && "text-ball")}>
+                      <Count to={diff} d={0.45 + i * 0.15} prefix="+" />
+                    </span>
+                  </div>
+                  <div className="mt-[3px] flex items-center gap-2">
+                    <span className="tnum w-[84px] shrink-0 text-[10.5px] font-semibold text-[#1d1a16]/50">
+                      Partita {r.game} · {r.sa}–{r.sb}
+                    </span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F2E8D5]">
+                      <span
+                        className={clsx("studio-grow block h-full rounded-full", top ? "bg-linear-to-r from-[#ffd75a] to-[#f5b400]" : "bg-court/70")}
+                        style={{ ...at(0.45 + i * 0.15), width: `${Math.max(4, (diff / max) * 100)}%` }}
+                      />
+                    </div>
+                    {r.tag && (
+                      <span className="studio-pop shrink-0 rounded-full bg-[#1d1a16] px-1.5 py-px text-[9.5px] font-bold text-white" style={at(1.2 + i * 0.1)}>
+                        {r.tag}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {screen.note && (
+            <p className="studio-in mt-1 text-[11px] font-medium leading-tight text-[#1d1a16]/55" style={at(1.4)}>
+              {screen.note}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    case "classifica": {
+      // La classifica della serata sul maxischermo: una riga per voce, il numero grande in giallo,
+      // chi è primo con la sua faccia e, sotto, chi lo insegue.
+      return (
+        <>
+          <CourtBg />
+          <div className="relative flex h-full flex-col px-4 pb-4 pt-4">
+            <Chip icon={IconTrophy}>{screen.kicker}</Chip>
+            {screen.title && (
+              <p className="studio-in display mt-2 text-[22px] leading-[1.05]" style={at(0.1)}>
+                {screen.title}
+              </p>
+            )}
+            <ul className="mt-2.5 flex flex-1 flex-col justify-between gap-1.5">
+              {screen.rows.map((r, i) => (
+                <li
+                  key={r.label}
+                  className="studio-in flex min-h-0 flex-1 items-center gap-2.5 rounded-[16px] border border-white/15 bg-white/[0.13] px-3 py-1"
+                  style={at(0.3 + i * 0.22)}
+                >
+                  <div className="w-[66px] shrink-0">
+                    <p className="text-[9.5px] font-bold uppercase leading-none tracking-[0.09em] text-white/65">{r.label}</p>
+                    <p className="score mt-1 text-[30px] leading-none text-volt">
+                      <Count to={r.value} d={0.45 + i * 0.22} />
+                    </p>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex shrink-0">
+                        {r.leaders.map((id, k) => (
+                          <span key={id} className={clsx("rounded-full", k > 0 && "-ml-2 ring-2 ring-court")}>
+                            <Avatar player={player(id)} size={26} href={false} ring="none" />
+                          </span>
+                        ))}
+                      </span>
+                      <span className="truncate text-[15.5px] font-bold leading-tight">{r.leaders.map(name).join(" e ")}</span>
+                    </div>
+                    {(r.others?.length || r.note) && (
+                      <p className="mt-0.5 truncate text-[11.5px] font-medium leading-tight text-white/70">
+                        {r.others?.length ? r.others.map((o) => `${name(o.id)} ${o.value}`).join(" · ") : r.note}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      );
+    }
+
+    case "sfida": {
+      // Faccia a faccia: le due squadre in alto (giallo a sinistra, blu a destra), sotto ogni voce
+      // con la barra di ciascuna verso il suo lato. Chi fa meglio ha la barra piena di colore.
+      const sides = [screen.a, screen.b];
+      return (
+        <div className="absolute inset-0 flex flex-col bg-[#FFFAF0] px-4 pb-4 pt-4 text-[#1d1a16]">
+          <Chip tone="ink" icon={IconBolt}>
+            {screen.kicker}
+          </Chip>
+          <p className="studio-in display mt-2 text-[21px] leading-[1.1]" style={at(0.1)}>
+            {screen.title}
+          </p>
+          <div className="relative mt-2 grid grid-cols-2 gap-2">
+            {sides.map((s, k) => (
+              <div
+                key={k}
+                className={clsx("studio-in flex flex-col items-center rounded-[18px] px-2 pb-2 pt-2.5", k ? "bg-court text-white" : "bg-volt text-volt-ink")}
+                style={at(0.25 + k * 0.15)}
+              >
+                <span className="flex">
+                  {s.ids.map((id, j) => (
+                    <span key={id} className={clsx("rounded-full", j > 0 && "-ml-2.5 ring-2", k ? "ring-court" : "ring-volt")}>
+                      <Avatar player={player(id)} size={30} href={false} ring="none" />
+                    </span>
+                  ))}
+                </span>
+                <p className="score mt-1.5 text-[27px] leading-none">{s.score}</p>
+                <p className="mt-1 line-clamp-2 text-center text-[10.5px] font-semibold leading-tight opacity-80">{s.label}</p>
+              </div>
+            ))}
+            <span
+              className="studio-pop display absolute left-1/2 top-[34px] grid h-8 w-8 -translate-x-1/2 place-items-center rounded-full bg-[#1d1a16] text-[12px] text-white ring-2 ring-[#FFFAF0]"
+              style={at(0.5)}
+              aria-hidden
+            >
+              VS
+            </span>
+          </div>
+          <ul className="mt-2 flex flex-1 flex-col justify-around">
+            {screen.rows.map((r, i) => {
+              const max = Math.max(r.a, r.b) || 1;
+              const aWin = r.low ? r.a < r.b : r.a > r.b;
+              const bWin = r.low ? r.b < r.a : r.b > r.a;
+              const d = 0.7 + i * 0.16;
+              return (
+                <li key={r.label} className="studio-in" style={at(d)}>
+                  <div className="flex items-end justify-between">
+                    <span className={clsx("score text-[18px] leading-none", !aWin && "text-[#1d1a16]/40")}>
+                      <Count to={r.a} d={d + 0.1} suffix={r.suffix} />
+                    </span>
+                    <span className="pb-px text-[11px] font-bold uppercase tracking-wide text-[#1d1a16]/55">{r.label}</span>
+                    <span className={clsx("score text-[18px] leading-none", bWin ? "text-court" : "text-[#1d1a16]/40")}>
+                      <Count to={r.b} d={d + 0.1} suffix={r.suffix} />
+                    </span>
+                  </div>
+                  <div className="mt-1 flex gap-1">
+                    <div className="flex h-2 flex-1 justify-end overflow-hidden rounded-full bg-[#F2E8D5]">
+                      <span
+                        className={clsx("studio-grow block h-full rounded-full", aWin ? "bg-linear-to-l from-[#ffd75a] to-[#f5b400]" : "bg-[#1d1a16]/22")}
+                        style={{ ...at(d + 0.1), width: `${Math.max(4, (r.a / max) * 100)}%`, transformOrigin: "right center" }}
+                      />
+                    </div>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#F2E8D5]">
+                      <span
+                        className={clsx("studio-grow block h-full rounded-full", bWin ? "bg-court" : "bg-[#1d1a16]/22")}
+                        style={{ ...at(d + 0.1), width: `${Math.max(4, (r.b / max) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {screen.note && (
+            <p className="studio-in mt-1.5 text-[11.5px] font-medium text-[#1d1a16]/55" style={at(1.6)}>
               {screen.note}
             </p>
           )}

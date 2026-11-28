@@ -140,6 +140,12 @@ def balance_check():
         for key in ("slices", "rows"):
             for r in scr.get(key, []):
                 seen.update(x for x in (r.get("playerId"), r.get("a"), r.get("b")) if x)
+        for r in scr.get("rows", []):  # le squadre: chi ha vinto e chi ha perso
+            seen.update(r.get("ids", []) + r.get("vs", []))
+            seen.update(r.get("leaders", []) + [o["id"] for o in r.get("others", [])])  # la classifica
+        for side in ("a", "b"):  # la sfida tra due squadre
+            if isinstance(scr.get(side), dict):
+                seen.update(scr[side].get("ids", []))
         for g in scr.get("games", []):
             seen.update(g.get("a", []) + g.get("b", []))
         if scr.get("kind") == "top":
@@ -833,7 +839,8 @@ async def main():
                 # ("canestro" o "assist"), oppure tutte (true, come nelle prime puntate).
                 va = line["voteAfter"]
                 kinds = [va] if isinstance(va, str) else list(plan.get("vote", {}).keys())
-                votes.append({"t": round(t + d + 0.15, 3), "options": {k: plan["vote"][k] for k in kinds}})
+                votes.append({"t": round(t + d + 0.15, 3), "options": {k: plan["vote"][k] for k in kinds},
+                              **{k: line[k2] for k, k2 in (("title", "voteTitle"), ("ask", "voteAsk"), ("tag", "voteTag")) if line.get(k2)}})
             if is_top and li < len(top_seg):
                 it = top_seg[li]
                 it["t"] = round(top_cursor, 3)
@@ -865,8 +872,9 @@ async def main():
                 # battuta (a metà del suo passaggio) e la battuta dopo aspetta che abbia finito.
                 key = line["passa"]
                 pw = plan["passanti"][key]
-                wk = {"playerId": pw["playerId"], "layer": pw.get("layer", "dietro"), "dir": pw.get("dir", 1)}
-                for k in ("eyes", "hand", "shirt", "look"):
+                wk = {"layer": pw.get("layer", "dietro"), "dir": pw.get("dir", 1)}
+                # Un giocatore che passa, oppure una comparsa disegnata apposta ("figure").
+                for k in ("playerId", "figure", "eyes", "hand", "shirt", "look", "stop"):
                     if pw.get(k):
                         wk[k] = pw[k]
                 dur = float(pw.get("dur", 6.0))
@@ -874,14 +882,15 @@ async def main():
                     sa = shout_audio(key)
                     st = t + d + pw["shout"].get("after", 0.1)
                     sd = len(sa) / SR
-                    wk["enter"] = round(st + sd / 2 - dur / 2, 3)
+                    # Con "stop" si ferma in mezzo mentre parla: "dur" è solo il tempo che cammina.
+                    wk["enter"] = round(st - dur / 2 if pw.get("stop") else st + sd / 2 - dur / 2, 3)
                     wk["shout"] = {"t": round(st, 3), "d": round(sd, 3), "text": pw["shout"]["text"]}
                     voice_track.append((st, sa * float(pw["shout"].get("gain", 0.9))))
                     shout_end = st + sd + pw["shout"].get("pause", 0.3)
                 else:
                     wk["enter"] = round(t + float(pw.get("delay", 0.3)), 3)
                     shout_end = None
-                wk["exit"] = round(wk["enter"] + dur, 3)
+                wk["exit"] = round(wk["enter"] + dur + (sd + 0.5 if pw.get("stop") and "shout" in wk else 0), 3)
                 walks.append(wk)
             t += d + line.get("gap", GAP)
             if line.get("passa") and shout_end is not None:

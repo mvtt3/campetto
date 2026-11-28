@@ -81,6 +81,10 @@ def build(show_path):
         src_from = it["release"] - lead
         # Per la regia e il misuratore l'azione è una "clip" come quelle del maxischermo.
         clip = {"shot": {"t": lead, "x": it["shot"]["x"], "y": it["shot"]["y"]}, "hoop": it.get("hoop")}
+        # Senza una regia sua, l'inquadratura parte già su chi tira (non dal centro del campo): così
+        # non c'è una carrellata a vuoto nei primi secondi e chi tira è sempre dentro.
+        pre_c = it["shot"]["x"] + 0.06
+        clip["cam"] = it.get("cam") or [[0, min(1.0, max(0.0, (pre_c * SRC_W - (SRC_H * W / H) / 2) / (SRC_W - SRC_H * W / H))), 1, 0.5]]
         n = int(round(d * FPS))
         path = muro.center_path(clip, n, crop_w)
         # "wide" (gli assist): inquadratura ferma e più larga, da x0 a x1 del fotogramma, così si vedono
@@ -99,6 +103,19 @@ def build(show_path):
                 u = min(1.0, max(0.0, (fi / FPS - tp) / span))
                 u = u * u * (3 - 2 * u)
                 path[fi] = px + (path[fi] - px) * u
+        # "follow" (una reazione dopo il tiro): passato il rilascio ("after" secondi dopo) l'inquadratura
+        # va piano verso x in "span" secondi, così si vede chi ha tirato che si gira o esulta.
+        follow = it.get("follow")
+        if follow:
+            half = crop_w / 2 / SRC_W
+            fx = min(max(follow["x"], half), 1 - half)
+            tf = lead + follow.get("after", 0.5)
+            span = max(0.3, follow.get("span", 1.2))
+            path = np.array(path, dtype=float)
+            for fi in range(len(path)):
+                u = min(1.0, max(0.0, (fi / FPS - tf) / span))
+                u = u * u * (3 - 2 * u)
+                path[fi] = path[fi] + (fx - path[fi]) * u
         wide = it.get("wide")
         if wide:
             wx0, wx1 = wide[0] * SRC_W, wide[1] * SRC_W
@@ -186,9 +203,11 @@ def build(show_path):
         it.pop("video", None)
         it.pop("norot", None)
         it.pop("wide", None)
+        it.pop("follow", None)
         it.pop("pan", None)
         it.pop("meter", None)
         it.pop("zoom", None)
+        it.pop("cam", None)
         print(f"top {i + 1}: {it['kind']} {it['label']} — {d:.1f} s, rilascio a +{lead:.2f} s")
     enc.stdin.close()
     enc.wait()

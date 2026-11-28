@@ -18,7 +18,8 @@ import type { StudioDuelState } from "../studio";
 
 export type StudioVoteCategory = "canestro" | "assist";
 /** Per ogni categoria: i voti per ogni scelta (nell'ordine delle opzioni) e la mia (null se non ho votato). */
-export type StudioVoteState = Record<StudioVoteCategory, { counts: number[]; mine: number | null }>;
+/** voters: per ogni scelta chi l'ha votata (id giocatori); vuoto finché non ho votato anche io. */
+export type StudioVoteState = Record<StudioVoteCategory, { counts: number[]; mine: number | null; voters?: string[][] }>;
 
 export interface SaveMatchInput {
   id?: string;

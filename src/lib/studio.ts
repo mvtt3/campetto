@@ -171,6 +171,40 @@ export type StudioScreen =
       note?: string;
       rows: { playerId: Id; off: number; def: number }[];
     }
+  /**
+   * Le squadre della serata: le squadre che hanno vinto, dalla vittoria più netta alla più
+   * combattuta. La barra è lo scarto; "tag" mette un'etichetta sulla riga (con "tone": "top" in giallo).
+   */
+  | {
+      kind: "squadre";
+      kicker: string;
+      title: string;
+      note?: string;
+      rows: { ids: Id[]; vs: Id[]; sa: number; sb: number; game: number; tag?: string }[];
+    }
+  /**
+   * La classifica della serata, voce per voce (punti, assist, rimbalzi...): chi è primo col suo
+   * numero, e sotto chi lo segue ("others"), oppure una nota se non c'è nessun altro.
+   */
+  | {
+      kind: "classifica";
+      kicker: string;
+      title?: string;
+      rows: { label: string; leaders: Id[]; value: number; others?: { id: Id; value: number }[]; note?: string }[];
+    }
+  /**
+   * Due squadre faccia a faccia: in alto chi sono e il risultato, sotto le voci a confronto con le
+   * barre verso il proprio lato; chi fa meglio ha la barra colorata ("low": vince il numero più basso).
+   */
+  | {
+      kind: "sfida";
+      kicker: string;
+      title: string;
+      note?: string;
+      a: { ids: Id[]; score: string; label: string };
+      b: { ids: Id[]; score: string; label: string };
+      rows: { label: string; a: number; b: number; suffix?: string; low?: boolean }[];
+    }
   /** Un infortunio durante la giornata: il giocatore, il segno del pronto soccorso e un augurio. */
   | { kind: "infortunio"; playerId: Id; kicker: string; when: string; wish: string }
   | { kind: "top"; kicker: string; title: string; items: Id[]; /** La riga in fondo, se non è la solita ("" la toglie). */ note?: string };
@@ -201,6 +235,10 @@ export interface StudioVote {
   t: number;
   /** Le scelte, nell'ordine in cui si sono viste: indici in show.top.items (una o due categorie). */
   options: Partial<Record<StudioVoteKind, number[]>>;
+  /** Titolo, invito e targhetta diversi dai soliti (per esempio la sezione "Il miglior tiro?"). */
+  title?: string;
+  ask?: string;
+  tag?: string;
 }
 
 /** I momenti del voto di una puntata: uno per categoria (prima i canestri, poi gli assist) o uno solo. */
@@ -269,7 +307,12 @@ export interface StudioVisit {
  * urlare qualcosa (la nuvoletta, con la sua voce nell'audio della puntata).
  */
 export interface StudioWalk {
-  playerId: Id;
+  /** Il giocatore che passa; senza, una comparsa disegnata apposta ("figure"). */
+  playerId?: Id;
+  /** Una comparsa che non è un giocatore: "pelliccia" = ragazza con occhiali, capelli scuri e pelliccia. */
+  figure?: "pelliccia";
+  /** Si ferma in mezzo mentre parla (l'urlo), poi riparte. */
+  stop?: boolean;
   /** Entra in scena ed esce (secondi della puntata): in mezzo cammina a passo costante. */
   enter: number;
   exit: number;
@@ -500,11 +543,21 @@ export function walkAt(w: StudioWalk, t: number): { on: boolean; x: number; walk
   const p = WALK_PATH[w.layer];
   const [a, b] = w.dir === 1 ? [p.from, p.to] : [p.to, p.from];
   if (t < w.enter || t > w.exit) return { on: false, x: a, walk: 0, shout: false };
-  const u = (t - w.enter) / Math.max(0.1, w.exit - w.enter);
+  // "stop": durante l'urlo sta ferma (il tempo del passo non conta), poi riprende da dove era.
+  let moving = t - w.enter;
+  let total = w.exit - w.enter;
+  if (w.stop && w.shout) {
+    const s0 = w.shout.t - 0.15;
+    const sd = w.shout.d + 0.5;
+    total -= sd;
+    if (t > s0 + sd) moving -= sd;
+    else if (t > s0) moving = s0 - w.enter;
+  }
+  const u = Math.min(1, Math.max(0, moving / Math.max(0.1, total)));
   // Più passi al secondo per chi va di fretta (davanti), passo lento per chi passa dietro fumando.
   const steps = w.layer === "davanti" ? 3.4 : 2.2;
   const shout = !!w.shout && t >= w.shout.t - 0.05 && t <= w.shout.t + w.shout.d + 0.45;
-  return { on: true, x: a + (b - a) * u, walk: (t - w.enter) * steps, shout };
+  return { on: true, x: a + (b - a) * u, walk: moving * steps, shout };
 }
 
 /** Se qualcuno sta passando e i conduttori lo guardano: la sua x (px dello studio), altrimenti null. */
